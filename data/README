@@ -1,0 +1,6 @@
+This folder contains full game trees for 45/33 for 3 bins and 19/14 for 4 bins
+and 5 bins. Use the verifier to verify the lower bounds, or verify them manually.
+
+The smaller size of the lower bound for 4 and 5 bins is caused by more extensive
+caching -- there are no duplicate bin configurations. The lower bound for 3 bins
+contains duplicates, as it was generated using an older version of the code.

@@ -1,0 +1,6 @@
+To compile, you need a modern C++ compiler, such as recent g++ with -std=c++14.
+Steps:
+
+1. In verifier.hpp, change values of BINS,R,S to values you wish to check.
+2. Compile the program: "g++ -Wall -std=c++14 verifier.cpp -o ver-45_33"
+3. Run the program "./ver-45_33 input-45_33.dot"

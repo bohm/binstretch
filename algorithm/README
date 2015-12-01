@@ -1,0 +1,9 @@
+To compile, you need a modern C compiler, such as recent gcc with -std=c11.
+Steps:
+
+1. In common.h, change values of #define BINS 3, #define R 45 and #define S 33
+to values you wish to check.
+2. Compile the program: "gcc -O3 -std=c11 main.c -o lb-45_33 -lm"
+3. Run the program "./lb-45_33"
+
+If you wish to have the tree on output, uncomment "#define OUTPUT 1" in common.h.
