@@ -15,5 +15,5 @@ The lower bound search of the paper is available [on Github](https://github.com/
 
 We build on their approach while improving the implementation both technically and conceptually, which allowed
 us to find a better lower bound of 45/33 for three bins as well as a first bound of 19/14 for four bins and 
-five bins. (Note that an updated version of the Gabay, Brauner Kotov from June 2015 independently shows the lower bound
+five bins. (Note that an updated version of the Gabay, Brauner, Kotov paper from June 2015 independently shows the lower bound
 of 19/14 for four bins as well.)
