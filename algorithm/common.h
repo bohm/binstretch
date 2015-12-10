@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 typedef unsigned long long int llu;
 typedef signed char tiny;
@@ -32,8 +33,6 @@ typedef signed char tiny;
 #define HASHLOG 24
 // size of the hash table
 #define HASHSIZE (1<<HASHLOG)
-// maximum length of a chain on the same hash position
-#define CHAINLEN 4
 
 // The following selects binarray size based on BINS. It does not need to be edited.
 #if BINS == 3
@@ -54,23 +53,19 @@ llu Treeid=1;
 // A bin configuration consisting of three loads and a list of items that have arrived so far.
 // The same DS is also used in the hash as an element.
 struct binconf {
-    char loads[BINS+1];
-    char items[S+1];
+    uint8_t loads[BINS+1];
+    uint8_t items[S+1];
     // hash related properties
-    struct binconf *next;
     llu loadhash;
     llu itemhash;
-    unsigned int accesses;
-    int posvalue;
+    int8_t posvalue;
 };
 
 typedef struct binconf binconf;
 
 struct dp_hash_item {
-    int feasible;
+    int8_t feasible;
     llu itemhash;
-    unsigned int accesses;
-    struct dp_hash_item *next;
 };
 
 typedef struct dp_hash_item dp_hash_item;
@@ -106,14 +101,14 @@ void duplicate(binconf *t, const binconf *s) {
     //t->next = s->next;
     t->loadhash = s->loadhash;
     t->itemhash = s->itemhash;
-    t->accesses = s->accesses;
+    //t->accesses = s->accesses;
     t->posvalue = s->posvalue;
 }
 
 void init(binconf *b)
 {
-    b->next = NULL;
-    b->accesses = 0;
+    //b->next = NULL;
+    //b->accesses = 0;
     b->itemhash = 0;
     b->loadhash = 0;
     b->posvalue = -1;
@@ -131,10 +126,10 @@ void init(binconf *b)
 // bin configuration.
 void dp_hash_init(dp_hash_item *item, const binconf *b, bool feasible)
 {
-    item->next = NULL;
+    //item->next = NULL;
     item->itemhash = b->itemhash;
-    item->feasible = (int) feasible;
-    item->accesses = 0;
+    item->feasible = (int8_t) feasible;
+    //item->accesses = 0;
 }
 
 int itemcount(const binconf *b)

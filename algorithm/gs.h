@@ -74,6 +74,22 @@ int gs5(const binconf *b)
     return -1;
 }
 
+/* newly added good situation. Check validity of general formula soon. */
+int gs6(const binconf *b)
+{
+    if(b->loads[3] <= ALPHA && b->loads[2] >= ALPHA && (
+	   (b->loads[1] >= b->loads[2] + 1*S - 2*ALPHA - b->loads[3]) ||
+	   (b->loads[2] >= b->loads[1] + 1*S - 2*ALPHA - b->loads[3]) ) )
+    {
+	return 1;
+    }
+    
+    return -1;
+    
+}
+
+
+
 int testgs(const binconf *b)
 {
     if(gs1(b) == 1)
@@ -126,13 +142,19 @@ int testgs(const binconf *b)
 #endif
 	return 1;
     }
+
+    if(gs6(b) == 1)
+    {
+	return 1;
+    }
     return -1;
 }
 
 // tries all the choices
 int gsheuristic(const binconf *b, int k)
 {
-    
+// Apply heuristics only if ALPHA >= 1/3
+#if (3*ALPHA) >= S
     binconf *d;
     for(int i=1; i<=BINS; i++)
     {
@@ -151,6 +173,7 @@ int gsheuristic(const binconf *b, int k)
 	    free(d);
          }
     }
+#endif
     return -1;
 }
 

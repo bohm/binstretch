@@ -100,6 +100,12 @@ int main(void)
 
     init_sparse_dynprog();
     global_hashtable_init();
+
+#if 3*ALPHA >= S
+    fprintf(stderr, "Good situation heuristics will be applied.\n");
+#else
+    fprintf(stderr, "No heuristics will be applied.\n");
+#endif
     
     binconf a;
     gametree *t;
