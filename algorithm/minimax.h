@@ -15,7 +15,7 @@
 #define _MINIMAX_H 1
 
 /* declarations */
-int adversary(const binconf *b, int depth, gametree *prev_vertex, char prev_bin); 
+int adversary(const binconf *b, int depth, gametree *prev_vertex, uint8_t prev_bin); 
 int algorithm(const binconf *b, int k, int depth, gametree *cur_vertex);
 
 /* declaring which algorithm will be used */
@@ -116,7 +116,7 @@ int triple_move(const binconf *b, const int *a)
 
 // depth: how deep in the game tree the given situation is
 
-int adversary(const binconf *b, int depth, gametree *prev_vertex, char prev_bin) {
+int adversary(const binconf *b, int depth, gametree *prev_vertex, uint8_t prev_bin) {
 #ifdef PROGRESS
     if(depth <= 2)
     {

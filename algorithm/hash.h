@@ -7,20 +7,22 @@
 #ifndef _HASH_H
 #define _HASH_H 1
 
-/* Hashing routines.
- */
+/* Hashing routines. This variant uses a dynamically allocated, fixed
+size hash table. Does not use CHAINLEN. The hashing table should
+behave more predictably in terms of memory use.
+*/
 
 llu **Zi; // Zobrist table for items
 llu **Zl; // Zobrist table for loads
 
 // generic hash table (for configurations)
-binconf **ht;
+binconf *ht;
 
 // output hash table (needs to be different)
-binconf **outht;
+binconf *outht;
 
 // hash table for dynamic programming calls / feasibility checks
-dp_hash_item **dpht;
+dp_hash_item *dpht;
 
 /* Reads random 64 bits on a Unix machine.
    Does not work elsewhere.
@@ -32,7 +34,7 @@ llu rand_64bit()
     FILE* ur;
     ur = fopen("/dev/urandom", "r");
     rv = fread(&r, sizeof(llu), 1, ur);
-    //assert(rv == 1);
+    assert(rv == 1);
     fclose(ur);
     return r;
 }
@@ -70,34 +72,40 @@ void zobrist_init()
 void global_hashtable_init()
 {
 
-    dpht = malloc(HASHSIZE * sizeof(dp_hash_item *));
+    dpht = malloc(HASHSIZE * sizeof(dp_hash_item));
     assert(dpht != NULL);
-    outht = malloc(HASHSIZE * sizeof(binconf *));
-    assert(outht != NULL);
-    for(int i=0; i< HASHSIZE; i++)
+
+    for (llu i =0; i < HASHSIZE; i++)
     {
-	outht[i] = NULL;
-	dpht[i] = NULL;
+	dpht[i].feasible = -1;
     }
+#ifdef OUTPUT  // not tested yet
+    outht = malloc(HASHSIZE * sizeof(binconf));
+    assert(outht != NULL);
+    for (llu i =0; i < HASHSIZE; i++)
+    {
+	outht[i].posvalue = -1;
+    }
+#endif
     zobrist_init();
+#ifdef MEASURE
     measure_init();
+#endif
 }
 
 void local_hashtable_init()
 {
-    ht = malloc(HASHSIZE * sizeof(binconf *));
+    ht = malloc(HASHSIZE * sizeof(binconf));
     assert(ht != NULL);
-    //assert(dpht != NULL);
-    for(int i=0; i< HASHSIZE; i++)
+
+    for (llu i =0; i < HASHSIZE; i++)
     {
-	ht[i] = NULL;
-	//dpht[i] = NULL;
+	ht[i].posvalue = -1;
     }
 }
 
 void global_hashtable_cleanup()
 {
-    int c;
     // zobrist cleanup
     for(int i=1; i<=BINS; i++)
     {
@@ -111,52 +119,6 @@ void global_hashtable_cleanup()
     free(Zl);
     free(Zi);
 
-    binconf *x, *p;
-    //hashtable output cleanup
-    for(int k=0; k< HASHSIZE; k++)
-    {
-	c=0;
-	x = outht[k];
-	// counting objects for debug purposes
-	while(x != NULL)
-	{
-	    x = x->next;
-	    c++;
-	}
-	assert(c<=CHAINLEN);
-	// removing objects
-	x = outht[k];
-	while(x != NULL)
-	{
-	    p = x->next;
-	    free(x);
-	    x = p;
-	}
-    }
-
-    // dynamic programming hash table cleanup
-    dp_hash_item *dp_item, *dp_pointer;
-    for(int k=0; k< HASHSIZE; k++)
-    {
-	c=0;
-	dp_item = dpht[k];
-	// counting objects for debug purposes
-	while(dp_item != NULL)
-	{
-	    dp_item = dp_item->next;
-	    c++;
-	}
-	assert(c<=CHAINLEN);
-	// removing objects
-	dp_item = dpht[k];
-	while(dp_item != NULL)
-	{
-	    dp_pointer = dp_item->next;
-	    free(dp_item);
-	    dp_item = dp_pointer;
-	}
-    }
-
     free(dpht);
     free(outht); 
 }
@@ -164,45 +126,21 @@ void global_hashtable_cleanup()
 // cleanup function -- technically not necessary but useful for memory leak checking
 void local_hashtable_cleanup()
 {
-    int c;
-    
     //hashtable cleanup
-    binconf *x, *p;
-    for(int k=0; k< HASHSIZE; k++)
-    {
-	c=0;
-	x = ht[k];
-	// counting objects for debug purposes
-	while(x != NULL)
-	{
-	    x = x->next;
-	    c++;
-	}
-	assert(c<=CHAINLEN);
-	// removing objects
-	x = ht[k];
-	while(x != NULL)
-	{
-	    p = x->next;
-	    free(x);
-	    x = p;
-	}
-    }
-
     free(ht);
 }
+
+/*
 // Few debug functions.
 void hashtable_print()
 {
     for(int i=0; i<HASHSIZE; i++)
     {
-	if(ht[i] != NULL)
+	if(ht[i].posvalue != -1)
 	{
 	    int c = 0;
 	    binconf *p;
-	    p = ht[i];
-	    while(p != NULL)
-	    {
+	    p = &(ht[i]);
 		p = p->next;
 		c++;
 	    }
@@ -219,6 +157,7 @@ void zobrist_print()
 	    fprintf(stderr, "Zi[%d][%d] = %llu\n", i,j, Zi[i][j]);
 	}
 }
+*/
 
 void printBits32(unsigned int num)
 {
@@ -249,7 +188,7 @@ unsigned int lowerpart(llu x)
     return (unsigned int) y;
 }
 
-// calculates the hash of b completely.
+// (re)calculates the hash of b completely.
 void hashinit(binconf *d)
 {
     d->loadhash=0;
@@ -308,39 +247,39 @@ void dp_unhash(binconf *d, int dynitem)
 
 /* Checks if an element is hashed, returns -1 (not hashed)
    or 0/1 if it is. */
-int is_conf_hashed(binconf **hashtable, const binconf *d)
+int is_conf_hashed(binconf *hashtable, const binconf *d)
 {
     int lp = lowerpart(d->itemhash ^ d->loadhash);
     binconf *r;
-    r = hashtable[lp];
-    while(r != NULL)
+    r = &(hashtable[lp]);
+ 
+    if (r->posvalue != -1)
     {
 	if (r->loadhash == d->loadhash && d->itemhash == d->itemhash)
 	{
-	    r->accesses++;
 #ifdef VERBOSE
 	    fprintf(stderr, "Found the following position in a hash table:\n");
 	    print_binconf(d);
 #endif
 	    return r->posvalue;
 	}
-	r = r->next;
     }
     return -1;
 }
 
 /* Adds an element to a configuration hash.
+   Because the table is flat, this is easier.
+   Also uses flat rewriting yet.
  */
 
-void conf_hashpush(binconf** hashtable, const binconf *d, int posvalue)
+void conf_hashpush(binconf* hashtable, const binconf *d, int posvalue)
 {
-    binconf *e, *t, *p, *minac;
-    int c;
-    e = malloc(sizeof(binconf)); assert(e != NULL);
-    init(e);
+    binconf *e;
+
+    unsigned int lp = lowerpart(d->loadhash ^ d->itemhash);
+    e = &(hashtable[lp]);
     duplicate(e,d);
     e->posvalue = posvalue;
-    unsigned int lp = lowerpart(e->loadhash ^ e->itemhash);
 #ifdef VERBOSE
     fprintf(stderr, "Hashing the following position with value %d:\n", posvalue);
     print_binconf(d);
@@ -349,64 +288,6 @@ void conf_hashpush(binconf** hashtable, const binconf *d, int posvalue)
 #ifdef VERBOSE
     printBits32(lp);
 #endif
-    t = hashtable[lp];
-    if(t == NULL)
-    {
-	hashtable[lp] = e;
-	e->accesses = 0;
-    } else {
-	t = hashtable[lp];
-	c = 1;
-	while((c < (CHAINLEN-1)) && t->next!=NULL)
-	{
-	    t = t->next;
-	    c++;
-	}
-
-	if(t->next == NULL)
-	{
-	    t->next = e;
-	} else {
-	    // check for the item with the least number of accesses
-#ifdef VERBOSE
-	    fprintf(stderr, "We have to remove an element.\n");
-#endif	    
-	    p = hashtable[lp];
-	    minac = hashtable[lp];
-	    while(p != NULL)
-	    {
-		if(p->accesses < minac->accesses)
-		    minac = p;
-		p = p->next;
-	    }
-
-	    // remove the item with the least number of accesses
-	    p = hashtable[lp];
-	    int k = 1;
-	    if(minac == p)
-	    {
-		e->next = hashtable[lp]->next;
-		free(hashtable[lp]);
-		hashtable[lp] = e;
-#ifdef VERBOSE
-		fprintf(stderr, "Element removed is %d\n", k);
-#endif
-	    } else {
-		while(p->next != minac)
-		{
-		    p = p->next;
-		    k++;
-		}
-#ifdef VERBOSE
-		fprintf(stderr, "Element removed is %d\n", k);
-#endif
-	        e->next = p->next->next;
-		free(p->next);
-		p->next = e;
-	    }
-	}
-	
-    }
 }
 
 // Checks if a number is in the dynamic programming hash.
@@ -414,90 +295,23 @@ void conf_hashpush(binconf** hashtable, const binconf *d, int posvalue)
 int dp_hashed(const binconf* b)
 {
     unsigned int lp = lowerpart(b->itemhash);
-    dp_hash_item *p = dpht[lp];
-    while( p != NULL)
+    dp_hash_item *p = &(dpht[lp]);
+    if(p->itemhash == b->itemhash)
     {
-	if(p->itemhash == b->itemhash)
-	{
-	    return p->feasible;
-	    break;
-	} else {
-	    p = p->next;
-	}
+	return p->feasible;
     }
 
     return -1;
-	
 }
 
 
 // Adds an number to a dynamic programming hash table
 void dp_hashpush(const binconf *d, bool feasible)
 {
-    dp_hash_item *e, *t, *p, *minac;
-    int c;
-    e = malloc(sizeof(dp_hash_item)); assert(e != NULL);
+    dp_hash_item *e;
+    unsigned int lp = lowerpart(d->itemhash);
+    e = &(dpht[lp]);
     dp_hash_init(e,d,feasible);
-    unsigned int lp = lowerpart(e->itemhash);
-    
-    t = dpht[lp];
-    if(t == NULL)
-    {
-	dpht[lp] = e;
-    } else {
-	t = dpht[lp];
-	c = 1;
-	while((c < (CHAINLEN-1)) && t->next!=NULL)
-	{
-	    t = t->next;
-	    c++;
-	}
-
-	if(t->next == NULL)
-	{
-	    t->next = e;
-	} else {
-	    // check for the item with the least number of accesses
-#ifdef VERBOSE
-	    fprintf(stderr, "DPHT: We have to remove an element.\n");
-#endif	    
-	    p = dpht[lp];
-	    minac = dpht[lp];
-	    while(p != NULL)
-	    {
-		if(p->accesses < minac->accesses)
-		    minac = p;
-		p = p->next;
-	    }
-
-	    // remove the item with the least number of accesses
-	    p = dpht[lp];
-	    int k = 1;
-	    if(minac == p)
-	    {
-		e->next = dpht[lp]->next;
-		free(dpht[lp]);
-		dpht[lp] = e;
-#ifdef VERBOSE
-		fprintf(stderr, "DPHT: Element removed is %d\n", k);
-#endif
-	    } else {
-		while(p->next != minac)
-		{
-		    p = p->next;
-		    k++;
-		}
-#ifdef VERBOSE
-		fprintf(stderr, "DPHT: Element removed is %d\n", k);
-#endif
-	        e->next = p->next->next;
-		free(p->next);
-		p->next = e;
-	    }
-	}
-	
-    }
-
 }
 
 #endif
