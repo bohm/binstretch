@@ -55,31 +55,35 @@ void decodetuple(int *new_tuple, int source, int pos)
 // solving using dynamic programming, sparse version, starting with empty instead of full queue
 
 // global binary array of feasibilities used for sparse_dynprog_alternate_test
-int *F;
-int *oldqueue;
-int *newqueue;
+//int *F;
+//int *oldqueue;
+//int *newqueue;
 
-void init_sparse_dynprog()
+void dynprog_attr_init(dynprog_attr *dpat)
 {
-    F = calloc(BINARRAY_SIZE,sizeof(int));
-    assert(F!=NULL);
+    assert(dpat != NULL);
+    dpat->F = calloc(BINARRAY_SIZE,sizeof(int));
+    assert(dpat->F != NULL);
     
-    oldqueue = calloc(BINARRAY_SIZE,sizeof(int));
-    newqueue = calloc(BINARRAY_SIZE,sizeof(int));
-    assert(oldqueue != NULL && newqueue != NULL);
+    dpat->oldqueue = calloc(BINARRAY_SIZE,sizeof(int));
+    dpat->newqueue = calloc(BINARRAY_SIZE,sizeof(int));
+    assert(dpat->oldqueue != NULL && dpat->newqueue != NULL);
 
 }
 
-void free_sparse_dynprog()
+void dynprog_attr_free(dynprog_attr *dpat)
 {
-    free(oldqueue); free(newqueue);
-    free(F);
+    free(dpat->oldqueue); free(dpat->newqueue);
+    free(dpat->F);
 }
-bool sparse_dynprog_test(const binconf *conf)
+
+bool sparse_dynprog_test(const binconf *conf, dynprog_attr *dpat)
 {
     // binary array of feasibilities
     // int f[S+1][S+1][S+1] = {0};
-
+    int *F = dpat->F;
+    int *oldqueue = dpat->oldqueue;
+    int *newqueue = dpat->newqueue;
     int **poldq;
     int **pnewq;
     int **swapper;
@@ -171,7 +175,7 @@ bool sparse_dynprog_test(const binconf *conf)
 
 // a wrapper that hashes the new configuration and if it is not in cache, runs TEST
 // it edits h but should return it to original state (due to Zobrist hashing)
-bool hash_and_test(binconf *h, int item)
+bool hash_and_test(binconf *h, int item, dynprog_attr *dpat)
 {
 #ifdef MEASURE
     test_counter++;
@@ -191,7 +195,7 @@ bool hash_and_test(binconf *h, int item)
 	feasible = (bool) hashedvalue;
     } else {
 	DEBUG_PRINT("Nothing found in dynprog cache for hash %llu.\n", h->itemhash);
-	feasible = TEST(h);
+	feasible = TEST(h, dpat);
 	DEBUG_PRINT("Pushing dynprog value %d for hash %llu.\n", feasible, h->itemhash);
 	dp_hashpush(h,feasible);
     }
@@ -201,7 +205,7 @@ bool hash_and_test(binconf *h, int item)
     return feasible;
 }
 
-void maximum_feasible_dynprog(const binconf *b, int *res)
+void maximum_feasible_dynprog(const binconf *b, int *res, dynprog_attr *dpat)
 {
 #ifdef MEASURE
     maximum_feasible_counter++;
@@ -265,7 +269,7 @@ void maximum_feasible_dynprog(const binconf *b, int *res)
     // DEBUG: compare it with ordinary for cycle
     for (dynitem=maxvalue; dynitem>bestfitvalue; dynitem--)
     {
-	bool feasible = hash_and_test(&h,dynitem);
+	bool feasible = hash_and_test(&h,dynitem, dpat);
 	if(feasible)
 	{
 	    break;

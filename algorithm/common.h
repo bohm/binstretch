@@ -17,12 +17,11 @@ typedef signed char tiny;
 //#define PROGRESS 1
 // #define OUTPUT 1
 //#define MEASURE 1
-// #define PARALLEL 1
 
 // maximum load of a bin in the optimal offline setting
-#define S 32 
+#define S 41 
 // target goal of the online bin stretching problem
-#define R 44
+#define R 56
 
 // constants used for good situations
 #define RMOD (R-1)
@@ -40,8 +39,11 @@ typedef signed char tiny;
 #define BUCKETLOG 10
 #define BUCKETSIZE (1<<BUCKETLOG)
 
+// the number of threads
 #define THREADS 4
-#define TASK_DEPTH 3
+// a bound on total load of a configuration before we split it into a task
+#define TASK_LOAD S/2
+#define TASK_DEPTH 4
 
 // The following selects binarray size based on BINS. It does not need to be edited.
 #if BINS == 3
@@ -113,6 +115,15 @@ struct task {
 };
 
 typedef struct task task;
+
+/* dynprog global variables (separate for each thread) */
+struct dynprog_attr {
+    int *F;
+    int *oldqueue;
+    int *newqueue;
+};
+
+typedef struct dynprog_attr dynprog_attr;
 
 // global task queue
 task *taskq = NULL;

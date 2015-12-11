@@ -54,7 +54,12 @@ void print_gametree(gametree *tree)
 		init(b);
 		duplicate(b, tree->next[i]->bc);
 		delete_gametree(tree->next[i]);
-		evaluate(b, &(tree->next[i]), tree->depth+1);
+		// needs fixing when output is considered
+		dynprog_attr dpat;
+		dynprog_attr_init(&dpat);
+		evaluate(b, &(tree->next[i]), tree->depth+1, &dpat);
+		dynprog_attr_free(&dpat);
+
 		free(b);
 	    }
 	    
@@ -71,7 +76,6 @@ void print_gametree(gametree *tree)
 int main(void)
 {
 
-    init_sparse_dynprog();
     global_hashtable_init();
     local_hashtable_init();
 
@@ -114,7 +118,6 @@ int main(void)
     timeval_print(&dynTotal);
     MEASURE_PRINT("seconds.\n");
 
-    free_sparse_dynprog();
     global_hashtable_cleanup();
     local_hashtable_cleanup();
     bucketlock_cleanup();
