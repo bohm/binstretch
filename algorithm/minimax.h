@@ -15,8 +15,8 @@
 #define _MINIMAX_H 1
 
 /* declarations */
-int adversary(const binconf *b, int depth, gametree *prev_vertex, uint8_t prev_bin); 
-int algorithm(const binconf *b, int k, int depth, gametree *cur_vertex);
+int adversary(const binconf *b, int depth, gametree *prev_vertex, uint8_t prev_bin, llu *vertex_counter); 
+int algorithm(const binconf *b, int k, int depth, gametree *cur_vertex, llu *vertex_counter);
 
 /* declaring which algorithm will be used */
 #define ALGORITHM algorithm
@@ -123,9 +123,12 @@ int evaluate(binconf *b, gametree **rettree, int depth)
     hashinit(b);
     
     t = malloc(sizeof(gametree));
-    init_gametree_vertex(t, b, 0, depth-1);
+    llu *vertex_counter;
+    vertex_counter = malloc(sizeof(llu));
+    *vertex_counter = 0;
+    init_gametree_vertex(t, b, 0, depth-1, vertex_counter);
     
-    int ret = adversary(b, 0, t, 1);
+    int ret = adversary(b, 0, t, 1, vertex_counter);
     if(ret == 0)
     {
 	(*rettree) = t->next[1];
@@ -148,7 +151,7 @@ int evaluate(binconf *b, gametree **rettree, int depth)
    depth: how deep in the game tree the given situation is
  */
 
-int adversary(const binconf *b, int depth, gametree *prev_vertex, uint8_t prev_bin) {
+int adversary(const binconf *b, int depth, gametree *prev_vertex, uint8_t prev_bin, llu *vertex_counter) {
 
 /* #ifdef PROGRESS
     if(depth <= 2)
@@ -234,10 +237,10 @@ int adversary(const binconf *b, int depth, gametree *prev_vertex, uint8_t prev_b
     {
 	DEBUG_PRINT("Sending item %d to algorithm.\n", item_size);
 	new_vertex = malloc(sizeof(gametree));
-	init_gametree_vertex(new_vertex, b, item_size, prev_vertex->depth + 1);
+	init_gametree_vertex(new_vertex, b, item_size, prev_vertex->depth + 1, vertex_counter);
 	prev_vertex->next[prev_bin] = new_vertex;
 
-	r = ALGORITHM(b, item_size, depth+1, new_vertex);
+	r = ALGORITHM(b, item_size, depth+1, new_vertex, vertex_counter);
 	DEBUG_PRINT("With item %d, algorithm's result is %d\n", item_size, r);
 	if(r == 0)
 	    break;
@@ -261,7 +264,7 @@ int adversary(const binconf *b, int depth, gametree *prev_vertex, uint8_t prev_b
 
 }
 
-int algorithm(const binconf *b, int k, int depth, gametree *cur_vertex) {
+int algorithm(const binconf *b, int k, int depth, gametree *cur_vertex, llu* vertex_counter) {
 
     //MEASURE_PRINT("Entering player one vertex.\n");
     gametree *new_vertex;
@@ -298,7 +301,7 @@ int algorithm(const binconf *b, int k, int depth, gametree *cur_vertex) {
 		    // init(e);
 		    // duplicate(e,d);
 		    new_vertex = malloc(sizeof(gametree));
-		    init_gametree_vertex(new_vertex, d, 0, cur_vertex->depth + 1);
+		    init_gametree_vertex(new_vertex, d, 0, cur_vertex->depth + 1, vertex_counter);
 		    new_vertex->cached=1;
 		    cur_vertex->next[i] = new_vertex;
 		    //new_vertex->cached_conf = e;
@@ -306,7 +309,7 @@ int algorithm(const binconf *b, int k, int depth, gametree *cur_vertex) {
 		r = c;
 	    } else {
 		//MEASURE_PRINT("Player one vertex not cached.\n");	
-		r = ADVERSARY(d,depth, cur_vertex, i);
+		r = ADVERSARY(d,depth, cur_vertex, i, vertex_counter);
 		VERBOSE_PRINT(stderr, "We have calculated the following position, result is %d\n", r);
 		VERBOSE_PRINT_BINCONF(d);
 
@@ -326,7 +329,7 @@ int algorithm(const binconf *b, int k, int depth, gametree *cur_vertex) {
 	    }
 	} else { // b->loads[i] + k >= R, so a good situation for the adversary
 	    new_vertex = malloc(sizeof(gametree));
-	    init_gametree_vertex(new_vertex, b, 0, cur_vertex->depth +1);
+	    init_gametree_vertex(new_vertex, b, 0, cur_vertex->depth +1, vertex_counter);
 	    new_vertex->leaf=1;
 	    cur_vertex->next[i] = new_vertex;
 	}

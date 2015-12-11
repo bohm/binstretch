@@ -20,9 +20,9 @@ typedef signed char tiny;
 // #define PARALLEL 1
 
 // maximum load of a bin in the optimal offline setting
-#define S 33
+#define S 32 
 // target goal of the online bin stretching problem
-#define R 45
+#define R 44
 
 // constants used for good situations
 #define RMOD (R-1)
@@ -61,7 +61,7 @@ typedef signed char tiny;
 bool generating_tasks;
 
 // a global variable for indexing the game tree vertices
-llu Treeid=1;
+//llu Treeid=1;
 
 // A bin configuration consisting of three loads and a list of items that have arrived so far.
 // The same DS is also used in the hash as an element.
@@ -118,9 +118,6 @@ typedef struct task task;
 task *taskq = NULL;
 unsigned int task_count = 0;
 pthread_mutex_t taskq_lock;
-
-bool thread_complete[THREADS];
-
 
 void duplicate(binconf *t, const binconf *s) {
     for(int i=1; i<=BINS; i++)
@@ -195,6 +192,11 @@ void add_task(const binconf *x) {
     task_count++;
 }
 
+void init_global_locks(void)
+{
+    pthread_mutex_init(&taskq_lock, NULL);
+}
+
 void free_taskq(void)
 {
     task *taskq_next;
@@ -242,13 +244,14 @@ void sortloads(binconf *b)
 
 /* Initialize the game tree with the information in the parameters. */
 
-void init_gametree_vertex(gametree *tree, const binconf *b, int nextItem, int depth)
+void init_gametree_vertex(gametree *tree, const binconf *b, int nextItem, int depth, llu *vertex_counter)
 {
     tree->bc = malloc(sizeof(binconf));
     init(tree->bc);
     
     tree->cached=0; tree->leaf=0;
-    tree->id = ++Treeid;
+    (*vertex_counter)++;
+    tree->id = *vertex_counter;
     // tree->cached_conf = NULL;
     tree->depth = depth;
 

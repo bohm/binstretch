@@ -19,6 +19,7 @@ llu **Zl; // Zobrist table for loads
 binconf *ht;
 
 pthread_mutex_t *bucketlock;
+pthread_mutex_t *dpbucketlock;
 
 // output hash table (needs to be different)
 binconf *outht;
@@ -109,11 +110,14 @@ void local_hashtable_init()
 void bucketlock_init()
 {
     bucketlock = malloc(BUCKETSIZE * sizeof(pthread_mutex_t));
-    assert(bucketlock != NULL);
+    dpbucketlock = malloc(BUCKETSIZE * sizeof(pthread_mutex_t));
 
+    assert(bucketlock != NULL);
+    assert(dpbucketlock != NULL);
     for (llu i =0; i < BUCKETSIZE; i++)
     {
-        pthread_mutex_init(&bucketlock[i], NULL); 
+        pthread_mutex_init(&bucketlock[i], NULL);
+	pthread_mutex_init(&dpbucketlock[i], NULL);
     }
 }
 
@@ -146,6 +150,7 @@ void local_hashtable_cleanup()
 void bucketlock_cleanup()
 {
     free(bucketlock);
+    free(dpbucketlock);
 }
 /*
 // Few debug functions.
@@ -211,6 +216,9 @@ unsigned int bucketlockpart(llu x)
     llu mask,y;
     mask = (BUCKETSIZE) - 1;
     y = (x) & mask;
+    //fprintf(stderr, "bucketlockpart(%llu) = %u\n", x,y);
+    //printBits64(x); fprintf(stderr, " -> "); printBits32(y); fprintf(stderr, "\n");
+    
     return (unsigned int) y;
 }
 
@@ -275,17 +283,16 @@ void dp_unhash(binconf *d, int dynitem)
    or 0/1 if it is. */
 int is_conf_hashed(binconf *hashtable, const binconf *d)
 {
-    int lp = hashlogpart(d->itemhash ^ d->loadhash);
+    unsigned int lp = hashlogpart(d->itemhash ^ d->loadhash);
+    unsigned int blp = bucketlockpart((llu) lp);
+
     llu lhash, ihash, posvalue;
     binconf *r;
-    pthread_mutex_t *lock;
-    lock = &(bucketlock[bucketlockpart(d->itemhash ^ d->loadhash)]);
-    assert(lock != NULL);
-    pthread_mutex_lock(lock);
+    pthread_mutex_lock(&bucketlock[blp]); // LOCK
     r = &(hashtable[lp]); 
     assert(r != NULL);
     posvalue = r->posvalue; lhash = r->loadhash; ihash = r->itemhash;
-    pthread_mutex_unlock(lock);
+    pthread_mutex_unlock(&bucketlock[blp]); // UNLOCK
     
     if (posvalue != -1)
     {
@@ -311,14 +318,14 @@ void conf_hashpush(binconf* hashtable, const binconf *d, int posvalue)
     binconf *e;
 
     unsigned int lp = hashlogpart(d->loadhash ^ d->itemhash);
-    pthread_mutex_t *lock;
-    lock = &(bucketlock[bucketlockpart(d->loadhash ^ d->itemhash)]);
-    assert(lock != NULL);
-    pthread_mutex_lock(lock);
+    unsigned int blp = bucketlockpart((llu) lp);
+//    pthread_mutex_t *lock;
+//    assert(lock != NULL);
+    pthread_mutex_lock(&bucketlock[blp]); //LOCK
     e = &(hashtable[lp]);
     duplicate(e,d);
     e->posvalue = posvalue;
-    pthread_mutex_unlock(lock);
+    pthread_mutex_unlock(&bucketlock[blp]); // UNLOCK
     
 #ifdef VERBOSE
     fprintf(stderr, "Hashing the following position with value %d:\n", posvalue);
@@ -332,10 +339,21 @@ void conf_hashpush(binconf* hashtable, const binconf *d, int posvalue)
 int dp_hashed(const binconf* b)
 {
     unsigned int lp = hashlogpart(b->itemhash);
+    unsigned int blp = bucketlockpart((llu) lp);
+    llu ihash;
+    int feasible;
+    //pthread_mutex_t *lock;
+    //lock = &(dpbucketlock[;
+    pthread_mutex_lock(&dpbucketlock[blp]); // LOCK
     dp_hash_item *p = &(dpht[lp]);
-    if(p->itemhash == b->itemhash)
+    assert(p != NULL);
+    ihash = p->itemhash;
+    feasible = p->feasible;
+    pthread_mutex_unlock(&dpbucketlock[blp]); // UNLOCK
+    
+    if(ihash == b->itemhash)
     {
-	return p->feasible;
+	return feasible;
     }
 
     return -1;
@@ -347,8 +365,13 @@ void dp_hashpush(const binconf *d, bool feasible)
 {
     dp_hash_item *e;
     unsigned int lp = hashlogpart(d->itemhash);
+    //pthread_mutex_t *lock;
+    unsigned int blp = bucketlockpart((llu) lp);
+    
+    pthread_mutex_lock(&dpbucketlock[blp]); // LOCK
     e = &(dpht[lp]);
     dp_hash_init(e,d,feasible);
+    pthread_mutex_unlock(&dpbucketlock[blp]); // UNLOCK
 }
 
 #endif

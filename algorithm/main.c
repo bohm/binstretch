@@ -74,6 +74,8 @@ int main(void)
     init_sparse_dynprog();
     global_hashtable_init();
     local_hashtable_init();
+
+    init_global_locks();
     bucketlock_init();
 
 #if 3*ALPHA >= S
