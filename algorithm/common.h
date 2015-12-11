@@ -6,6 +6,7 @@
 #include <assert.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <pthread.h>
 
 typedef unsigned long long int llu;
 typedef signed char tiny;
@@ -13,14 +14,15 @@ typedef signed char tiny;
 // verbosity of the program
 // #define VERBOSE 1
 // #define DEBUG 1
-#define PROGRESS 1
+//#define PROGRESS 1
 // #define OUTPUT 1
-#define MEASURE 1
+//#define MEASURE 1
+// #define PARALLEL 1
 
 // maximum load of a bin in the optimal offline setting
-#define S 49
+#define S 33
 // target goal of the online bin stretching problem
-#define R 67
+#define R 45
 
 // constants used for good situations
 #define RMOD (R-1)
@@ -30,9 +32,16 @@ typedef signed char tiny;
 #define BINS 3
 
 // bitwise length of indices of the hash table
-#define HASHLOG 26
+#define HASHLOG 24
 // size of the hash table
 #define HASHSIZE (1<<HASHLOG)
+
+// size of buckets -- how many locks there are (each lock serves a group of hashes)
+#define BUCKETLOG 10
+#define BUCKETSIZE (1<<BUCKETLOG)
+
+#define THREADS 4
+#define TASK_DEPTH 3
 
 // The following selects binarray size based on BINS. It does not need to be edited.
 #if BINS == 3
@@ -46,6 +55,10 @@ typedef signed char tiny;
 #endif
 
 // end of configuration constants; start of code
+
+#define POSTPONED 2
+
+bool generating_tasks;
 
 // a global variable for indexing the game tree vertices
 llu Treeid=1;
@@ -92,6 +105,23 @@ struct gametree {
 
 typedef struct gametree gametree;
 
+struct task {
+    binconf *bc;
+    int value;
+    int assigned_thread;
+    struct task * next;
+};
+
+typedef struct task task;
+
+// global task queue
+task *taskq = NULL;
+unsigned int task_count = 0;
+pthread_mutex_t taskq_lock;
+
+bool thread_complete[THREADS];
+
+
 void duplicate(binconf *t, const binconf *s) {
     for(int i=1; i<=BINS; i++)
 	t->loads[i] = s->loads[i];
@@ -122,16 +152,6 @@ void init(binconf *b)
     }
 }
 
-// initializes an element of the dynamic programming hash by a related
-// bin configuration.
-void dp_hash_init(dp_hash_item *item, const binconf *b, bool feasible)
-{
-    //item->next = NULL;
-    item->itemhash = b->itemhash;
-    item->feasible = (int8_t) feasible;
-    //item->accesses = 0;
-}
-
 int itemcount(const binconf *b)
 {
     int total = 0;
@@ -155,20 +175,46 @@ int totalload(const binconf *b)
 
 void print_binconf(const binconf* b)
 {
-	bool doit=false;
-	for(int j=1; j<=S; j++)
-		if(b->items[j]==2)
-			doit=true;
-	if(doit){
-	    for(int i=1; i<=BINS; i++)
-		fprintf(stderr, "%d-", b->loads[i]);
-//	fprintf(stderr, "Bin %d load %d; ", i, b->loads[i]);
-	    fprintf(stderr, " ");
-	    for(int j=1; j<=S; j++)
-		fprintf(stderr, "%d", b->items[j]);
-//	fprintf(stderr, "I[%d]: %d; ", j, b->items[j]);
-	    fprintf(stderr, "\n");
-	}
+    for (int i=1; i<=BINS; i++) {
+	fprintf(stderr, "%d-", b->loads[i]);
+    }
+    fprintf(stderr, " ");
+    for (int j=1; j<=S; j++) {
+	fprintf(stderr, "%d", b->items[j]);
+    }
+    fprintf(stderr, "\n");
+}
+
+void add_task(const binconf *x) {
+    task* newtask = malloc(sizeof(task));
+    newtask->bc = malloc(sizeof(binconf));
+    duplicate(newtask->bc, x);
+    newtask->next = taskq;
+    newtask->value = -1;
+    taskq = newtask;
+    task_count++;
+}
+
+void free_taskq(void)
+{
+    task *taskq_next;
+    while(taskq != NULL)
+    {
+	taskq_next = taskq->next;
+	free(taskq->bc);
+	free(taskq);
+	taskq = taskq_next;
+    }
+}
+
+// initializes an element of the dynamic programming hash by a related
+// bin configuration.
+void dp_hash_init(dp_hash_item *item, const binconf *b, bool feasible)
+{
+    //item->next = NULL;
+    item->itemhash = b->itemhash;
+    item->feasible = (int8_t) feasible;
+    //item->accesses = 0;
 }
 
 // sorting the loads of the bins using insertsort
@@ -273,6 +319,15 @@ void delete_gametree(gametree *tree)
 #define VERBOSE_PRINT(...)
 #define VERBOSE_PRINT_BINCONF(x)
 #endif
+
+#ifdef PROGRESS
+#define PROGRESS_PRINT(...) fprintf(stderr, __VA_ARGS__ )
+#define PROGRESS_PRINT_BINCONF(x) print_binconf(x)
+#else
+#define PROGRESS_PRINT(format,...)
+#define PROGRESS_PRINT_BINCONF(x)
+#endif
+
 
 
 

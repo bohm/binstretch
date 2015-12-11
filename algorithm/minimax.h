@@ -110,14 +110,47 @@ int triple_move(const binconf *b, const int *a)
     return 0;
 }
 
+// evaluates the configuration b, stores the result
+// in gametree t (t = NULL if result is 1.
+int evaluate(binconf *b, gametree **rettree, int depth)
+{
+    gametree *t;
+
+    // local hashtable init disabled
+    // local_hashtable_init();
+    //zobrist_init();
+    //measure_init();
+    hashinit(b);
+    
+    t = malloc(sizeof(gametree));
+    init_gametree_vertex(t, b, 0, depth-1);
+    
+    int ret = adversary(b, 0, t, 1);
+    if(ret == 0)
+    {
+	(*rettree) = t->next[1];
+	free(t);
+    } else
+    {
+	delete_gametree(t);
+    }
+    
+    //local_hashtable_cleanup();
+    return ret;
+}
+
+
 /* return values: 0: player 1 cannot pack the sequence starting with binconf b
- * 1: player 1 can pack all possible sequences starting with b
+ * 1: player 1 can pack all possible sequences starting with b.
+ * POSTPONED: a task has been generated for the parallel environment.
+
+ * Influenced by the global bool generating_tasks.
+   depth: how deep in the game tree the given situation is
  */
 
-// depth: how deep in the game tree the given situation is
-
 int adversary(const binconf *b, int depth, gametree *prev_vertex, uint8_t prev_bin) {
-#ifdef PROGRESS
+
+/* #ifdef PROGRESS
     if(depth <= 2)
     {
 //	fprintf(stderr, "Entering player zero vertex of depth %d:\n", depth);
@@ -125,12 +158,19 @@ int adversary(const binconf *b, int depth, gametree *prev_vertex, uint8_t prev_b
 //	fprintf(stderr, "\n");
     }
 #endif
+*/
+    if (generating_tasks && depth == TASK_DEPTH)
+    {
+	add_task(b);
+	return POSTPONED;
+    }
+
     // try double move and triple move first
     int *res;
     gametree *new_vertex;
     res = malloc(BINS*sizeof(int));
     int valid;
-
+    bool result_postponed = false;
 
 
     // we currently do not use double_move and triple_move
@@ -189,7 +229,7 @@ int adversary(const binconf *b, int depth, gametree *prev_vertex, uint8_t prev_b
     int r = 1;
 
     //DEBUG_PRINT("Trying player zero choices, with maxload starting at %d\n", maxload);
-
+    
     for (int item_size = maximum_feasible; item_size>0; item_size--)
     {
 	DEBUG_PRINT("Sending item %d to algorithm.\n", item_size);
@@ -201,13 +241,24 @@ int adversary(const binconf *b, int depth, gametree *prev_vertex, uint8_t prev_b
 	DEBUG_PRINT("With item %d, algorithm's result is %d\n", item_size, r);
 	if(r == 0)
 	    break;
-	else {
+	else { // also happens if it returns POSTPONED
 	    delete_gametree(new_vertex);
 	    prev_vertex->next[prev_bin] = NULL;
+
+	    if (r == POSTPONED)
+	    {
+		result_postponed = true;
+	    }
 	}
     }
 
+    if (result_postponed)
+    {
+	return POSTPONED;
+    }
+    
     return r;
+
 }
 
 int algorithm(const binconf *b, int k, int depth, gametree *cur_vertex) {
@@ -215,6 +266,7 @@ int algorithm(const binconf *b, int k, int depth, gametree *cur_vertex) {
     //MEASURE_PRINT("Entering player one vertex.\n");
     gametree *new_vertex;
     binconf *e;
+    bool result_postponed = false;
 
     // GS heuristics are fixed for BINS == 3, so they should not be used for more.
 #if BINS == 3
@@ -257,7 +309,15 @@ int algorithm(const binconf *b, int k, int depth, gametree *cur_vertex) {
 		r = ADVERSARY(d,depth, cur_vertex, i);
 		VERBOSE_PRINT(stderr, "We have calculated the following position, result is %d\n", r);
 		VERBOSE_PRINT_BINCONF(d);
-		conf_hashpush(ht,d,r);
+
+		// do not add the computation into the cache if the return is POSTPONED.
+		if (r == 0 || r == 1) {
+		    conf_hashpush(ht,d,r);
+		}
+
+		if (r == 2) {
+		    result_postponed = true;
+		}
 	    }
 	    free(d);
 	    if(r == 1) {
@@ -271,6 +331,11 @@ int algorithm(const binconf *b, int k, int depth, gametree *cur_vertex) {
 	    cur_vertex->next[i] = new_vertex;
 	}
     }
+
+    if (result_postponed) {
+	return POSTPONED;
+    }
+
     return r; 
 }
 

@@ -4,34 +4,7 @@
 #include "hash.h"
 #include "minimax.h"
 #include "measure.h"
-
-// evaluates the configuration b, stores the result
-// in gametree t (t = NULL if result is 1.
-int evaluate(binconf *b, gametree **rettree, int depth)
-{
-    gametree *t;
-    
-    local_hashtable_init();
-    //zobrist_init();
-    //measure_init();
-    hashinit(b);
-    
-    t = malloc(sizeof(gametree));
-    init_gametree_vertex(t, b, 0, depth-1);
-    
-    int ret = adversary(b, 0, t, 1);
-    if(ret == 0)
-    {
-	(*rettree) = t->next[1];
-	free(t);
-    } else
-    {
-	delete_gametree(t);
-    }
-    
-    local_hashtable_cleanup();
-    return ret;
-}
+#include "scheduler.h"
 
 // prints a game tree
 // needs to be here because it calls evaluate when dealing with cache
@@ -100,19 +73,26 @@ int main(void)
 
     init_sparse_dynprog();
     global_hashtable_init();
+    local_hashtable_init();
+    bucketlock_init();
 
 #if 3*ALPHA >= S
     fprintf(stderr, "Good situation heuristics will be applied.\n");
 #else
     fprintf(stderr, "No heuristics will be applied.\n");
 #endif
-    
+
+    /*
+
     binconf a;
     gametree *t;
     
     init(&a); // init game tree
 
     int ret = evaluate(&a,&t,0);
+    */
+    
+    int ret = scheduler();
     if(ret == 0)
     {
 	fprintf(stderr, "%d/%d Bin Stretching on %d bins has a lower bound.\n", R,S,BINS);
@@ -134,5 +114,7 @@ int main(void)
 
     free_sparse_dynprog();
     global_hashtable_cleanup();
+    local_hashtable_cleanup();
+    bucketlock_cleanup();
     return 0;
 }
