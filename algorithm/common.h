@@ -14,14 +14,14 @@ typedef signed char tiny;
 // verbosity of the program
 // #define VERBOSE 1
 // #define DEBUG 1
-//#define PROGRESS 1
+#define PROGRESS 1
 // #define OUTPUT 1
 //#define MEASURE 1
 
 // maximum load of a bin in the optimal offline setting
-#define S 41 
+#define S 33 
 // target goal of the online bin stretching problem
-#define R 56
+#define R 45
 
 // constants used for good situations
 #define RMOD (R-1)

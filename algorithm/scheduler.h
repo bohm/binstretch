@@ -11,8 +11,26 @@
 #ifndef _SCHEDULER_H
 #define _SCHEDULER_H 1
 
-void *evaluate_task(void * x)
+void reverse_global_taskq()
 {
+    task* task_cur = taskq;
+    task* task_new = NULL;
+    task* x;
+    while(task_cur != NULL)
+    {
+	x = task_cur->next;
+	task_cur->next = task_new;
+	task_new = task_cur;
+	task_cur = x;
+    }
+    
+    taskq = task_new;
+}
+
+void *evaluate_task(void * tid)
+{
+    unsigned int threadid =  * (unsigned int *) tid;
+    unsigned int taskcounter = 0;
     task *taskpointer;
     dynprog_attr dpat;
     dynprog_attr_init(&dpat);
@@ -27,8 +45,12 @@ void *evaluate_task(void * x)
 	if (taskpointer == NULL) {
 	    break;
 	}
-	PROGRESS_PRINT("Thread finished; taking up new task: ");
-	PROGRESS_PRINT_BINCONF(taskpointer->bc);
+	taskcounter++;
+
+	if(taskcounter % 50000 == 0) {
+	   PROGRESS_PRINT("Thread %u takes up task number %u: ", threadid, taskcounter);
+	   PROGRESS_PRINT_BINCONF(taskpointer->bc);
+	}
 	gametree *t;
 	int ret = evaluate(taskpointer->bc, &t, 0, &dpat);
 	assert(ret != POSTPONED);
@@ -53,7 +75,7 @@ int scheduler() {
     int ret = evaluate(&a, &t, 0, &dpat);
     dynprog_attr_free(&dpat);
     assert(ret == POSTPONED); // consistency check, may not be true for trivial trees (of size < 10)
-
+    reverse_global_taskq();
     generating_tasks = false;
 
 #ifdef PROGRESS
@@ -61,12 +83,15 @@ int scheduler() {
 #endif
     
     // initialize threads
-    pthread_mutex_lock(&taskq_lock);
+    pthread_mutex_lock(&taskq_lock); 
     task *taskq_head = taskq;
     pthread_mutex_unlock(&taskq_lock);
 
-    for (int i = 0; i < THREADS; i++) {
-	rc = pthread_create(&threads[i], NULL, evaluate_task, NULL);
+    // a rather useless array of ids, but we can use it to grant IDs to threads
+    unsigned int ids[THREADS]; 
+    for (unsigned int i=0; i < THREADS; i++) {
+	ids[i] = i;
+	rc = pthread_create(&threads[i], NULL, evaluate_task, (void *) &(ids[i]));
 	if(rc) {
 	    fprintf(stderr, "Error with thread control. Return value %d\n", rc);
 	    exit(-1);
