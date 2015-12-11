@@ -255,7 +255,7 @@ int is_conf_hashed(binconf *hashtable, const binconf *d)
  
     if (r->posvalue != -1)
     {
-	if (r->loadhash == d->loadhash && d->itemhash == d->itemhash)
+	if (r->loadhash == d->loadhash && r->itemhash == d->itemhash)
 	{
 #ifdef VERBOSE
 	    fprintf(stderr, "Found the following position in a hash table:\n");
