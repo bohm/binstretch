@@ -315,7 +315,7 @@ int is_conf_hashed(binconf **hashtable, const binconf *d)
     r = hashtable[lp];
     while(r != NULL)
     {
-	if (r->loadhash == d->loadhash && d->itemhash == d->itemhash)
+	if (r->loadhash == d->loadhash && r->itemhash == d->itemhash)
 	{
 	    r->accesses++;
 #ifdef VERBOSE
