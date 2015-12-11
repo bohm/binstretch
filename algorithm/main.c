@@ -1,5 +1,5 @@
-#include <stdio.h>
-#include <stdlib.h>
+#include <cstdio>
+#include <cstdlib>
 #include "common.h"
 #include "hash.h"
 #include "minimax.h"
@@ -50,7 +50,7 @@ void print_gametree(gametree *tree)
 	    
 	    if(tree->next[i]->cached == 1)
 	    {
-		b = malloc(sizeof(binconf));
+		b = (binconf *) malloc(sizeof(binconf));
 		init(b);
 		duplicate(b, tree->next[i]->bc);
 		delete_gametree(tree->next[i]);

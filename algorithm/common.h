@@ -1,11 +1,11 @@
 #ifndef _COMMON_H
 #define _COMMON_H 1
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <assert.h>
-#include <stdbool.h>
-#include <stdint.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cassert>
+#include <cstdbool>
+#include <cstdint>
 #include <pthread.h>
 
 typedef unsigned long long int llu;
@@ -194,8 +194,8 @@ void print_binconf(const binconf* b)
 }
 
 void add_task(const binconf *x) {
-    task* newtask = malloc(sizeof(task));
-    newtask->bc = malloc(sizeof(binconf));
+    task* newtask = (task *) malloc(sizeof(task));
+    newtask->bc = (binconf *) malloc(sizeof(binconf));
     duplicate(newtask->bc, x);
     newtask->next = taskq;
     newtask->value = -1;
@@ -257,7 +257,7 @@ void sortloads(binconf *b)
 
 void init_gametree_vertex(gametree *tree, const binconf *b, int nextItem, int depth, llu *vertex_counter)
 {
-    tree->bc = malloc(sizeof(binconf));
+    tree->bc = (binconf *) malloc(sizeof(binconf));
     init(tree->bc);
     
     tree->cached=0; tree->leaf=0;

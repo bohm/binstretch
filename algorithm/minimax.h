@@ -1,7 +1,7 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <assert.h>
-#include <stdbool.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cassert>
+#include <cstdbool>
 
 #include "common.h"
 #include "hash.h"
@@ -35,7 +35,7 @@ int double_move(const binconf *b, const int *a)
     DEBUG_PRINT_BINCONF(b);
     
     binconf *d;
-    d = malloc(sizeof(binconf));
+    d = (binconf *) malloc(sizeof(binconf));
     duplicate(d,b);
     for(int i =1; i<=3; i++) // first item
     {
@@ -74,7 +74,7 @@ int triple_move(const binconf *b, const int *a)
     DEBUG_PRINT_BINCONF(b);
  
     binconf *d;
-    d = malloc(sizeof(binconf));
+    d = (binconf *) malloc(sizeof(binconf));
     duplicate(d,b);
     for(int i =1; i<=3; i++) // first item
     {
@@ -121,7 +121,7 @@ int evaluate(binconf *b, gametree **rettree, int depth, dynprog_attr *dpat)
     //zobrist_init();
     //measure_init();
     hashinit(b);
-    t = malloc(sizeof(gametree));
+    t = (gametree *) malloc(sizeof(gametree));
     llu vertex_counter = 0;
     //vertex_counter = malloc(sizeof(llu));
     //*vertex_counter = 0;
@@ -170,7 +170,7 @@ int adversary(const binconf *b, int depth, gametree *prev_vertex, uint8_t prev_b
     // try double move and triple move first
     int *res;
     gametree *new_vertex;
-    res = malloc(BINS*sizeof(int));
+    res = (int *) malloc(BINS*sizeof(int));
     int valid;
     bool result_postponed = false;
 
@@ -235,7 +235,7 @@ int adversary(const binconf *b, int depth, gametree *prev_vertex, uint8_t prev_b
     for (int item_size = maximum_feasible; item_size>0; item_size--)
     {
 	DEBUG_PRINT("Sending item %d to algorithm.\n", item_size);
-	new_vertex = malloc(sizeof(gametree));
+	new_vertex = (gametree *) malloc(sizeof(gametree));
 	init_gametree_vertex(new_vertex, b, item_size, prev_vertex->depth + 1, vertex_counter);
 	prev_vertex->next[prev_bin] = new_vertex;
 
@@ -284,7 +284,7 @@ int algorithm(const binconf *b, int k, int depth, gametree *cur_vertex, llu* ver
 	if((b->loads[i] + k < R))
 	{
 	    binconf *d;
-	    d = malloc(sizeof(binconf));
+	    d = (binconf *) malloc(sizeof(binconf));
 	    duplicate(d, b);
 	    d->loads[i] += k;
 	    d->items[k]++;
@@ -299,7 +299,7 @@ int algorithm(const binconf *b, int k, int depth, gametree *cur_vertex, llu* ver
 		    // e = malloc(sizeof(binconf));
 		    // init(e);
 		    // duplicate(e,d);
-		    new_vertex = malloc(sizeof(gametree));
+		    new_vertex = (gametree *) malloc(sizeof(gametree));
 		    init_gametree_vertex(new_vertex, d, 0, cur_vertex->depth + 1, vertex_counter);
 		    new_vertex->cached=1;
 		    cur_vertex->next[i] = new_vertex;
@@ -327,7 +327,7 @@ int algorithm(const binconf *b, int k, int depth, gametree *cur_vertex, llu* ver
 		return r;
 	    }
 	} else { // b->loads[i] + k >= R, so a good situation for the adversary
-	    new_vertex = malloc(sizeof(gametree));
+	    new_vertex = (gametree *) malloc(sizeof(gametree));
 	    init_gametree_vertex(new_vertex, b, 0, cur_vertex->depth +1, vertex_counter);
 	    new_vertex->leaf=1;
 	    cur_vertex->next[i] = new_vertex;

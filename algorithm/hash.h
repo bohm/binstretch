@@ -1,6 +1,6 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <assert.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cassert>
 #include "common.h"
 #include "measure.h"
 
@@ -48,12 +48,12 @@ llu rand_64bit()
  */
 void zobrist_init()
 {
-    Zi = malloc((S+1)*sizeof(llu *));
-    Zl = malloc((BINS+1)*sizeof(llu *)); //TODO: make the 3 a generic number
+    Zi = (llu **) malloc((S+1)*sizeof(llu *));
+    Zl = (llu **) malloc((BINS+1)*sizeof(llu *)); //TODO: make the 3 a generic number
 
     for(int i=1; i<=BINS; i++)
     {
-	Zl[i] = malloc((R+1)* sizeof(llu));
+	Zl[i] = (llu *) malloc((R+1)* sizeof(llu));
 	for(int j=0; j<=R; j++)
 	{
 	    Zl[i][j] = rand_64bit();
@@ -63,7 +63,7 @@ void zobrist_init()
     
     for(int i=1; i<=S; i++) // different sizes of items
     {
-	Zi[i] = malloc((R+1)*BINS*sizeof(llu));
+	Zi[i] = (llu *) malloc((R+1)*BINS*sizeof(llu));
 	
 	for(int j=0; j<=R*BINS; j++) // number of items of this size
 	{
@@ -75,7 +75,7 @@ void zobrist_init()
 void global_hashtable_init()
 {
 
-    dpht = malloc(HASHSIZE * sizeof(dp_hash_item));
+    dpht = (dp_hash_item *) malloc(HASHSIZE * sizeof(dp_hash_item));
     assert(dpht != NULL);
 
     for (llu i =0; i < HASHSIZE; i++)
@@ -83,7 +83,7 @@ void global_hashtable_init()
 	dpht[i].feasible = -1;
     }
 #ifdef OUTPUT  // not tested yet
-    outht = malloc(HASHSIZE * sizeof(binconf));
+    outht = (binconf *) malloc(HASHSIZE * sizeof(binconf));
     assert(outht != NULL);
     for (llu i =0; i < HASHSIZE; i++)
     {
@@ -98,7 +98,7 @@ void global_hashtable_init()
 
 void local_hashtable_init()
 {
-    ht = malloc(HASHSIZE * sizeof(binconf));
+    ht = (binconf *) malloc(HASHSIZE * sizeof(binconf));
     assert(ht != NULL);
 
     for (llu i =0; i < HASHSIZE; i++)
@@ -109,8 +109,8 @@ void local_hashtable_init()
 
 void bucketlock_init()
 {
-    bucketlock = malloc(BUCKETSIZE * sizeof(pthread_mutex_t));
-    dpbucketlock = malloc(BUCKETSIZE * sizeof(pthread_mutex_t));
+    bucketlock = (pthread_mutex_t *) malloc(BUCKETSIZE * sizeof(pthread_mutex_t));
+    dpbucketlock = (pthread_mutex_t *) malloc(BUCKETSIZE * sizeof(pthread_mutex_t));
 
     assert(bucketlock != NULL);
     assert(dpbucketlock != NULL);
@@ -183,7 +183,7 @@ void zobrist_print()
 
 void printBits32(unsigned int num)
 {
-   for(int bit=0;bit<(sizeof(unsigned int) * 8); bit++)
+   for(unsigned int bit=0;bit<(sizeof(unsigned int) * 8); bit++)
    {
       fprintf(stderr, "%i", num & 0x01);
       num = num >> 1;
@@ -193,7 +193,7 @@ void printBits32(unsigned int num)
 
 void printBits64(llu num)
 {
-   for(int bit=0;bit<(sizeof(llu) * 8); bit++)
+   for(unsigned int bit=0;bit<(sizeof(llu) * 8); bit++)
    {
       fprintf(stderr, "%llu", num & 0x01);
       num = num >> 1;

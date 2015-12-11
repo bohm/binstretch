@@ -62,11 +62,11 @@ void decodetuple(int *new_tuple, int source, int pos)
 void dynprog_attr_init(dynprog_attr *dpat)
 {
     assert(dpat != NULL);
-    dpat->F = calloc(BINARRAY_SIZE,sizeof(int));
+    dpat->F = (int *) calloc(BINARRAY_SIZE,sizeof(int));
     assert(dpat->F != NULL);
     
-    dpat->oldqueue = calloc(BINARRAY_SIZE,sizeof(int));
-    dpat->newqueue = calloc(BINARRAY_SIZE,sizeof(int));
+    dpat->oldqueue = (int *) calloc(BINARRAY_SIZE,sizeof(int));
+    dpat->newqueue = (int *) calloc(BINARRAY_SIZE,sizeof(int));
     assert(dpat->oldqueue != NULL && dpat->newqueue != NULL);
 
 }
@@ -88,7 +88,7 @@ bool sparse_dynprog_test(const binconf *conf, dynprog_attr *dpat)
     int **pnewq;
     int **swapper;
 
-    int *tuple; tuple = calloc(BINS, sizeof(int));
+    int *tuple; tuple = (int *) calloc(BINS, sizeof(int));
     
     poldq = &oldqueue;
     pnewq = &newqueue;
@@ -218,7 +218,7 @@ void maximum_feasible_dynprog(const binconf *b, int *res, dynprog_attr *dpat)
     int dynitem;
     
     // calculate lower bound for the optimum using Best Fit Decreasing
-    int *bestfitres;  bestfitres = malloc(3*sizeof(int));
+    int *bestfitres;  bestfitres = (int *) malloc(3*sizeof(int));
     int valid = fitmaxone(b, bestfitres);
     if(valid == 0)
     {

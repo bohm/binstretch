@@ -1,4 +1,4 @@
-#include <stdio.h>
+#include <cstdio>
 
 #include "common.h"
 
@@ -160,7 +160,7 @@ int gsheuristic(const binconf *b, int k)
     {
 	if((b->loads[i] + k)< R)
 	{
-	    d = malloc(sizeof(binconf));
+	    d = (binconf *) malloc(sizeof(binconf));
 	    duplicate(d, b);
 	    d->loads[i] += k;
 	    d->items[k]++;
