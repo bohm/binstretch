@@ -1,22 +1,22 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cassert>
-#include <cstdbool>
+#include <map>
 
-#include "common.h"
-#include "hash.h"
-#include "fits.h"
-#include "dynprog.h"
-#include "measure.h"
-#include "gs.h"
+#include "common.hpp"
+#include "hash.hpp"
+#include "fits.hpp"
+#include "dynprog.hpp"
+#include "measure.hpp"
+#include "gs.hpp"
 
 // Minimax routines.
 #ifndef _MINIMAX_H
 #define _MINIMAX_H 1
 
 /* declarations */
-int adversary(const binconf *b, int depth, gametree *prev_vertex, uint8_t prev_bin, llu *vertex_counter, dynprog_attr *dpat); 
-int algorithm(const binconf *b, int k, int depth, gametree *cur_vertex, llu *vertex_counter, dynprog_attr *dpat);
+int adversary(const binconf *b, int depth, gametree *prev_vertex, uint8_t prev_bin, llu *vertex_counter, dynprog_attr *dpat, task_map *tm); 
+int algorithm(const binconf *b, int k, int depth, gametree *cur_vertex, llu *vertex_counter, dynprog_attr *dpat, task_map *tm);
 
 /* declaring which algorithm will be used */
 #define ALGORITHM algorithm
@@ -123,11 +123,17 @@ int evaluate(binconf *b, gametree **rettree, int depth, dynprog_attr *dpat)
     hashinit(b);
     t = (gametree *) malloc(sizeof(gametree));
     llu vertex_counter = 0;
-    //vertex_counter = malloc(sizeof(llu));
-    //*vertex_counter = 0;
     init_gametree_vertex(t, b, 0, depth-1, &vertex_counter);
+
+    // if we are generating task, init task map
+
+    task_map *tm = NULL;
+    if (generating_tasks)
+    {
+	tm = new task_map;
+    }
     
-    int ret = adversary(b, 0, t, 1, &vertex_counter, dpat);
+    int ret = adversary(b, 0, t, 1, &vertex_counter, dpat, tm);
     if(ret == 0)
     {
 	(*rettree) = t->next[1];
@@ -135,6 +141,10 @@ int evaluate(binconf *b, gametree **rettree, int depth, dynprog_attr *dpat)
     } else
     {
 	delete_gametree(t);
+    }
+
+    if (generating_tasks) {
+	delete tm;
     }
     //local_hashtable_cleanup();
     return ret;
@@ -149,7 +159,8 @@ int evaluate(binconf *b, gametree **rettree, int depth, dynprog_attr *dpat)
    depth: how deep in the game tree the given situation is
  */
 
-int adversary(const binconf *b, int depth, gametree *prev_vertex, uint8_t prev_bin, llu *vertex_counter, dynprog_attr *dpat) {
+int adversary(const binconf *b, int depth, gametree *prev_vertex,
+	      uint8_t prev_bin, llu *vertex_counter, dynprog_attr *dpat, task_map *tm) {
 
 /* #ifdef PROGRESS
     if(depth <= 2)
@@ -163,7 +174,13 @@ int adversary(const binconf *b, int depth, gametree *prev_vertex, uint8_t prev_b
 //    if (generating_tasks && totalload(b) >= TASK_LOAD)
     if (generating_tasks && depth >= TASK_DEPTH)
     {
-	add_task(b);
+	llu hash = b->itemhash ^ b->loadhash;
+	if (tm->find(hash) == tm->end())
+	{
+	    tm->insert(std::pair<llu,bool>(hash, true));
+	    add_task(b);
+	}
+
 	return POSTPONED;
     }
 
@@ -171,7 +188,7 @@ int adversary(const binconf *b, int depth, gametree *prev_vertex, uint8_t prev_b
     int *res;
     gametree *new_vertex;
     res = (int *) malloc(BINS*sizeof(int));
-    int valid;
+    //int valid;
     bool result_postponed = false;
 
 
@@ -218,7 +235,7 @@ int adversary(const binconf *b, int depth, gametree *prev_vertex, uint8_t prev_b
     gettimeofday(&tStart, NULL); // start measuring time in order to measure dyn. prog. time
 #endif
    
-    MAXIMUM_FEASIBLE(b,res, dpat); valid = 1; // finds the maximum feasible item that can be added using dyn. prog.
+    MAXIMUM_FEASIBLE(b,res, dpat); //valid = 1; // finds the maximum feasible item that can be added using dyn. prog.
 
 #ifdef MEASURE
     gettimeofday(&tEnd, NULL);
@@ -239,7 +256,7 @@ int adversary(const binconf *b, int depth, gametree *prev_vertex, uint8_t prev_b
 	init_gametree_vertex(new_vertex, b, item_size, prev_vertex->depth + 1, vertex_counter);
 	prev_vertex->next[prev_bin] = new_vertex;
 
-	r = ALGORITHM(b, item_size, depth+1, new_vertex, vertex_counter, dpat);
+	r = ALGORITHM(b, item_size, depth+1, new_vertex, vertex_counter, dpat, tm);
 	DEBUG_PRINT("With item %d, algorithm's result is %d\n", item_size, r);
 	if(r == 0)
 	    break;
@@ -263,11 +280,11 @@ int adversary(const binconf *b, int depth, gametree *prev_vertex, uint8_t prev_b
 
 }
 
-int algorithm(const binconf *b, int k, int depth, gametree *cur_vertex, llu* vertex_counter, dynprog_attr *dpat) {
+int algorithm(const binconf *b, int k, int depth, gametree *cur_vertex, llu* vertex_counter, dynprog_attr *dpat, task_map *tm) {
 
     //MEASURE_PRINT("Entering player one vertex.\n");
     gametree *new_vertex;
-    binconf *e;
+    //binconf *e;
     bool result_postponed = false;
 
     // GS heuristics are fixed for BINS == 3, so they should not be used for more.
@@ -308,7 +325,7 @@ int algorithm(const binconf *b, int k, int depth, gametree *cur_vertex, llu* ver
 		r = c;
 	    } else {
 		//MEASURE_PRINT("Player one vertex not cached.\n");	
-		r = ADVERSARY(d,depth, cur_vertex, i, vertex_counter, dpat);
+		r = ADVERSARY(d,depth, cur_vertex, i, vertex_counter, dpat, tm);
 		VERBOSE_PRINT(stderr, "We have calculated the following position, result is %d\n", r);
 		VERBOSE_PRINT_BINCONF(d);
 

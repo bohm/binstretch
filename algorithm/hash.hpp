@@ -1,8 +1,8 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cassert>
-#include "common.h"
-#include "measure.h"
+#include "common.hpp"
+#include "measure.hpp"
 
 #ifndef _HASH_H
 #define _HASH_H 1
@@ -286,7 +286,8 @@ int is_conf_hashed(binconf *hashtable, const binconf *d)
     unsigned int lp = hashlogpart(d->itemhash ^ d->loadhash);
     unsigned int blp = bucketlockpart((llu) lp);
 
-    llu lhash, ihash, posvalue;
+    llu lhash, ihash;
+    uint8_t posvalue;
     binconf *r;
     pthread_mutex_lock(&bucketlock[blp]); // LOCK
     r = &(hashtable[lp]); 

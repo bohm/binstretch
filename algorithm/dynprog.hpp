@@ -1,11 +1,9 @@
 #ifndef _DYNPROG_H
 #define _DYNPROG_H 1
 
-#include <stdbool.h>
-
-#include "common.h"
-#include "fits.h"
-#include "measure.h"
+#include "common.hpp"
+#include "fits.hpp"
+#include "measure.hpp"
 
 // which Test procedure are we using
 #define TEST sparse_dynprog_test
@@ -95,7 +93,6 @@ bool sparse_dynprog_test(const binconf *conf, dynprog_attr *dpat)
     
     int oldqueuelen = 0, newqueuelen = 0;
     
-    int a,b,c;
     int phase = 0;
 
     int index;
@@ -182,7 +179,6 @@ bool hash_and_test(binconf *h, int item, dynprog_attr *dpat)
 #endif
     
     bool feasible;
-    bool secondary;
     int hashedvalue;
     
     h->items[item]++;
@@ -236,7 +232,7 @@ void maximum_feasible_dynprog(const binconf *b, int *res, dynprog_attr *dpat)
 
     DEBUG_PRINT("upper bound for dynprog: %d\n", maxvalue);
 
-    int dp, sdp, hashedvalue;
+    //int dp, sdp, hashedvalue;
 
     
     // use binary search to find the value

@@ -1,12 +1,12 @@
-#include <stdio.h>
-#include <stdlib.h>
+#include <cstdio>
+#include <cstdlib>
 #include <pthread.h>
 #include <unistd.h>
-#include <assert.h>
+#include <cassert>
 
-#include "common.h"
-#include "minimax.h"
-#include "hash.h"
+#include "common.hpp"
+#include "minimax.hpp"
+#include "hash.hpp"
 
 #ifndef _SCHEDULER_H
 #define _SCHEDULER_H 1
@@ -47,7 +47,7 @@ void *evaluate_task(void * tid)
 	}
 	taskcounter++;
 
-	if(taskcounter % 50000 == 0) {
+	if(taskcounter % 3000 == 0) {
 	   PROGRESS_PRINT("Thread %u takes up task number %u: ", threadid, taskcounter);
 	   PROGRESS_PRINT_BINCONF(taskpointer->bc);
 	}
@@ -75,7 +75,7 @@ int scheduler() {
     int ret = evaluate(&a, &t, 0, &dpat);
     dynprog_attr_free(&dpat);
     assert(ret == POSTPONED); // consistency check, may not be true for trivial trees (of size < 10)
-    reverse_global_taskq();
+    //reverse_global_taskq();
     generating_tasks = false;
 
 #ifdef PROGRESS
@@ -101,7 +101,7 @@ int scheduler() {
     // actively wait for their completion
     bool stop = false;
     while (!stop) {
-	sleep(5);
+	sleep(1);
 	pthread_mutex_lock(&taskq_lock);
 	if(taskq == NULL)
 	{

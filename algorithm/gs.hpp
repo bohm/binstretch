@@ -1,6 +1,6 @@
 #include <cstdio>
 
-#include "common.h"
+#include "common.hpp"
 
 // Pruning the search tree using Good Situations; those
 // are configurations which always lead to a win for Player 1.

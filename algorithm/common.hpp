@@ -4,9 +4,9 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cassert>
-#include <cstdbool>
 #include <cstdint>
 #include <pthread.h>
+#include <map>
 
 typedef unsigned long long int llu;
 typedef signed char tiny;
@@ -129,6 +129,9 @@ typedef struct dynprog_attr dynprog_attr;
 task *taskq = NULL;
 unsigned int task_count = 0;
 pthread_mutex_t taskq_lock;
+
+// map structure that makes sure we do not add a task twice
+typedef std::map<llu, bool> task_map;
 
 void duplicate(binconf *t, const binconf *s) {
     for(int i=1; i<=BINS; i++)

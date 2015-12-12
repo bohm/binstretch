@@ -1,10 +1,11 @@
 #include <cstdio>
 #include <cstdlib>
-#include "common.h"
-#include "hash.h"
-#include "minimax.h"
-#include "measure.h"
-#include "scheduler.h"
+
+#include "common.hpp"
+#include "hash.hpp"
+#include "minimax.hpp"
+#include "measure.hpp"
+#include "scheduler.hpp"
 
 // prints a game tree
 // needs to be here because it calls evaluate when dealing with cache

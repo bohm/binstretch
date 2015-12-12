@@ -5,8 +5,8 @@
 #include <cstdlib>
 #include <cassert>
 
-#include "common.h"
-#include "hash.h"
+#include "common.hpp"
+#include "hash.hpp"
 
 // heuristics employing the worst and best fit decreasing
 // Best Fit Decreasing. Returns 0 if BFD does not produce a feasible
