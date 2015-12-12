@@ -11,9 +11,22 @@
 #ifndef _SCHEDULER_H
 #define _SCHEDULER_H 1
 
+unsigned int tasklen()
+{
+    unsigned int counter = 0;
+    task* head = taskq;
+    while(head != NULL)
+    {
+	counter++;
+	head = head->next;
+    }
+
+    return counter;
+}
 void reverse_global_taskq()
 {
     task* task_cur = taskq;
+    unsigned int a = tasklen();
     task* task_new = NULL;
     task* x;
     while(task_cur != NULL)
@@ -25,6 +38,8 @@ void reverse_global_taskq()
     }
     
     taskq = task_new;
+    unsigned int b = tasklen();
+    assert(a == b);
 }
 
 void *evaluate_task(void * tid)
@@ -34,6 +49,7 @@ void *evaluate_task(void * tid)
     task *taskpointer;
     dynprog_attr dpat;
     dynprog_attr_init(&dpat);
+    
     while(true)
     {
 	pthread_mutex_lock(&taskq_lock);
@@ -56,8 +72,13 @@ void *evaluate_task(void * tid)
 	assert(ret != POSTPONED);
 	taskpointer->value = ret;
     }
-    return NULL;
+     
+    pthread_mutex_lock(&thread_progress_lock);
+    thread_finished[threadid] = true;
+    pthread_mutex_unlock(&thread_progress_lock);
+
     dynprog_attr_free(&dpat);
+    return NULL;
 }
 
 int scheduler() {
@@ -75,7 +96,7 @@ int scheduler() {
     int ret = evaluate(&a, &t, 0, &dpat);
     dynprog_attr_free(&dpat);
     assert(ret == POSTPONED); // consistency check, may not be true for trivial trees (of size < 10)
-    //reverse_global_taskq();
+    reverse_global_taskq();
     generating_tasks = false;
 
 #ifdef PROGRESS
@@ -83,9 +104,19 @@ int scheduler() {
 #endif
     
     // initialize threads
+//    unsigned int num;
     pthread_mutex_lock(&taskq_lock); 
     task *taskq_head = taskq;
     pthread_mutex_unlock(&taskq_lock);
+
+
+    pthread_mutex_lock(&thread_progress_lock); //LOCK
+    for (unsigned int i=0; i < THREADS; i++) {
+	thread_finished[i] = false;
+    }
+    pthread_mutex_unlock(&thread_progress_lock); //UNLOCK
+
+//    assert(task_count == num);
 
     // a rather useless array of ids, but we can use it to grant IDs to threads
     unsigned int ids[THREADS]; 
@@ -102,18 +133,24 @@ int scheduler() {
     bool stop = false;
     while (!stop) {
 	sleep(1);
-	pthread_mutex_lock(&taskq_lock);
-	if(taskq == NULL)
-	{
-	    stop = true;
+	stop = true;
+	pthread_mutex_lock(&thread_progress_lock);
+	for(unsigned int i = 0; i < THREADS; i++) {
+	    if (!thread_finished[i])
+	    {
+		stop = false;
+	    }
 	}
-	pthread_mutex_unlock(&taskq_lock);
+	pthread_mutex_unlock(&thread_progress_lock);
     }
-
+#ifdef PROGRESS
+    fprintf(stderr, "End computation.\n");
+#endif
     // add all tasks to the cache
 
     task *taskq_cur;
     taskq_cur = taskq_head;
+    
     while(taskq_cur != NULL)
     {
 	assert(taskq_cur->value == 0 || taskq_cur->value == 1);

@@ -130,6 +130,9 @@ task *taskq = NULL;
 unsigned int task_count = 0;
 pthread_mutex_t taskq_lock;
 
+bool thread_finished[THREADS];
+pthread_mutex_t thread_progress_lock;
+
 // map structure that makes sure we do not add a task twice
 typedef std::map<llu, bool> task_map;
 
@@ -209,6 +212,7 @@ void add_task(const binconf *x) {
 void init_global_locks(void)
 {
     pthread_mutex_init(&taskq_lock, NULL);
+    pthread_mutex_init(&thread_progress_lock, NULL);
 }
 
 void free_taskq(void)
