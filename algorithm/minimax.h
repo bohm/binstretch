@@ -120,9 +120,9 @@ int adversary(const binconf *b, int depth, gametree *prev_vertex, uint8_t prev_b
 #ifdef PROGRESS
     if(depth <= 2)
     {
-	fprintf(stderr, "Entering player zero vertex of depth %d:\n", depth);
+//	fprintf(stderr, "Entering player zero vertex of depth %d:\n", depth);
 	print_binconf(b);
-	fprintf(stderr, "\n");
+//	fprintf(stderr, "\n");
     }
 #endif
     // try double move and triple move first

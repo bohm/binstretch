@@ -13,14 +13,14 @@ typedef signed char tiny;
 // verbosity of the program
 // #define VERBOSE 1
 // #define DEBUG 1
-// #define PROGRESS 1
+#define PROGRESS 1
 // #define OUTPUT 1
-// #define MEASURE 1
+#define MEASURE 1
 
 // maximum load of a bin in the optimal offline setting
-#define S 33
+#define S 49
 // target goal of the online bin stretching problem
-#define R 45
+#define R 67
 
 // constants used for good situations
 #define RMOD (R-1)
@@ -30,7 +30,7 @@ typedef signed char tiny;
 #define BINS 3
 
 // bitwise length of indices of the hash table
-#define HASHLOG 24
+#define HASHLOG 26
 // size of the hash table
 #define HASHSIZE (1<<HASHLOG)
 
@@ -155,12 +155,20 @@ int totalload(const binconf *b)
 
 void print_binconf(const binconf* b)
 {
-    for(int i=1; i<=BINS; i++)
-	fprintf(stderr, "Bin %d load %d; ", i, b->loads[i]);
-    fprintf(stderr, "\n");
-    for(int j=1; j<=S; j++)
-	fprintf(stderr, "I[%d]: %d; ", j, b->items[j]);
-    fprintf(stderr, "\n");
+	bool doit=false;
+	for(int j=1; j<=S; j++)
+		if(b->items[j]==2)
+			doit=true;
+	if(doit){
+	    for(int i=1; i<=BINS; i++)
+		fprintf(stderr, "%d-", b->loads[i]);
+//	fprintf(stderr, "Bin %d load %d; ", i, b->loads[i]);
+	    fprintf(stderr, " ");
+	    for(int j=1; j<=S; j++)
+		fprintf(stderr, "%d", b->items[j]);
+//	fprintf(stderr, "I[%d]: %d; ", j, b->items[j]);
+	    fprintf(stderr, "\n");
+	}
 }
 
 // sorting the loads of the bins using insertsort
