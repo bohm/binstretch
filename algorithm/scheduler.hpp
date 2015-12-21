@@ -28,8 +28,10 @@ void *evaluate_tasks(void * tid)
 	{
 	    taskmap_empty = true;
 	} else {
-	    current = tm.begin()->second;
-	    tm.erase(tm.begin());
+	    // It is smarter to start from the "back" of the task queue.
+	    current = tm.rbegin()->second;
+	    tm.erase(std::next(tm.rbegin()).base()); //converts rbegin to
+	    // the appropriate front iterator
 	}
 	pthread_mutex_unlock(&taskq_lock); // UNLOCK
 	if (taskmap_empty) {
@@ -39,10 +41,9 @@ void *evaluate_tasks(void * tid)
 
 	if(taskcounter % 300 == 0) {
 	   PROGRESS_PRINT("Thread %u takes up task number %u: ", threadid, taskcounter);
+	   PROGRESS_PRINT_BINCONF(&current.bc);
 	}
-	int ret = explore(&(current.bc), &dpat);
-	assert(ret != POSTPONED);
-	//taskpointer->value = ret;
+	explore(&(current.bc), &dpat);
     }
      
     pthread_mutex_lock(&thread_progress_lock);
@@ -61,7 +62,12 @@ int scheduler() {
     // generate tasks
     binconf a;
     init(&a); // empty bin configuration
-    int ret = generate(&a);
+
+    // initialize dp tables for the main thread
+    dynprog_attr dpat;
+    dynprog_attr_init(&dpat);
+    int ret = generate(&a, &dpat);
+
     assert(ret == POSTPONED); // consistency check, may not be true for trivial trees (of size < 10)
     //reverse_global_taskq(); // TODO: implement this
 
@@ -103,25 +109,29 @@ int scheduler() {
 	    }
 	}
 	pthread_mutex_unlock(&thread_progress_lock);
+
+	// update main tree and task map
+	ret = update(&a, &dpat);
+	if(ret != POSTPONED)
+	{
+	    fprintf(stderr, "We have evaluated the tree: %d\n", ret);
+	    stop = true;
+	}
+	
     }
+
+    // kill all remaining threads
+    for (unsigned int i=0; i < THREADS; i++) {
+	pthread_cancel(threads[i]);
+    }	
+
+    dynprog_attr_free(&dpat);
+
 #ifdef PROGRESS
     fprintf(stderr, "End computation.\n");
 #endif
 
-    return -1;
-/* 
-    // evaluate again
-    init(&a);
-    //delete_gametree(t); //TODO: this deletion fails
-    gametree *st; // second tree
-    dynprog_attr_init(&dpat);
-    ret = evaluate(&a, &st, 0, &dpat);
-    dynprog_attr_free(&dpat);
-    assert(ret != POSTPONED);
-    free_taskq();
-    
     return ret;
-*/
 }
 
 #endif

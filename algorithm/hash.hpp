@@ -286,8 +286,9 @@ int is_conf_hashed(binconf *hashtable, const binconf *d)
     unsigned int lp = hashlogpart(d->itemhash ^ d->loadhash);
     unsigned int blp = bucketlockpart((llu) lp);
 
-    llu lhash, ihash;
-    uint8_t posvalue;
+    llu lhash = 0;
+    llu ihash = 0;
+    uint8_t posvalue = -1;
     binconf *r;
     pthread_mutex_lock(&bucketlock[blp]); // LOCK
     r = &(hashtable[lp]); 
