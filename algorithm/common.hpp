@@ -133,6 +133,16 @@ struct dynprog_attr {
 
 typedef struct dynprog_attr dynprog_attr;
 
+/* output variables (separate for each thread) */
+struct output_attr {
+    gametree * cur_vertex;
+    gametree * prev_vertex;
+    llu vertex_counter;
+    int prev_bin;
+};
+
+typedef struct output_attr output_attr;
+
 // global task map indexed by binconf hashes
 std::map<llu, task> tm;
 unsigned int task_count = 0;

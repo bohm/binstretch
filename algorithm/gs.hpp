@@ -153,8 +153,8 @@ int testgs(const binconf *b)
 // tries all the choices
 int gsheuristic(const binconf *b, int k)
 {
-// Apply heuristics only if ALPHA >= 1/3
-#if (3*ALPHA) >= S
+// Apply heuristics only with 3 bins and ALPHA >= 1/3
+#if (BINS == 3) && ((3*ALPHA) >= S)
     binconf *d;
     for(int i=1; i<=BINS; i++)
     {

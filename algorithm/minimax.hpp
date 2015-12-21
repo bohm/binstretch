@@ -16,8 +16,8 @@
 #define _MINIMAX_H 1
 
 /* declarations */
-int adversary(const binconf *b, int depth, gametree *prev_vertex, uint8_t prev_bin, llu *vertex_counter, int mode, dynprog_attr *dpat); 
-int algorithm(const binconf *b, int k, int depth, gametree *cur_vertex, llu *vertex_counter, int mode, dynprog_attr *dpat);
+int adversary(const binconf *b, int depth, int mode, dynprog_attr *dpat, output_attr *outat); 
+int algorithm(const binconf *b, int k, int depth, int mode, dynprog_attr *dpat, output_attr *outat);
 
 /* declaring which algorithm will be used */
 #define ALGORITHM algorithm
@@ -41,18 +41,7 @@ int algorithm(const binconf *b, int k, int depth, gametree *cur_vertex, llu *ver
 
 // We currently do not use double_move and triple_move.
  
-int adversary(const binconf *b, int depth, gametree *prev_vertex,
-	      uint8_t prev_bin, llu *vertex_counter, int mode, dynprog_attr *dpat) {
-
-/* #ifdef PROGRESS
-    if(depth <= 2)
-    {
-//	fprintf(stderr, "Entering player zero vertex of depth %d:\n", depth);
-	print_binconf(b);
-//	fprintf(stderr, "\n");
-    }
-#endif
-*/
+int adversary(const binconf *b, int depth, int mode, dynprog_attr *dpat, output_attr *outat) {
 
     if (mode == GENERATING && possible_task(b,depth))
     {
@@ -99,20 +88,8 @@ int adversary(const binconf *b, int depth, gametree *prev_vertex,
 	free(res);
 	return 1;
     }
-    
-#ifdef MEASURE
-    //MEASURE_PRINT("Entering player zero vertex.\n");
-    struct timeval tStart, tEnd, ilpDiff, dynDiff;
-    gettimeofday(&tStart, NULL); // start measuring time in order to measure dyn. prog. time
-#endif
-   
-    MAXIMUM_FEASIBLE(b,res, dpat); //valid = 1; // finds the maximum feasible item that can be added using dyn. prog.
 
-#ifdef MEASURE
-    gettimeofday(&tEnd, NULL);
-    timeval_subtract(&dynDiff, &tEnd, &tStart);
-    timeval_add(&dynTotal, &dynDiff); // add time spent in dyn. prog. to a global counter
-#endif
+    MAXIMUM_FEASIBLE(b,res, dpat); //valid = 1; // finds the maximum feasible item that can be added using dyn. prog.
 
     int maximum_feasible = res[0];
     free(res);
@@ -124,79 +101,78 @@ int adversary(const binconf *b, int depth, gametree *prev_vertex,
     {
 	DEBUG_PRINT("Sending item %d to algorithm.\n", item_size);
 
-	if(mode == OUTPUTTING)
+	if (mode == OUTPUTTING)
 	{
 	    new_vertex = (gametree *) malloc(sizeof(gametree));
-	    init_gametree_vertex(new_vertex, b, item_size, prev_vertex->depth + 1, vertex_counter);
-	    prev_vertex->next[prev_bin] = new_vertex;
-	} else {
-	    // other modes ignore the output tree
-	    new_vertex = NULL;
+	    init_gametree_vertex(new_vertex, b, item_size, outat->prev_vertex->depth + 1, &(outat->vertex_counter));
+	    outat->prev_vertex->next[outat->prev_bin] = new_vertex;
 	}
 
-	r = ALGORITHM(b, item_size, depth+1, new_vertex, vertex_counter, mode, dpat);
+	r = ALGORITHM(b, item_size, depth+1, mode, dpat, outat);
 
-	if(mode == EXPLORING) {
+	if (mode == EXPLORING) {
 	    DEBUG_PRINT("With item %d, algorithm's result is %d\n", item_size, r);
 	}
-	
-	if(r == 0) {
-	    // do not stop in the DECREASING mode
-	    if (mode != DECREASING)
-	    {
-		break;
-	    }
-	}
-	else { // also happens if it returns POSTPONED
-	    if(mode == OUTPUTTING) {
-		delete_gametree(new_vertex);
-		prev_vertex->next[prev_bin] = NULL;
-	    }
-	    
-	    if (r == POSTPONED)
-	    {
-		result_postponed = true;
-	    }
-	}
-    }
 
+	if (mode != DECREASING) {
+	    
+	    if (r == 0) {
+		break;
+	    } else { // also happens if it returns POSTPONED
+		if (mode == OUTPUTTING) {
+		    //assert(r != POSTPONED);
+		    delete_gametree(new_vertex);
+		    outat->prev_vertex->next[outat->prev_bin] = NULL;
+		}
+		
+		if (r == POSTPONED)
+		{
+		    result_postponed = true;
+		}
+	    }
+	}
+
+    }
+    
     if (mode == GENERATING && result_postponed)
     {
 	return POSTPONED;
     }
 
     // if the bin configuration is solved but postponed branches are present
-    if (mode == UPDATING && result_postponed && r != POSTPONED)
+    // note that a configuration can only be solved with postponed branches if r == 0
+    if (mode == UPDATING && result_postponed && r == 0)
     {
 	// fprintf(stderr, "Newly evaluated bc of value %d\n", r);
 	// print_binconf(b);
 
 	// decrease its entire subtree
-	ADVERSARY(b, depth, NULL, prev_bin, vertex_counter, DECREASING, dpat);
+	ADVERSARY(b, depth, DECREASING, dpat, NULL);
 	
 	// add it to the completed task map
 	pthread_mutex_lock(&completed_tasks_lock);
 	completed_tasks.insert(std::pair<llu, int>(b->loadhash ^ b->itemhash, r));
 	pthread_mutex_unlock(&completed_tasks_lock);
     }
-    return r;
 
+    if (mode == DECREASING)
+    {
+	r = IRRELEVANT;
+    }
+    
+    return r;
 }
 
-int algorithm(const binconf *b, int k, int depth, gametree *cur_vertex, llu* vertex_counter, int mode, dynprog_attr *dpat) {
+int algorithm(const binconf *b, int k, int depth, int mode, dynprog_attr *dpat, output_attr *outat) {
 
     //MEASURE_PRINT("Entering player one vertex.\n");
-    gametree *new_vertex;
     //binconf *e;
     bool result_postponed = false;
 
-    // GS heuristics are fixed for BINS == 3, so they should not be used for more.
-#if BINS == 3
     if(gsheuristic(b,k) == 1)
     {
 	return 1;
     }
-#endif
     
     int r = 0;
     for(int i = 1; i<=BINS; i++)
@@ -226,7 +202,7 @@ int algorithm(const binconf *b, int k, int depth, gametree *cur_vertex, llu* ver
 		    {
 			fprintf(stderr, "Cached but incomplete vertex:");
 			print_binconf(d);
-			ADVERSARY(d, depth, cur_vertex, i, vertex_counter, DECREASING, dpat);	
+			ADVERSARY(d, depth, DECREASING, dpat, outat);	
 
 			pthread_mutex_lock(&completed_tasks_lock);
 			completed_tasks.insert(std::pair<llu, int>(b->loadhash ^ b->itemhash, c));
@@ -240,16 +216,16 @@ int algorithm(const binconf *b, int k, int depth, gametree *cur_vertex, llu* ver
 		    // e = malloc(sizeof(binconf));
 		    // init(e);
 		    // duplicate(e,d);
-		    new_vertex = (gametree *) malloc(sizeof(gametree));
-		    init_gametree_vertex(new_vertex, d, 0, cur_vertex->depth + 1, vertex_counter);
+		    gametree *new_vertex = (gametree *) malloc(sizeof(gametree));
+		    init_gametree_vertex(new_vertex, d, 0, outat->cur_vertex->depth + 1, &(outat->vertex_counter));
 		    new_vertex->cached=1;
-		    cur_vertex->next[i] = new_vertex;
+		    outat->cur_vertex->next[i] = new_vertex;
 		    //new_vertex->cached_conf = e;
 		}
 		r = c;
 	    } else { // c == -1 OR mode == DECREASING
 		//MEASURE_PRINT("Player one vertex not cached.\n");	
-		r = ADVERSARY(d,depth, cur_vertex, i, vertex_counter, mode, dpat);
+		r = ADVERSARY(d, depth, mode, dpat, outat);
 		VERBOSE_PRINT(stderr, "We have calculated the following position, result is %d\n", r);
 		VERBOSE_PRINT_BINCONF(d);
 
@@ -271,10 +247,10 @@ int algorithm(const binconf *b, int k, int depth, gametree *cur_vertex, llu* ver
 	    }
 	} else { // b->loads[i] + k >= R, so a good situation for the adversary
 	    if(mode == OUTPUTTING) {
-		new_vertex = (gametree *) malloc(sizeof(gametree));
-		init_gametree_vertex(new_vertex, b, 0, cur_vertex->depth +1, vertex_counter);
+		gametree *new_vertex = (gametree *) malloc(sizeof(gametree));
+		init_gametree_vertex(new_vertex, b, 0, outat->cur_vertex->depth +1, &(outat->vertex_counter));
 		new_vertex->leaf=1;
-		cur_vertex->next[i] = new_vertex;
+		outat->cur_vertex->next[i] = new_vertex;
 	    }
 	}
     }
@@ -289,11 +265,10 @@ int algorithm(const binconf *b, int k, int depth, gametree *cur_vertex, llu* ver
 // wrapper for exploration
 void explore(binconf *b, dynprog_attr *dpat)
 {
-    gametree *t = NULL;
-    llu vertex_counter = 0;
     hashinit(b);
+    output_attr *outat = NULL;
 
-    int ret = adversary(b, 0, t, 1, &vertex_counter, EXPLORING, dpat);
+    int ret = adversary(b, 0, EXPLORING, dpat, outat);
     assert(ret != POSTPONED);
     
     // add task to the completed_tasks map
@@ -307,22 +282,20 @@ void explore(binconf *b, dynprog_attr *dpat)
 // wrapper for generation
 int generate(binconf *b, dynprog_attr *dpat)
 {
-    gametree *t = NULL;
-    llu vertex_counter = 0;
     hashinit(b);
+    output_attr *outat = NULL;
 
-    int ret = adversary(b, 0, t, 1, &vertex_counter, GENERATING, dpat);
+    int ret = adversary(b, 0, GENERATING, dpat, outat);
     return ret;
 }
 
 // wrapper for updating
 int update(binconf *b, dynprog_attr *dpat)
 {
-    gametree *t = NULL;
-    llu vertex_counter = 0;
     hashinit(b);
-
-    int ret = adversary(b, 0, t, 1, &vertex_counter, UPDATING, dpat);
+    output_attr *outat = NULL;
+    
+    int ret = adversary(b, 0, UPDATING, dpat, outat);
     return ret;
 }
 
