@@ -21,7 +21,8 @@ void *evaluate_tasks(void * tid)
     task current;
     //std::map<llu, task>::reverse_iterator task_it;
     bool taskmap_empty = false;
-    while(true)
+    bool call_to_terminate = false;
+    while(!call_to_terminate)
     {
 	pthread_mutex_lock(&taskq_lock); // LOCK
 	if(tm.size() == 0)
@@ -44,10 +45,11 @@ void *evaluate_tasks(void * tid)
 	   PROGRESS_PRINT_BINCONF(&current.bc);
 	}
 	explore(&(current.bc), &dpat);
-	if(call_to_terminate)
-	{
-	    break;
-	}
+
+	// check global signal to terminate
+	pthread_mutex_lock(&thread_progress_lock);
+	call_to_terminate = global_terminate_flag;
+	pthread_mutex_unlock(&thread_progress_lock);
     }
      
     pthread_mutex_lock(&thread_progress_lock);
@@ -102,6 +104,7 @@ int scheduler() {
 
     // actively wait for their completion
     bool stop = false;
+    bool update_complete = false;
     while (!stop) {
 	sleep(1);
 	stop = true;
@@ -115,7 +118,7 @@ int scheduler() {
 	pthread_mutex_unlock(&thread_progress_lock);
 
 	// update main tree and task map
-	if(!call_to_terminate)
+	if(!update_complete)
 	{
 	    ret = update(&a, &dpat);
 	    if(ret != POSTPONED)
@@ -123,7 +126,11 @@ int scheduler() {
 		fprintf(stderr, "We have evaluated the tree: %d\n", ret);
 		// instead of breaking, signal a call to terminate to other threads
 		// and wait for them to finish up
-		call_to_terminate = true;
+                // this lock can potentially be removed without a race condition
+		pthread_mutex_lock(&thread_progress_lock);
+		global_terminate_flag = true;
+		pthread_mutex_unlock(&thread_progress_lock);
+		update_complete = true;
 	    }
 	}	
     }

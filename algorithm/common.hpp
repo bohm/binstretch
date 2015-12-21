@@ -19,9 +19,9 @@ typedef signed char tiny;
 //#define MEASURE 1
 
 // maximum load of a bin in the optimal offline setting
-#define S 33
+#define S 14
 // target goal of the online bin stretching problem
-#define R 45
+#define R 19
 
 // constants used for good situations
 #define RMOD (R-1)
@@ -145,8 +145,8 @@ pthread_mutex_t completed_tasks_lock;
 
 // counter of finished threads
 bool thread_finished[THREADS];
+bool global_terminate_flag = false;
 pthread_mutex_t thread_progress_lock;
-bool call_to_terminate = false;
 
 void duplicate(binconf *t, const binconf *s) {
     for(int i=1; i<=BINS; i++)
