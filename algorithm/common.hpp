@@ -56,9 +56,19 @@ typedef signed char tiny;
 #define BINARRAY_SIZE (S+1)*(S+1)*(S+1)*(S+1)*(S+1)
 #endif
 
-// end of configuration constants; start of code
+// end of configuration constants
+// ------------------------------------------------
 
 #define POSTPONED 2
+#define UNEVALUATED 3
+#define SKIPPED 4
+#define IRRELEVANT 2
+
+#define GENERATING 1
+#define EXPLORING 2
+#define UPDATING 3
+#define DECREASING 4
+#define OUTPUTTING 5
 
 bool generating_tasks;
 
@@ -85,6 +95,14 @@ struct dp_hash_item {
 
 typedef struct dp_hash_item dp_hash_item;
 
+struct task {
+    binconf bc;
+    llu occurences;
+};
+
+typedef struct task task;
+
+
 // a game tree used for outputting the resulting
 // strategy if the result is positive.
 
@@ -99,22 +117,12 @@ struct gametree {
     int depth;
     int leaf;
     llu id;
-
     // if the vertex is cached, we also provide a binconf for later
     // restoration
     // binconf *cached_conf;
 };
 
 typedef struct gametree gametree;
-
-struct task {
-    binconf *bc;
-    int value;
-    int assigned_thread;
-    struct task * next;
-};
-
-typedef struct task task;
 
 /* dynprog global variables (separate for each thread) */
 struct dynprog_attr {
@@ -125,16 +133,19 @@ struct dynprog_attr {
 
 typedef struct dynprog_attr dynprog_attr;
 
-// global task queue
-task *taskq = NULL;
+// global task map indexed by binconf hashes
+std::map<llu, task> tm;
 unsigned int task_count = 0;
 pthread_mutex_t taskq_lock;
 
+// global hash-like map of completed tasks (and their parents up to
+// the root)
+std::map<llu, int> completed_tasks;
+pthread_mutex_t completed_tasks_lock;
+
+// counter of finished threads
 bool thread_finished[THREADS];
 pthread_mutex_t thread_progress_lock;
-
-// map structure that makes sure we do not add a task twice
-typedef std::map<llu, bool> task_map;
 
 void duplicate(binconf *t, const binconf *s) {
     for(int i=1; i<=BINS; i++)
@@ -199,32 +210,12 @@ void print_binconf(const binconf* b)
     fprintf(stderr, "\n");
 }
 
-void add_task(const binconf *x) {
-    task* newtask = (task *) malloc(sizeof(task));
-    newtask->bc = (binconf *) malloc(sizeof(binconf));
-    duplicate(newtask->bc, x);
-    newtask->next = taskq;
-    newtask->value = -1;
-    taskq = newtask;
-    task_count++;
-}
-
 void init_global_locks(void)
 {
     pthread_mutex_init(&taskq_lock, NULL);
     pthread_mutex_init(&thread_progress_lock, NULL);
-}
+    pthread_mutex_init(&completed_tasks_lock, NULL);
 
-void free_taskq(void)
-{
-    task *taskq_next;
-    while(taskq != NULL)
-    {
-	taskq_next = taskq->next;
-	free(taskq->bc);
-	free(taskq);
-	taskq = taskq_next;
-    }
 }
 
 // initializes an element of the dynamic programming hash by a related
@@ -279,6 +270,7 @@ void init_gametree_vertex(gametree *tree, const binconf *b, int nextItem, int de
     {
 	tree->next[i] = NULL;
     }
+
     tree->nextItem = nextItem;
 }
 

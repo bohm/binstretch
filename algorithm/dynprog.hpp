@@ -60,17 +60,20 @@ void decodetuple(int *new_tuple, int source, int pos)
 void dynprog_attr_init(dynprog_attr *dpat)
 {
     assert(dpat != NULL);
+    
     dpat->F = (int *) calloc(BINARRAY_SIZE,sizeof(int));
     assert(dpat->F != NULL);
     
     dpat->oldqueue = (int *) calloc(BINARRAY_SIZE,sizeof(int));
     dpat->newqueue = (int *) calloc(BINARRAY_SIZE,sizeof(int));
-    assert(dpat->oldqueue != NULL && dpat->newqueue != NULL);
+    assert(dpat->oldqueue != NULL);
+    assert(dpat->newqueue != NULL);
 
 }
 
 void dynprog_attr_free(dynprog_attr *dpat)
 {
+    fprintf(stderr, "freeing attributes\n");
     free(dpat->oldqueue); free(dpat->newqueue);
     free(dpat->F);
 }

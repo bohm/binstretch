@@ -7,14 +7,14 @@
 #include "measure.hpp"
 #include "scheduler.hpp"
 
-// prints a game tree
+/*
 // needs to be here because it calls evaluate when dealing with cache
 void print_gametree(gametree *tree)
 {
     binconf *b;
     assert(tree != NULL);
 
-    /* Mark the current bin configuration as present in the output. */
+    // Mark the current bin configuration as present in the output.
     conf_hashpush(outht, tree->bc, 1);
     //assert(tree->cached != 1);
     
@@ -38,7 +38,7 @@ void print_gametree(gametree *tree)
 	    if(tree->next[i] == NULL)
 		continue;
 
-	    /* If the next configuration is already present in the output */
+	    // If the next configuration is already present in the output
 
 	    if (is_conf_hashed(outht, tree->next[i]->bc) != -1)
 	    {
@@ -47,7 +47,7 @@ void print_gametree(gametree *tree)
 		continue;
 	    } 
 
-	    /* If the next configuration is cached but not present in the output */
+	    // If the next configuration is cached but not present in the output
 	    
 	    if(tree->next[i]->cached == 1)
 	    {
@@ -73,16 +73,17 @@ void print_gametree(gametree *tree)
 	
     }
 }
+*/
 
 int main(void)
 {
 
     global_hashtable_init();
     local_hashtable_init();
-
     init_global_locks();
     bucketlock_init();
-
+    zobrist_init();
+    
 #if 3*ALPHA >= S
     fprintf(stderr, "Good situation heuristics will be applied.\n");
 #else

@@ -9,14 +9,15 @@
 #include "dynprog.hpp"
 #include "measure.hpp"
 #include "gs.hpp"
+#include "tasks.hpp"
 
 // Minimax routines.
 #ifndef _MINIMAX_H
 #define _MINIMAX_H 1
 
 /* declarations */
-int adversary(const binconf *b, int depth, gametree *prev_vertex, uint8_t prev_bin, llu *vertex_counter, dynprog_attr *dpat, task_map *tm); 
-int algorithm(const binconf *b, int k, int depth, gametree *cur_vertex, llu *vertex_counter, dynprog_attr *dpat, task_map *tm);
+int adversary(const binconf *b, int depth, gametree *prev_vertex, uint8_t prev_bin, llu *vertex_counter, int mode, dynprog_attr *dpat); 
+int algorithm(const binconf *b, int k, int depth, gametree *cur_vertex, llu *vertex_counter, int mode, dynprog_attr *dpat);
 
 /* declaring which algorithm will be used */
 #define ALGORITHM algorithm
@@ -24,132 +25,6 @@ int algorithm(const binconf *b, int k, int depth, gametree *cur_vertex, llu *ver
 #define DOUBLE_MOVE double_move
 #define TRIPLE_MOVE triple_move
 #define MAXIMUM_FEASIBLE maximum_feasible_dynprog
-
-/* tries a double move given in a[0],a[1].
- * returns 1 if it possible to pack the two items -- does not go deeper
- * returns 0 if it is not possible to do so.
- */
-int double_move(const binconf *b, const int *a)
-{
-    DEBUG_PRINT("Attempting double move (%d,%d) on binconf:\n", a[0],a[1]);
-    DEBUG_PRINT_BINCONF(b);
-    
-    binconf *d;
-    d = (binconf *) malloc(sizeof(binconf));
-    duplicate(d,b);
-    for(int i =1; i<=3; i++) // first item
-    {
-	if((d->loads[i] + a[0] < R))
-	{
-	    d->loads[i] += a[0];
-	    d->items[a[0]]++;
-	    for(int j=1; j<=3; j++) // second item
-	    {
-		if((d->loads[j] + a[1] < R))
-		{
-		    DEBUG_PRINT("double move can be packed, ending heuristic.\n");
-		    free(d);
-		    return 1;
-		}
-	    }
-	    d->loads[i] -= a[0];
-	    d->items[a[0]]--;
-	}
-    }
-    DEBUG_PRINT("Move (%d,%d) cannot be packed, double_move success.\n",a[0],a[1]);
-
-    free(d);
-    return 0;
-   
-}
-
-/* tries a triple-move given in a[0],a[1],a[2]
- * returns 1 if it is possible to pack the three items -- does not investigate futher!
- * returns 0 if it is not possible to pack the triple-move
- * suggestion: it can cache zero results, but it currently does not.
- */
-int triple_move(const binconf *b, const int *a)
-{
-    DEBUG_PRINT("Attempting triple move (%d,%d,%d) on binconf:\n", a[0],a[1],a[2]);
-    DEBUG_PRINT_BINCONF(b);
- 
-    binconf *d;
-    d = (binconf *) malloc(sizeof(binconf));
-    duplicate(d,b);
-    for(int i =1; i<=3; i++) // first item
-    {
-	if((d->loads[i] + a[0] < R))
-	{
-	    d->loads[i] += a[0];
-	    d->items[a[0]]++;
-	    for(int j=1; j<=3; j++) // second item
-	    {
-		if((d->loads[j] + a[1] < R))
-		{
-		    d->loads[j] += a[1];
-		    d->items[a[1]]++;
-		    for(int k=1; k<=3; k++) // third item
-		    {
-			if((d->loads[k] + a[2] < R))
-			{
-			    DEBUG_PRINT("triple move can be packed, ending heuristic.\n");
-			    free(d);
-			    return 1;
-			}
-		    }
-		    d->loads[j] -= a[1];
-		    d->items[a[1]]--;
-		}
-	    }
-	    d->loads[i] -= a[0];
-	    d->items[a[0]]--;
-	}
-    }
-    free(d);
-    DEBUG_PRINT("triple move (%d,%d,%d) cannot be packed, triple_move success.\n",a[0],a[1],a[2]);
-    return 0;
-}
-
-// evaluates the configuration b, stores the result
-// in gametree t (t = NULL if result is 1.
-int evaluate(binconf *b, gametree **rettree, int depth, dynprog_attr *dpat)
-{
-    gametree *t;
-
-    // local hashtable init disabled
-    // local_hashtable_init();
-    //zobrist_init();
-    //measure_init();
-    hashinit(b);
-    t = (gametree *) malloc(sizeof(gametree));
-    llu vertex_counter = 0;
-    init_gametree_vertex(t, b, 0, depth-1, &vertex_counter);
-
-    // if we are generating task, init task map
-
-    task_map *tm = NULL;
-    if (generating_tasks)
-    {
-	tm = new task_map;
-    }
-    
-    int ret = adversary(b, 0, t, 1, &vertex_counter, dpat, tm);
-    if(ret == 0)
-    {
-	(*rettree) = t->next[1];
-	free(t);
-    } else
-    {
-	delete_gametree(t);
-    }
-
-    if (generating_tasks) {
-	delete tm;
-    }
-    //local_hashtable_cleanup();
-    return ret;
-}
-
 
 /* return values: 0: player 1 cannot pack the sequence starting with binconf b
  * 1: player 1 can pack all possible sequences starting with b.
@@ -159,8 +34,17 @@ int evaluate(binconf *b, gametree **rettree, int depth, dynprog_attr *dpat)
    depth: how deep in the game tree the given situation is
  */
 
+// Possible modes of operation:
+//    * EXPLORING (general exploration done by individual threads)
+//    * OUTPUTTING (same as exploring, but generating output)
+//    * GENERATING (generating the task queue)
+//    * UPDATING (pruning the top of the tree by a unique thread)
+//    * DECREASING (decreasing occurences of tasks in the task map)
+
+// We currently do not use double_move and triple_move.
+ 
 int adversary(const binconf *b, int depth, gametree *prev_vertex,
-	      uint8_t prev_bin, llu *vertex_counter, dynprog_attr *dpat, task_map *tm) {
+	      uint8_t prev_bin, llu *vertex_counter, int mode, dynprog_attr *dpat) {
 
 /* #ifdef PROGRESS
     if(depth <= 2)
@@ -171,58 +55,47 @@ int adversary(const binconf *b, int depth, gametree *prev_vertex,
     }
 #endif
 */
-//    if (generating_tasks && totalload(b) >= TASK_LOAD)
-    if (generating_tasks && depth >= TASK_DEPTH)
-    {
-	llu hash = b->itemhash ^ b->loadhash;
-	if (tm->find(hash) == tm->end())
-	{
-	    tm->insert(std::pair<llu,bool>(hash, true));
-	    add_task(b);
-	}
 
+    if (mode == GENERATING && possible_task(b,depth))
+    {
+	//llu hash = b->itemhash ^ b->loadhash;
+	add_task(b);
 	return POSTPONED;
     }
 
-    // try double move and triple move first
+    if (mode == UPDATING || mode == DECREASING)
+    {
+	llu hash = b->itemhash ^ b->loadhash;
+	int completed_value;
+
+	completed_value = completion_check(hash);
+	if (completed_value != POSTPONED)
+	{
+	    return completed_value;
+	}
+
+	if(possible_task(b,depth))
+	{
+	    if(mode == UPDATING)
+	    {
+		return POSTPONED;
+	    }
+
+	    if(mode == DECREASING)
+	    {
+		decrease_task(hash);
+		return IRRELEVANT;
+	    }
+	}
+
+    }
+
     int *res;
     gametree *new_vertex;
     res = (int *) malloc(BINS*sizeof(int));
     //int valid;
     bool result_postponed = false;
 
-
-    // we currently do not use double_move and triple_move
-    /*
-    int semires = -1;
-    valid = maxtwo(b,res);
-    if(valid != 0 && DOUBLE_MOVE(b,res) == 0)
-    {
-	new_vertex = malloc(sizeof(gametree));
-	init_gametree_vertex(new_vertex, b, 0, (prev_vertex->depth)+1);
-	new_vertex->leaf = 1;
-	prev_vertex->next[prev_bin] = new_vertex;
-
-	semires = 0;
-	free(res);
-	return 0;
-    }
-    
-    valid = maxthree(b,res);
-    if(valid != 0 && TRIPLE_MOVE(b,res) == 0)
-    {
-	new_vertex = malloc(sizeof(gametree));
-	init_gametree_vertex(new_vertex, b, 0, (prev_vertex->depth)+1);
-	new_vertex->leaf = 1;
-	prev_vertex->next[prev_bin] = new_vertex;
-
-	semires = 0;
-	free(res);
-	return 0;
-    }
-
-    */
-    
     if ((b->loads[BINS] + (BINS*S - totalload(b))) < R)
     {
 	free(res);
@@ -252,18 +125,36 @@ int adversary(const binconf *b, int depth, gametree *prev_vertex,
     for (int item_size = maximum_feasible; item_size>0; item_size--)
     {
 	DEBUG_PRINT("Sending item %d to algorithm.\n", item_size);
-	new_vertex = (gametree *) malloc(sizeof(gametree));
-	init_gametree_vertex(new_vertex, b, item_size, prev_vertex->depth + 1, vertex_counter);
-	prev_vertex->next[prev_bin] = new_vertex;
 
-	r = ALGORITHM(b, item_size, depth+1, new_vertex, vertex_counter, dpat, tm);
-	DEBUG_PRINT("With item %d, algorithm's result is %d\n", item_size, r);
-	if(r == 0)
-	    break;
+	if(mode == OUTPUTTING)
+	{
+	    new_vertex = (gametree *) malloc(sizeof(gametree));
+	    init_gametree_vertex(new_vertex, b, item_size, prev_vertex->depth + 1, vertex_counter);
+	    prev_vertex->next[prev_bin] = new_vertex;
+	} else {
+	    // other modes ignore the output tree
+	    new_vertex = NULL;
+	}
+
+	r = ALGORITHM(b, item_size, depth+1, new_vertex, vertex_counter, mode, dpat);
+
+	if(mode == EXPLORING) {
+	    DEBUG_PRINT("With item %d, algorithm's result is %d\n", item_size, r);
+	}
+	
+	if(r == 0) {
+	    // do not stop in the DECREASING mode
+	    if (mode != DECREASING)
+	    {
+		break;
+	    }
+	}
 	else { // also happens if it returns POSTPONED
-	    delete_gametree(new_vertex);
-	    prev_vertex->next[prev_bin] = NULL;
-
+	    if(mode == OUTPUTTING) {
+		delete_gametree(new_vertex);
+		prev_vertex->next[prev_bin] = NULL;
+	    }
+	    
 	    if (r == POSTPONED)
 	    {
 		result_postponed = true;
@@ -271,16 +162,32 @@ int adversary(const binconf *b, int depth, gametree *prev_vertex,
 	}
     }
 
-    if (result_postponed)
+    if (mode == GENERATING && result_postponed)
     {
 	return POSTPONED;
     }
-    
+
+    // if the bin configuration is solved but postponed branches are present
+    if (mode == UPDATING && result_postponed && r != POSTPONED)
+    {
+	// add it to the completed task map
+	pthread_mutex_lock(&completed_tasks_lock);
+	completed_tasks.insert(std::pair<llu, int>(b->loadhash ^ b->itemhash, r));
+	pthread_mutex_unlock(&completed_tasks_lock);
+
+	// update all children
+	for (int item_size = maximum_feasible; item_size>0; item_size--)
+	{
+	    // the tree is not relevant for the DECREASING mode, the return value as well.
+	    ALGORITHM(b, item_size, depth+1, NULL, vertex_counter, DECREASING, NULL);
+	}
+
+    }
     return r;
 
 }
 
-int algorithm(const binconf *b, int k, int depth, gametree *cur_vertex, llu* vertex_counter, dynprog_attr *dpat, task_map *tm) {
+int algorithm(const binconf *b, int k, int depth, gametree *cur_vertex, llu* vertex_counter, int mode, dynprog_attr *dpat) {
 
     //MEASURE_PRINT("Entering player one vertex.\n");
     gametree *new_vertex;
@@ -308,10 +215,20 @@ int algorithm(const binconf *b, int k, int depth, gametree *cur_vertex, llu* ver
 	    sortloads(d);
 	    rehash(d,b,k);
 	    int c = is_conf_hashed(ht,d);
-	    if ((c) != -1)
+ 
+	    if (c != -1 && mode != DECREASING)
 	    {
 		//MEASURE_PRINT("Player one vertex cached.\n");
-		if(c == 0) // the vertex is good for the adversary, put it into the game tree
+
+		if(mode == UPDATING)
+		{
+		    // check if the task is in the completed map
+
+		    // if it is, do nothing
+
+		    // if it is not, add it there 
+		}
+		if(c == 0 && mode == OUTPUTTING) // the vertex is good for the adversary, put it into the game tree
 		{
 		    // e = malloc(sizeof(binconf));
 		    // init(e);
@@ -325,7 +242,7 @@ int algorithm(const binconf *b, int k, int depth, gametree *cur_vertex, llu* ver
 		r = c;
 	    } else {
 		//MEASURE_PRINT("Player one vertex not cached.\n");	
-		r = ADVERSARY(d,depth, cur_vertex, i, vertex_counter, dpat, tm);
+		r = ADVERSARY(d,depth, cur_vertex, i, vertex_counter, mode, dpat);
 		VERBOSE_PRINT(stderr, "We have calculated the following position, result is %d\n", r);
 		VERBOSE_PRINT_BINCONF(d);
 
@@ -344,10 +261,12 @@ int algorithm(const binconf *b, int k, int depth, gametree *cur_vertex, llu* ver
 		return r;
 	    }
 	} else { // b->loads[i] + k >= R, so a good situation for the adversary
-	    new_vertex = (gametree *) malloc(sizeof(gametree));
-	    init_gametree_vertex(new_vertex, b, 0, cur_vertex->depth +1, vertex_counter);
-	    new_vertex->leaf=1;
-	    cur_vertex->next[i] = new_vertex;
+	    if(mode == OUTPUTTING) {
+		new_vertex = (gametree *) malloc(sizeof(gametree));
+		init_gametree_vertex(new_vertex, b, 0, cur_vertex->depth +1, vertex_counter);
+		new_vertex->leaf=1;
+		cur_vertex->next[i] = new_vertex;
+	    }
 	}
     }
 
@@ -357,5 +276,31 @@ int algorithm(const binconf *b, int k, int depth, gametree *cur_vertex, llu* ver
 
     return r; 
 }
+
+// wrapper for exploration
+int explore(binconf *b, dynprog_attr *dpat)
+{
+    gametree *t = NULL;
+    llu vertex_counter = 0;
+    hashinit(b); // currently not necessary, but irrelevant speed-wise
+
+    int ret = adversary(b, 0, t, 1, &vertex_counter, EXPLORING, dpat);
+    return ret;
+}
+
+// wrapper for generation
+int generate(binconf *b)
+{
+    gametree *t = NULL;
+    llu vertex_counter = 0;
+    dynprog_attr dpat;    
+    hashinit(b); // currently not necessary, but irrelevant speed-wise
+
+    dynprog_attr_init(&dpat);
+    int ret = adversary(b, 0, t, 1, &vertex_counter, GENERATING, &dpat);
+    dynprog_attr_free(&dpat);
+    return ret;
+}
+
 
 #endif
