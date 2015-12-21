@@ -44,6 +44,10 @@ void *evaluate_tasks(void * tid)
 	   PROGRESS_PRINT_BINCONF(&current.bc);
 	}
 	explore(&(current.bc), &dpat);
+	if(call_to_terminate)
+	{
+	    break;
+	}
     }
      
     pthread_mutex_lock(&thread_progress_lock);
@@ -111,19 +115,19 @@ int scheduler() {
 	pthread_mutex_unlock(&thread_progress_lock);
 
 	// update main tree and task map
-	ret = update(&a, &dpat);
-	if(ret != POSTPONED)
+	if(!call_to_terminate)
 	{
-	    fprintf(stderr, "We have evaluated the tree: %d\n", ret);
-	    stop = true;
-	}
-	
+	    ret = update(&a, &dpat);
+	    if(ret != POSTPONED)
+	    {
+		fprintf(stderr, "We have evaluated the tree: %d\n", ret);
+		// instead of breaking, signal a call to terminate to other threads
+		// and wait for them to finish up
+		call_to_terminate = true;
+	    }
+	}	
     }
 
-    // kill all remaining threads
-    for (unsigned int i=0; i < THREADS; i++) {
-	pthread_cancel(threads[i]);
-    }	
 
     dynprog_attr_free(&dpat);
 

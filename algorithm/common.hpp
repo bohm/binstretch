@@ -146,6 +146,7 @@ pthread_mutex_t completed_tasks_lock;
 // counter of finished threads
 bool thread_finished[THREADS];
 pthread_mutex_t thread_progress_lock;
+bool call_to_terminate = false;
 
 void duplicate(binconf *t, const binconf *s) {
     for(int i=1; i<=BINS; i++)

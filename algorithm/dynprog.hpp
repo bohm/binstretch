@@ -73,7 +73,6 @@ void dynprog_attr_init(dynprog_attr *dpat)
 
 void dynprog_attr_free(dynprog_attr *dpat)
 {
-    fprintf(stderr, "freeing attributes\n");
     free(dpat->oldqueue); free(dpat->newqueue);
     free(dpat->F);
 }
