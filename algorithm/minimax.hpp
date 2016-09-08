@@ -70,6 +70,8 @@ int adversary(const binconf *b, int depth, int mode, dynprog_attr *dpat, output_
 
 	    if(mode == DECREASING)
 	    {
+		fprintf(stderr, "Decreasing task: ");
+		print_binconf(b);
 		decrease_task(hash);
 		return IRRELEVANT;
 	    }
@@ -139,20 +141,28 @@ int adversary(const binconf *b, int depth, int mode, dynprog_attr *dpat, output_
 	return POSTPONED;
     }
 
-    // if the bin configuration is solved but postponed branches are present
-    // note that a configuration can only be solved with postponed branches if r == 0
-    if (mode == UPDATING && result_postponed && r == 0)
+    if (mode == UPDATING)
     {
-	// fprintf(stderr, "Newly evaluated bc of value %d\n", r);
-	// print_binconf(b);
+	// call decrease if the configuration is solved but postponed branches are present
+	// note that a configuration can only be solved with postponed branches if r == 0
+	if(result_postponed && r == 0)
+	{
+	    // decrease its entire subtree
+	    fprintf(stderr, "UPD: Moving to decrease: ");
+	    print_binconf(b);
+	    ADVERSARY(b, depth, DECREASING, dpat, NULL);
+	}
 
-	// decrease its entire subtree
-	ADVERSARY(b, depth, DECREASING, dpat, NULL);
-	
-	// add it to the completed task map
-	pthread_mutex_lock(&completed_tasks_lock);
-	completed_tasks.insert(std::pair<llu, int>(b->loadhash ^ b->itemhash, r));
-	pthread_mutex_unlock(&completed_tasks_lock);
+	// mark the task as completed if it either is (partially) solved with r == 0
+	// or fully solved with 1
+	if(r == 0 || (r == 1 && !result_postponed))
+	{
+	    fprintf(stderr, "UPD: marking as completed:");
+	    print_binconf(b);
+	    pthread_mutex_lock(&completed_tasks_lock);
+	    completed_tasks.insert(std::pair<llu, int>(b->loadhash ^ b->itemhash, r));
+	    pthread_mutex_unlock(&completed_tasks_lock);
+	}
     }
 
     if (mode == DECREASING)
@@ -230,10 +240,7 @@ int algorithm(const binconf *b, int k, int depth, int mode, dynprog_attr *dpat, 
 		VERBOSE_PRINT_BINCONF(d);
 
 		if(mode == EXPLORING) {
-		    // do not add the computation into the cache if the return is POSTPONED.
-		    if (r == 0 || r == 1) {
-			conf_hashpush(ht,d,r);
-		    }
+		    conf_hashpush(ht,d,r);
 		}
 
 		if (r == POSTPONED) {

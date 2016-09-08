@@ -45,6 +45,8 @@ void *evaluate_tasks(void * tid)
 	   PROGRESS_PRINT_BINCONF(&current.bc);
 	}
 	explore(&(current.bc), &dpat);
+	fprintf(stderr, "THR%d: Finished bc:", threadid);
+	print_binconf(&(current.bc));
 
 	// check global signal to terminate
 	pthread_mutex_lock(&thread_progress_lock);

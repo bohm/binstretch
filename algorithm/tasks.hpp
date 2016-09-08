@@ -11,7 +11,7 @@ queue update code. */
 
 bool possible_task(const binconf *b, int depth)
 {
-    if (depth >= TASK_DEPTH)
+    if (depth == TASK_DEPTH)
     {
 	return true;
     }

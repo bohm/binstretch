@@ -19,9 +19,9 @@ typedef signed char tiny;
 //#define MEASURE 1
 
 // maximum load of a bin in the optimal offline setting
-#define S 14
+#define S 33
 // target goal of the online bin stretching problem
-#define R 19
+#define R 45
 
 // constants used for good situations
 #define RMOD (R-1)
