@@ -20,16 +20,16 @@ typedef signed char tiny;
 //#define MEASURE 1
 
 // maximum load of a bin in the optimal offline setting
-#define S 33
+#define S 14
 // target goal of the online bin stretching problem
-#define R 45
+#define R 19
 
 // constants used for good situations
 #define RMOD (R-1)
 #define ALPHA (RMOD-S)
 
 // Change this number for the selected number of bins.
-#define BINS 3
+#define BINS 4
 
 // bitwise length of indices of the hash table
 #define HASHLOG 24

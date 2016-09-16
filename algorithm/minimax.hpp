@@ -56,12 +56,12 @@ int adversary(const binconf *b, int depth, int mode, dynprog_attr *dpat, output_
 	int completed_value;
 
 	completed_value = completion_check(hash);
-	/*if (completed_value != POSTPONED)
+	if (completed_value != POSTPONED)
 	{
 	    DEBUG_PRINT("UPD: Cached and complete with value %d ", completed_value);
 	    DEBUG_PRINT_BINCONF(b);
 	    return completed_value;
-	    } */
+	}
 
 	if(possible_task(b,depth))
 	{

@@ -90,21 +90,18 @@ int main(void)
     fprintf(stderr, "No heuristics will be applied.\n");
 #endif
 
-    /*
-
-    binconf a;
-    gametree *t;
-    
-    init(&a); // init game tree
-
-    int ret = evaluate(&a,&t,0);
-    */
+    root = (binconf *) malloc(sizeof(binconf));
+    init(root); // init game tree
+    root->items[6] = 1;
+    root->loads[1] = 6;
+    hashinit(root);
     
     int ret = scheduler();
     assert(ret == 0 || ret == 1);
     if(ret == 0)
     {
-	fprintf(stderr, "%d/%d Bin Stretching on %d bins has a lower bound.\n", R,S,BINS);
+	fprintf(stderr, "Lower bound for %d/%d Bin Stretching on %d bins with root:\n", R,S,BINS);
+	print_binconf_stream(stderr, root);
 #ifdef OUTPUT
 	printf("strict digraph %d%d {\n", R, S);
 	printf("overlap = none;\n");
@@ -112,7 +109,9 @@ int main(void)
 	printf("}\n");
 #endif
     } else {
-	fprintf(stderr, "%d/%d Bin Stretching on %d bins can be won by Algorithm.\n", R,S,BINS);
+	fprintf(stderr, "Algorithm wins %d/%d Bin Stretching on %d bins with root:\n", R,S,BINS);
+	print_binconf_stream(stderr, root);
+
     }
 #ifdef MEASURE
     long double ratio = (long double) test_counter / (long double) maximum_feasible_counter;   
@@ -124,5 +123,6 @@ int main(void)
     global_hashtable_cleanup();
     local_hashtable_cleanup();
     bucketlock_cleanup();
+    free(root);
     return 0;
 }

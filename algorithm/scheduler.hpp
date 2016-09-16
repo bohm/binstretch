@@ -73,14 +73,10 @@ int scheduler() {
     pthread_t threads[THREADS];
     int rc;
 
-    // generate tasks
-    binconf a;
-    init(&a); // empty bin configuration
-    root = &a;
     // initialize dp tables for the main thread
     dynprog_attr dpat;
     dynprog_attr_init(&dpat);
-    int ret = generate(&a, &dpat);
+    int ret = generate(root, &dpat);
 
     assert(ret == POSTPONED); // consistency check, may not be true for trivial trees (of size < 10)
     //print_tasks();
@@ -138,12 +134,12 @@ int scheduler() {
 	// update main tree and task map
 	if(!update_complete)
 	{
-	    ret = update(&a, &dpat);
+	    ret = update(root, &dpat);
 	    if(ret != POSTPONED)
 	    {
 		fprintf(stderr, "We have evaluated the tree: %d\n", ret);
 		DEBUG_PRINT("sanity check: ");
-		DEBUG_PRINT_BINCONF(&a);
+		DEBUG_PRINT_BINCONF(root);
 		// instead of breaking, signal a call to terminate to other threads
 		// and wait for them to finish up
                 // this lock can potentially be removed without a race condition
