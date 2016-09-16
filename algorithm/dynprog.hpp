@@ -189,12 +189,12 @@ bool hash_and_test(binconf *h, int item, dynprog_attr *dpat)
     hashedvalue = dp_hashed(h);
     if (hashedvalue != -1)
     {
-	DEBUG_PRINT("Found a cached value of hash %llu in dynprog instance: %d.\n", h->itemhash, hashedvalue);
+	DEEP_DEBUG_PRINT("Found a cached value of hash %llu in dynprog instance: %d.\n", h->itemhash, hashedvalue);
 	feasible = (bool) hashedvalue;
     } else {
-	DEBUG_PRINT("Nothing found in dynprog cache for hash %llu.\n", h->itemhash);
+	DEEP_DEBUG_PRINT("Nothing found in dynprog cache for hash %llu.\n", h->itemhash);
 	feasible = TEST(h, dpat);
-	DEBUG_PRINT("Pushing dynprog value %d for hash %llu.\n", feasible, h->itemhash);
+	DEEP_DEBUG_PRINT("Pushing dynprog value %d for hash %llu.\n", feasible, h->itemhash);
 	dp_hashpush(h,feasible);
     }
 
@@ -203,36 +203,38 @@ bool hash_and_test(binconf *h, int item, dynprog_attr *dpat)
     return feasible;
 }
 
-void maximum_feasible_dynprog(const binconf *b, int *res, dynprog_attr *dpat)
+int maximum_feasible_dynprog(const binconf *b, dynprog_attr *dpat)
 {
 #ifdef MEASURE
     maximum_feasible_counter++;
 #endif
-    DEBUG_PRINT("Starting dynprog maximization of configuration:\n");
-    DEBUG_PRINT_BINCONF(b);
-    DEBUG_PRINT("\n"); 
+    DEEP_DEBUG_PRINT("Starting dynprog maximization of configuration:\n");
+    DEEP_DEBUG_PRINT_BINCONF(b);
+    DEEP_DEBUG_PRINT("\n"); 
     binconf h;
     duplicate(&h,b);
     int dynitem;
     
     // calculate lower bound for the optimum using Best Fit Decreasing
-    int *bestfitres;  bestfitres = (int *) malloc(3*sizeof(int));
-    int valid = fitmaxone(b, bestfitres);
-    if(valid == 0)
-    {
-        bestfitres[0] = 0;
-    }
-    int bestfitvalue = bestfitres[0]; 
-    free(bestfitres);
+    std::pair<int,int> fitresults = fitmaxone(b);
     
-    DEBUG_PRINT("lower bound for dynprog: %d\n", bestfitvalue);
+    int bestfitvalue = fitresults.second;
+    
+    DEEP_DEBUG_PRINT("lower bound for dynprog: %d\n", bestfitvalue);
 
+    if(is_root(b)) {
+	DEBUG_PRINT("ROOT: lower bound for dynprog: %d\n", bestfitvalue);
+    }
     // calculate upper bound for the optimum based on min(S,sum of remaining items)
     int maxvalue = (S*BINS) - totalload(b);
     if( maxvalue > S)
 	maxvalue = S;
 
-    DEBUG_PRINT("upper bound for dynprog: %d\n", maxvalue);
+    DEEP_DEBUG_PRINT("upper bound for dynprog: %d\n", maxvalue);
+
+    if(is_root(b)) {
+	DEBUG_PRINT("ROOT: upper bound for dynprog: %d\n", maxvalue);
+    }
 
     //int dp, sdp, hashedvalue;
 
@@ -273,10 +275,14 @@ void maximum_feasible_dynprog(const binconf *b, int *res, dynprog_attr *dpat)
 	    break;
 	}
     }
-    int bsearch_result = dynitem;
+
+    if(is_root(b)) {
+	DEBUG_PRINT("ROOT: final bound for dynprog: %d\n", dynitem);
+    }
+
+    return dynitem;
     /* assert(dynitem >= 0);
        assert(dynitem == bsearch_result); */
-    res[0] = bsearch_result;
 }
 
 #endif

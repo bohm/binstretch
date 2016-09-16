@@ -173,34 +173,33 @@ int maxthree(const binconf *b, int *res)
 // Inserts the number into res[0]. Returns 0 if heuristic cannot be used.
 // Unlike the ILP maxone, this restricts the adversary more (i.e. ILP is better, but slower).
 
-int fitmaxone(const binconf *b, int *res)
+std::pair<int,int> fitmaxone(const binconf *b)
 {
     binconf h;
-    int k = bestfit(&h, b);
+    int feasible = bestfit(&h, b);
     int remainder;
-    if(k == 0)
+    if(feasible == 0)
     {
-	return 0;
+	return std::pair<int,int>(0,0);
     }
 
     // the offline configuration returned by BFD is feasible, return the values.
-    res[0] = -1;
+    int best_remainder = -1;
     for(int bin=1; bin<=BINS; bin++)
     {
 	remainder = S - h.loads[bin];
-	if(remainder > res[0])
+	if(remainder > best_remainder)
 	{
-	    res[0] = remainder;
+	    best_remainder = remainder;
 	}
     }
 
     // check if one remainder is 0 -- in this case, we are inserting a zero-size item, which
     // we consider a case where the heuristic fails
-    if(res[1] == 0)
-    {
-	return 0;
+    if(best_remainder == 0) {
+	return std::pair<int,int>(0,0);
     }
-    return 1;
+    return std::pair<int,int>(1,best_remainder);
 }
 
 #endif

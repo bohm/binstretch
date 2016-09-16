@@ -21,7 +21,13 @@ void *evaluate_tasks(void * tid)
     task current;
     //std::map<llu, task>::reverse_iterator task_it;
     bool taskmap_empty = false;
+
     bool call_to_terminate = false;
+    
+    pthread_mutex_lock(&thread_progress_lock); // LOCK
+    call_to_terminate = global_terminate_flag;
+    pthread_mutex_unlock(&thread_progress_lock); // UNLOCK
+
     while(!call_to_terminate)
     {
 	pthread_mutex_lock(&taskq_lock); // LOCK
@@ -44,9 +50,9 @@ void *evaluate_tasks(void * tid)
 	   PROGRESS_PRINT("Thread %u takes up task number %u: ", threadid, taskcounter);
 	   PROGRESS_PRINT_BINCONF(&current.bc);
 	}
-	explore(&(current.bc), &dpat);
-	fprintf(stderr, "THR%d: Finished bc:", threadid);
-	print_binconf(&(current.bc));
+	int ret = explore(&(current.bc), &dpat);
+	PROGRESS_PRINT("THR%d: Finished bc (value %d) ", threadid, ret);
+	PROGRESS_PRINT_BINCONF(&(current.bc));
 
 	// check global signal to terminate
 	pthread_mutex_lock(&thread_progress_lock);
@@ -70,20 +76,30 @@ int scheduler() {
     // generate tasks
     binconf a;
     init(&a); // empty bin configuration
-
+    root = &a;
     // initialize dp tables for the main thread
     dynprog_attr dpat;
     dynprog_attr_init(&dpat);
     int ret = generate(&a, &dpat);
 
     assert(ret == POSTPONED); // consistency check, may not be true for trivial trees (of size < 10)
-    //reverse_global_taskq(); // TODO: implement this
-
     //print_tasks();
-    // return -1; //TODO remove this
 
 #ifdef PROGRESS
     fprintf(stderr, "Generated %d tasks.\n", task_count);
+#endif
+
+#ifdef DEEP_DEBUG
+    DEEP_DEBUG_PRINT("Creating a dump of tasks into tasklist.txt.\n");
+    FILE* tasklistfile = fopen("tasklist.txt", "w");
+    assert(tasklistfile != NULL);
+    
+    for( std::map<llu, task>::const_iterator it = tm.begin(); it != tm.end(); it++)
+    {
+	print_binconf_stream(&(it->second.bc), tasklistfile);
+    }
+    fclose(tasklistfile);
+    
 #endif
      // a rather useless array of ids, but we can use it to grant IDs to threads
     unsigned int ids[THREADS];
@@ -126,6 +142,8 @@ int scheduler() {
 	    if(ret != POSTPONED)
 	    {
 		fprintf(stderr, "We have evaluated the tree: %d\n", ret);
+		DEBUG_PRINT("sanity check: ");
+		DEBUG_PRINT_BINCONF(&a);
 		// instead of breaking, signal a call to terminate to other threads
 		// and wait for them to finish up
                 // this lock can potentially be removed without a race condition

@@ -3,6 +3,7 @@
 #include <cassert>
 #include "common.hpp"
 #include "measure.hpp"
+#include <random>
 
 #ifndef _HASH_H
 #define _HASH_H 1
@@ -27,18 +28,24 @@ binconf *outht;
 // hash table for dynamic programming calls / feasibility checks
 dp_hash_item *dpht;
 
+// DEBUG: Mersenne twister
+
+std::mt19937_64 gen(12345);
+
 /* Reads random 64 bits on a Unix machine.
    Does not work elsewhere.
 */
 llu rand_64bit()
 {
-    llu r;
-    size_t rv;
-    FILE* ur;
-    ur = fopen("/dev/urandom", "r");
-    rv = fread(&r, sizeof(llu), 1, ur);
-    assert(rv == 1);
-    fclose(ur);
+    llu r = gen();
+    //size_t rv;
+    //FILE* ur;
+
+    //int x = 0; 
+    //ur = fopen("/dev/urandom", "r");
+    //rv = fread(&r, sizeof(llu), 1, ur);
+    //assert(rv == 1);
+    //fclose(ur);
     return r;
 }
 
@@ -48,6 +55,8 @@ llu rand_64bit()
  */
 void zobrist_init()
 {
+    // DEBUG: seeded, non-random
+    srand(182371293);
     Zi = (llu **) malloc((S+1)*sizeof(llu *));
     Zl = (llu **) malloc((BINS+1)*sizeof(llu *)); //TODO: make the 3 a generic number
 
@@ -281,30 +290,30 @@ void dp_unhash(binconf *d, int dynitem)
 
 /* Checks if an element is hashed, returns -1 (not hashed)
    or 0/1 if it is. */
-int is_conf_hashed(binconf *hashtable, const binconf *d)
+int8_t is_conf_hashed(binconf *hashtable, const binconf *d)
 {
     unsigned int lp = hashlogpart(d->itemhash ^ d->loadhash);
     unsigned int blp = bucketlockpart((llu) lp);
 
     llu lhash = 0;
     llu ihash = 0;
-    uint8_t posvalue = -1;
-    binconf *r;
+    int8_t posvalue = -1;
+    binconf r;
+    assert(lp < HASHSIZE);
     pthread_mutex_lock(&bucketlock[blp]); // LOCK
-    r = &(hashtable[lp]); 
-    assert(r != NULL);
-    posvalue = r->posvalue; lhash = r->loadhash; ihash = r->itemhash;
+    duplicate(&r, &(hashtable[lp])); 
+    posvalue = r.posvalue; lhash = r.loadhash; ihash = r.itemhash;
     pthread_mutex_unlock(&bucketlock[blp]); // UNLOCK
-    
+    assert(posvalue == 1 || posvalue == 0 || posvalue == -1);
     if (posvalue != -1)
     {
 	if (lhash == d->loadhash && ihash == d->itemhash)
 	{
-#ifdef VERBOSE
-	    fprintf(stderr, "Found the following position in a hash table:\n");
-	    print_binconf(d);
-#endif
-	    return posvalue;
+	    if (binconf_equal(d,&r)) {
+		DEEP_DEBUG_PRINT("Found the following position in a hash table:\n");
+		DEEP_DEBUG_PRINT_BINCONF(d);
+		return posvalue;
+	    } 
 	}
     }
     return -1;
@@ -347,11 +356,17 @@ int dp_hashed(const binconf* b)
     //pthread_mutex_t *lock;
     //lock = &(dpbucketlock[;
     pthread_mutex_lock(&dpbucketlock[blp]); // LOCK
+    assert(lp < HASHSIZE);
     dp_hash_item *p = &(dpht[lp]);
     assert(p != NULL);
+
+   
     ihash = p->itemhash;
     feasible = p->feasible;
     pthread_mutex_unlock(&dpbucketlock[blp]); // UNLOCK
+    if (p->feasible == -1) {
+	return -1;
+    }
     
     if(ihash == b->itemhash)
     {

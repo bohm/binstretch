@@ -56,10 +56,12 @@ int adversary(const binconf *b, int depth, int mode, dynprog_attr *dpat, output_
 	int completed_value;
 
 	completed_value = completion_check(hash);
-	if (completed_value != POSTPONED)
+	/*if (completed_value != POSTPONED)
 	{
+	    DEBUG_PRINT("UPD: Cached and complete with value %d ", completed_value);
+	    DEBUG_PRINT_BINCONF(b);
 	    return completed_value;
-	}
+	    } */
 
 	if(possible_task(b,depth))
 	{
@@ -70,8 +72,8 @@ int adversary(const binconf *b, int depth, int mode, dynprog_attr *dpat, output_
 
 	    if(mode == DECREASING)
 	    {
-		fprintf(stderr, "Decreasing task: ");
-		print_binconf(b);
+		DEBUG_PRINT("Decreasing task: ");
+		DEBUG_PRINT_BINCONF(b);
 		decrease_task(hash);
 		return IRRELEVANT;
 	    }
@@ -79,29 +81,26 @@ int adversary(const binconf *b, int depth, int mode, dynprog_attr *dpat, output_
 
     }
 
-    int *res;
     gametree *new_vertex;
-    res = (int *) malloc(BINS*sizeof(int));
-    //int valid;
     bool result_postponed = false;
 
     if ((b->loads[BINS] + (BINS*S - totalload(b))) < R)
     {
-	free(res);
 	return 1;
     }
 
-    MAXIMUM_FEASIBLE(b,res, dpat); //valid = 1; // finds the maximum feasible item that can be added using dyn. prog.
-
-    int maximum_feasible = res[0];
-    free(res);
+    // finds the maximum feasible item that can be added using dyn. prog.
+    int maximum_feasible = MAXIMUM_FEASIBLE(b, dpat);
+    if(is_root(b)) {
+	DEBUG_PRINT("ROOT: bound from maximum feasible: %d\n", maximum_feasible);
+    }
     int r = 1;
 
-    //DEBUG_PRINT("Trying player zero choices, with maxload starting at %d\n", maxload);
+    DEEP_DEBUG_PRINT("Trying player zero choices, with maxload starting at %d\n", maximum_feasible);
     
     for (int item_size = maximum_feasible; item_size>0; item_size--)
     {
-	DEBUG_PRINT("Sending item %d to algorithm.\n", item_size);
+	DEEP_DEBUG_PRINT("Sending item %d to algorithm.\n", item_size);
 
 	if (mode == OUTPUTTING)
 	{
@@ -112,13 +111,17 @@ int adversary(const binconf *b, int depth, int mode, dynprog_attr *dpat, output_
 
 	r = ALGORITHM(b, item_size, depth+1, mode, dpat, outat);
 
+	if (is_root(b)) {
+	    DEBUG_PRINT("ROOT: Sent item %d to algorithm, got %d\n", item_size, r);
+	}
 	if (mode == EXPLORING) {
-	    DEBUG_PRINT("With item %d, algorithm's result is %d\n", item_size, r);
+	    DEEP_DEBUG_PRINT("With item %d, algorithm's result is %d\n", item_size, r);
 	}
 
 	if (mode != DECREASING) {
 	    
 	    if (r == 0) {
+		result_postponed = false;
 		break;
 	    } else { // also happens if it returns POSTPONED
 		if (mode == OUTPUTTING) {
@@ -141,6 +144,23 @@ int adversary(const binconf *b, int depth, int mode, dynprog_attr *dpat, output_
 	return POSTPONED;
     }
 
+    // cache finished vertices already during generation
+    if (mode == GENERATING && !result_postponed)
+    {
+	    DEBUG_PRINT("GEN: Shallow, marking as completed");
+	    if (r == 0)
+	    {
+		DEBUG_PRINT("(ADV wins branch):");
+	    } else {
+		DEBUG_PRINT("(ALG wins all below):");
+	    }
+	    
+	    DEBUG_PRINT_BINCONF(b);
+	    pthread_mutex_lock(&completed_tasks_lock);
+	    completed_tasks.insert(std::pair<llu, int>(b->loadhash ^ b->itemhash, r));
+	    pthread_mutex_unlock(&completed_tasks_lock);
+    }
+
     if (mode == UPDATING)
     {
 	// call decrease if the configuration is solved but postponed branches are present
@@ -148,28 +168,40 @@ int adversary(const binconf *b, int depth, int mode, dynprog_attr *dpat, output_
 	if(result_postponed && r == 0)
 	{
 	    // decrease its entire subtree
-	    fprintf(stderr, "UPD: Moving to decrease: ");
-	    print_binconf(b);
+	    DEBUG_PRINT("UPD: Moving to decrease: ");
+	    DEBUG_PRINT_BINCONF(b);
 	    ADVERSARY(b, depth, DECREASING, dpat, NULL);
 	}
 
 	// mark the task as completed if it either is (partially) solved with r == 0
 	// or fully solved with 1
-	if(r == 0 || (r == 1 && !result_postponed))
+	if(!result_postponed)
 	{
-	    fprintf(stderr, "UPD: marking as completed:");
-	    print_binconf(b);
+	    DEBUG_PRINT("UPD: Marking as completed");
+	    if (r == 0)
+	    {
+		DEBUG_PRINT("(ADV wins branch):");
+	    } else {
+		DEBUG_PRINT("(ALG wins all below):");
+	    }
+	    DEBUG_PRINT_BINCONF(b);
+	    
 	    pthread_mutex_lock(&completed_tasks_lock);
 	    completed_tasks.insert(std::pair<llu, int>(b->loadhash ^ b->itemhash, r));
 	    pthread_mutex_unlock(&completed_tasks_lock);
 	}
     }
 
+    if (result_postponed)
+    {
+	r = POSTPONED;
+    }
+
     if (mode == DECREASING)
     {
 	r = IRRELEVANT;
     }
-    
+
     return r;
 }
 
@@ -191,6 +223,7 @@ int algorithm(const binconf *b, int k, int depth, int mode, dynprog_attr *dpat, 
 	{
 	    binconf *d;
 	    d = (binconf *) malloc(sizeof(binconf));
+	    assert(d != NULL);
 	    duplicate(d, b);
 	    d->loads[i] += k;
 	    d->items[k]++;
@@ -210,8 +243,8 @@ int algorithm(const binconf *b, int k, int depth, int mode, dynprog_attr *dpat, 
 		    // if it is not there, run DECREASING, then add it
 		    if ( cc != c )
 		    {
-			fprintf(stderr, "Cached but incomplete vertex:");
-			print_binconf(d);
+			DEBUG_PRINT("Cached but incomplete vertex:");
+			DEBUG_PRINT_BINCONF(d);
 			ADVERSARY(d, depth, DECREASING, dpat, outat);	
 
 			pthread_mutex_lock(&completed_tasks_lock);
@@ -263,14 +296,16 @@ int algorithm(const binconf *b, int k, int depth, int mode, dynprog_attr *dpat, 
     }
 
     if (result_postponed) {
-	return POSTPONED;
+	r = POSTPONED;
     }
 
     return r; 
 }
 
 // wrapper for exploration
-void explore(binconf *b, dynprog_attr *dpat)
+// Returns value of the current position.
+
+int explore(binconf *b, dynprog_attr *dpat)
 {
     hashinit(b);
     output_attr *outat = NULL;
@@ -283,7 +318,7 @@ void explore(binconf *b, dynprog_attr *dpat)
     completed_tasks.insert(std::pair<llu, int>(b->loadhash ^ b->itemhash, ret));
     pthread_mutex_unlock(&completed_tasks_lock);
 
-    return;
+    return ret;
 }
 
 // wrapper for generation

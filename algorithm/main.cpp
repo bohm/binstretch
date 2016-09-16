@@ -101,6 +101,7 @@ int main(void)
     */
     
     int ret = scheduler();
+    assert(ret == 0 || ret == 1);
     if(ret == 0)
     {
 	fprintf(stderr, "%d/%d Bin Stretching on %d bins has a lower bound.\n", R,S,BINS);

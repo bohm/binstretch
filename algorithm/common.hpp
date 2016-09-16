@@ -12,8 +12,9 @@ typedef unsigned long long int llu;
 typedef signed char tiny;
 
 // verbosity of the program
-// #define VERBOSE 1
-// #define DEBUG 1
+//#define VERBOSE 1
+//#define DEBUG 1
+//#define DEEP_DEBUG 1
 #define PROGRESS 1
 // #define OUTPUT 1
 //#define MEASURE 1
@@ -40,7 +41,7 @@ typedef signed char tiny;
 #define BUCKETSIZE (1<<BUCKETLOG)
 
 // the number of threads
-#define THREADS 4
+#define THREADS 1
 // a bound on total load of a configuration before we split it into a task
 #define TASK_LOAD S/2
 #define TASK_DEPTH 4
@@ -54,6 +55,9 @@ typedef signed char tiny;
 #endif
 #if BINS == 5
 #define BINARRAY_SIZE (S+1)*(S+1)*(S+1)*(S+1)*(S+1)
+#endif
+#if BINS == 6
+#define BINARRAY_SIZE (S+1)*(S+1)*(S+1)*(S+1)*(S+1)*(S+1)
 #endif
 
 // end of configuration constants
@@ -158,6 +162,9 @@ bool thread_finished[THREADS];
 bool global_terminate_flag = false;
 pthread_mutex_t thread_progress_lock;
 
+// root of the tree (initialized in main.cpp)
+binconf *root;
+
 void duplicate(binconf *t, const binconf *s) {
     for(int i=1; i<=BINS; i++)
 	t->loads[i] = s->loads[i];
@@ -207,18 +214,61 @@ int totalload(const binconf *b)
     }
     return total;
 }
-// debug function
 
+// returns true if two binconfs are item-wise and load-wise equal
+bool binconf_equal(const binconf *a, const binconf *b)
+{
+    for (int i = 1; i <= BINS; i++)
+    {
+	if (a->loads[i] != b->loads[i])
+	{
+	    return false;
+	}
+    }
+
+    for (int j= 1; j <= S; j++)
+    {
+	if (a->items[j] != b->items[j])
+	{
+	    return false;
+	}
+    }
+
+    return true;
+}
+
+// a simple bool function, currently used in progress reporting
+// constant-time but assumes the bins are sorted (which they should be)
+bool is_root(const binconf *b)
+{
+    return binconf_equal(b,root);
+}
+
+
+// debug function
 void print_binconf(const binconf* b)
 {
     for (int i=1; i<=BINS; i++) {
 	fprintf(stderr, "%d-", b->loads[i]);
     }
+    
     fprintf(stderr, " ");
     for (int j=1; j<=S; j++) {
 	fprintf(stderr, "%d", b->items[j]);
     }
     fprintf(stderr, "\n");
+}
+
+void print_binconf_stream(FILE* stream, const binconf* b)
+{
+    for (int i=1; i<=BINS; i++) {
+	fprintf(stream, "%d-", b->loads[i]);
+    }
+    fprintf(stream, " ");
+    for (int j=1; j<=S; j++) {
+	fprintf(stream, "%d", b->items[j]);
+    }
+    fprintf(stream, "\n");
 }
 
 void init_global_locks(void)
@@ -328,6 +378,15 @@ void delete_gametree(gametree *tree)
 #define DEBUG_PRINT_BINCONF(x)
 #endif
 
+#ifdef DEEP_DEBUG
+#define DEEP_DEBUG_PRINT(...) fprintf(stderr, __VA_ARGS__ )
+#define DEEP_DEBUG_PRINT_BINCONF(x) print_binconf(x)
+#else
+#define DEEP_DEBUG_PRINT(format,...)
+#define DEEP_DEBUG_PRINT_BINCONF(x)
+#endif
+
+
 #ifdef MEASURE
 #define MEASURE_PRINT(...) fprintf(stderr,  __VA_ARGS__ )
 #define MEASURE_PRINT_BINCONF(x) print_binconf(x)
@@ -340,7 +399,7 @@ void delete_gametree(gametree *tree)
 #define VERBOSE_PRINT(...) fprintf(stderr, __VA_ARGS__ )
 #define VERBOSE_PRINT_BINCONF(x) print_binconf(x)
 #else
-#define VERBOSE_PRINT(...)
+#define VERBOSE_PRINT(format,...)
 #define VERBOSE_PRINT_BINCONF(x)
 #endif
 

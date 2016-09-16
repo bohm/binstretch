@@ -52,8 +52,8 @@ void remove_task(llu hash)
     pthread_mutex_lock(&taskq_lock); // LOCK
     auto it = tm.find(hash);
     if (it != tm.end()) {
-	fprintf(stderr, "Erasing task:");
-	print_binconf(&(it->second.bc));
+	DEBUG_PRINT("Erasing task: ");
+	DEBUG_PRINT_BINCONF(&(it->second.bc));
 	tm.erase(it);
     }
     pthread_mutex_unlock(&taskq_lock); // UNLOCK

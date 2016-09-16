@@ -17,8 +17,9 @@
    
 int gs1(const binconf *b)
 {
-    int sum = b->loads[1] + b->loads[2];
-    if(sum >= (2*S - ALPHA))
+    // sum of all but the last bin
+    int sum = totalload(b) - b->loads[BINS];
+    if (sum >= ((BINS-1)*S - ALPHA))
     {
 	return 1;
     }
@@ -95,51 +96,37 @@ int testgs(const binconf *b)
     if(gs1(b) == 1)
     {
 
-#ifdef DEBUG
-	fprintf(stderr, "The following binconf hits GS1:\n");
-	print_binconf(b);
-	fprintf(stderr, "\n");
-#endif
+	DEEP_DEBUG_PRINT(stderr, "The following binconf hits GS1:\n");
+	DEEP_DEBUG_PRINT_BINCONF(b);
 	return 1;
     }
+
+// Apply the rest of the heuristics only with 3 bins and ALPHA >= 1/3
+#if (BINS == 3) &&((3*ALPHA) >= S)
+
     if(gs2(b) == 1)
     {
-#ifdef DEBUG
-	fprintf(stderr, "The following binconf hits GS2:\n");
-	print_binconf(b);
-	fprintf(stderr, "\n");
-#endif
-
+	DEEP_DEBUG_PRINT(stderr, "The following binconf hits GS2:\n");
+	DEEP_DEBUG_PRINT_BINCONF(b);
 	return 1;
     }
     
     if(gs3(b) == 1)
     {
-#ifdef DEBUG
-	fprintf(stderr, "The following binconf hits GS3:\n");
-	print_binconf(b);
-	fprintf(stderr, "\n");
-#endif
-
+	DEEP_DEBUG_PRINT(stderr, "The following binconf hits GS3:\n");
+	DEEP_DEBUG_PRINT_BINCONF(b);
 	return 1;
     }
     if(gs4(b) == 1)
     {
-#ifdef DEBUG
-	fprintf(stderr, "The following binconf hits GS4:\n");
-	print_binconf(b);
-	fprintf(stderr, "\n");
-#endif
-
+	DEEP_DEBUG_PRINT(stderr, "The following binconf hits GS4:\n");
+	DEEP_DEBUG_PRINT_BINCONF(b);
 	return 1;
     }
     if(gs5(b) == 1)
     {
-#ifdef DEBUG
-	fprintf(stderr, "The following binconf hits GS5:\n");
-	print_binconf(b);
-	fprintf(stderr, "\n");
-#endif
+	DEEP_DEBUG_PRINT("The following binconf hits GS5:\n");
+	DEEP_DEBUG_PRINT_BINCONF(b);
 	return 1;
     }
 
@@ -147,14 +134,14 @@ int testgs(const binconf *b)
     {
 	return 1;
     }
+    
+#endif // run only heuristics with BINS=3 and ALPHA >= 1/3
     return -1;
 }
 
 // tries all the choices
 int gsheuristic(const binconf *b, int k)
 {
-// Apply heuristics only with 3 bins and ALPHA >= 1/3
-#if (BINS == 3) && ((3*ALPHA) >= S)
     binconf *d;
     for(int i=1; i<=BINS; i++)
     {
@@ -173,7 +160,6 @@ int gsheuristic(const binconf *b, int k)
 	    free(d);
          }
     }
-#endif
     return -1;
 }
 
