@@ -1,5 +1,6 @@
 #include <cstdio>
 #include <cstdlib>
+#include <inttypes.h>
 
 #include "common.hpp"
 #include "hash.hpp"
@@ -92,8 +93,10 @@ int main(void)
 
     root = (binconf *) malloc(sizeof(binconf));
     init(root); // init game tree
-    root->items[6] = 1;
-    root->loads[1] = 6;
+
+    // special heuristics for 19/14 lower bound for 5,6 bins
+    // root->items[5] = 1;
+    // root->loads[1] = 5; 
     hashinit(root);
     
     int ret = scheduler();
@@ -113,6 +116,10 @@ int main(void)
 	print_binconf_stream(stderr, root);
 
     }
+    
+    fprintf(stderr, "Number of tasks: %" PRIu64 ", completed tasks: %" PRIu64 ", pruned tasks %" PRIu64 " \n",
+	    task_count, finished_task_count, removed_task_count );
+
 #ifdef MEASURE
     long double ratio = (long double) test_counter / (long double) maximum_feasible_counter;   
 #endif

@@ -36,7 +36,6 @@ int bestfit(binconf *ret, const binconf *orig) {
 	    // packing was not feasible
 	    if(fitsbest == -1)
 	    {
-		DEBUG_PRINT("item %d did not fit into the bins; loads %d, %d, %d\n",size,ret->loads[1],ret->loads[2],ret->loads[3]);
 		return 0;
 	    }
 	    

@@ -15,6 +15,12 @@ bool possible_task(const binconf *b, int depth)
     {
 	return true;
     }
+
+    if (totalload(b) >= TASK_LOAD)
+    {
+	return true;
+    }
+    
     return false;
 }
 
@@ -75,6 +81,7 @@ void decrease_task(llu hash)
     pthread_mutex_unlock(&taskq_lock); // UNLOCK
 
     if (removing) {
+	removed_task_count++; // no race condition here, variable only used in the UPDATING thread
 	remove_task(hash);
     }
 }

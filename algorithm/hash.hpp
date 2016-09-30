@@ -309,11 +309,14 @@ int8_t is_conf_hashed(binconf *hashtable, const binconf *d)
     {
 	if (lhash == d->loadhash && ihash == d->itemhash)
 	{
-	    if (binconf_equal(d,&r)) {
-		DEEP_DEBUG_PRINT("Found the following position in a hash table:\n");
-		DEEP_DEBUG_PRINT_BINCONF(d);
-		return posvalue;
-	    } 
+#ifdef THOROUGH_HASH_CHECKING
+	    if (!binconf_equal(d,&r)) {
+		return -1;
+	    }
+#endif
+	    DEEP_DEBUG_PRINT("Found the following position in a hash table:\n");
+	    DEEP_DEBUG_PRINT_BINCONF(d);
+	    return posvalue;
 	}
     }
     return -1;

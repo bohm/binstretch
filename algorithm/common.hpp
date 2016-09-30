@@ -16,23 +16,24 @@ typedef signed char tiny;
 //#define DEBUG 1
 //#define DEEP_DEBUG 1
 #define PROGRESS 1
+//#define THOROUGH_HASH_CHECKING
 // #define OUTPUT 1
 //#define MEASURE 1
 
 // maximum load of a bin in the optimal offline setting
-#define S 14
+#define S 81
 // target goal of the online bin stretching problem
-#define R 19
+#define R 111
 
 // constants used for good situations
 #define RMOD (R-1)
 #define ALPHA (RMOD-S)
 
 // Change this number for the selected number of bins.
-#define BINS 4
+#define BINS 3
 
 // bitwise length of indices of the hash table
-#define HASHLOG 24
+#define HASHLOG 26
 // size of the hash table
 #define HASHSIZE (1<<HASHLOG)
 
@@ -41,10 +42,10 @@ typedef signed char tiny;
 #define BUCKETSIZE (1<<BUCKETLOG)
 
 // the number of threads
-#define THREADS 1
+#define THREADS 6
 // a bound on total load of a configuration before we split it into a task
-#define TASK_LOAD S/2
-#define TASK_DEPTH 4
+#define TASK_LOAD (S*BINS)/2
+#define TASK_DEPTH 5
 
 // The following selects binarray size based on BINS. It does not need to be edited.
 #if BINS == 3
@@ -149,7 +150,9 @@ typedef struct output_attr output_attr;
 
 // global task map indexed by binconf hashes
 std::map<llu, task> tm;
-unsigned int task_count = 0;
+uint64_t task_count = 0;
+uint64_t finished_task_count = 0;
+uint64_t removed_task_count = 0; // number of tasks which are removed due to minimax pruning
 pthread_mutex_t taskq_lock;
 
 // global hash-like map of completed tasks (and their parents up to
