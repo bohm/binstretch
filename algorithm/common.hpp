@@ -16,14 +16,14 @@ typedef signed char tiny;
 //#define DEBUG 1
 //#define DEEP_DEBUG 1
 #define PROGRESS 1
-//#define THOROUGH_HASH_CHECKING
-// #define OUTPUT 1
+//#define THOROUGH_HASH_CHECKING 1
+//#define OUTPUT 1
 //#define MEASURE 1
 
 // maximum load of a bin in the optimal offline setting
-#define S 81
+#define S 63
 // target goal of the online bin stretching problem
-#define R 111
+#define R 86
 
 // constants used for good situations
 #define RMOD (R-1)
@@ -33,7 +33,7 @@ typedef signed char tiny;
 #define BINS 3
 
 // bitwise length of indices of the hash table
-#define HASHLOG 26
+#define HASHLOG 27
 // size of the hash table
 #define HASHSIZE (1<<HASHLOG)
 
@@ -42,10 +42,10 @@ typedef signed char tiny;
 #define BUCKETSIZE (1<<BUCKETLOG)
 
 // the number of threads
-#define THREADS 6
+#define THREADS 20
 // a bound on total load of a configuration before we split it into a task
 #define TASK_LOAD (S*BINS)/2
-#define TASK_DEPTH 5
+#define TASK_DEPTH 4
 
 // The following selects binarray size based on BINS. It does not need to be edited.
 #if BINS == 3

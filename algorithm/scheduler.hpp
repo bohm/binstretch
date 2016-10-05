@@ -35,10 +35,8 @@ void *evaluate_tasks(void * tid)
 	{
 	    taskmap_empty = true;
 	} else {
-	    // It is smarter to start from the "back" of the task queue.
-	    current = tm.rbegin()->second;
-	    tm.erase(std::next(tm.rbegin()).base()); //converts rbegin to
-	    // the appropriate front iterator
+	    current = tm.begin()->second;
+	    tm.erase(tm.begin());
 	}
 	pthread_mutex_unlock(&taskq_lock); // UNLOCK
 	if (taskmap_empty) {
@@ -56,6 +54,7 @@ void *evaluate_tasks(void * tid)
 
 	// check global signal to terminate
 	pthread_mutex_lock(&thread_progress_lock);
+	finished_task_count++;
 	call_to_terminate = global_terminate_flag;
 	pthread_mutex_unlock(&thread_progress_lock);
     }
