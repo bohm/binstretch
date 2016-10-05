@@ -99,7 +99,8 @@ int adversary(const binconf *b, int depth, int mode, dynprog_attr *dpat, output_
     }
 
     gametree *new_vertex;
-    bool result_postponed = false;
+    bool postponed_branches_present = false;
+    bool result_determined = false; // can be determined even when postponed branches are present
 
     if ((b->loads[BINS] + (BINS*S - totalload(b))) < R)
     {
@@ -138,7 +139,7 @@ int adversary(const binconf *b, int depth, int mode, dynprog_attr *dpat, output_
 	if (mode != DECREASING) {
 	    
 	    if (r == 0) {
-		result_postponed = false;
+		result_determined = true;
 		break;
 	    } else { // also happens if it returns POSTPONED
 		if (building_tree) {
@@ -149,20 +150,26 @@ int adversary(const binconf *b, int depth, int mode, dynprog_attr *dpat, output_
 		
 		if (r == POSTPONED)
 		{
-		    result_postponed = true;
+		    postponed_branches_present = true;
+		    //result_postponed = true;
 		}
 	    }
 	}
 
     }
+
+    if (r == 1 && postponed_branches_present == false)
+    {
+	result_determined = true;
+    }
     
-    if (mode == GENERATING && result_postponed)
+    if (mode == GENERATING && !result_determined)
     {
 	return POSTPONED;
     }
 
     // cache finished vertices already during generation
-    if (mode == GENERATING && !result_postponed)
+/*    if (mode == GENERATING && result_determined)
     {
 	    DEBUG_PRINT("GEN: Shallow, marking as completed");
 	    if (r == 0)
@@ -177,12 +184,12 @@ int adversary(const binconf *b, int depth, int mode, dynprog_attr *dpat, output_
 	    completed_tasks.insert(std::pair<llu, int>(b->loadhash ^ b->itemhash, r));
 	    pthread_mutex_unlock(&completed_tasks_lock);
     }
-
-    if (mode == UPDATING)
+*/
+    if (mode == UPDATING || mode == GENERATING)
     {
 	// call decrease if the configuration is solved but postponed branches are present
 	// note that a configuration can only be solved with postponed branches if r == 0
-	if(result_postponed && r == 0)
+	if(postponed_branches_present && r == 0)
 	{
 	    // decrease its entire subtree
 	    DEBUG_PRINT("UPD: Moving to decrease: ");
@@ -192,7 +199,7 @@ int adversary(const binconf *b, int depth, int mode, dynprog_attr *dpat, output_
 
 	// mark the task as completed if it either is (partially) solved with r == 0
 	// or fully solved with 1
-	if(!result_postponed)
+	if(result_determined)
 	{
 	    DEBUG_PRINT("UPD: Marking as completed");
 	    if (r == 0)
@@ -209,7 +216,7 @@ int adversary(const binconf *b, int depth, int mode, dynprog_attr *dpat, output_
 	}
     }
 
-    if (result_postponed)
+    if (!result_determined)
     {
 	r = POSTPONED;
     }
@@ -226,7 +233,7 @@ int algorithm(const binconf *b, int k, int depth, int mode, dynprog_attr *dpat, 
 
     //MEASURE_PRINT("Entering player one vertex.\n");
     //binconf *e;
-    bool result_postponed = false;
+    bool postponed_branches_present = false;
 
     //bool building_tree = (mode == GENERATING || mode == EXPLORING); // temporarily disabled
     bool building_tree = false; 
@@ -238,6 +245,14 @@ int algorithm(const binconf *b, int k, int depth, int mode, dynprog_attr *dpat, 
     int r = 0;
     for (int i = 1; i<=BINS; i++)
     {
+	// WARNING: freshly added heuristic, may backfire
+	// simply skip a step where two bins have the same load
+	// any such bins are sequential if we assume loads are sorted (and they should be)
+	if (i > 1 && b->loads[i] == b->loads[i-1])
+	{
+	    continue;
+	}
+	
 	if ((b->loads[i] + k < R))
 	{
 	    binconf *d;
@@ -296,7 +311,7 @@ int algorithm(const binconf *b, int k, int depth, int mode, dynprog_attr *dpat, 
 		}
 
 		if (r == POSTPONED) {
-		    result_postponed = true;
+		    postponed_branches_present = true;
 		}
 	    }
 	    free(d);
@@ -314,11 +329,11 @@ int algorithm(const binconf *b, int k, int depth, int mode, dynprog_attr *dpat, 
 	}
     }
 
-    if (result_postponed) {
+    if (postponed_branches_present) {
 	r = POSTPONED;
     }
 
-    return r; 
+    return r; // essentially return 0;
 }
 
 // wrapper for exploration
