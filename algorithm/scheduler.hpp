@@ -81,7 +81,7 @@ int scheduler() {
     //print_tasks();
 
 #ifdef PROGRESS
-    fprintf(stderr, "Generated %d tasks.\n", task_count);
+    fprintf(stderr, "Generated %" PRIu64 " tasks.\n", task_count);
 #endif
 
 #ifdef DEEP_DEBUG

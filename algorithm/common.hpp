@@ -248,20 +248,7 @@ bool is_root(const binconf *b)
 }
 
 
-// debug function
-void print_binconf(const binconf* b)
-{
-    for (int i=1; i<=BINS; i++) {
-	fprintf(stderr, "%d-", b->loads[i]);
-    }
-    
-    fprintf(stderr, " ");
-    for (int j=1; j<=S; j++) {
-	fprintf(stderr, "%d", b->items[j]);
-    }
-    fprintf(stderr, "\n");
-}
-
+// debug function for printing bin configurations (into stderr or log files)
 void print_binconf_stream(FILE* stream, const binconf* b)
 {
     for (int i=1; i<=BINS; i++) {
@@ -375,7 +362,7 @@ void delete_gametree(gametree *tree)
 
 #ifdef DEBUG
 #define DEBUG_PRINT(...) fprintf(stderr, __VA_ARGS__ )
-#define DEBUG_PRINT_BINCONF(x) print_binconf(x)
+#define DEBUG_PRINT_BINCONF(x) print_binconf_stream(stderr,x)
 #else
 #define DEBUG_PRINT(format,...)
 #define DEBUG_PRINT_BINCONF(x)
@@ -383,7 +370,7 @@ void delete_gametree(gametree *tree)
 
 #ifdef DEEP_DEBUG
 #define DEEP_DEBUG_PRINT(...) fprintf(stderr, __VA_ARGS__ )
-#define DEEP_DEBUG_PRINT_BINCONF(x) print_binconf(x)
+#define DEEP_DEBUG_PRINT_BINCONF(x) print_binconf_stream(stderr,x)
 #else
 #define DEEP_DEBUG_PRINT(format,...)
 #define DEEP_DEBUG_PRINT_BINCONF(x)
@@ -392,7 +379,7 @@ void delete_gametree(gametree *tree)
 
 #ifdef MEASURE
 #define MEASURE_PRINT(...) fprintf(stderr,  __VA_ARGS__ )
-#define MEASURE_PRINT_BINCONF(x) print_binconf(x)
+#define MEASURE_PRINT_BINCONF(x) print_binconf_stream(stderr, x)
 #else
 #define MEASURE_PRINT(format,...)
 #define MEASURE_PRINT_BINCONF(x)
@@ -400,7 +387,7 @@ void delete_gametree(gametree *tree)
 
 #ifdef VERBOSE
 #define VERBOSE_PRINT(...) fprintf(stderr, __VA_ARGS__ )
-#define VERBOSE_PRINT_BINCONF(x) print_binconf(x)
+#define VERBOSE_PRINT_BINCONF(x) print_binconf_stream(stderr, x)
 #else
 #define VERBOSE_PRINT(format,...)
 #define VERBOSE_PRINT_BINCONF(x)
@@ -408,7 +395,7 @@ void delete_gametree(gametree *tree)
 
 #ifdef PROGRESS
 #define PROGRESS_PRINT(...) fprintf(stderr, __VA_ARGS__ )
-#define PROGRESS_PRINT_BINCONF(x) print_binconf(x)
+#define PROGRESS_PRINT_BINCONF(x) print_binconf_stream(stderr, x)
 #else
 #define PROGRESS_PRINT(format,...)
 #define PROGRESS_PRINT_BINCONF(x)

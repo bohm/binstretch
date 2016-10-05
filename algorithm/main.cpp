@@ -44,7 +44,7 @@ void print_gametree(gametree *tree)
 	    if (is_conf_hashed(outht, tree->next[i]->bc) != -1)
 	    {
 		fprintf(stderr, "The configuration is present elsewhere in the tree:"); 
-		print_binconf(tree->next[i]->bc);
+		print_binconf_stream(stderr, tree->next[i]->bc);
 		continue;
 	    } 
 

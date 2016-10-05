@@ -341,9 +341,9 @@ void conf_hashpush(binconf* hashtable, const binconf *d, int posvalue)
     e->posvalue = posvalue;
     pthread_mutex_unlock(&bucketlock[blp]); // UNLOCK
     
-#ifdef VERBOSE
-    fprintf(stderr, "Hashing the following position with value %d:\n", posvalue);
-    print_binconf(d);
+#ifdef DEEP_DEBUG
+    DEEP_DEBUG_PRINT("Hashing the following position with value %d:\n", posvalue);
+    DEEP_DEBUG_PRINT_BINCONF(d);
     printBits32(lp);
 #endif
 }

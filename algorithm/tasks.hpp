@@ -111,8 +111,8 @@ void print_tasks()
 {
     for(auto it = tm.begin(); it != tm.end(); ++it)
     {
-        print_binconf(&(it->second.bc));
-	fprintf(stderr, "Occur: %llu \n", it->second.occurences);
+        DEBUG_PRINT_BINCONF(&(it->second.bc));
+	DEBUG_PRINT("Occur: %llu \n", it->second.occurences);
     }
 }
 #endif
