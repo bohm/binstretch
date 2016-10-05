@@ -21,9 +21,9 @@ typedef signed char tiny;
 //#define MEASURE 1
 
 // maximum load of a bin in the optimal offline setting
-#define S 63
+#define S 33
 // target goal of the online bin stretching problem
-#define R 86
+#define R 45
 
 // constants used for good situations
 #define RMOD (R-1)
@@ -33,7 +33,7 @@ typedef signed char tiny;
 #define BINS 3
 
 // bitwise length of indices of the hash table
-#define HASHLOG 27
+#define HASHLOG 25
 // size of the hash table
 #define HASHSIZE (1<<HASHLOG)
 
@@ -42,7 +42,7 @@ typedef signed char tiny;
 #define BUCKETSIZE (1<<BUCKETLOG)
 
 // the number of threads
-#define THREADS 20
+#define THREADS 6
 // a bound on total load of a configuration before we split it into a task
 #define TASK_LOAD (S*BINS)/2
 #define TASK_DEPTH 4
@@ -73,7 +73,7 @@ typedef signed char tiny;
 #define EXPLORING 2
 #define UPDATING 3
 #define DECREASING 4
-#define OUTPUTTING 5
+#define COLLECTING 5
 
 bool generating_tasks;
 
@@ -118,10 +118,11 @@ struct gametree {
     int nextItem;
     //char loads[BINS+1];
     struct gametree * next[BINS+1];
-    int cached;
+    bool cached;
+    bool task;
+    bool leaf;
     int depth;
-    int leaf;
-    llu id;
+    uint64_t id;
     // if the vertex is cached, we also provide a binconf for later
     // restoration
     // binconf *cached_conf;
@@ -153,6 +154,7 @@ std::map<llu, task> tm;
 uint64_t task_count = 0;
 uint64_t finished_task_count = 0;
 uint64_t removed_task_count = 0; // number of tasks which are removed due to minimax pruning
+uint64_t decreased_task_count = 0;
 pthread_mutex_t taskq_lock;
 
 // global hash-like map of completed tasks (and their parents up to
@@ -162,6 +164,12 @@ pthread_mutex_t completed_tasks_lock;
 
 // counter of finished threads
 bool thread_finished[THREADS];
+
+// global map of finished subtrees, merged into the main tree when the subtree is evaluated (with 0)
+// indexed by bin configurations
+std::map<uint64_t, gametree> treemap;
+pthread_mutex_t treemap_lock;
+
 bool global_terminate_flag = false;
 pthread_mutex_t thread_progress_lock;
 
@@ -266,6 +274,7 @@ void init_global_locks(void)
     pthread_mutex_init(&taskq_lock, NULL);
     pthread_mutex_init(&thread_progress_lock, NULL);
     pthread_mutex_init(&completed_tasks_lock, NULL);
+    pthread_mutex_init(&treemap_lock, NULL);
 
 }
 
@@ -309,7 +318,8 @@ void init_gametree_vertex(gametree *tree, const binconf *b, int nextItem, int de
     tree->bc = (binconf *) malloc(sizeof(binconf));
     init(tree->bc);
     
-    tree->cached=0; tree->leaf=0;
+    tree->cached=false; tree->leaf=false;
+    tree->task = false;
     (*vertex_counter)++;
     tree->id = *vertex_counter;
     // tree->cached_conf = NULL;

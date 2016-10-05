@@ -32,17 +32,24 @@ int algorithm(const binconf *b, int k, int depth, int mode, dynprog_attr *dpat, 
    depth: how deep in the game tree the given situation is
  */
 
-// Possible modes of operation:
-//    * EXPLORING (general exploration done by individual threads)
-//    * OUTPUTTING (same as exploring, but generating output)
-//    * GENERATING (generating the task queue)
-//    * UPDATING (pruning the top of the tree by a unique thread)
-//    * DECREASING (decreasing occurences of tasks in the task map)
+/* Possible modes of operation:
+
+    * GENERATING (generating the task queue)
+    * EXPLORING (general exploration done by individual threads)
+    * UPDATING (pruning the top of the tree by a unique thread)
+      -- UPDATING uses cache and does not visit all branches
+    * DECREASING (decreasing occurences of tasks in the task map)
+    * COLLECTING (collecting built trees from workers and merging them with the main tree)
+      -- COLLECTING needs to ignore completion cache and visit all tasks
+*/
 
 // We currently do not use double_move and triple_move.
  
 int adversary(const binconf *b, int depth, int mode, dynprog_attr *dpat, output_attr *outat) {
 
+    //bool building_tree = (mode == GENERATING || mode == EXPLORING); // temporarily disabled
+    bool building_tree = false;
+    
     if (mode == GENERATING && possible_task(b,depth))
     {
 	//llu hash = b->itemhash ^ b->loadhash;
@@ -50,6 +57,16 @@ int adversary(const binconf *b, int depth, int mode, dynprog_attr *dpat, output_
 	return POSTPONED;
     }
 
+    if (mode == COLLECTING && possible_task(b, depth))
+    {
+	// lock the treemap
+	// if the tree is in there and not yet in the main tree
+	//    put it here, flip a switch "already present in main tree"
+	// if the tree is not there OR if it is already present in the main tree
+	//    just put a CACHED tree vertex here
+	// unlock the treemap
+    }
+    
     if (mode == UPDATING || mode == DECREASING)
     {
 	llu hash = b->itemhash ^ b->loadhash;
@@ -63,14 +80,14 @@ int adversary(const binconf *b, int depth, int mode, dynprog_attr *dpat, output_
 	    return completed_value;
 	}
 
-	if(possible_task(b,depth))
+	if (possible_task(b,depth))
 	{
-	    if(mode == UPDATING)
+	    if (mode == UPDATING)
 	    {
 		return POSTPONED;
 	    }
 
-	    if(mode == DECREASING)
+	    if (mode == DECREASING)
 	    {
 		DEBUG_PRINT("Decreasing task: ");
 		DEBUG_PRINT_BINCONF(b);
@@ -102,7 +119,7 @@ int adversary(const binconf *b, int depth, int mode, dynprog_attr *dpat, output_
     {
 	DEEP_DEBUG_PRINT("Sending item %d to algorithm.\n", item_size);
 
-	if (mode == OUTPUTTING)
+	if (building_tree)
 	{
 	    new_vertex = (gametree *) malloc(sizeof(gametree));
 	    init_gametree_vertex(new_vertex, b, item_size, outat->prev_vertex->depth + 1, &(outat->vertex_counter));
@@ -124,7 +141,7 @@ int adversary(const binconf *b, int depth, int mode, dynprog_attr *dpat, output_
 		result_postponed = false;
 		break;
 	    } else { // also happens if it returns POSTPONED
-		if (mode == OUTPUTTING) {
+		if (building_tree) {
 		    //assert(r != POSTPONED);
 		    //delete_gametree(new_vertex);
 		    //outat->prev_vertex->next[outat->prev_bin] = NULL;
@@ -211,15 +228,17 @@ int algorithm(const binconf *b, int k, int depth, int mode, dynprog_attr *dpat, 
     //binconf *e;
     bool result_postponed = false;
 
-    if(gsheuristic(b,k) == 1)
+    //bool building_tree = (mode == GENERATING || mode == EXPLORING); // temporarily disabled
+    bool building_tree = false; 
+    if (gsheuristic(b,k) == 1)
     {
 	return 1;
     }
     
     int r = 0;
-    for(int i = 1; i<=BINS; i++)
+    for (int i = 1; i<=BINS; i++)
     {
-	if((b->loads[i] + k < R))
+	if ((b->loads[i] + k < R))
 	{
 	    binconf *d;
 	    d = (binconf *) malloc(sizeof(binconf));
@@ -235,7 +254,7 @@ int algorithm(const binconf *b, int k, int depth, int mode, dynprog_attr *dpat, 
 	    {
 		//MEASURE_PRINT("Player one vertex cached.\n");
 
-		if(mode == UPDATING)
+		if (mode == UPDATING)
 		{
 		    // check if the task is in the completed map
 		    int cc = completion_check(d->loadhash ^ d->itemhash);
@@ -254,7 +273,7 @@ int algorithm(const binconf *b, int k, int depth, int mode, dynprog_attr *dpat, 
 
 		}
 		
-		if(c == 0 && mode == OUTPUTTING) // the vertex is good for the adversary, put it into the game tree
+		if (c == 0 && building_tree) // the vertex is good for the adversary, put it into the game tree
 		{
 		    // e = malloc(sizeof(binconf));
 		    // init(e);
@@ -272,7 +291,7 @@ int algorithm(const binconf *b, int k, int depth, int mode, dynprog_attr *dpat, 
 		VERBOSE_PRINT(stderr, "We have calculated the following position, result is %d\n", r);
 		VERBOSE_PRINT_BINCONF(d);
 
-		if(mode == EXPLORING) {
+		if (mode == EXPLORING) {
 		    conf_hashpush(ht,d,r);
 		}
 
@@ -281,12 +300,12 @@ int algorithm(const binconf *b, int k, int depth, int mode, dynprog_attr *dpat, 
 		}
 	    }
 	    free(d);
-	    if(r == 1 && mode != DECREASING) {
+	    if (r == 1 && mode != DECREASING) {
 		VERBOSE_PRINT("Winning position for algorithm, returning 1.\n");   
 		return r;
 	    }
 	} else { // b->loads[i] + k >= R, so a good situation for the adversary
-	    if(mode == OUTPUTTING) {
+	    if (building_tree) {
 		gametree *new_vertex = (gametree *) malloc(sizeof(gametree));
 		init_gametree_vertex(new_vertex, b, 0, outat->cur_vertex->depth +1, &(outat->vertex_counter));
 		new_vertex->leaf=1;

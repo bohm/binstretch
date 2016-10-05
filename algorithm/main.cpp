@@ -117,8 +117,8 @@ int main(void)
 
     }
     
-    fprintf(stderr, "Number of tasks: %" PRIu64 ", completed tasks: %" PRIu64 ", pruned tasks %" PRIu64 " \n",
-	    task_count, finished_task_count, removed_task_count );
+    fprintf(stderr, "Number of tasks: %" PRIu64 ", completed tasks: %" PRIu64 ", pruned tasks %" PRIu64 ", decreased tasks %" PRIu64 " \n",
+	    task_count, finished_task_count, removed_task_count, decreased_task_count );
 
 #ifdef MEASURE
     long double ratio = (long double) test_counter / (long double) maximum_feasible_counter;   

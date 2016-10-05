@@ -70,6 +70,7 @@ void remove_task(llu hash)
 void decrease_task(llu hash)
 {
     bool removing = false;
+    decreased_task_count++; // no race condition here, see below
     pthread_mutex_lock(&taskq_lock); // LOCK
     auto it = tm.find(hash);
     if (it != tm.end()) {
