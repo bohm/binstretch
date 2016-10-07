@@ -8,74 +8,6 @@
 #include "measure.hpp"
 #include "scheduler.hpp"
 
-/*
-// needs to be here because it calls evaluate when dealing with cache
-void print_gametree(gametree *tree)
-{
-    binconf *b;
-    assert(tree != NULL);
-
-    // Mark the current bin configuration as present in the output.
-    conf_hashpush(outht, tree->bc, 1);
-    //assert(tree->cached != 1);
-    
-    if(tree->leaf)
-    {
-	//fprintf(stdout, "%llu [label=\"leaf depth %d\"];\n", tree->id, tree->depth);
-	return;
-    } else {
-	fprintf(stdout, "%llu [label=\"", tree->id);
-	for(int i=1; i<=BINS; i++)
-	{
-	    fprintf(stdout, "%d\\n", tree->bc->loads[i]);
-	    
-	}
-
-	fprintf(stdout, "n: %d\"];\n", tree->nextItem);
-
-
-	for(int i=1;i<=BINS; i++)
-	{
-	    if(tree->next[i] == NULL)
-		continue;
-
-	    // If the next configuration is already present in the output
-
-	    if (is_conf_hashed(outht, tree->next[i]->bc) != -1)
-	    {
-		fprintf(stderr, "The configuration is present elsewhere in the tree:"); 
-		print_binconf_stream(stderr, tree->next[i]->bc);
-		continue;
-	    } 
-
-	    // If the next configuration is cached but not present in the output
-	    
-	    if(tree->next[i]->cached == 1)
-	    {
-		b = (binconf *) malloc(sizeof(binconf));
-		init(b);
-		duplicate(b, tree->next[i]->bc);
-		delete_gametree(tree->next[i]);
-		// needs fixing when output is considered
-		dynprog_attr dpat;
-		dynprog_attr_init(&dpat);
-		evaluate(b, &(tree->next[i]), tree->depth+1, &dpat);
-		dynprog_attr_free(&dpat);
-
-		free(b);
-	    }
-	    
-	    if(tree->next[i]->leaf != 1)
-	    {
-		fprintf(stdout, "%llu -> %llu\n", tree->id, tree->next[i]->id);	
-		print_gametree(tree->next[i]);
-	    }
-	}
-	
-    }
-}
-*/
-
 int main(void)
 {
 
@@ -98,8 +30,14 @@ int main(void)
     // root->items[5] = 1;
     // root->loads[1] = 5; 
     hashinit(root);
+    root_vertex = new adversary_vertex;
+    llu x = 0; //workaround
+    init_adversary_vertex(root_vertex, root, 0, &x);
     
     int ret = scheduler();
+    fprintf(stderr, "Number of tasks: %" PRIu64 ", completed tasks: %" PRIu64 ", pruned tasks %" PRIu64 ", decreased tasks %" PRIu64 " \n",
+	    task_count, finished_task_count, removed_task_count, decreased_task_count );
+
     assert(ret == 0 || ret == 1);
     if(ret == 0)
     {
@@ -130,6 +68,7 @@ int main(void)
     global_hashtable_cleanup();
     local_hashtable_cleanup();
     bucketlock_cleanup();
-    free(root);
+    delete root;
+    delete root_vertex;
     return 0;
 }

@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <pthread.h>
 #include <map>
+#include <list>
 
 typedef unsigned long long int llu;
 typedef signed char tiny;
@@ -21,9 +22,9 @@ typedef signed char tiny;
 //#define MEASURE 1
 
 // maximum load of a bin in the optimal offline setting
-#define S 33
+#define S 41
 // target goal of the online bin stretching problem
-#define R 45
+#define R 56
 
 // constants used for good situations
 #define RMOD (R-1)
@@ -86,8 +87,8 @@ struct binconf {
     uint8_t loads[BINS+1];
     uint8_t items[S+1];
     // hash related properties
-    llu loadhash;
-    llu itemhash;
+    uint64_t loadhash;
+    uint64_t itemhash;
     int8_t posvalue;
 };
 
@@ -111,25 +112,29 @@ typedef struct task task;
 // a game tree used for outputting the resulting
 // strategy if the result is positive.
 
-struct gametree {
-    /* Bin configuration of the current node. */
-    binconf *bc;
-    /* Next incoming item. */
-    int nextItem;
-    //char loads[BINS+1];
-    struct gametree * next[BINS+1];
-    bool cached;
-    bool task;
-    bool leaf;
-    int depth;
+typedef struct adversary_vertex adversary_vertex;
+typedef struct algorithm_vertex algorithm_vertex;
+
+struct algorithm_vertex {
+    int next_item; /* Incoming item. */
+    std::list<adversary_vertex*> next; //next adversarial states
     uint64_t id;
-    // if the vertex is cached, we also provide a binconf for later
-    // restoration
-    // binconf *cached_conf;
+    int value;
+
 };
 
-typedef struct gametree gametree;
-
+struct adversary_vertex {
+    binconf *bc; /* Bin configuration of the current node. */
+    std::list<algorithm_vertex*> next;
+    int depth; // depth increases only in adversary steps
+    bool cached;
+    bool task;
+    bool elsewhere;
+    bool decreased;
+    int value;
+    uint64_t id;
+};
+ 
 /* dynprog global variables (separate for each thread) */
 struct dynprog_attr {
     int *F;
@@ -139,15 +144,14 @@ struct dynprog_attr {
 
 typedef struct dynprog_attr dynprog_attr;
 
-/* output variables (separate for each thread) */
-struct output_attr {
-    gametree * cur_vertex;
-    gametree * prev_vertex;
+/* tree variables (currently used in main thread only) */
+struct tree_attr {
+    algorithm_vertex *last_alg_v;
+    adversary_vertex *last_adv_v;
     llu vertex_counter;
-    int prev_bin;
 };
 
-typedef struct output_attr output_attr;
+typedef struct tree_attr tree_attr;
 
 // global task map indexed by binconf hashes
 std::map<llu, task> tm;
@@ -167,14 +171,15 @@ bool thread_finished[THREADS];
 
 // global map of finished subtrees, merged into the main tree when the subtree is evaluated (with 0)
 // indexed by bin configurations
-std::map<uint64_t, gametree> treemap;
-pthread_mutex_t treemap_lock;
+//std::map<uint64_t, gametree> treemap;
+//pthread_mutex_t treemap_lock;
 
 bool global_terminate_flag = false;
 pthread_mutex_t thread_progress_lock;
 
 // root of the tree (initialized in main.cpp)
 binconf *root;
+adversary_vertex *root_vertex;
 
 void duplicate(binconf *t, const binconf *s) {
     for(int i=1; i<=BINS; i++)
@@ -269,12 +274,54 @@ void print_binconf_stream(FILE* stream, const binconf* b)
     fprintf(stream, "\n");
 }
 
+/* helper macros for debug, verbose, and measure output */
+
+#ifdef DEBUG
+#define DEBUG_PRINT(...) fprintf(stderr, __VA_ARGS__ )
+#define DEBUG_PRINT_BINCONF(x) print_binconf_stream(stderr,x)
+#else
+#define DEBUG_PRINT(format,...)
+#define DEBUG_PRINT_BINCONF(x)
+#endif
+
+#ifdef DEEP_DEBUG
+#define DEEP_DEBUG_PRINT(...) fprintf(stderr, __VA_ARGS__ )
+#define DEEP_DEBUG_PRINT_BINCONF(x) print_binconf_stream(stderr,x)
+#else
+#define DEEP_DEBUG_PRINT(format,...)
+#define DEEP_DEBUG_PRINT_BINCONF(x)
+#endif
+
+#ifdef MEASURE
+#define MEASURE_PRINT(...) fprintf(stderr,  __VA_ARGS__ )
+#define MEASURE_PRINT_BINCONF(x) print_binconf_stream(stderr, x)
+#else
+#define MEASURE_PRINT(format,...)
+#define MEASURE_PRINT_BINCONF(x)
+#endif
+
+#ifdef VERBOSE
+#define VERBOSE_PRINT(...) fprintf(stderr, __VA_ARGS__ )
+#define VERBOSE_PRINT_BINCONF(x) print_binconf_stream(stderr, x)
+#else
+#define VERBOSE_PRINT(format,...)
+#define VERBOSE_PRINT_BINCONF(x)
+#endif
+
+#ifdef PROGRESS
+#define PROGRESS_PRINT(...) fprintf(stderr, __VA_ARGS__ )
+#define PROGRESS_PRINT_BINCONF(x) print_binconf_stream(stderr, x)
+#else
+#define PROGRESS_PRINT(format,...)
+#define PROGRESS_PRINT_BINCONF(x)
+#endif
+
 void init_global_locks(void)
 {
     pthread_mutex_init(&taskq_lock, NULL);
     pthread_mutex_init(&thread_progress_lock, NULL);
     pthread_mutex_init(&completed_tasks_lock, NULL);
-    pthread_mutex_init(&treemap_lock, NULL);
+//    pthread_mutex_init(&treemap_lock, NULL);
 
 }
 
@@ -313,103 +360,132 @@ void sortloads(binconf *b)
 
 /* Initialize the game tree with the information in the parameters. */
 
-void init_gametree_vertex(gametree *tree, const binconf *b, int nextItem, int depth, llu *vertex_counter)
+void init_adversary_vertex(adversary_vertex *v, const binconf *b, int depth, llu *vertex_counter)
 {
-    tree->bc = (binconf *) malloc(sizeof(binconf));
-    init(tree->bc);
-    
-    tree->cached=false; tree->leaf=false;
-    tree->task = false;
-    (*vertex_counter)++;
-    tree->id = *vertex_counter;
-    // tree->cached_conf = NULL;
-    tree->depth = depth;
+    v->bc = (binconf *) malloc(sizeof(binconf));
+    assert(v->bc != NULL);
+    init(v->bc);
+    v->cached = false;
+    v->elsewhere = false;
+    v->task = false;
+    v->decreased = false;
+    v->id = ++(*vertex_counter);
+    v->depth = depth;
+    v->value = POSTPONED;
+    duplicate(v->bc, b);
+}
 
-    duplicate(tree->bc, b);
-    
-    for(int i=1; i <= BINS; i++)
+void init_algorithm_vertex(algorithm_vertex *v, int next_item, llu *vertex_counter)
+{
+    v->next_item = next_item;
+    v->id = ++(*vertex_counter);
+    v->value = POSTPONED;
+}
+
+void debugprint_gametree(adversary_vertex *v);
+void debugprint_gametree(algorithm_vertex *v);
+
+void debugprint_gametree(adversary_vertex *v)
+{
+    assert(v!=NULL);
+    assert(v->bc != NULL);
+
+    DEBUG_PRINT("ADV vertex %" PRIu64 " depth %d ", v->id, v->depth);
+    if(v->task)
     {
-	tree->next[i] = NULL;
+	DEBUG_PRINT("task ");
     }
 
-    tree->nextItem = nextItem;
+    DEBUG_PRINT("bc: ");
+    DEBUG_PRINT_BINCONF(v->bc);
+
+    if(!v->task) {
+	DEBUG_PRINT("children: ");
+#ifdef DEBUG
+	for (auto&& n: v->next) {
+	    DEBUG_PRINT("%" PRIu64 " (%d) ", n->id, n->next_item);
+	}	
+        DEBUG_PRINT("\n");
+#endif
+    }
+    for (auto&& n: v->next) {
+	debugprint_gametree(n);
+    }
 }
+
+void debugprint_gametree(algorithm_vertex *v)
+{
+    assert(v!=NULL);
+
+    DEBUG_PRINT("ALG vertex %" PRIu64 " next item %d ", v->id, v->next_item);
+   
+    DEBUG_PRINT("children: ");
+#ifdef DEBUG
+    for (auto&& n: v->next) {
+	DEBUG_PRINT("%" PRIu64 " ", n->id);
+    }
+    DEBUG_PRINT("\n");
+#endif
+
+
+    for (auto&& n: v->next) {
+	debugprint_gametree(n);
+    }
+}
+
+
+void delete_gametree(algorithm_vertex *v);
+void delete_gametree(adversary_vertex *v);
 
 /* Removes the game tree data. Call after all hash tables are deleted. */
-void delete_gametree(gametree *tree)
+void delete_gametree(adversary_vertex *v)
 {
-    if(tree == NULL)
-	return;
+    assert(v != NULL);
+    assert(v->bc != NULL);
+    free(v->bc);
 
-    assert(tree->bc != NULL);
-    free(tree->bc);
-
-    for(int i=1; i<=BINS;i++)
+    for (auto&& n: v->next)
     {
-	delete_gametree(tree->next[i]);
+	delete_gametree(n);
     }
-    /* if(tree->cached_conf != NULL)
-    {
-	free(tree->cached_conf);
-    } */
-
-    free(tree);
+    free(v);
 }
 
-/* macros for in-place min, mid, max of three integer numbers */
+// overload for the other vertex type
+void delete_gametree(algorithm_vertex *v)
+{
+    assert(v != NULL);
 
-/* currently disabled, as they are fixed for 3 bins */
+    for (auto&& n: v->next)
+    {
+	delete_gametree(n);
+    }
+    free(v);
 
-/*
-#define MAX(x,y,z) (y > x ? (z > y ? z : y) : (x > z ? x : z))
+}
 
-#define MID(x,y,z) ((x<y) ? (y<z) ? y : (x<z) ? z : x : (x<z) ? x : (y<z) ? z : y)
+void delete_children(algorithm_vertex *v);
+void delete_children(adversary_vertex *v);
 
-#define MIN(x,y,z) (y < x ? (z < y ? z : y) : (x < z ? x : z))
-*/
+void delete_children(algorithm_vertex *v)
+{
+    for (auto&& n: v->next)
+    {
+	delete_gametree(n);
+    }
 
-/* helper macros for debug, verbose, and measure output */
+    v->next.clear();
+}
 
-#ifdef DEBUG
-#define DEBUG_PRINT(...) fprintf(stderr, __VA_ARGS__ )
-#define DEBUG_PRINT_BINCONF(x) print_binconf_stream(stderr,x)
-#else
-#define DEBUG_PRINT(format,...)
-#define DEBUG_PRINT_BINCONF(x)
-#endif
+void delete_children(adversary_vertex *v)
+{
+    for (auto&& n: v->next)
+    {
+	delete_gametree(n);
+    }
 
-#ifdef DEEP_DEBUG
-#define DEEP_DEBUG_PRINT(...) fprintf(stderr, __VA_ARGS__ )
-#define DEEP_DEBUG_PRINT_BINCONF(x) print_binconf_stream(stderr,x)
-#else
-#define DEEP_DEBUG_PRINT(format,...)
-#define DEEP_DEBUG_PRINT_BINCONF(x)
-#endif
-
-
-#ifdef MEASURE
-#define MEASURE_PRINT(...) fprintf(stderr,  __VA_ARGS__ )
-#define MEASURE_PRINT_BINCONF(x) print_binconf_stream(stderr, x)
-#else
-#define MEASURE_PRINT(format,...)
-#define MEASURE_PRINT_BINCONF(x)
-#endif
-
-#ifdef VERBOSE
-#define VERBOSE_PRINT(...) fprintf(stderr, __VA_ARGS__ )
-#define VERBOSE_PRINT_BINCONF(x) print_binconf_stream(stderr, x)
-#else
-#define VERBOSE_PRINT(format,...)
-#define VERBOSE_PRINT_BINCONF(x)
-#endif
-
-#ifdef PROGRESS
-#define PROGRESS_PRINT(...) fprintf(stderr, __VA_ARGS__ )
-#define PROGRESS_PRINT_BINCONF(x) print_binconf_stream(stderr, x)
-#else
-#define PROGRESS_PRINT(format,...)
-#define PROGRESS_PRINT_BINCONF(x)
-#endif
+    v->next.clear();
+}
 
 
 

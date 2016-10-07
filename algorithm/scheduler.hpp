@@ -7,6 +7,7 @@
 #include "common.hpp"
 #include "minimax.hpp"
 #include "hash.hpp"
+#include "updater.hpp"
 
 #ifndef _SCHEDULER_H
 #define _SCHEDULER_H 1
@@ -75,10 +76,11 @@ int scheduler() {
     // initialize dp tables for the main thread
     dynprog_attr dpat;
     dynprog_attr_init(&dpat);
-    int ret = generate(root, &dpat);
-
+    int ret = generate(root, &dpat, root_vertex);
+    root_vertex->value = ret;
+    
     assert(ret == POSTPONED); // consistency check, may not be true for trivial trees (of size < 10)
-    //print_tasks();
+    //debugprint_gametree(root_vertex);
 
 #ifdef PROGRESS
     fprintf(stderr, "Generated %" PRIu64 " tasks.\n", task_count);
@@ -133,7 +135,7 @@ int scheduler() {
 	// update main tree and task map
 	if(!update_complete)
 	{
-	    ret = update(root, &dpat);
+	    ret = update(root_vertex);
 	    if(ret != POSTPONED)
 	    {
 		fprintf(stderr, "We have evaluated the tree: %d\n", ret);
@@ -149,7 +151,6 @@ int scheduler() {
 	    }
 	}	
     }
-
 
     dynprog_attr_free(&dpat);
 
