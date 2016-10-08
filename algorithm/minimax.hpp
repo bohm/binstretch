@@ -115,7 +115,7 @@ int adversary(const binconf *b, int depth, int mode, dynprog_attr *dpat, tree_at
 	    result_determined = true;
 	    r = 0;
 	    
-	    if(mode == GENERATING)
+	    if (mode == GENERATING)
 	    {
 		// add the vertex to the completed vertices (of the main tree)
 		pthread_mutex_lock(&completed_tasks_lock);
@@ -276,7 +276,8 @@ int algorithm(const binconf *b, int k, int depth, int mode, dynprog_attr *dpat, 
 	    } else if (below == 0)
 	    {
 		// insert analyzed_vertex into algorithm's "next" list
-		if(mode == GENERATING) {
+		if (mode == GENERATING)
+		{
 		    current_algorithm->next.push_back(analyzed_vertex);
 		}
 
