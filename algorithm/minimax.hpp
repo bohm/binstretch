@@ -16,8 +16,8 @@
 #define _MINIMAX_H 1
 
 /* declarations */
-int adversary(const binconf *b, int depth, int mode, dynprog_attr *dpat, tree_attr *outat); 
-int algorithm(const binconf *b, int k, int depth, int mode, dynprog_attr *dpat, tree_attr *outat);
+int adversary(binconf *b, int depth, int mode, dynprog_attr *dpat, tree_attr *outat); 
+int algorithm(binconf *b, int k, int depth, int mode, dynprog_attr *dpat, tree_attr *outat);
 
 /* declaring which algorithm will be used */
 #define ALGORITHM algorithm
@@ -40,7 +40,7 @@ int algorithm(const binconf *b, int k, int depth, int mode, dynprog_attr *dpat, 
 
 // We currently do not use double_move and triple_move.
  
-int adversary(const binconf *b, int depth, int mode, dynprog_attr *dpat, tree_attr *outat) {
+int adversary(binconf *b, int depth, int mode, dynprog_attr *dpat, tree_attr *outat) {
 
     adversary_vertex *current_adversary = NULL;
     algorithm_vertex *previous_algorithm = NULL;
@@ -163,7 +163,7 @@ int adversary(const binconf *b, int depth, int mode, dynprog_attr *dpat, tree_at
     return r;
 }
 
-int algorithm(const binconf *b, int k, int depth, int mode, dynprog_attr *dpat, tree_attr *outat) {
+int algorithm(binconf *b, int k, int depth, int mode, dynprog_attr *dpat, tree_attr *outat) {
 
     bool postponed_branches_present = false;
     bool building_tree = false;
@@ -196,13 +196,11 @@ int algorithm(const binconf *b, int k, int depth, int mode, dynprog_attr *dpat, 
 	if ((b->loads[i] + k < R))
 	{
 	    // insert the item into a new binconf
-	    binconf *d;
-	    d = (binconf *) malloc(sizeof(binconf));
-	    assert(d != NULL);
+	    binconf *d = new binconf;
 	    duplicate(d, b);
 	    d->loads[i] += k;
 	    d->items[k]++;
-	    sortloads(d);
+	    sortloads_one_increased(d,i);
 	    rehash(d,b,k);
 	    // initialize the adversary's next vertex in the tree (corresponding to d)
 	    adversary_vertex *analyzed_vertex;
@@ -256,7 +254,7 @@ int algorithm(const binconf *b, int k, int depth, int mode, dynprog_attr *dpat, 
 
 	    }
 	    
-	    free(d);
+	    delete d;
 
 	    if (below == 1)
 	    {

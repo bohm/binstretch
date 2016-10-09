@@ -32,8 +32,8 @@ int main(void)
     init(root); // init game tree
 
     // special heuristics for 19/14 lower bound for 5,6 bins
-    root->items[5] = 1;
-    root->loads[1] = 5; 
+    //root->items[5] = 1;
+    //root->loads[1] = 5; 
     hashinit(root);
     root_vertex = new adversary_vertex;
     llu x = 0; //workaround

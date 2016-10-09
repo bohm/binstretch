@@ -140,24 +140,45 @@ int testgs(const binconf *b)
 }
 
 // tries all the choices
-int gsheuristic(const binconf *b, int k)
+// caution: in-place -- edits b, makes sure to return
+// it as it was; does not touch hashes
+int gsheuristic(binconf *b, int k)
 {
-    binconf *d;
-    for(int i=1; i<=BINS; i++)
+    int moved_load; 
+    for (int i=1; i<=BINS; i++)
     {
-	if((b->loads[i] + k)< R)
+	if ((b->loads[i] + k)< R)
 	{
-	    d = (binconf *) malloc(sizeof(binconf));
-	    duplicate(d, b);
-	    d->loads[i] += k;
-	    d->items[k]++;
-	    sortloads(d);
-	    if(testgs(d) == 1)
+	    // debug code (disabled, seems to work)
+	    //binconf *d = new binconf;
+	    //duplicate(d,b);
+	    //binconf *e = new binconf;
+	    //duplicate(e,b);
+	    //e->loads[i] += k;
+	    //e->items[k]++;
+	    //sortloads(e);
+	    
+	    b->loads[i] += k;
+	    b->items[k]++;
+	    moved_load = sortloads_one_increased(b,i);
+	    //assert(binconf_equal(b,e));
+	    if(testgs(b) == 1)
 	    {
-		free(d);
+		b->loads[moved_load] -= k;
+		b->items[k]--;
+		sortloads_one_decreased(b,moved_load);
+		//assert(binconf_equal(b,d));
+		//delete e;
+		//delete d;
 		return 1;
+	    } else {
+		b->loads[moved_load] -= k;
+		b->items[k]--;
+		sortloads_one_decreased(b,moved_load);
+		//assert(binconf_equal(b,d));
+		//delete e;
+		//delete d;
 	    }
-	    free(d);
          }
     }
     return -1;

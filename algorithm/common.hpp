@@ -354,8 +354,42 @@ void sortloads(binconf *b)
 	b->loads[i] = b->loads[max];
 	b->loads[max] = helper;
     }
-    //assert(b->loads[1] >= b->loads[2]);
-    //assert(b->loads[2] >= b->loads[3]);
+}
+
+// sorts the loads with advice: the advice
+// being that only one load has increased, namely
+// at position newly_loaded
+
+// returns new position of the newly loaded bin
+int sortloads_one_increased(binconf *b, int newly_increased)
+{
+    int i, helper;
+    i = newly_increased;
+    while (!((i == 1) || (b->loads[i-1] >= b->loads[i])))
+    {
+	helper = b->loads[i-1];
+	b->loads[i-1] = b->loads[i];
+	b->loads[i] = helper;
+	i--;
+    }
+
+    return i;
+}
+
+// inverse to sortloads_one_increased.
+int sortloads_one_decreased(binconf *b, int newly_decreased)
+{
+    int i, helper;
+    i = newly_decreased;
+    while (!((i == BINS) || (b->loads[i+1] <= b->loads[i])))
+    {
+	helper = b->loads[i+1];
+	b->loads[i+1] = b->loads[i];
+	b->loads[i] = helper;
+	i++;
+    }
+
+    return i;
 }
 
 /* Initialize the game tree with the information in the parameters. */
