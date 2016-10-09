@@ -19,19 +19,19 @@ typedef signed char tiny;
 #define PROGRESS 1
 //#define THOROUGH_HASH_CHECKING 1
 //#define OUTPUT 1
-//#define MEASURE 1
+#define MEASURE 1
 
 // maximum load of a bin in the optimal offline setting
-#define S 41
+#define S 14
 // target goal of the online bin stretching problem
-#define R 56
+#define R 19
 
 // constants used for good situations
 #define RMOD (R-1)
 #define ALPHA (RMOD-S)
 
 // Change this number for the selected number of bins.
-#define BINS 3
+#define BINS 5
 
 // bitwise length of indices of the hash table
 #define HASHLOG 25
@@ -43,10 +43,10 @@ typedef signed char tiny;
 #define BUCKETSIZE (1<<BUCKETLOG)
 
 // the number of threads
-#define THREADS 6
+#define THREADS 2
 // a bound on total load of a configuration before we split it into a task
-#define TASK_LOAD (S*BINS)/2
-#define TASK_DEPTH 4
+#define TASK_LOAD (S*BINS)/3
+#define TASK_DEPTH 5
 
 // The following selects binarray size based on BINS. It does not need to be edited.
 #if BINS == 3
@@ -354,8 +354,8 @@ void sortloads(binconf *b)
 	b->loads[i] = b->loads[max];
 	b->loads[max] = helper;
     }
-    assert(b->loads[1] >= b->loads[2]);
-    assert(b->loads[2] >= b->loads[3]);
+    //assert(b->loads[1] >= b->loads[2]);
+    //assert(b->loads[2] >= b->loads[3]);
 }
 
 /* Initialize the game tree with the information in the parameters. */

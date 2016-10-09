@@ -23,18 +23,27 @@ int main(void)
     fprintf(stderr, "No heuristics will be applied.\n");
 #endif
 
+#ifdef MEASURE
+    timeval totaltime_start, totaltime_end, totaltime;
+    gettimeofday(&totaltime_start, NULL);
+#endif
+
     root = (binconf *) malloc(sizeof(binconf));
     init(root); // init game tree
 
     // special heuristics for 19/14 lower bound for 5,6 bins
-    // root->items[5] = 1;
-    // root->loads[1] = 5; 
+    root->items[5] = 1;
+    root->loads[1] = 5; 
     hashinit(root);
     root_vertex = new adversary_vertex;
     llu x = 0; //workaround
     init_adversary_vertex(root_vertex, root, 0, &x);
     
     int ret = scheduler();
+#ifdef MEASURE
+    gettimeofday(&totaltime_end, NULL);
+    timeval_subtract(&totaltime, &totaltime_end, &totaltime_start);
+#endif 
     fprintf(stderr, "Number of tasks: %" PRIu64 ", completed tasks: %" PRIu64 ", pruned tasks %" PRIu64 ", decreased tasks %" PRIu64 " \n",
 	    task_count, finished_task_count, removed_task_count, decreased_task_count );
 
@@ -61,9 +70,11 @@ int main(void)
 #ifdef MEASURE
     long double ratio = (long double) test_counter / (long double) maximum_feasible_counter;   
 #endif
-    MEASURE_PRINT("DP Calls: %llu; maximum_feasible calls: %llu, DP/feasible calls: %Lf, DP time: ", test_counter, maximum_feasible_counter, ratio);
+    MEASURE_PRINT("Total time: ");
+    timeval_print(&totaltime);
+    MEASURE_PRINT(" DP Calls: %llu; maximum_feasible calls: %llu, DP/feasible calls: %Lf, DP time: ", test_counter, maximum_feasible_counter, ratio);
     timeval_print(&dynTotal);
-    MEASURE_PRINT("seconds.\n");
+    MEASURE_PRINT(".\n");
 
     global_hashtable_cleanup();
     local_hashtable_cleanup();

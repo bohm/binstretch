@@ -8,6 +8,7 @@
 #include "minimax.hpp"
 #include "hash.hpp"
 #include "updater.hpp"
+#include "measure.hpp"
 
 #ifndef _SCHEDULER_H
 #define _SCHEDULER_H 1
@@ -135,7 +136,18 @@ int scheduler() {
 	// update main tree and task map
 	if(!update_complete)
 	{
+#ifdef MEASURE
+	    timeval update_start, update_end, time_difference;
+	    gettimeofday(&update_start, NULL);
+#endif
 	    ret = update(root_vertex);
+#ifdef MEASURE
+	    gettimeofday(&update_end, NULL);
+	    timeval_subtract(&time_difference, &update_end, &update_start);
+	    MEASURE_PRINT("Update tick took:");
+	    timeval_print(&time_difference);
+	    MEASURE_PRINT("\n");
+#endif	    
 	    if(ret != POSTPONED)
 	    {
 		fprintf(stderr, "We have evaluated the tree: %d\n", ret);

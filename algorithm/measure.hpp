@@ -45,7 +45,7 @@ void timeval_add(struct timeval *result, const struct timeval *t)
 
 void timeval_print(const struct timeval *t)
 {
-    MEASURE_PRINT("%ld.%06ld", t->tv_sec, t->tv_usec);
+    MEASURE_PRINT("%ld.%06ld s", t->tv_sec, t->tv_usec);
 
 }
 #endif
