@@ -203,7 +203,7 @@ bool hash_and_test(binconf *h, int item, dynprog_attr *dpat)
     return feasible;
 }
 
-int maximum_feasible_dynprog(const binconf *b, dynprog_attr *dpat)
+int maximum_feasible_dynprog(binconf *b, dynprog_attr *dpat)
 {
 #ifdef MEASURE
     maximum_feasible_counter++;
@@ -211,8 +211,10 @@ int maximum_feasible_dynprog(const binconf *b, dynprog_attr *dpat)
     DEEP_DEBUG_PRINT("Starting dynprog maximization of configuration:\n");
     DEEP_DEBUG_PRINT_BINCONF(b);
     DEEP_DEBUG_PRINT("\n"); 
-    binconf h;
-    duplicate(&h,b);
+
+    // due to state-reversing memory copy should not be needed
+    //binconf h;
+    //duplicate(&h,b);
     int dynitem;
     
     // calculate lower bound for the optimum using Best Fit Decreasing
@@ -269,7 +271,7 @@ int maximum_feasible_dynprog(const binconf *b, dynprog_attr *dpat)
     // DEBUG: compare it with ordinary for cycle
     for (dynitem=maxvalue; dynitem>bestfitvalue; dynitem--)
     {
-	bool feasible = hash_and_test(&h,dynitem, dpat);
+	bool feasible = hash_and_test(b,dynitem, dpat);
 	if(feasible)
 	{
 	    break;

@@ -272,6 +272,73 @@ void rehash(binconf *d, const binconf *prev, int item)
     d->itemhash ^= Zi[item][d->items[item]];
 }
 
+// rehashes binconf given information that
+// hashes changed in the interval [from,to]
+// and one item was added (once)
+void rehash_increased_range(binconf *d, int item, int from, int to)
+{
+    assert(from <= to);
+    assert(to <= BINS);
+    assert(d->items[item] >= 1);
+
+    if (from == to)
+    {
+	d->loadhash ^= Zl[from][d->loads[from] - item]; // old load
+	d->loadhash ^= Zl[from][d->loads[from]]; // new load
+    } else {
+	
+	// rehash loads in [from, to).
+	// here it is easy: the load on i changed from
+	// d->loads[i+1] to d->loads[i]
+	for (int i = from; i < to; i++)
+	{
+	    d->loadhash ^= Zl[i][d->loads[i+1]]; // the old load on i
+	    d->loadhash ^= Zl[i][d->loads[i]]; // the new load on i
+	}
+
+	// the last load is tricky, because it is the increased load
+	
+	d->loadhash ^= Zl[to][d->loads[from] - item]; // the old load
+	d->loadhash ^= Zl[to][d->loads[to]]; // the new load
+    }
+    
+    // rehash item lists
+    d->itemhash ^= Zi[item][d->items[item]-1];
+    d->itemhash ^= Zi[item][d->items[item]];
+}
+
+// complement to increased range, only this time just one item decreased
+void rehash_decreased_range(binconf *d, int item, int from, int to)
+{
+    assert(from <= to);
+    assert(to <= BINS);
+
+    if (from == to)
+    {
+	d->loadhash ^= Zl[from][d->loads[from] + item]; // old load
+	d->loadhash ^= Zl[from][d->loads[from]]; // new load
+    } else {
+	
+	// rehash loads in (from, to].
+	// here it is easy: the load on i changed from
+	// d->loads[i] to d->loads[i-1]
+	for (int i = from+1; i <= to; i++)
+	{
+	    d->loadhash ^= Zl[i][d->loads[i-1]]; // the old load on i
+	    d->loadhash ^= Zl[i][d->loads[i]]; // the new load on i
+	}
+
+	// the first load is tricky
+	
+	d->loadhash ^= Zl[from][d->loads[to] + item]; // the old load
+	d->loadhash ^= Zl[from][d->loads[from]]; // the new load
+    }
+    
+    // rehash item lists
+    d->itemhash ^= Zi[item][d->items[item]+1];
+    d->itemhash ^= Zi[item][d->items[item]];
+}
+
 // rehash for dynamic programming purposes, assuming we have added
 // one item of size "dynitem"
 void dp_rehash(binconf *d, int dynitem)

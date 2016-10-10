@@ -22,16 +22,16 @@ typedef signed char tiny;
 #define MEASURE 1
 
 // maximum load of a bin in the optimal offline setting
-#define S 14
+#define S 33
 // target goal of the online bin stretching problem
-#define R 19
+#define R 45
 
 // constants used for good situations
 #define RMOD (R-1)
 #define ALPHA (RMOD-S)
 
 // Change this number for the selected number of bins.
-#define BINS 5
+#define BINS 3
 
 // bitwise length of indices of the hash table
 #define HASHLOG 25
@@ -45,8 +45,8 @@ typedef signed char tiny;
 // the number of threads
 #define THREADS 2
 // a bound on total load of a configuration before we split it into a task
-#define TASK_LOAD (S*BINS)/3
-#define TASK_DEPTH 5
+#define TASK_LOAD (S*BINS)/2
+#define TASK_DEPTH 4
 
 // The following selects binarray size based on BINS. It does not need to be edited.
 #if BINS == 3

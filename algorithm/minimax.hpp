@@ -196,26 +196,63 @@ int algorithm(binconf *b, int k, int depth, int mode, dynprog_attr *dpat, tree_a
 	if ((b->loads[i] + k < R))
 	{
 	    // insert the item into a new binconf
+	    /*
 	    binconf *d = new binconf;
 	    duplicate(d, b);
 	    d->loads[i] += k;
 	    d->items[k]++;
 	    sortloads_one_increased(d,i);
 	    rehash(d,b,k);
+	    */
+
+	    // editing binconf in place -- undoing changes later
+	    // TODO: it may be useful to add #ifdef sanity checks here
+	    // like the commented ones above
+	    
+	    b->loads[i] += k;
+	    b->items[k]++;
+	    int from = sortloads_one_increased(b,i);
+	    rehash_increased_range(b,k,from, i); 
+
+            /*
+	    binconf *test = new binconf;
+	    duplicate(test,b);
+	    test->loads[i] += k;
+	    test->items[k]++;
+	    int from = sortloads_one_increased(test,i);
+	    rehash_increased_range(test, k, from, i);
+	    assert(test->loadhash == d->loadhash);
+	    assert(test->itemhash == d->itemhash);
+	    delete test;
+	    */
+
+	    /*
+	    binconf *test2 = new binconf;
+	    duplicate(test2, d);
+	    test2->loads[from] -= k;
+	    test2->items[k]--;
+	    int to = sortloads_one_decreased(test2,from);
+	    rehash_decreased_range(test2, k, from, to);
+	    assert(test2->loadhash == b->loadhash);
+	    assert(test2->itemhash == b->itemhash);
+	    delete test2;
+   
+	    */
+	    
 	    // initialize the adversary's next vertex in the tree (corresponding to d)
 	    adversary_vertex *analyzed_vertex;
 
 	    if (mode == GENERATING)
 	    {
 		analyzed_vertex = new adversary_vertex;
-		init_adversary_vertex(analyzed_vertex, d, depth, &(outat->vertex_counter));
+		init_adversary_vertex(analyzed_vertex, b, depth, &(outat->vertex_counter));
 	    }
 	    
 	    // TODO: possibly also add completion check query
 	    bool found_in_cache = false;
 	    
 	    // query the large hashtable about the new binconf
-	    int conf_in_hashtable = is_conf_hashed(ht,d);
+	    int conf_in_hashtable = is_conf_hashed(ht,b);
     
 	    if (conf_in_hashtable != -1)
 	    {
@@ -236,7 +273,7 @@ int algorithm(binconf *b, int k, int depth, int mode, dynprog_attr *dpat, tree_a
 		    outat->last_adv_v = analyzed_vertex;
 		}
 
-		below = ADVERSARY(d, depth, mode, dpat, outat);
+		below = ADVERSARY(b, depth, mode, dpat, outat);
 
 		if (mode == GENERATING)
 		{
@@ -246,15 +283,19 @@ int algorithm(binconf *b, int k, int depth, int mode, dynprog_attr *dpat, tree_a
 		}
 		
 		DEEP_DEBUG_PRINT(stderr, "We have calculated the following position, result is %d\n", r);
-		DEEP_DEBUG_PRINT_BINCONF(d);
+		DEEP_DEBUG_PRINT_BINCONF(b);
 
 		if (mode == EXPLORING) {
-		    conf_hashpush(ht,d,below);
+		    conf_hashpush(ht,b,below);
 		}
 
 	    }
-	    
-	    delete d;
+
+	    // return b to original form
+	    b->loads[from] -= k;
+	    b->items[k]--;
+	    int to = sortloads_one_decreased(b,from);
+	    rehash_decreased_range(b, k, from, to);
 
 	    if (below == 1)
 	    {

@@ -50,7 +50,13 @@ void *evaluate_tasks(void * tid)
 	   PROGRESS_PRINT("Thread %u takes up task number %u: ", threadid, taskcounter);
 	   PROGRESS_PRINT_BINCONF(&current.bc);
 	}
+	binconf sanity_check;
+	duplicate(&sanity_check, &(current.bc));
+
 	int ret = explore(&(current.bc), &dpat);
+
+	assert(binconf_equal(&(current.bc), &sanity_check));
+	
 	DEBUG_PRINT("THR%d: Finished bc (value %d) ", threadid, ret);
 	DEBUG_PRINT_BINCONF(&(current.bc));
 
