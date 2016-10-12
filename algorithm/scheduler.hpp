@@ -17,7 +17,7 @@
 void *evaluate_tasks(void * tid)
 {
     unsigned int threadid =  * (unsigned int *) tid;
-    unsigned int taskcounter = 0;
+    uint64_t taskcounter = 0;
     dynprog_attr dpat;
     dynprog_attr_init(&dpat);
     task current;
@@ -26,10 +26,7 @@ void *evaluate_tasks(void * tid)
 
     bool call_to_terminate = false;
     
-    pthread_mutex_lock(&thread_progress_lock); // LOCK
     call_to_terminate = global_terminate_flag;
-    pthread_mutex_unlock(&thread_progress_lock); // UNLOCK
-
     while(!call_to_terminate)
     {
 	pthread_mutex_lock(&taskq_lock); // LOCK
@@ -47,28 +44,29 @@ void *evaluate_tasks(void * tid)
 	taskcounter++;
 
 	if(taskcounter % 300 == 0) {
-	   PROGRESS_PRINT("Thread %u takes up task number %u: ", threadid, taskcounter);
+	   PROGRESS_PRINT("Thread %u takes up task number %" PRIu64 ": ", threadid, taskcounter);
 	   PROGRESS_PRINT_BINCONF(&current.bc);
 	}
-	binconf sanity_check;
-	duplicate(&sanity_check, &(current.bc));
-
+	
 	int ret = explore(&(current.bc), &dpat);
 
-	assert(binconf_equal(&(current.bc), &sanity_check));
-	
+	// add task to the completed_tasks map
+	pthread_mutex_lock(&collection_lock[threadid]);
+	completed_tasks[threadid].insert(std::pair<uint64_t, int>(current.bc.loadhash ^ current.bc.itemhash, ret));
+	pthread_mutex_unlock(&collection_lock[threadid]);
+
+
+
 	DEBUG_PRINT("THR%d: Finished bc (value %d) ", threadid, ret);
 	DEBUG_PRINT_BINCONF(&(current.bc));
 
-	// check global signal to terminate
-	pthread_mutex_lock(&thread_progress_lock);
-	finished_task_count++;
-	call_to_terminate = global_terminate_flag;
-	pthread_mutex_unlock(&thread_progress_lock);
+	// check the (atomic) global terminate flag
+        call_to_terminate = global_terminate_flag;
     }
      
     pthread_mutex_lock(&thread_progress_lock);
     thread_finished[threadid] = true;
+    finished_task_count += taskcounter;
     pthread_mutex_unlock(&thread_progress_lock);
 
     dynprog_attr_free(&dpat);
@@ -127,9 +125,11 @@ int scheduler() {
     // actively wait for their completion
     bool stop = false;
     bool update_complete = false;
+    int collected;
     while (!stop) {
 	sleep(1);
 	stop = true;
+
 	pthread_mutex_lock(&thread_progress_lock);
 	for(unsigned int i = 0; i < THREADS; i++) {
 	    if (!thread_finished[i])
@@ -139,6 +139,8 @@ int scheduler() {
 	}
 	pthread_mutex_unlock(&thread_progress_lock);
 
+	// collect tasks from worker threads
+	collected = collect_tasks();
 	// update main tree and task map
 	if(!update_complete)
 	{
@@ -150,9 +152,9 @@ int scheduler() {
 #ifdef MEASURE
 	    gettimeofday(&update_end, NULL);
 	    timeval_subtract(&time_difference, &update_end, &update_start);
-	    MEASURE_PRINT("Update tick took:");
+	    MEASURE_PRINT("Update tick took: ");
 	    timeval_print(&time_difference);
-	    MEASURE_PRINT("\n");
+	    MEASURE_PRINT(" and collected %u tasks. \n", collected);
 #endif	    
 	    if(ret != POSTPONED)
 	    {

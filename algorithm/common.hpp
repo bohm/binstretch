@@ -8,6 +8,7 @@
 #include <pthread.h>
 #include <map>
 #include <list>
+#include <atomic>
 
 typedef unsigned long long int llu;
 typedef signed char tiny;
@@ -22,9 +23,9 @@ typedef signed char tiny;
 #define MEASURE 1
 
 // maximum load of a bin in the optimal offline setting
-#define S 33
+#define S 41
 // target goal of the online bin stretching problem
-#define R 45
+#define R 56
 
 // constants used for good situations
 #define RMOD (R-1)
@@ -155,6 +156,10 @@ typedef struct tree_attr tree_attr;
 
 // global task map indexed by binconf hashes
 std::map<llu, task> tm;
+// task map counting the number of references (occurences) for a given task
+// unlike tm, this map is only used by the updater and generator thread
+std::map<uint64_t, uint64_t> reference_counter;
+
 uint64_t task_count = 0;
 uint64_t finished_task_count = 0;
 uint64_t removed_task_count = 0; // number of tasks which are removed due to minimax pruning
@@ -163,8 +168,14 @@ pthread_mutex_t taskq_lock;
 
 // global hash-like map of completed tasks (and their parents up to
 // the root)
-std::map<llu, int> completed_tasks;
-pthread_mutex_t completed_tasks_lock;
+std::map<uint64_t, int> collected_tasks;
+
+// hash-like map of completed tasks, serving as output map for each
+// thread separately
+std::map<uint64_t, int> completed_tasks[THREADS];
+pthread_mutex_t collection_lock[THREADS];
+
+//pthread_mutex_t completed_tasks_lock;
 
 // counter of finished threads
 bool thread_finished[THREADS];
@@ -174,7 +185,7 @@ bool thread_finished[THREADS];
 //std::map<uint64_t, gametree> treemap;
 //pthread_mutex_t treemap_lock;
 
-bool global_terminate_flag = false;
+std::atomic_bool global_terminate_flag(false);
 pthread_mutex_t thread_progress_lock;
 
 // root of the tree (initialized in main.cpp)
@@ -320,7 +331,10 @@ void init_global_locks(void)
 {
     pthread_mutex_init(&taskq_lock, NULL);
     pthread_mutex_init(&thread_progress_lock, NULL);
-    pthread_mutex_init(&completed_tasks_lock, NULL);
+    for ( int i =0; i < THREADS; i++)
+    {
+	pthread_mutex_init(&collection_lock[i], NULL);
+    }
 //    pthread_mutex_init(&treemap_lock, NULL);
 
 }

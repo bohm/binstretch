@@ -118,9 +118,7 @@ int adversary(binconf *b, int depth, int mode, dynprog_attr *dpat, tree_attr *ou
 	    if (mode == GENERATING)
 	    {
 		// add the vertex to the completed vertices (of the main tree)
-		pthread_mutex_lock(&completed_tasks_lock);
-		completed_tasks.insert(std::pair<llu, int>(b->loadhash ^ b->itemhash, r));
-		pthread_mutex_unlock(&completed_tasks_lock);
+		collected_tasks.insert(std::pair<uint64_t, int>(b->loadhash ^ b->itemhash, r));
 
 		// decrease the game tree from here below
 		//decrease(current_adversary); // temp
@@ -151,9 +149,7 @@ int adversary(binconf *b, int depth, int mode, dynprog_attr *dpat, tree_attr *ou
     if (mode == GENERATING && r == 1 && postponed_branches_present == false)
     {
         // add the vertex to the completed vertices (of the main tree)
-	pthread_mutex_lock(&completed_tasks_lock);
-	completed_tasks.insert(std::pair<llu, int>(b->loadhash ^ b->itemhash, r));
-	pthread_mutex_unlock(&completed_tasks_lock);
+	collected_tasks.insert(std::pair<uint64_t, int>(b->loadhash ^ b->itemhash, r));
 	// decrease the game tree from here below (no branches should be present,
 	// so it just marks this vertex as decreased)
 	
@@ -353,11 +349,6 @@ int explore(binconf *b, dynprog_attr *dpat)
     int ret = adversary(b, 0, EXPLORING, dpat, outat);
     assert(ret != POSTPONED);
     
-    // add task to the completed_tasks map
-    pthread_mutex_lock(&completed_tasks_lock);
-    completed_tasks.insert(std::pair<llu, int>(b->loadhash ^ b->itemhash, ret));
-    pthread_mutex_unlock(&completed_tasks_lock);
-
     return ret;
 }
 

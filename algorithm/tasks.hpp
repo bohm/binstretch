@@ -96,15 +96,36 @@ void decrease_task(llu hash)
 
 int completion_check(llu hash)
 {
-    pthread_mutex_lock(&completed_tasks_lock);
-    auto fin = completed_tasks.find(hash);
+    //pthread_mutex_lock(&completed_tasks_lock);
+    auto fin = collected_tasks.find(hash);
     int ret = POSTPONED;
-    if(fin != completed_tasks.end()) {
+    if(fin != collected_tasks.end()) {
 	ret = fin->second;
+	assert(ret == 0 || ret == 1);
     }
-    pthread_mutex_unlock(&completed_tasks_lock);
+    //pthread_mutex_unlock(&completed_tasks_lock);
 
     return ret;
+}
+
+// called by the updater, collects tasks from other threads
+unsigned int collect_tasks()
+{
+    unsigned int collected = 0;
+    for (int i =0; i < THREADS; i++)
+    {
+	pthread_mutex_lock(&collection_lock[i]);
+
+	for (auto &kv: completed_tasks[i])
+	{
+	    collected_tasks.insert(kv);
+	    collected++;
+	}
+
+	completed_tasks[i].clear();
+	pthread_mutex_unlock(&collection_lock[i]);
+    }
+    return collected;
 }
 
 /* A debug function for printing out the global task map. */
