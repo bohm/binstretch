@@ -365,11 +365,11 @@ int8_t is_conf_hashed(binconf *hashtable, const binconf *d)
     llu lhash = 0;
     llu ihash = 0;
     int8_t posvalue = -1;
-    binconf r;
+    //binconf r;
     assert(lp < HASHSIZE);
     pthread_mutex_lock(&bucketlock[blp]); // LOCK
-    duplicate(&r, &(hashtable[lp])); 
-    posvalue = r.posvalue; lhash = r.loadhash; ihash = r.itemhash;
+    //duplicate(&r, &(hashtable[lp])); 
+    posvalue = hashtable[lp].posvalue; lhash = hashtable[lp].loadhash; ihash = hashtable[lp].itemhash;
     pthread_mutex_unlock(&bucketlock[blp]); // UNLOCK
     assert(posvalue == 1 || posvalue == 0 || posvalue == -1);
     if (posvalue != -1)
