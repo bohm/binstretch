@@ -47,9 +47,10 @@ int main(void)
     {
 	fprintf(stderr, "Lower bound for %d/%d Bin Stretching on %d bins with root:\n", R,S,BINS);
 	print_binconf_stream(stderr, root);
-#ifdef DEBUG
-	debugprint_gametree(root_vertex);
-#endif
+	FILE* out = fopen("partial_tree.txt", "w");
+	assert(out != NULL);
+	print_partial_gametree(out, root_vertex);
+	fclose(out);
     } else {
 	fprintf(stderr, "Algorithm wins %d/%d Bin Stretching on %d bins with root:\n", R,S,BINS);
 	print_binconf_stream(stderr, root);

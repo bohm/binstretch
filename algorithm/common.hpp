@@ -23,9 +23,9 @@ typedef signed char tiny;
 #define MEASURE 1
 
 // maximum load of a bin in the optimal offline setting
-#define S 41
+#define S 33
 // target goal of the online bin stretching problem
-#define R 56
+#define R 45
 
 // constants used for good situations
 #define RMOD (R-1)
@@ -435,54 +435,64 @@ void init_algorithm_vertex(algorithm_vertex *v, int next_item, llu *vertex_count
     v->value = POSTPONED;
 }
 
-void debugprint_gametree(adversary_vertex *v);
-void debugprint_gametree(algorithm_vertex *v);
+void print_partial_gametree(FILE* stream, adversary_vertex *v);
+void print_partial_gametree(FILE* stream, algorithm_vertex *v);
 
-void debugprint_gametree(adversary_vertex *v)
+void print_partial_gametree(FILE* stream, adversary_vertex *v)
 {
     assert(v!=NULL);
     assert(v->bc != NULL);
 
-    DEBUG_PRINT("ADV vertex %" PRIu64 " depth %d ", v->id, v->depth);
-    if(v->task)
+    fprintf(stream, "ADV vertex %" PRIu64 " depth %d ", v->id, v->depth);
+    if (v->task)
     {
-	DEBUG_PRINT("task ");
+	fprintf(stream, "task ");
     }
 
-    DEBUG_PRINT("bc: ");
-    DEBUG_PRINT_BINCONF(v->bc);
+    if (v->value == 0 || v->value == 1)
+    {
+	fprintf(stream, "value %d ", v->value);
+    }
+    
+    if (v->elsewhere)
+    {
+	fprintf(stream, "elsewhere ");
+    }
+
+    fprintf(stream,"bc: ");
+    print_binconf_stream(stream, v->bc);
 
     if(!v->task) {
-	DEBUG_PRINT("children: ");
-#ifdef DEBUG
+	fprintf(stream,"children: ");
 	for (auto&& n: v->next) {
-	    DEBUG_PRINT("%" PRIu64 " (%d) ", n->id, n->next_item);
+	    fprintf(stream,"%" PRIu64 " (%d) ", n->id, n->next_item);
 	}	
-        DEBUG_PRINT("\n");
-#endif
+        fprintf(stream,"\n");
     }
     for (auto&& n: v->next) {
-	debugprint_gametree(n);
+	print_partial_gametree(stream, n);
     }
 }
 
-void debugprint_gametree(algorithm_vertex *v)
+void print_partial_gametree(FILE* stream, algorithm_vertex *v)
 {
     assert(v!=NULL);
 
-    DEBUG_PRINT("ALG vertex %" PRIu64 " next item %d ", v->id, v->next_item);
-   
-    DEBUG_PRINT("children: ");
-#ifdef DEBUG
-    for (auto&& n: v->next) {
-	DEBUG_PRINT("%" PRIu64 " ", n->id);
+    fprintf(stream,"ALG vertex %" PRIu64 " next item %d ", v->id, v->next_item);
+
+    if (v->value == 0 || v->value == 1)
+    {
+	fprintf(stream, "value %d ", v->value);
     }
-    DEBUG_PRINT("\n");
-#endif
 
+    fprintf(stream,"children: ");
+    for (auto&& n: v->next) {
+	fprintf(stream,"%" PRIu64 " ", n->id);
+    }
+    fprintf(stream,"\n");
 
     for (auto&& n: v->next) {
-	debugprint_gametree(n);
+	print_partial_gametree(stream, n);
     }
 }
 
@@ -540,7 +550,43 @@ void delete_children(adversary_vertex *v)
     v->next.clear();
 }
 
+void delete_all_except(adversary_vertex *v, int right_move)
+{
 
+    algorithm_vertex *right_vertex;
+    for (auto&& n: v->next)
+    {
+	if (n->next_item == right_move)
+	{
+	    right_vertex = n;
+	} else {
+	    delete_gametree(n);
+	}
+    }
+
+    v->next.clear();
+    v->next.push_back(right_vertex);
+}
+
+/* 
+void delete_all_except(algorithm_vertex *v, const binconf *right_bc)
+{
+
+    adversary_vertex *right_vertex;
+    for (auto&& n: v->next)
+    {
+	if (binconf_equal(right_bc, n->bc))
+	{
+	    right_vertex = n;
+	} else {
+	    delete_gametree(n);
+	}
+    }
+
+    v->next.clear();
+    v->next.push_back(right_vertex);
+}
+*/
 
 
 #endif

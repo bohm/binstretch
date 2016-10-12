@@ -70,7 +70,11 @@ int update(algorithm_vertex *v);
 int update(adversary_vertex *v)
 {
     assert(v != NULL);
-    
+
+    if( v->value == 0 || v->value == 1)
+    {
+	return v->value;
+    }
     uint64_t hash = v->bc->itemhash ^ v->bc->loadhash;
 
     int completed_value;
@@ -80,6 +84,9 @@ int update(adversary_vertex *v)
     if (completed_value != POSTPONED && !(v->decreased) )
     {
 	decrease(v);
+	delete_children(v);
+	v->elsewhere = true;
+	v->value = completed_value;
 	return completed_value;
     }
 
@@ -88,9 +95,9 @@ int update(adversary_vertex *v)
 	    return POSTPONED;
     }
 
-    bool postponed_branches_present = false;
-    bool result_determined = false;
     int result = 1;
+    int right_move;
+    
     std::list<algorithm_vertex*>::iterator it = v->next.begin();
     while ( it != v->next.end())
     {
@@ -99,7 +106,7 @@ int update(adversary_vertex *v)
 	if (below == 0)
 	{
 	    result = 0;
-	    result_determined = true;
+	    right_move = n->next_item;
 	    it++;
 	} else if (below == 1)
 	{
@@ -108,7 +115,6 @@ int update(adversary_vertex *v)
 	    it = v->next.erase(it); // serves as it++
 	} else if (below == POSTPONED)
 	{
-	    postponed_branches_present = true;
 	    if (result == 1) {
 		result = POSTPONED;
 	    }
@@ -116,14 +122,17 @@ int update(adversary_vertex *v)
 	}
     }
 
-    if (postponed_branches_present == true && result == 0)
+    if (result == 0)
     {
 	decrease(v);
+	delete_all_except(v, right_move);
     }
 
-    if (postponed_branches_present == false || result == 0)
+    if (result == 0 || result == 1)
     {
+	v->value = result;
 	//add binconf to completed cache
+	collected_tasks.insert(std::pair<uint64_t, int>(hash, result));
     }
 
     return result;
@@ -132,8 +141,11 @@ int update(adversary_vertex *v)
 int update(algorithm_vertex *v)
 {
     assert(v != NULL);
-    bool postponed_branches_present = false;
-    bool result_determined = false;
+
+    if (v->value == 0 || v->value == 1)
+    {
+	return v->value;
+    }
 
     int result = 0;
     std::list<adversary_vertex*>::iterator it = v->next.begin();
@@ -145,16 +157,17 @@ int update(algorithm_vertex *v)
 	if (below == 1)
 	{
 	    result = 1;
-	    result_determined = true;
-	    it++;
+	    //right_bc = n->bc;
+	    it++; // break here is possible?
 	} else if (below == 0)
 	{
-	    // delete subtree
-	    delete_gametree(n);
-	    it = v->next.erase(it); // serves as it++
+	    // do not delete subtree, it might be part
+	    // of the lower bound
+	    //delete_gametree(n);
+	    //it = v->next.erase(it); // serves as it++
+	    it++;
 	} else if (below == POSTPONED)
         {
-	    postponed_branches_present = true;
 	    if (result == 0) {
 		result = POSTPONED;
 	    }
@@ -162,11 +175,16 @@ int update(algorithm_vertex *v)
 	}
     }
     
-    if (postponed_branches_present == true && result == 1)
+    if (result == 1)
     {
 	decrease(v);
+	// no need to delete, will be called by update(ADV)
     }
 
+    if (result == 0 || result == 1)
+    {
+	v->value = result;
+    }
     // algorithm's vertices are not cached
 
     return result;
