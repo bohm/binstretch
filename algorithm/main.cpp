@@ -24,7 +24,6 @@ int main(void)
 #endif
 
 #ifdef MEASURE
-    timeval totaltime_start, totaltime_end, totaltime;
     gettimeofday(&totaltime_start, NULL);
 #endif
 
@@ -40,10 +39,6 @@ int main(void)
     init_adversary_vertex(root_vertex, root, 0, &x);
     
     int ret = scheduler();
-#ifdef MEASURE
-    gettimeofday(&totaltime_end, NULL);
-    timeval_subtract(&totaltime, &totaltime_end, &totaltime_start);
-#endif 
     fprintf(stderr, "Number of tasks: %" PRIu64 ", completed tasks: %" PRIu64 ", pruned tasks %" PRIu64 ", decreased tasks %" PRIu64 " \n",
 	    task_count, finished_task_count, removed_task_count, decreased_task_count );
 
@@ -52,11 +47,8 @@ int main(void)
     {
 	fprintf(stderr, "Lower bound for %d/%d Bin Stretching on %d bins with root:\n", R,S,BINS);
 	print_binconf_stream(stderr, root);
-#ifdef OUTPUT
-	printf("strict digraph %d%d {\n", R, S);
-	printf("overlap = none;\n");
-	print_gametree(t);
-	printf("}\n");
+#ifdef DEBUG
+	debugprint_gametree(root_vertex);
 #endif
     } else {
 	fprintf(stderr, "Algorithm wins %d/%d Bin Stretching on %d bins with root:\n", R,S,BINS);
@@ -70,8 +62,6 @@ int main(void)
 #ifdef MEASURE
     long double ratio = (long double) test_counter / (long double) maximum_feasible_counter;   
 #endif
-    MEASURE_PRINT("Total time: ");
-    timeval_print(&totaltime);
     MEASURE_PRINT(" DP Calls: %llu; maximum_feasible calls: %llu, DP/feasible calls: %Lf, DP time: ", test_counter, maximum_feasible_counter, ratio);
     timeval_print(&dynTotal);
     MEASURE_PRINT(".\n");

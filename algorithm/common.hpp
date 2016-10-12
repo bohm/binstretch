@@ -192,6 +192,11 @@ pthread_mutex_t thread_progress_lock;
 binconf *root;
 adversary_vertex *root_vertex;
 
+#ifdef MEASURE
+// time measuring global variable
+timeval totaltime_start;
+#endif
+
 void duplicate(binconf *t, const binconf *s) {
     for(int i=1; i<=BINS; i++)
 	t->loads[i] = s->loads[i];

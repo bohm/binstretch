@@ -125,7 +125,7 @@ int scheduler() {
     // actively wait for their completion
     bool stop = false;
     bool update_complete = false;
-    int collected;
+    unsigned int collected_no;
     while (!stop) {
 	sleep(1);
 	stop = true;
@@ -140,7 +140,7 @@ int scheduler() {
 	pthread_mutex_unlock(&thread_progress_lock);
 
 	// collect tasks from worker threads
-	collected = collect_tasks();
+	collected_no = collect_tasks();
 	// update main tree and task map
 	if(!update_complete)
 	{
@@ -154,11 +154,23 @@ int scheduler() {
 	    timeval_subtract(&time_difference, &update_end, &update_start);
 	    MEASURE_PRINT("Update tick took: ");
 	    timeval_print(&time_difference);
-	    MEASURE_PRINT(" and collected %u tasks. \n", collected);
+	    MEASURE_PRINT(" and collected %u tasks. \n", collected_no);
 #endif	    
 	    if(ret != POSTPONED)
 	    {
 		fprintf(stderr, "We have evaluated the tree: %d\n", ret);
+
+		// we measure the time now, instead of when scheduler() terminates,
+		// because for large inputs, it can take quite a bit of time for
+		// all threads to terminate
+#ifdef MEASURE
+		timeval totaltime_end, totaltime;
+		gettimeofday(&totaltime_end, NULL);
+		timeval_subtract(&totaltime, &totaltime_end, &totaltime_start);
+		MEASURE_PRINT("Total time: ");
+		timeval_print(&totaltime);
+#endif 
+
 		DEBUG_PRINT("sanity check: ");
 		DEBUG_PRINT_BINCONF(root);
 		// instead of breaking, signal a call to terminate to other threads
