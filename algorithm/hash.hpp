@@ -13,20 +13,25 @@ size hash table. Does not use CHAINLEN. The hashing table should
 behave more predictably in terms of memory use.
 */
 
+/* As an experiment to save space, we will make the caching table
+values only 64-bit long, where the first 63 bits correspond to the 
+stored value's 63-bit hash and the last bit corresponds to the victory
+value of the item. */
+
+/* As a result, thorough hash checking is currently not possible. */
+
 llu **Zi; // Zobrist table for items
 llu **Zl; // Zobrist table for loads
 
 // generic hash table (for configurations)
-binconf *ht;
+uint64_t *ht;
+
 
 pthread_mutex_t *bucketlock;
 pthread_mutex_t *dpbucketlock;
 
-// output hash table (needs to be different)
-binconf *outht;
-
 // hash table for dynamic programming calls / feasibility checks
-dp_hash_item *dpht;
+uint64_t *dpht;
 
 // DEBUG: Mersenne twister
 
@@ -49,16 +54,27 @@ llu rand_64bit()
     return r;
 }
 
+// zeroes last bit of a number -- useful to check hashes
+inline uint64_t zero_last_bit(uint64_t n)
+{
+    return ((n >> 1) << 1);
+}
+
+int8_t get_last_bit(uint64_t n)
+{
+    return ((n & 1) == 1);
+}
+
 /* Initializes the Zobrist hash table.
    Adding Zl[i][0] and Zi[i][0] enables us
    to "unhash" zero.
  */
 void zobrist_init()
 {
-    // DEBUG: seeded, non-random
+    // seeded, non-random
     srand(182371293);
     Zi = (llu **) malloc((S+1)*sizeof(llu *));
-    Zl = (llu **) malloc((BINS+1)*sizeof(llu *)); //TODO: make the 3 a generic number
+    Zl = (llu **) malloc((BINS+1)*sizeof(llu *));
 
     for(int i=1; i<=BINS; i++)
     {
@@ -84,21 +100,13 @@ void zobrist_init()
 void global_hashtable_init()
 {
 
-    dpht = (dp_hash_item *) malloc(HASHSIZE * sizeof(dp_hash_item));
+    dpht = (uint64_t *) malloc(HASHSIZE * sizeof(dp_hash_item));
     assert(dpht != NULL);
 
     for (llu i =0; i < HASHSIZE; i++)
     {
-	dpht[i].feasible = -1;
+	dpht[i] = 0;
     }
-#ifdef OUTPUT  // not tested yet
-    outht = (binconf *) malloc(HASHSIZE * sizeof(binconf));
-    assert(outht != NULL);
-    for (llu i =0; i < HASHSIZE; i++)
-    {
-	outht[i].posvalue = -1;
-    }
-#endif
     zobrist_init();
 #ifdef MEASURE
     measure_init();
@@ -107,12 +115,12 @@ void global_hashtable_init()
 
 void local_hashtable_init()
 {
-    ht = (binconf *) malloc(HASHSIZE * sizeof(binconf));
+    ht = (uint64_t *) malloc(HASHSIZE * sizeof(uint64_t));
     assert(ht != NULL);
 
-    for (llu i =0; i < HASHSIZE; i++)
+    for (uint64_t i =0; i < HASHSIZE; i++)
     {
-	ht[i].posvalue = -1;
+	ht[i] = 0;
     }
 }
 
@@ -146,7 +154,6 @@ void global_hashtable_cleanup()
     free(Zi);
 
     free(dpht);
-    free(outht); 
 }
 
 // cleanup function -- technically not necessary but useful for memory leak checking
@@ -357,36 +364,32 @@ void dp_unhash(binconf *d, int dynitem)
 
 /* Checks if an element is hashed, returns -1 (not hashed)
    or 0/1 if it is. */
-int8_t is_conf_hashed(binconf *hashtable, const binconf *d)
+int8_t is_conf_hashed(uint64_t *hashtable, const binconf *d)
 {
-    unsigned int lp = hashlogpart(d->itemhash ^ d->loadhash);
+    uint64_t bchash = d->itemhash ^ d->loadhash;
+    //fprintf(stderr, "Bchash %" PRIu64 ", zero_last_bit %" PRIu64 " get_last_bit %" PRId8 " \n", bchash, zero_last_bit(bchash), get_last_bit(bchash));
+
+    unsigned int lp = hashlogpart(bchash);
     unsigned int blp = bucketlockpart((llu) lp);
 
+    uint64_t foundhash;
     llu lhash = 0;
     llu ihash = 0;
     int8_t posvalue = -1;
     //binconf r;
     assert(lp < HASHSIZE);
+    
     pthread_mutex_lock(&bucketlock[blp]); // LOCK
-    //duplicate(&r, &(hashtable[lp])); 
-    posvalue = hashtable[lp].posvalue; lhash = hashtable[lp].loadhash; ihash = hashtable[lp].itemhash;
+    //duplicate(&r, &(hashtable[lp]));
+    foundhash = hashtable[lp];
     pthread_mutex_unlock(&bucketlock[blp]); // UNLOCK
-    assert(posvalue == 1 || posvalue == 0 || posvalue == -1);
-    if (posvalue != -1)
+    if (zero_last_bit(bchash) == zero_last_bit(foundhash))
     {
-	if (lhash == d->loadhash && ihash == d->itemhash)
-	{
-#ifdef THOROUGH_HASH_CHECKING
-	    if (!binconf_equal(d,&r)) {
-		return -1;
-	    }
-#endif
-	    DEEP_DEBUG_PRINT("Found the following position in a hash table:\n");
-	    DEEP_DEBUG_PRINT_BINCONF(d);
-	    return posvalue;
-	}
+	posvalue = get_last_bit(foundhash);
+	DEEP_DEBUG_PRINT("Found the following position in a hash table:\n");
+	DEEP_DEBUG_PRINT_BINCONF(d);
     }
-    return -1;
+    return posvalue;
 }
 
 /* Adds an element to a configuration hash.
@@ -394,18 +397,17 @@ int8_t is_conf_hashed(binconf *hashtable, const binconf *d)
    Also uses flat rewriting yet.
  */
 
-void conf_hashpush(binconf* hashtable, const binconf *d, int posvalue)
+void conf_hashpush(uint64_t* hashtable, const binconf *d, int posvalue)
 {
-    binconf *e;
-
-    unsigned int lp = hashlogpart(d->loadhash ^ d->itemhash);
+    assert(posvalue == 0 || posvalue == 1);
+    uint64_t bchash = d->itemhash ^ d->loadhash;
+    uint64_t hash_item = zero_last_bit(bchash) | ((uint64_t) posvalue);
+    //fprintf(stderr, "Hash %" PRIu64 " hash_item %" PRIu64 "\n", bchash, hash_item);
+    unsigned int lp = hashlogpart(bchash);
     unsigned int blp = bucketlockpart((llu) lp);
-//    pthread_mutex_t *lock;
-//    assert(lock != NULL);
+
     pthread_mutex_lock(&bucketlock[blp]); //LOCK
-    e = &(hashtable[lp]);
-    duplicate(e,d);
-    e->posvalue = posvalue;
+    hashtable[lp] = hash_item;
     pthread_mutex_unlock(&bucketlock[blp]); // UNLOCK
     
 #ifdef DEEP_DEBUG
@@ -417,30 +419,19 @@ void conf_hashpush(binconf* hashtable, const binconf *d, int posvalue)
 
 // Checks if a number is in the dynamic programming hash.
 // Returns -1 (not hashed) and 0/1 (it is hashed, this is its feasibility)
-int dp_hashed(const binconf* b)
+int dp_hashed(const binconf* d)
 {
-    unsigned int lp = hashlogpart(b->itemhash);
+    uint64_t foundhash;
+    unsigned int lp = hashlogpart(d->itemhash);
     unsigned int blp = bucketlockpart((llu) lp);
-    llu ihash;
-    int feasible;
-    //pthread_mutex_t *lock;
-    //lock = &(dpbucketlock[;
-    pthread_mutex_lock(&dpbucketlock[blp]); // LOCK
-    assert(lp < HASHSIZE);
-    dp_hash_item *p = &(dpht[lp]);
-    assert(p != NULL);
 
-   
-    ihash = p->itemhash;
-    feasible = p->feasible;
+    pthread_mutex_lock(&dpbucketlock[blp]); // LOCK
+    foundhash = dpht[lp];
     pthread_mutex_unlock(&dpbucketlock[blp]); // UNLOCK
-    if (p->feasible == -1) {
-	return -1;
-    }
-    
-    if(ihash == b->itemhash)
+
+    if (zero_last_bit(foundhash) == zero_last_bit(d->itemhash))
     {
-	return feasible;
+	return get_last_bit(foundhash);
     }
 
     return -1;
@@ -450,14 +441,12 @@ int dp_hashed(const binconf* b)
 // Adds an number to a dynamic programming hash table
 void dp_hashpush(const binconf *d, bool feasible)
 {
-    dp_hash_item *e;
     unsigned int lp = hashlogpart(d->itemhash);
-    //pthread_mutex_t *lock;
     unsigned int blp = bucketlockpart((llu) lp);
+    uint64_t cache = zero_last_bit(d->itemhash) | ((uint64_t) feasible);
     
     pthread_mutex_lock(&dpbucketlock[blp]); // LOCK
-    e = &(dpht[lp]);
-    dp_hash_init(e,d,feasible);
+    dpht[lp] = cache;
     pthread_mutex_unlock(&dpbucketlock[blp]); // UNLOCK
 }
 
