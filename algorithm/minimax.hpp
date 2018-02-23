@@ -4,6 +4,7 @@
 #include <map>
 
 #include "common.hpp"
+#include "tree.hpp"
 #include "hash.hpp"
 #include "fits.hpp"
 #include "dynprog.hpp"
@@ -44,6 +45,7 @@ int adversary(binconf *b, int depth, int mode, dynprog_attr *dpat, tree_attr *ou
 
     adversary_vertex *current_adversary = NULL;
     algorithm_vertex *previous_algorithm = NULL;
+    adv_outedge *new_edge = NULL;
     
     if (mode == GENERATING)
     {
@@ -55,6 +57,7 @@ int adversary(binconf *b, int depth, int mode, dynprog_attr *dpat, tree_attr *ou
 	    add_task(b);
 	    // mark current adversary vertex (created by algorithm() in previous step) as a task
 	    current_adversary->task = true;
+	    current_adversary->value = POSTPONED;
 	    return POSTPONED;
 	}
     }
@@ -86,8 +89,9 @@ int adversary(binconf *b, int depth, int mode, dynprog_attr *dpat, tree_attr *ou
 	{
 	    analyzed_vertex = new algorithm_vertex;
 	    init_algorithm_vertex(analyzed_vertex, item_size, &(outat->vertex_counter));
-
-	    // set the current adversary vertex to be the analyzed vertex
+	    // create new edge, 
+	    new_edge = new adv_outedge(current_adversary, analyzed_vertex, item_size);
+            // set the current adversary vertex to be the analyzed vertex
 	    outat->last_alg_v = analyzed_vertex;
 	}
 
@@ -117,14 +121,8 @@ int adversary(binconf *b, int depth, int mode, dynprog_attr *dpat, tree_attr *ou
 	    
 	    if (mode == GENERATING)
 	    {
-		// add the vertex to the completed vertices (of the main tree)
-		collected_tasks.insert(std::pair<uint64_t, int>(b->loadhash ^ b->itemhash, r));
-
-		// decrease the game tree from here below
-		//decrease(current_adversary); // temp
-		// prune all other branches of the game tree, keep just one
-		delete_children(current_adversary);
-		current_adversary->next.push_back(analyzed_vertex);
+		// remove all outedges except the right one
+		remove_outedges_except(current_adversary, item_size);
 	    }
 	    break;
 	} else if (below == 1)
@@ -132,7 +130,8 @@ int adversary(binconf *b, int depth, int mode, dynprog_attr *dpat, tree_attr *ou
 	    if (mode == GENERATING)
 	    {
 		// no decreasing, but remove this branch of the game tree
-		delete_gametree(analyzed_vertex);
+		remove_edge(new_edge);
+		// assert(new_edge == NULL); // TODO: make a better assertion
 	    }
 	} else if (below == POSTPONED)
 	{
@@ -141,20 +140,25 @@ int adversary(binconf *b, int depth, int mode, dynprog_attr *dpat, tree_attr *ou
 	    {
 		r = POSTPONED;
 	    }
-	    postponed_branches_present = true;
-	    current_adversary->next.push_back(analyzed_vertex);
 	}
     }
 
+    /* Sanity check. */
+    if (mode == GENERATING && r == 1)
+    {
+	assert(current_adversary->out.empty());
+    }
+    
+    /*
     if (mode == GENERATING && r == 1 && postponed_branches_present == false)
     {
         // add the vertex to the completed vertices (of the main tree)
-	collected_tasks.insert(std::pair<uint64_t, int>(b->loadhash ^ b->itemhash, r));
 	// decrease the game tree from here below (no branches should be present,
 	// so it just marks this vertex as decreased)
 	
 	result_determined = true;
     }
+    */
 
     return r;
 }
@@ -181,7 +185,6 @@ int algorithm(binconf *b, int k, int depth, int mode, dynprog_attr *dpat, tree_a
     int below = 0;
     for (int i = 1; i<=BINS; i++)
     {
-	// warning: freshly added heuristic, may backfire
 	// simply skip a step where two bins have the same load
 	// any such bins are sequential if we assume loads are sorted (and they should be)
 	if (i > 1 && b->loads[i] == b->loads[i-1])
@@ -191,15 +194,6 @@ int algorithm(binconf *b, int k, int depth, int mode, dynprog_attr *dpat, tree_a
 	
 	if ((b->loads[i] + k < R))
 	{
-	    // insert the item into a new binconf
-	    /*
-	    binconf *d = new binconf;
-	    duplicate(d, b);
-	    d->loads[i] += k;
-	    d->items[k]++;
-	    sortloads_one_increased(d,i);
-	    rehash(d,b,k);
-	    */
 
 	    // editing binconf in place -- undoing changes later
 	    // TODO: it may be useful to add #ifdef sanity checks here
@@ -210,58 +204,51 @@ int algorithm(binconf *b, int k, int depth, int mode, dynprog_attr *dpat, tree_a
 	    int from = sortloads_one_increased(b,i);
 	    rehash_increased_range(b,k,from, i); 
 
-            /*
-	    binconf *test = new binconf;
-	    duplicate(test,b);
-	    test->loads[i] += k;
-	    test->items[k]++;
-	    int from = sortloads_one_increased(test,i);
-	    rehash_increased_range(test, k, from, i);
-	    assert(test->loadhash == d->loadhash);
-	    assert(test->itemhash == d->itemhash);
-	    delete test;
-	    */
-
-	    /*
-	    binconf *test2 = new binconf;
-	    duplicate(test2, d);
-	    test2->loads[from] -= k;
-	    test2->items[k]--;
-	    int to = sortloads_one_decreased(test2,from);
-	    rehash_decreased_range(test2, k, from, to);
-	    assert(test2->loadhash == b->loadhash);
-	    assert(test2->itemhash == b->itemhash);
-	    delete test2;
-   
-	    */
 	    
 	    // initialize the adversary's next vertex in the tree (corresponding to d)
 	    adversary_vertex *analyzed_vertex;
+	    bool already_generated = false;
+	    bool found_in_cache = false;
 
 	    if (mode == GENERATING)
 	    {
-		analyzed_vertex = new adversary_vertex;
-		init_adversary_vertex(analyzed_vertex, b, depth, &(outat->vertex_counter));
-	    }
-	    
-	    // TODO: possibly also add completion check query
-	    bool found_in_cache = false;
-	    
-	    // query the large hashtable about the new binconf
-	    int conf_in_hashtable = is_conf_hashed(ht,b);
-    
-	    if (conf_in_hashtable != -1)
-	    {
-		if (mode == GENERATING)
+		/* Check vertex cache if this adversarial vertex is already present */
+		std::map<llu, adversary_vertex*>::iterator it;
+		it = generated_graph.find(b->loadhash ^ b->itemhash);
+		if (it == generated_graph.end())
 		{
-		    analyzed_vertex->cached = true;
-		    analyzed_vertex->value = conf_in_hashtable;
+		    analyzed_vertex = new adversary_vertex;
+		    init_adversary_vertex(analyzed_vertex, b, depth, &(outat->vertex_counter));
+		    // create new edge
+		    alg_outedge* new_edge = new alg_outedge(current_algorithm, analyzed_vertex);
+		    // add to generated_graph
+		    generated_graph[b->loadhash ^ b->itemhash] = analyzed_vertex;
+		} else {
+		    already_generated = true;
+		    analyzed_vertex = it->second;
+		    
+		    // create new edge
+    		    alg_outedge* new_edge = new alg_outedge(current_algorithm, analyzed_vertex);
+		    below = it->second->value;
 		}
-		found_in_cache = true;
-		below = conf_in_hashtable;
 	    }
 	    
-	    if (!found_in_cache)
+	    // Query the large hashtable about the new binconf.
+	    // We only do this in exploration mode; while this could be also done
+	    // when generating we want the whole lower bound tree to be generated.
+	    
+	    if (mode == EXPLORING)
+	    {
+		int conf_in_hashtable = is_conf_hashed(ht,b);
+    
+		if (conf_in_hashtable != -1)
+		{
+		    found_in_cache = true;
+		    below = conf_in_hashtable;
+		}
+	    }
+	    
+	    if (!found_in_cache && !already_generated)
 	    {
 		if (mode == GENERATING)
 		{
@@ -284,7 +271,6 @@ int algorithm(binconf *b, int k, int depth, int mode, dynprog_attr *dpat, tree_a
 		if (mode == EXPLORING) {
 		    conf_hashpush(ht,b,below);
 		}
-
 	    }
 
 	    // return b to original form
@@ -299,23 +285,16 @@ int algorithm(binconf *b, int k, int depth, int mode, dynprog_attr *dpat, tree_a
 		VERBOSE_PRINT("Winning position for algorithm, returning 1.\n");
 		if(mode == GENERATING)
 		{
-		    // decrease the current algorithm vertex
-		    // decrease(current_algorithm); // temp
-		    
-		    // delete analyzed vertex
-		    delete_gametree(analyzed_vertex);
-		    // the current algorithm vertex will be deleted by the adversary() above
+		    // delete all edges from the current algorithmic vertex
+		    // which should also delete the adversary vertex
+		    remove_outedges(current_algorithm);
+		    // assert(current_algorithm == NULL); // sanity check
 		}
 		return r;
 		
 	    } else if (below == 0)
 	    {
-		// insert analyzed_vertex into algorithm's "next" list
-		if (mode == GENERATING)
-		{
-		    current_algorithm->next.push_back(analyzed_vertex);
-		}
-
+		// nothing needs to be currently done, the edge is already created
 	    } else if (below == POSTPONED)
 	    {
  		assert(mode == GENERATING); // should not happen during anything else but GENERATING
@@ -325,7 +304,6 @@ int algorithm(binconf *b, int k, int depth, int mode, dynprog_attr *dpat, tree_a
 		{
 		    r = POSTPONED;
 		}
-		current_algorithm->next.push_back(analyzed_vertex);
 	    }
 
 

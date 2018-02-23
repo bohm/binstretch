@@ -26,6 +26,51 @@ int gs1(const binconf *b)
     return -1;
 }
 
+
+// Experimental: A strange variant of GS1 where you add up sequential pairs of bins below 1 to have
+// load (S + ALPHA)/2 
+int gs1mod(const binconf *b)
+{
+    int sum = 0, summand = 0;
+    bool previous_below_alpha = false;
+    bool previous_paired = false;
+    for (int i = BINS; i >=1; i--)
+    {
+
+	if (previous_below_alpha && !previous_paired)
+	{
+	    if (b->loads[i] <= ALPHA)
+	    {
+		summand = (S+ALPHA + b->loads[i])/2;	
+	    } else {
+		summand = std::max( (int) (S+ALPHA)/2, (int) b->loads[i]);
+	    }
+	    
+	    previous_paired = true;
+	} else {
+	    summand = b->loads[i];
+	    previous_paired = false;
+	}
+	
+	sum += summand;
+	
+	if (b->loads[i] <= ALPHA)
+	{
+	    previous_below_alpha = true;
+	} else {
+	    previous_below_alpha = false;
+	}
+
+    }
+
+    sum -= b->loads[BINS];
+    if (sum >= ((BINS-1)*S - ALPHA))
+    {
+	return 1;
+    }
+    return -1;
+}
+
 int gs2(const binconf *b)
 {
     for(int i=1; i<=BINS; i++)
@@ -33,6 +78,31 @@ int gs2(const binconf *b)
 	if((b->loads[i] >= (1*S - 2*ALPHA)) && (b->loads[i] <= ALPHA) )
 	    return 1;
     }
+    return -1;
+}
+
+int gs2variant(const binconf *b)
+{
+    /* Sum of all bins except the last two. */
+    int sum_but_two = totalload(b) - b->loads[BINS] - b->loads[BINS-1];
+
+    int current_sbt;
+    for (int i=1; i<=BINS; i++)
+    {
+	/* First, modify the sum_but_two in the case that i is the second to last or last */
+	if (i == BINS-1 || i == BINS)
+	{
+	    current_sbt = sum_but_two - b->loads[BINS-2] + b->loads[i];
+	} else {
+	    current_sbt = sum_but_two;
+	}
+
+	if (b->loads[i] <= ALPHA && current_sbt >= ( (BINS-2)*S - 2*ALPHA ) )
+	{
+	    return 1;
+	}
+    }
+
     return -1;
 }
 
@@ -100,17 +170,41 @@ int testgs(const binconf *b)
 	DEEP_DEBUG_PRINT_BINCONF(b);
 	return 1;
     }
+    
+    if( gs2variant(b) == 1)
+    {
+	DEEP_DEBUG_PRINT(stderr, "The following binconf hits GS2variant:\n");
+	DEEP_DEBUG_PRINT_BINCONF(b);
+	return 1;
+    }
+
+    if (gs1mod(b) == 1)
+    {
+	return 1;
+    }
+
 
 // Apply the rest of the heuristics only with 3 bins and ALPHA >= 1/3
 #if (BINS == 3) &&((3*ALPHA) >= S)
 
-    if(gs2(b) == 1)
+    //assert(gs2(b) == gs2variant(b));
+
+    /*if(gs2(b) == 1)
     {
 	DEEP_DEBUG_PRINT(stderr, "The following binconf hits GS2:\n");
 	DEEP_DEBUG_PRINT_BINCONF(b);
 	return 1;
-    }
-    
+    }*/
+
+    /*
+    if( gs1mod(b) == 1 && gs1(b) == -1 && gs3(b) == -1)
+    {
+	fprintf(stderr, "Problematic binconf:\n");
+	print_binconf_stream(stderr, b);
+	//return 1;
+    }*/
+
+   
     if(gs3(b) == 1)
     {
 	DEEP_DEBUG_PRINT(stderr, "The following binconf hits GS3:\n");

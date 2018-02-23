@@ -1,12 +1,13 @@
 #ifndef _DYNPROG_H
 #define _DYNPROG_H 1
 
+#include <chrono>
 #include "common.hpp"
 #include "fits.hpp"
 #include "measure.hpp"
 
 // which Test procedure are we using
-#define TEST sparse_dynprog_test
+#define TEST sparse_dynprog_test2
 
 void print_tuple(const int* tuple)
 {
@@ -33,7 +34,7 @@ int encodetuple(const int *tuple, int pos)
     }
 }
 
-// decodes three numbers less than 1024 from a single number
+// decodes BINS numbers less than 1024 from a single number
 // allocation of new_tuple needs to be done beforehand
 void decodetuple(int *new_tuple, int source, int pos)
 {
@@ -76,6 +77,112 @@ void dynprog_attr_free(dynprog_attr *dpat)
     free(dpat->oldqueue); free(dpat->newqueue);
     free(dpat->F);
 }
+
+/* New dynprog test with some minor improvements. */
+bool sparse_dynprog_test2(const binconf *conf, dynprog_attr *dpat)
+{
+    // binary array of feasibilities
+    // int f[S+1][S+1][S+1] = {0};
+    int *F = dpat->F;
+    int *oldqueue = dpat->oldqueue;
+    int *newqueue = dpat->newqueue;
+    int **poldq;
+    int **pnewq;
+    int **swapper;
+
+    int *tuple; tuple = (int *) calloc(BINS, sizeof(int));
+    
+    poldq = &oldqueue;
+    pnewq = &newqueue;
+    
+    int oldqueuelen = 0, newqueuelen = 0;
+    
+    int phase = 0;
+
+    int index;
+    for(int size=S; size>0; size--)
+    {
+	int k = conf->items[size];
+	while(k > 0)
+	{
+	    phase++;
+	    if(phase == 1) {
+		
+		tuple[0] = size;
+		index = encodetuple(tuple, 0);
+		(*pnewq)[0] = index;
+		F[index] = 1;
+		newqueuelen = 1;
+	    } else {
+		newqueuelen = 0;
+		for(int i=0; i<oldqueuelen; i++)
+		{
+		    index = (*poldq)[i];
+		    decodetuple(tuple,index,0);
+		    int testindex = encodetuple(tuple,0);
+		    assert(testindex == index);
+		    
+		    F[index] = 0;
+		    
+		    // try and place the item
+		    for(int i=0; i < BINS; i++)
+		    {
+			// same as with Algorithm, we can skip when sequential bins have the same load
+			if (i > 0 && tuple[i] == tuple[i-1])
+			{
+			    continue;
+			}
+			
+			if(tuple[i] + size > S) {
+			    continue;
+			}
+			
+			tuple[i] += size;
+			int from = sortarray_one_increased(&tuple, i);
+			int newindex = encodetuple(tuple,0);
+
+			// debug assertions
+			if( ! (newindex <= BINARRAY_SIZE) && (newindex >= 0))
+			{
+			    fprintf(stderr, "Tuple and index %d are weird.\n", newindex);
+			    print_tuple(tuple);
+			    exit(-1);
+			}
+			
+			if( F[newindex] != 1)
+			{
+			    F[newindex] = 1;
+			    (*pnewq)[newqueuelen++] = newindex;
+			}
+			tuple[from] -= size;
+			sortarray_one_decreased(&tuple, from);
+		    }
+		}
+		if (newqueuelen == 0) {
+		    free(tuple);
+		    return false;
+		}
+	    }
+
+	    //swap queues
+	    swapper = pnewq; pnewq = poldq; poldq = swapper;
+	    oldqueuelen = newqueuelen;
+	    k--;
+	}
+	
+	// last pass, to zero the global array
+	for(int i=0; i<oldqueuelen; i++)
+	{
+	    index = (*poldq)[i];
+	    decodetuple(tuple, index,0);
+	    F[index] = 0;
+	}
+    }
+    free(tuple);
+    return true;
+}
+
+
 
 bool sparse_dynprog_test(const binconf *conf, dynprog_attr *dpat)
 {
@@ -194,6 +301,8 @@ bool hash_and_test(binconf *h, int item, dynprog_attr *dpat)
     } else {
 	DEEP_DEBUG_PRINT("Nothing found in dynprog cache for hash %llu.\n", h->itemhash);
 	feasible = TEST(h, dpat);
+	// temporary sanity check
+	// assert(feasible == sparse_dynprog_test(h,dpat));
 	DEEP_DEBUG_PRINT("Pushing dynprog value %d for hash %llu.\n", feasible, h->itemhash);
 	dp_hashpush(h,feasible);
     }
@@ -207,6 +316,8 @@ int maximum_feasible_dynprog(binconf *b, dynprog_attr *dpat)
 {
 #ifdef MEASURE
     maximum_feasible_counter++;
+    // cannot work -- every thread should have its own counter
+    auto start = std::chrono::system_clock::now(); 
 #endif
     DEEP_DEBUG_PRINT("Starting dynprog maximization of configuration:\n");
     DEEP_DEBUG_PRINT_BINCONF(b);
@@ -238,9 +349,6 @@ int maximum_feasible_dynprog(binconf *b, dynprog_attr *dpat)
 	DEBUG_PRINT("ROOT: upper bound for dynprog: %d\n", maxvalue);
     }
 
-    //int dp, sdp, hashedvalue;
-
-    
     // use binary search to find the value
     /* int lb = bestfitvalue; int ub = maxvalue;
     int mid = (lb+ub+1)/2;
@@ -282,6 +390,11 @@ int maximum_feasible_dynprog(binconf *b, dynprog_attr *dpat)
 	DEBUG_PRINT("ROOT: final bound for dynprog: %d\n", dynitem);
     }
 
+#ifdef MEASURE
+    auto end = std::chrono::system_clock::now();
+    dpat->dynprog_time += end - start;
+#endif
+    
     return dynitem;
     /* assert(dynitem >= 0);
        assert(dynitem == bsearch_result); */

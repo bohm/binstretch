@@ -34,11 +34,11 @@ int main(void)
     //root->items[5] = 1;
     //root->loads[1] = 5; 
     hashinit(root);
-    root_vertex = new adversary_vertex;
+    adversary_vertex root_vertex;
     llu x = 0; //workaround
-    init_adversary_vertex(root_vertex, root, 0, &x);
-    
-    int ret = scheduler();
+    init_adversary_vertex(&root_vertex, root, 0, &x);
+    sapling_queue.push(&root_vertex); 
+    int ret = solve();
     fprintf(stderr, "Number of tasks: %" PRIu64 ", completed tasks: %" PRIu64 ", pruned tasks %" PRIu64 ", decreased tasks %" PRIu64 " \n",
 	    task_count, finished_task_count, removed_task_count, decreased_task_count );
 
@@ -49,7 +49,7 @@ int main(void)
 	print_binconf_stream(stderr, root);
 	FILE* out = fopen("partial_tree.txt", "w");
 	assert(out != NULL);
-	print_partial_gametree(out, root_vertex);
+	print_partial_gametree(out, &root_vertex);
 	fclose(out);
     } else {
 	fprintf(stderr, "Algorithm wins %d/%d Bin Stretching on %d bins with root:\n", R,S,BINS);
@@ -61,16 +61,14 @@ int main(void)
 	    task_count, finished_task_count, removed_task_count, decreased_task_count );
 
 #ifdef MEASURE
-    long double ratio = (long double) test_counter / (long double) maximum_feasible_counter;   
+    long double ratio = (long double) test_counter / (long double) maximum_feasible_counter;
 #endif
-    MEASURE_PRINT(" DP Calls: %llu; maximum_feasible calls: %llu, DP/feasible calls: %Lf, DP time: ", test_counter, maximum_feasible_counter, ratio);
-    timeval_print(&dynTotal);
-    MEASURE_PRINT(".\n");
+    MEASURE_PRINT("Total time (all threads): %Lfs; total dynprog time: %Lfs.\n", time_spent.count(), total_dynprog_time.count());
+    MEASURE_PRINT(" DP Calls: %llu; maximum_feasible calls: %llu, DP/feasible calls: %Lf\n", test_counter, maximum_feasible_counter, ratio);
 
     global_hashtable_cleanup();
     local_hashtable_cleanup();
     bucketlock_cleanup();
     delete root;
-    delete root_vertex;
     return 0;
 }

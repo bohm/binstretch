@@ -9,6 +9,8 @@
 #include <map>
 #include <list>
 #include <atomic>
+#include <chrono>
+#include <queue>
 
 typedef unsigned long long int llu;
 typedef signed char tiny;
@@ -21,11 +23,12 @@ typedef signed char tiny;
 //#define THOROUGH_HASH_CHECKING 1
 //#define OUTPUT 1
 #define MEASURE 1
+//#define TICKER 1
 
 // maximum load of a bin in the optimal offline setting
-#define S 33
+#define S 14
 // target goal of the online bin stretching problem
-#define R 45
+#define R 19
 
 // constants used for good situations
 #define RMOD (R-1)
@@ -44,7 +47,7 @@ typedef signed char tiny;
 #define BUCKETSIZE (1<<BUCKETLOG)
 
 // the number of threads
-#define THREADS 2
+#define THREADS 8
 // a bound on total load of a configuration before we split it into a task
 #define TASK_LOAD (S*BINS)/2
 #define TASK_DEPTH 4
@@ -110,55 +113,18 @@ struct task {
 typedef struct task task;
 
 
-// a game tree used for outputting the resulting
-// strategy if the result is positive.
-
-typedef struct adversary_vertex adversary_vertex;
-typedef struct algorithm_vertex algorithm_vertex;
-
-struct algorithm_vertex {
-    int next_item; /* Incoming item. */
-    std::list<adversary_vertex*> next; //next adversarial states
-    uint64_t id;
-    int value;
-
-};
-
-struct adversary_vertex {
-    binconf *bc; /* Bin configuration of the current node. */
-    std::list<algorithm_vertex*> next;
-    int depth; // depth increases only in adversary steps
-    bool cached;
-    bool task;
-    bool elsewhere;
-    bool decreased;
-    int value;
-    uint64_t id;
-};
- 
 /* dynprog global variables (separate for each thread) */
 struct dynprog_attr {
     int *F;
     int *oldqueue;
     int *newqueue;
+    std::chrono::duration<long double> dynprog_time;
 };
 
 typedef struct dynprog_attr dynprog_attr;
 
-/* tree variables (currently used in main thread only) */
-struct tree_attr {
-    algorithm_vertex *last_alg_v;
-    adversary_vertex *last_adv_v;
-    llu vertex_counter;
-};
-
-typedef struct tree_attr tree_attr;
-
 // global task map indexed by binconf hashes
 std::map<llu, task> tm;
-// task map counting the number of references (occurences) for a given task
-// unlike tm, this map is only used by the updater and generator thread
-std::map<uint64_t, uint64_t> reference_counter;
 
 uint64_t task_count = 0;
 uint64_t finished_task_count = 0;
@@ -188,14 +154,20 @@ bool thread_finished[THREADS];
 std::atomic_bool global_terminate_flag(false);
 pthread_mutex_t thread_progress_lock;
 
-// root of the tree (initialized in main.cpp)
+/* total time spent in all threads */
+std::chrono::duration<long double> time_spent;
+/* total time spent on dynamic programming */
+std::chrono::duration<long double> total_dynprog_time;
+
+// root of the tree (deprecated)
 binconf *root;
-adversary_vertex *root_vertex;
+// adversary_vertex *root_vertex;
 
 #ifdef MEASURE
 // time measuring global variable
 timeval totaltime_start;
 #endif
+
 
 void duplicate(binconf *t, const binconf *s) {
     for(int i=1; i<=BINS; i++)
@@ -395,6 +367,22 @@ int sortloads_one_increased(binconf *b, int newly_increased)
     return i;
 }
 
+// lower-level sortload (modifies array, counts from 0)
+int sortarray_one_increased(int **array, int newly_increased)
+{
+    int i, helper;
+    i = newly_increased;
+    while (!((i == 0) || ((*array)[i-1] >= (*array)[i])))
+    {
+	helper = (*array)[i-1];
+	(*array)[i-1] = (*array)[i];
+        (*array)[i] = helper;
+	i--;
+    }
+
+    return i;
+}
+
 // inverse to sortloads_one_increased.
 int sortloads_one_decreased(binconf *b, int newly_decreased)
 {
@@ -411,182 +399,21 @@ int sortloads_one_decreased(binconf *b, int newly_decreased)
     return i;
 }
 
-/* Initialize the game tree with the information in the parameters. */
 
-void init_adversary_vertex(adversary_vertex *v, const binconf *b, int depth, llu *vertex_counter)
+// lower-level sortload_one_decreased (modifies array, counts from 0)
+int sortarray_one_decreased(int **array, int newly_decreased)
 {
-    v->bc = (binconf *) malloc(sizeof(binconf));
-    assert(v->bc != NULL);
-    init(v->bc);
-    v->cached = false;
-    v->elsewhere = false;
-    v->task = false;
-    v->decreased = false;
-    v->id = ++(*vertex_counter);
-    v->depth = depth;
-    v->value = POSTPONED;
-    duplicate(v->bc, b);
-}
-
-void init_algorithm_vertex(algorithm_vertex *v, int next_item, llu *vertex_counter)
-{
-    v->next_item = next_item;
-    v->id = ++(*vertex_counter);
-    v->value = POSTPONED;
-}
-
-void print_partial_gametree(FILE* stream, adversary_vertex *v);
-void print_partial_gametree(FILE* stream, algorithm_vertex *v);
-
-void print_partial_gametree(FILE* stream, adversary_vertex *v)
-{
-    assert(v!=NULL);
-    assert(v->bc != NULL);
-
-    fprintf(stream, "ADV vertex %" PRIu64 " depth %d ", v->id, v->depth);
-    if (v->task)
+    int i, helper;
+    i = newly_decreased;
+    while (!((i == BINS-1) || ((*array)[i+1] <= (*array)[i])))
     {
-	fprintf(stream, "task ");
+	helper = (*array)[i+1];
+	(*array)[i+1] = (*array)[i];
+	(*array)[i] = helper;
+	i++;
     }
 
-    if (v->value == 0 || v->value == 1)
-    {
-	fprintf(stream, "value %d ", v->value);
-    }
-    
-    if (v->elsewhere)
-    {
-	fprintf(stream, "elsewhere ");
-    }
-
-    fprintf(stream,"bc: ");
-    print_binconf_stream(stream, v->bc);
-
-    if(!v->task) {
-	fprintf(stream,"children: ");
-	for (auto&& n: v->next) {
-	    fprintf(stream,"%" PRIu64 " (%d) ", n->id, n->next_item);
-	}	
-        fprintf(stream,"\n");
-    }
-    for (auto&& n: v->next) {
-	print_partial_gametree(stream, n);
-    }
+    return i;
 }
-
-void print_partial_gametree(FILE* stream, algorithm_vertex *v)
-{
-    assert(v!=NULL);
-
-    fprintf(stream,"ALG vertex %" PRIu64 " next item %d ", v->id, v->next_item);
-
-    if (v->value == 0 || v->value == 1)
-    {
-	fprintf(stream, "value %d ", v->value);
-    }
-
-    fprintf(stream,"children: ");
-    for (auto&& n: v->next) {
-	fprintf(stream,"%" PRIu64 " ", n->id);
-    }
-    fprintf(stream,"\n");
-
-    for (auto&& n: v->next) {
-	print_partial_gametree(stream, n);
-    }
-}
-
-
-void delete_gametree(algorithm_vertex *v);
-void delete_gametree(adversary_vertex *v);
-
-/* Removes the game tree data. Call after all hash tables are deleted. */
-void delete_gametree(adversary_vertex *v)
-{
-    assert(v != NULL);
-    assert(v->bc != NULL);
-    free(v->bc);
-
-    for (auto&& n: v->next)
-    {
-	delete_gametree(n);
-    }
-    free(v);
-}
-
-// overload for the other vertex type
-void delete_gametree(algorithm_vertex *v)
-{
-    assert(v != NULL);
-
-    for (auto&& n: v->next)
-    {
-	delete_gametree(n);
-    }
-    free(v);
-
-}
-
-void delete_children(algorithm_vertex *v);
-void delete_children(adversary_vertex *v);
-
-void delete_children(algorithm_vertex *v)
-{
-    for (auto&& n: v->next)
-    {
-	delete_gametree(n);
-    }
-
-    v->next.clear();
-}
-
-void delete_children(adversary_vertex *v)
-{
-    for (auto&& n: v->next)
-    {
-	delete_gametree(n);
-    }
-
-    v->next.clear();
-}
-
-void delete_all_except(adversary_vertex *v, int right_move)
-{
-
-    algorithm_vertex *right_vertex;
-    for (auto&& n: v->next)
-    {
-	if (n->next_item == right_move)
-	{
-	    right_vertex = n;
-	} else {
-	    delete_gametree(n);
-	}
-    }
-
-    v->next.clear();
-    v->next.push_back(right_vertex);
-}
-
-/* 
-void delete_all_except(algorithm_vertex *v, const binconf *right_bc)
-{
-
-    adversary_vertex *right_vertex;
-    for (auto&& n: v->next)
-    {
-	if (binconf_equal(right_bc, n->bc))
-	{
-	    right_vertex = n;
-	} else {
-	    delete_gametree(n);
-	}
-    }
-
-    v->next.clear();
-    v->next.push_back(right_vertex);
-}
-*/
-
 
 #endif

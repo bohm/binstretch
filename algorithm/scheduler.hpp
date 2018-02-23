@@ -5,6 +5,7 @@
 #include <cassert>
 
 #include "common.hpp"
+#include "tree.hpp"
 #include "minimax.hpp"
 #include "hash.hpp"
 #include "updater.hpp"
@@ -23,8 +24,9 @@ void *evaluate_tasks(void * tid)
     task current;
     //std::map<llu, task>::reverse_iterator task_it;
     bool taskmap_empty = false;
-
     bool call_to_terminate = false;
+
+    auto thread_start = std::chrono::system_clock::now();
     
     call_to_terminate = global_terminate_flag;
     while(!call_to_terminate)
@@ -63,30 +65,42 @@ void *evaluate_tasks(void * tid)
 	// check the (atomic) global terminate flag
         call_to_terminate = global_terminate_flag;
     }
-     
+
+    auto thread_end = std::chrono::system_clock::now();
+
+    /* update global variables regarding this thread's performance */
     pthread_mutex_lock(&thread_progress_lock);
     thread_finished[threadid] = true;
     finished_task_count += taskcounter;
+    time_spent += thread_end - thread_start;
+#ifdef MEASURE
+    total_dynprog_time += dpat.dynprog_time;
+#endif
     pthread_mutex_unlock(&thread_progress_lock);
 
     dynprog_attr_free(&dpat);
     return NULL;
 }
 
-int scheduler() {
+
+int scheduler(adversary_vertex *sapling)
+{
 
     pthread_t threads[THREADS];
     int rc;
 
+    // We create a copy of the sapling's bin configuration
+    // which will be used as in-place memory for the algorithm.
+    binconf sapling_bc;
+    duplicate(&sapling_bc, sapling->bc);
+    
     // initialize dp tables for the main thread
     dynprog_attr dpat;
     dynprog_attr_init(&dpat);
-    int ret = generate(root, &dpat, root_vertex);
-    root_vertex->value = ret;
     
-    assert(ret == POSTPONED); // consistency check, may not be true for trivial trees (of size < 10)
-    //debugprint_gametree(root_vertex);
-
+    int ret = generate(&sapling_bc, &dpat, sapling);
+    sapling->value = ret;
+    
 #ifdef PROGRESS
     fprintf(stderr, "Generated %" PRIu64 " tasks.\n", task_count);
 #endif
@@ -131,7 +145,7 @@ int scheduler() {
 	stop = true;
 
 	pthread_mutex_lock(&thread_progress_lock);
-	for(unsigned int i = 0; i < THREADS; i++) {
+	for (unsigned int i = 0; i < THREADS; i++) {
 	    if (!thread_finished[i])
 	    {
 		stop = false;
@@ -142,14 +156,15 @@ int scheduler() {
 	// collect tasks from worker threads
 	collected_no = collect_tasks();
 	// update main tree and task map
-	if(!update_complete)
+	if (!update_complete)
 	{
-#ifdef MEASURE
+#ifdef TICKER
 	    timeval update_start, update_end, time_difference;
 	    gettimeofday(&update_start, NULL);
 #endif
-	    ret = update(root_vertex);
-#ifdef MEASURE
+	    clear_visited_bits();
+	    ret = update(sapling);
+#ifdef TICKER
 	    gettimeofday(&update_end, NULL);
 	    timeval_subtract(&time_difference, &update_end, &update_start);
 	    MEASURE_PRINT("Update tick took: ");
@@ -192,5 +207,35 @@ int scheduler() {
 
     return ret;
 }
+
+int solve()
+{
+    while (!sapling_queue.empty())
+    {
+	adversary_vertex* sapling = sapling_queue.front();
+	sapling_queue.pop();
+	// temporarily isolate sapling (detach it from its parent, set depth to 0)
+        int orig_value = sapling->value;
+	int orig_depth = sapling->depth;
+	sapling->task = false;
+	sapling->cached = false;
+	sapling->depth = 0;
+	sapling->value = POSTPONED;
+	// compute the sapling using the parallel minimax algorithm
+	int val = scheduler(sapling);
+	//regrow(sapling);
+	assert(orig_value == POSTPONED || orig_value == val);
+	
+	if (val == 1)
+	{
+	    return val;
+	}
+	// reattach original values
+	sapling->depth = orig_depth;
+    }
+
+    return 0;
+}
+
 
 #endif
