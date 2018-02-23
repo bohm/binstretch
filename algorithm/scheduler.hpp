@@ -97,7 +97,9 @@ int scheduler(adversary_vertex *sapling)
     // initialize dp tables for the main thread
     dynprog_attr dpat;
     dynprog_attr_init(&dpat);
-    
+
+    generated_graph.clear();
+    generated_graph[sapling->bc->loadhash ^ sapling->bc->itemhash] = sapling;
     int ret = generate(&sapling_bc, &dpat, sapling);
     sapling->value = ret;
     
@@ -161,16 +163,19 @@ int scheduler(adversary_vertex *sapling)
 #ifdef TICKER
 	    timeval update_start, update_end, time_difference;
 	    gettimeofday(&update_start, NULL);
+	    uint64_t previously_removed = removed_task_count;
 #endif
 	    clear_visited_bits();
 	    ret = update(sapling);
 #ifdef TICKER
+	    uint64_t now_removed = removed_task_count;
 	    gettimeofday(&update_end, NULL);
 	    timeval_subtract(&time_difference, &update_end, &update_start);
 	    MEASURE_PRINT("Update tick took: ");
 	    timeval_print(&time_difference);
-	    MEASURE_PRINT(" and collected %u tasks. \n", collected_no);
-#endif	    
+	    MEASURE_PRINT(", collected %u tasks and removed %" PRIu64 " tasks. \n", collected_no, now_removed - previously_removed );
+#endif
+//	    print_gametree(stderr, sapling);
 	    if(ret != POSTPONED)
 	    {
 		fprintf(stderr, "We have evaluated the tree: %d\n", ret);

@@ -29,6 +29,9 @@ int update(algorithm_vertex *v);
 
 int update(adversary_vertex *v)
 {
+    int result = 1;
+    int right_move;
+ 
     assert(v != NULL);
 
     if (v->value == 0 || v->value == 1)
@@ -44,55 +47,48 @@ int update(adversary_vertex *v)
 
     v->visited = true;
 
-    int completed_value = v->value;
-    if (v->task && v->value == POSTPONED)
+    if (v->task)
     {
 	uint64_t hash = v->bc->itemhash ^ v->bc->loadhash;
-	completed_value = completion_check(hash);
+	result = completion_check(hash);
+    } else {
+	std::list<adv_outedge*>::iterator it = v->out.begin();
+	while ( it != v->out.end())
+	{
+	    algorithm_vertex *n = (*it)->to;
+	    int below = update(n);
+	    if (below == 0)
+	    {
+		result = 0;
+		right_move = (*it)->item;
+		it++;
+	    } else if (below == 1)
+	    {
 
-	if (completed_value == POSTPONED)
-	{
-	    return POSTPONED;
-	}
-    }
-
-    int result = 1;
-    int right_move;
-    
-    std::list<adv_outedge*>::iterator it = v->out.begin();
-    while ( it != v->out.end())
-    {
-	algorithm_vertex *n = (*it)->to;
-	int below = update(n);
-	if (below == 0)
-	{
-	    result = 0;
-	    right_move = (*it)->item;
-	    it++;
-	} else if (below == 1)
-	{
-	    
-	    adv_outedge *removed_edge = (*it);
-	    remove_inedge(*it);
-	    it = v->out.erase(it); // serves as it++
-	    delete removed_edge;
-	} else if (below == POSTPONED)
-	{
-	    if (result == 1) {
-		result = POSTPONED;
+		adv_outedge *removed_edge = (*it);
+		remove_inedge(*it);
+		it = v->out.erase(it); // serves as it++
+		delete removed_edge;
+	    } else if (below == POSTPONED)
+	    {
+		if (result == 1) {
+		    result = POSTPONED;
+		}
+		it++;
 	    }
-	    it++;
 	}
-    }
+	// remove outedges only for a non-task
+	if (result == 0)
+	{
+	    remove_outedges_except(v, right_move);
+	}
 
+
+    }
+    
     if (result == 0 || result == 1)
     {
 	v->value = result;
-    }
-
-    if (result == 0)
-    {
-	remove_outedges_except(v, right_move);
     }
 
     if (result == 1)
@@ -149,13 +145,14 @@ int update(algorithm_vertex *v)
     if (result == 1)
     {
 	remove_outedges(v);
+	assert( v->out.empty() );
+
     }
 
     if (result == 0 || result == 1)
     {
 	v->value = result;
     }
-    // algorithm's vertices are not cached
 
     return result;
 }

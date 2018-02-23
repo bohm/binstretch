@@ -31,8 +31,12 @@ int main(void)
     init(root); // init game tree
 
     // special heuristics for 19/14 lower bound for 5,6 bins
-    //root->items[5] = 1;
-    //root->loads[1] = 5; 
+    root->items[5] = 1;
+    root->items[3] = 2;
+    root->loads[1] = 5;
+    root->loads[2] = 3;
+    root->loads[3] = 3;
+    root->loads[4] = 0;
     hashinit(root);
     adversary_vertex root_vertex;
     llu x = 0; //workaround
@@ -49,7 +53,7 @@ int main(void)
 	print_binconf_stream(stderr, root);
 	FILE* out = fopen("partial_tree.txt", "w");
 	assert(out != NULL);
-	print_partial_gametree(out, &root_vertex);
+	print_compact(out, &root_vertex);
 	fclose(out);
     } else {
 	fprintf(stderr, "Algorithm wins %d/%d Bin Stretching on %d bins with root:\n", R,S,BINS);

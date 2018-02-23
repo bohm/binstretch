@@ -55,6 +55,8 @@ void add_task(const binconf *x) {
 // present, it just silently does nothing.
 void remove_task(llu hash)
 {
+    removed_task_count++; // no race condition here, variable only used in the UPDATING thread
+
     pthread_mutex_lock(&taskq_lock); // LOCK
     auto it = tm.find(hash);
     if (it != tm.end()) {
@@ -63,28 +65,6 @@ void remove_task(llu hash)
 	tm.erase(it);
     }
     pthread_mutex_unlock(&taskq_lock); // UNLOCK
-}
-
-// Decreases an occurence of a task. If the task does not exist,
-// we assume that it started processing and we do not decrease.
-void decrease_task(llu hash)
-{
-    bool removing = false;
-    decreased_task_count++; // no race condition here, see below
-    pthread_mutex_lock(&taskq_lock); // LOCK
-    auto it = tm.find(hash);
-    if (it != tm.end()) {
-	it->second.occurences--;
-	if (it->second.occurences == 0) {
-	    removing = true;
-	}
-    }
-    pthread_mutex_unlock(&taskq_lock); // UNLOCK
-
-    if (removing) {
-	removed_task_count++; // no race condition here, variable only used in the UPDATING thread
-	remove_task(hash);
-    }
 }
 
 /* Check if a given task is complete, return its value. 

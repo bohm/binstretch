@@ -212,6 +212,52 @@ void print_partial_gametree(FILE* stream, algorithm_vertex *v)
     }
 }
 
+void print_compact_subtree(FILE* stream, adversary_vertex *v)
+{
+    if (v->visited)
+    {
+	return;
+    }
+
+    v->visited = true;
+    fprintf(stream, "%" PRIu64 " [label=\"", v->id);
+    for (int i=1; i<=BINS; i++)
+    {
+	fprintf(stream, "%d ", v->bc->loads[i]);
+    }
+
+    if (v->task)
+    {
+	fprintf(stream, "task\"];\n");
+    } else
+    {
+	// print_compact_subtree currently works for only DAGs with outdegree 1 on alg vertices
+	assert(v->out.size() == 1);
+	adv_outedge *right_edge = *(v->out.begin());
+	int right_item = right_edge->item;
+	fprintf(stream, "n:%d\"];\n", right_item);
+	// print edges first, then print subtrees
+	for (auto&& next: right_edge->to->out)
+	{
+	    fprintf(stream, "%" PRIu64 " -> %" PRIu64 "\n", v->id, next->to->id);
+	}
+	
+	for (auto&& next: right_edge->to->out)
+	{
+	    print_compact_subtree(stream, next->to);
+	}
+
+    }
+    
+}
+
+
+void print_compact(FILE* stream, adversary_vertex *v)
+{
+    clear_visited_bits();
+    print_compact_subtree(stream, v);
+}
+
 /* Slightly clunky implementation due to the inability to do
  * a for loop in C++ through a list and erase from the list at the same time.
  */
@@ -304,6 +350,7 @@ void remove_outedges_except(adversary_vertex *v, int right_item)
     }
 
     v->out.remove_if( [right_item](adv_outedge *e){ return (e->item != right_item); } );
+    assert(v->out.size() == 1);
 }
 
 #endif
