@@ -65,6 +65,11 @@ struct adversary_vertex {
 	duplicate(this->bc, b);
     }
 
+    ~adversary_vertex()
+    {
+	free(this->bc);
+    }
+
 };
 
 
