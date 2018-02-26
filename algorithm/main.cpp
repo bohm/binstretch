@@ -31,16 +31,11 @@ int main(void)
     init(root); // init game tree
 
     // special heuristics for 19/14 lower bound for 5,6 bins
-    root->items[5] = 1;
-    root->items[3] = 2;
-    root->loads[1] = 5;
-    root->loads[2] = 3;
-    root->loads[3] = 3;
-    root->loads[4] = 0;
+    root->items[2] = 1;
+    root->loads[1] = 2;
     hashinit(root);
-    adversary_vertex root_vertex;
     llu x = 0; //workaround
-    init_adversary_vertex(&root_vertex, root, 0, &x);
+    adversary_vertex root_vertex(root, 0, &x);
     sapling_queue.push(&root_vertex); 
     int ret = solve();
     fprintf(stderr, "Number of tasks: %" PRIu64 ", completed tasks: %" PRIu64 ", pruned tasks %" PRIu64 ", decreased tasks %" PRIu64 " \n",

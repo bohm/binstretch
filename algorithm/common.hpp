@@ -65,6 +65,10 @@ typedef signed char tiny;
 #if BINS == 6
 #define BINARRAY_SIZE (S+1)*(S+1)*(S+1)*(S+1)*(S+1)*(S+1)
 #endif
+#if BINS == 7
+#define BINARRAY_SIZE (S+1)*(S+1)*(S+1)*(S+1)*(S+1)*(S+1)
+#endif
+
 
 // end of configuration constants
 // ------------------------------------------------

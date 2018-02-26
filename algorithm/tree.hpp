@@ -30,6 +30,13 @@ struct algorithm_vertex {
     uint64_t id;
     bool visited;
     int value;
+
+    algorithm_vertex(int next_item, llu *vertex_counter)
+    {
+	this->id = ++(*vertex_counter);
+	this->value = POSTPONED;
+	this->visited = false;
+    }  
 };
 
 struct adversary_vertex {
@@ -43,6 +50,21 @@ struct adversary_vertex {
     bool visited; // we use this temporarily for DFS (e.g. for printing)
     int value;
     uint64_t id;
+
+    adversary_vertex(const binconf *b, int depth, llu *vertex_counter)
+    {
+	this->bc = (binconf *) malloc(sizeof(binconf));
+	assert(this->bc != NULL);
+	init(this->bc);
+	this->cached = false;
+	this->task = false;
+	this->visited = false;
+	this->id = ++(*vertex_counter);
+	this->depth = depth;
+	this->value = POSTPONED;
+	duplicate(this->bc, b);
+    }
+
 };
 
 
@@ -95,28 +117,6 @@ struct tree_attr {
 std::queue<adversary_vertex*> sapling_queue;
 
 /* Initialize the game tree with the information in the parameters. */
-
-void init_adversary_vertex(adversary_vertex *v, const binconf *b, int depth, llu *vertex_counter)
-{
-    v->bc = (binconf *) malloc(sizeof(binconf));
-    assert(v->bc != NULL);
-    init(v->bc);
-    v->cached = false;
-    v->task = false;
-    v->visited = false;
-    v->id = ++(*vertex_counter);
-    v->depth = depth;
-    v->value = POSTPONED;
-    duplicate(v->bc, b);
-}
-
-void init_algorithm_vertex(algorithm_vertex *v, int next_item, llu *vertex_counter)
-{
-    v->id = ++(*vertex_counter);
-    v->value = POSTPONED;
-    v->visited = false;
-
-}
 
 /* Go through the generated graph and clear all visited flags. 
    Since generated_graph contains only adversary's vertices, we assume

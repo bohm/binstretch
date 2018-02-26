@@ -87,8 +87,7 @@ int adversary(binconf *b, int depth, int mode, dynprog_attr *dpat, tree_attr *ou
 	
 	if (mode == GENERATING)
 	{
-	    analyzed_vertex = new algorithm_vertex;
-	    init_algorithm_vertex(analyzed_vertex, item_size, &(outat->vertex_counter));
+	    analyzed_vertex = new algorithm_vertex(item_size, &(outat->vertex_counter));
 	    // create new edge, 
 	    new_edge = new adv_outedge(current_adversary, analyzed_vertex, item_size);
             // set the current adversary vertex to be the analyzed vertex
@@ -217,8 +216,7 @@ int algorithm(binconf *b, int k, int depth, int mode, dynprog_attr *dpat, tree_a
 		it = generated_graph.find(b->loadhash ^ b->itemhash);
 		if (it == generated_graph.end())
 		{
-		    analyzed_vertex = new adversary_vertex;
-		    init_adversary_vertex(analyzed_vertex, b, depth, &(outat->vertex_counter));
+		    analyzed_vertex = new adversary_vertex(b, depth, &(outat->vertex_counter));
 		    // create new edge
 		    alg_outedge* new_edge = new alg_outedge(current_algorithm, analyzed_vertex);
 		    // add to generated_graph
