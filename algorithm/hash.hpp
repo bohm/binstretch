@@ -100,10 +100,10 @@ void zobrist_init()
 void global_hashtable_init()
 {
 
-    dpht = (uint64_t *) malloc(HASHSIZE * sizeof(dp_hash_item));
+    dpht = (uint64_t *) malloc(BC_HASHSIZE * sizeof(dp_hash_item));
     assert(dpht != NULL);
 
-    for (llu i =0; i < HASHSIZE; i++)
+    for (uint64_t i =0; i < BC_HASHSIZE; i++)
     {
 	dpht[i] = 0;
     }
@@ -218,24 +218,34 @@ void printBits64(llu num)
 }
 
 /* returns a lower HASHLOG bits of a 64-bit number */
-unsigned int hashlogpart(llu x)
+uint64_t hashlogpart(llu x)
 {
-    llu mask,y;
+    uint64_t mask,y;
     mask = (HASHSIZE) - 1;
     y = (x) & mask;
-    return (unsigned int) y;
+    return y;
 }
 
-/* returns a lower BUCKETLOG bits of a 64-bit number */
-unsigned int bucketlockpart(llu x)
+/* returns a lower BCLOG bits of a 64-bit number */
+uint64_t bclogpart(llu x)
 {
-    llu mask,y;
+    uint64_t mask,y;
+    mask = (BC_HASHSIZE) - 1;
+    y = (x) & mask;
+    return y;
+}
+
+
+/* returns a lower BUCKETLOG bits of a 64-bit number */
+uint64_t bucketlockpart(llu x)
+{
+    uint64_t mask,y;
     mask = (BUCKETSIZE) - 1;
     y = (x) & mask;
     //fprintf(stderr, "bucketlockpart(%llu) = %u\n", x,y);
     //printBits64(x); fprintf(stderr, " -> "); printBits32(y); fprintf(stderr, "\n");
     
-    return (unsigned int) y;
+    return y;
 }
 
 // (re)calculates the hash of b completely.
@@ -364,13 +374,13 @@ void dp_unhash(binconf *d, int dynitem)
 
 /* Checks if an element is hashed, returns -1 (not hashed)
    or 0/1 if it is. */
-int8_t is_conf_hashed(uint64_t *hashtable, const binconf *d)
+int8_t is_conf_hashed(uint64_t *hashtable, const binconf *d, thread_attr *tat)
 {
     uint64_t bchash = d->itemhash ^ d->loadhash;
     //fprintf(stderr, "Bchash %" PRIu64 ", zero_last_bit %" PRIu64 " get_last_bit %" PRId8 " \n", bchash, zero_last_bit(bchash), get_last_bit(bchash));
 
-    unsigned int lp = hashlogpart(bchash);
-    unsigned int blp = bucketlockpart((llu) lp);
+    uint64_t lp = hashlogpart(bchash);
+    uint64_t blp = bucketlockpart((llu) lp);
 
     uint64_t foundhash;
     llu lhash = 0;
@@ -383,6 +393,24 @@ int8_t is_conf_hashed(uint64_t *hashtable, const binconf *d)
     //duplicate(&r, &(hashtable[lp]));
     foundhash = hashtable[lp];
     pthread_mutex_unlock(&bucketlock[blp]); // UNLOCK
+
+#ifdef MEASURE
+    // zero is found only in the case the slot is empty
+    if (foundhash == 0)
+    {
+	tat->bc_empty++;
+    } else if (zero_last_bit(foundhash) != zero_last_bit(bchash))
+    {
+	tat->bc_miss++;
+    }
+
+    if (zero_last_bit(foundhash) == zero_last_bit(bchash))
+    {
+	tat->bc_hit++;
+    }
+#endif
+
+
     if (zero_last_bit(bchash) == zero_last_bit(foundhash))
     {
 	posvalue = get_last_bit(foundhash);
@@ -403,8 +431,8 @@ void conf_hashpush(uint64_t* hashtable, const binconf *d, int posvalue)
     uint64_t bchash = d->itemhash ^ d->loadhash;
     uint64_t hash_item = zero_last_bit(bchash) | ((uint64_t) posvalue);
     //fprintf(stderr, "Hash %" PRIu64 " hash_item %" PRIu64 "\n", bchash, hash_item);
-    unsigned int lp = hashlogpart(bchash);
-    unsigned int blp = bucketlockpart((llu) lp);
+    uint64_t lp = hashlogpart(bchash);
+    uint64_t blp = bucketlockpart((llu) lp);
 
     pthread_mutex_lock(&bucketlock[blp]); //LOCK
     hashtable[lp] = hash_item;
@@ -419,20 +447,38 @@ void conf_hashpush(uint64_t* hashtable, const binconf *d, int posvalue)
 
 // Checks if a number is in the dynamic programming hash.
 // Returns -1 (not hashed) and 0/1 (it is hashed, this is its feasibility)
-int dp_hashed(const binconf* d)
+int dp_hashed(const binconf* d, thread_attr *tat)
 {
     uint64_t foundhash;
-    unsigned int lp = hashlogpart(d->itemhash);
-    unsigned int blp = bucketlockpart((llu) lp);
+    uint64_t lp = bclogpart(d->itemhash);
+    uint64_t blp = bucketlockpart((llu) lp);
 
     pthread_mutex_lock(&dpbucketlock[blp]); // LOCK
     foundhash = dpht[lp];
     pthread_mutex_unlock(&dpbucketlock[blp]); // UNLOCK
 
+#ifdef MEASURE
+    // zero is found only in the case the slot is empty
+    if (foundhash == 0)
+    {
+	tat->dp_empty++;
+    } else if (zero_last_bit(foundhash) != zero_last_bit(d->itemhash))
+    {
+	tat->dp_miss++;
+    }
+
+    if (zero_last_bit(foundhash) == zero_last_bit(d->itemhash))
+    {
+	tat->dp_hit++;
+    }
+#endif
     if (zero_last_bit(foundhash) == zero_last_bit(d->itemhash))
     {
 	return get_last_bit(foundhash);
     }
+
+    
+
 
     return -1;
 }
@@ -441,8 +487,8 @@ int dp_hashed(const binconf* d)
 // Adds an number to a dynamic programming hash table
 void dp_hashpush(const binconf *d, bool feasible)
 {
-    unsigned int lp = hashlogpart(d->itemhash);
-    unsigned int blp = bucketlockpart((llu) lp);
+    uint64_t lp = bclogpart(d->itemhash);
+    uint64_t blp = bucketlockpart((llu) lp);
     uint64_t cache = zero_last_bit(d->itemhash) | ((uint64_t) feasible);
     
     pthread_mutex_lock(&dpbucketlock[blp]); // LOCK

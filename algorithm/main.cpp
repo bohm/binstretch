@@ -31,8 +31,8 @@ int main(void)
     init(root); // init game tree
 
     // special heuristics for 19/14 lower bound for 5,6 bins
-    //root->items[5] = 1;
-    //root->loads[1] = 5;
+    root->items[5] = 1;
+    root->loads[1] = 5;
     hashinit(root);
     llu x = 0; //workaround
     adversary_vertex root_vertex(root, 0, &x);
@@ -60,11 +60,12 @@ int main(void)
 	    task_count, finished_task_count, removed_task_count, decreased_task_count );
 
 #ifdef MEASURE
-    long double ratio = (long double) total_hash_and_tests / (long double) total_max_feasible;
+    long double ratio = (long double) total_hash_and_tests / (long double) total_until_break;
 #endif
     MEASURE_PRINT("Total time (all threads): %Lfs; total dynprog time: %Lfs.\n", time_spent.count(), total_dynprog_time.count());
-    MEASURE_PRINT(" DP Calls: %llu; maximum_feasible calls: %llu, DP/feasible calls: %Lf\n", total_hash_and_tests, total_max_feasible, ratio);
-
+    MEASURE_PRINT(" DP test calls: %" PRIu64 "; maximum_feasible calls: %" PRIu64 ", DP/Inner loop: %Lf\n", total_hash_and_tests, total_max_feasible, ratio);
+    MEASURE_PRINT(" Binconf table size: %llu, Cell empty: %" PRIu64 ", table hit: %" PRIu64 ", table miss: %" PRIu64 "\n", HASHSIZE, total_bc_empty, total_bc_hit, total_bc_miss) ;
+    MEASURE_PRINT(" DP table size: %llu, Cell empty: %" PRIu64 ", table hit: %" PRIu64 ", table miss: %" PRIu64 "\n", BC_HASHSIZE, total_dp_empty, total_dp_hit, total_dp_miss) ;
     global_hashtable_cleanup();
     local_hashtable_cleanup();
     bucketlock_cleanup();

@@ -77,9 +77,19 @@ void *evaluate_tasks(void * tid)
     total_dynprog_time += tat.dynprog_time;
     total_max_feasible += tat.maximum_feasible_counter;
     total_hash_and_tests += tat.test_counter;
+
+    total_dp_miss += tat.dp_miss;
+    total_dp_hit += tat.dp_hit;
+    total_dp_empty += tat.dp_empty;
+
+    total_bc_miss += tat.bc_miss;
+    total_bc_hit += tat.bc_hit;
+    total_bc_empty += tat.bc_empty;
+
+    total_until_break += tat.until_break;
+    MEASURE_PRINT("Until break: %" PRIu64 "\n", tat.until_break);
 #endif
     pthread_mutex_unlock(&thread_progress_lock);
-
     dynprog_attr_free(&tat);
     return NULL;
 }

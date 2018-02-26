@@ -35,16 +35,20 @@ typedef signed char tiny;
 #define ALPHA (RMOD-S)
 
 // Change this number for the selected number of bins.
-#define BINS 3
+#define BINS 6
 
 // bitwise length of indices of the hash table
-#define HASHLOG 25
+#define HASHLOG 29
+#define BCLOG 20
 // size of the hash table
-#define HASHSIZE (1<<HASHLOG)
+
+#define HASHSIZE (1ULL<<HASHLOG)
+
+#define BC_HASHSIZE (1ULL<<BCLOG)
 
 // size of buckets -- how many locks there are (each lock serves a group of hashes)
 #define BUCKETLOG 10
-#define BUCKETSIZE (1<<BUCKETLOG)
+#define BUCKETSIZE (1ULL<<BUCKETLOG)
 
 // the number of threads
 #define THREADS 8
@@ -66,7 +70,7 @@ typedef signed char tiny;
 #define BINARRAY_SIZE (S+1)*(S+1)*(S+1)*(S+1)*(S+1)*(S+1)
 #endif
 #if BINS == 7
-#define BINARRAY_SIZE (S+1)*(S+1)*(S+1)*(S+1)*(S+1)*(S+1)
+#define BINARRAY_SIZE (S+1)*(S+1)*(S+1)*(S+1)*(S+1)*(S+1)*(S+1)
 #endif
 
 
@@ -74,15 +78,9 @@ typedef signed char tiny;
 // ------------------------------------------------
 
 #define POSTPONED 2
-#define UNEVALUATED 3
-#define SKIPPED 4
-#define IRRELEVANT 2
 
 #define GENERATING 1
 #define EXPLORING 2
-#define UPDATING 3
-#define DECREASING 4
-#define COLLECTING 5
 
 bool generating_tasks;
 
@@ -125,6 +123,13 @@ struct thread_attr {
     std::chrono::duration<long double> dynprog_time;
     uint64_t maximum_feasible_counter = 0;
     uint64_t test_counter = 0;
+    uint64_t dp_empty = 0;
+    uint64_t dp_hit = 0;
+    uint64_t dp_miss = 0;
+    uint64_t bc_empty = 0;
+    uint64_t bc_hit = 0;
+    uint64_t bc_miss = 0;
+    uint64_t until_break = 0;
 };
 
 typedef struct thread_attr thread_attr;
@@ -138,6 +143,17 @@ uint64_t removed_task_count = 0; // number of tasks which are removed due to min
 uint64_t decreased_task_count = 0;
 uint64_t total_max_feasible = 0;
 uint64_t total_hash_and_tests = 0;
+uint64_t total_until_break = 0;
+
+uint64_t total_dp_empty = 0;
+uint64_t total_dp_hit = 0;
+uint64_t total_dp_miss = 0;
+
+uint64_t total_bc_empty = 0;
+uint64_t total_bc_hit = 0;
+uint64_t total_bc_miss = 0;
+
+
 pthread_mutex_t taskq_lock;
 
 // global hash-like map of completed tasks (and their parents up to

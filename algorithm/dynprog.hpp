@@ -293,7 +293,7 @@ bool hash_and_test(binconf *h, int item, thread_attr *tat)
     h->items[item]++;
     dp_rehash(h,item);
     
-    hashedvalue = dp_hashed(h);
+    hashedvalue = dp_hashed(h, tat);
     if (hashedvalue != -1)
     {
 	DEEP_DEBUG_PRINT("Found a cached value of hash %llu in dynprog instance: %d.\n", h->itemhash, hashedvalue);
@@ -324,20 +324,18 @@ int maximum_feasible_dynprog(binconf *b, thread_attr *tat)
     DEEP_DEBUG_PRINT("\n"); 
 
     // due to state-reversing memory copy should not be needed
-    //binconf h;
-    //duplicate(&h,b);
-    int dynitem;
     
     // calculate lower bound for the optimum using Best Fit Decreasing
     std::pair<int,int> fitresults = fitmaxone(b);
     
     int bestfitvalue = fitresults.second;
+    int dynitem = bestfitvalue;
     
     DEEP_DEBUG_PRINT("lower bound for dynprog: %d\n", bestfitvalue);
 
-    if(is_root(b)) {
+    /* if(is_root(b)) {
 	DEBUG_PRINT("ROOT: lower bound for dynprog: %d\n", bestfitvalue);
-    }
+     } */
     // calculate upper bound for the optimum based on min(S,sum of remaining items)
     int maxvalue = (S*BINS) - totalload(b);
     if( maxvalue > S)
@@ -345,29 +343,35 @@ int maximum_feasible_dynprog(binconf *b, thread_attr *tat)
 
     DEEP_DEBUG_PRINT("upper bound for dynprog: %d\n", maxvalue);
 
-    if(is_root(b)) {
+    /* if(is_root(b)) {
 	DEBUG_PRINT("ROOT: upper bound for dynprog: %d\n", maxvalue);
     }
+    */
 
     // use binary search to find the value
-    /* int lb = bestfitvalue; int ub = maxvalue;
-    int mid = (lb+ub+1)/2;
-    bool feasible;
-    while (lb < ub)
+    if (maxvalue > bestfitvalue)
     {
-	feasible = hash_and_test(&h,mid);
-	if(feasible)
+#ifdef MEASURE
+	tat->until_break++;
+#endif
+	int lb = bestfitvalue; int ub = maxvalue;
+	int mid = (lb+ub+1)/2;
+	bool feasible;
+	while (lb < ub)
 	{
-	    lb = mid;
-	} else {
-	    ub = mid-1;
+	    feasible = hash_and_test(b,mid,tat);
+	    if (feasible)
+	    {
+		lb = mid;
+	    } else {
+		ub = mid-1;
+	    }
+	    
+	    mid = (lb+ub+1)/2;
 	}
-
-	mid = (lb+ub+1)/2;
+	
+	dynitem = lb;
     }
-
-    int bsearch_result = lb;
-    */
 
     //assert(ub >= lb);
     //assert(hash_and_test(&h,lb) == true);
@@ -375,16 +379,19 @@ int maximum_feasible_dynprog(binconf *b, thread_attr *tat)
     //    assert(hash_and_test(&h,lb+1) == false);
     
     
-
+    
     // DEBUG: compare it with ordinary for cycle
+
+    /*
     for (dynitem=maxvalue; dynitem>bestfitvalue; dynitem--)
     {
 	bool feasible = hash_and_test(b,dynitem, tat);
-	if(feasible)
+	if (feasible)
 	{
+	    tat->until_break++;
 	    break;
 	}
-    }
+    } */
 
     if(is_root(b)) {
 	DEBUG_PRINT("ROOT: final bound for dynprog: %d\n", dynitem);
