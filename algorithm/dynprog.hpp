@@ -58,34 +58,34 @@ void decodetuple(int *new_tuple, int source, int pos)
 //int *oldqueue;
 //int *newqueue;
 
-void dynprog_attr_init(dynprog_attr *dpat)
+void dynprog_attr_init(thread_attr *tat)
 {
-    assert(dpat != NULL);
+    assert(tat != NULL);
     
-    dpat->F = (int *) calloc(BINARRAY_SIZE,sizeof(int));
-    assert(dpat->F != NULL);
+    tat->F = (int *) calloc(BINARRAY_SIZE,sizeof(int));
+    assert(tat->F != NULL);
     
-    dpat->oldqueue = (int *) calloc(BINARRAY_SIZE,sizeof(int));
-    dpat->newqueue = (int *) calloc(BINARRAY_SIZE,sizeof(int));
-    assert(dpat->oldqueue != NULL);
-    assert(dpat->newqueue != NULL);
+    tat->oldqueue = (int *) calloc(BINARRAY_SIZE,sizeof(int));
+    tat->newqueue = (int *) calloc(BINARRAY_SIZE,sizeof(int));
+    assert(tat->oldqueue != NULL);
+    assert(tat->newqueue != NULL);
 
 }
 
-void dynprog_attr_free(dynprog_attr *dpat)
+void dynprog_attr_free(thread_attr *tat)
 {
-    free(dpat->oldqueue); free(dpat->newqueue);
-    free(dpat->F);
+    free(tat->oldqueue); free(tat->newqueue);
+    free(tat->F);
 }
 
 /* New dynprog test with some minor improvements. */
-bool sparse_dynprog_test2(const binconf *conf, dynprog_attr *dpat)
+bool sparse_dynprog_test2(const binconf *conf, thread_attr *tat)
 {
     // binary array of feasibilities
     // int f[S+1][S+1][S+1] = {0};
-    int *F = dpat->F;
-    int *oldqueue = dpat->oldqueue;
-    int *newqueue = dpat->newqueue;
+    int *F = tat->F;
+    int *oldqueue = tat->oldqueue;
+    int *newqueue = tat->newqueue;
     int **poldq;
     int **pnewq;
     int **swapper;
@@ -184,13 +184,13 @@ bool sparse_dynprog_test2(const binconf *conf, dynprog_attr *dpat)
 
 
 
-bool sparse_dynprog_test(const binconf *conf, dynprog_attr *dpat)
+bool sparse_dynprog_test(const binconf *conf, thread_attr *tat)
 {
     // binary array of feasibilities
     // int f[S+1][S+1][S+1] = {0};
-    int *F = dpat->F;
-    int *oldqueue = dpat->oldqueue;
-    int *newqueue = dpat->newqueue;
+    int *F = tat->F;
+    int *oldqueue = tat->oldqueue;
+    int *newqueue = tat->newqueue;
     int **poldq;
     int **pnewq;
     int **swapper;
@@ -281,10 +281,10 @@ bool sparse_dynprog_test(const binconf *conf, dynprog_attr *dpat)
 
 // a wrapper that hashes the new configuration and if it is not in cache, runs TEST
 // it edits h but should return it to original state (due to Zobrist hashing)
-bool hash_and_test(binconf *h, int item, dynprog_attr *dpat)
+bool hash_and_test(binconf *h, int item, thread_attr *tat)
 {
 #ifdef MEASURE
-    test_counter++;
+    tat->test_counter++;
 #endif
     
     bool feasible;
@@ -300,9 +300,9 @@ bool hash_and_test(binconf *h, int item, dynprog_attr *dpat)
 	feasible = (bool) hashedvalue;
     } else {
 	DEEP_DEBUG_PRINT("Nothing found in dynprog cache for hash %llu.\n", h->itemhash);
-	feasible = TEST(h, dpat);
+	feasible = TEST(h, tat);
 	// temporary sanity check
-	// assert(feasible == sparse_dynprog_test(h,dpat));
+	// assert(feasible == sparse_dynprog_test(h,tat));
 	DEEP_DEBUG_PRINT("Pushing dynprog value %d for hash %llu.\n", feasible, h->itemhash);
 	dp_hashpush(h,feasible);
     }
@@ -312,10 +312,10 @@ bool hash_and_test(binconf *h, int item, dynprog_attr *dpat)
     return feasible;
 }
 
-int maximum_feasible_dynprog(binconf *b, dynprog_attr *dpat)
+int maximum_feasible_dynprog(binconf *b, thread_attr *tat)
 {
 #ifdef MEASURE
-    maximum_feasible_counter++;
+    tat->maximum_feasible_counter++;
     // cannot work -- every thread should have its own counter
     auto start = std::chrono::system_clock::now(); 
 #endif
@@ -379,7 +379,7 @@ int maximum_feasible_dynprog(binconf *b, dynprog_attr *dpat)
     // DEBUG: compare it with ordinary for cycle
     for (dynitem=maxvalue; dynitem>bestfitvalue; dynitem--)
     {
-	bool feasible = hash_and_test(b,dynitem, dpat);
+	bool feasible = hash_and_test(b,dynitem, tat);
 	if(feasible)
 	{
 	    break;
@@ -392,7 +392,7 @@ int maximum_feasible_dynprog(binconf *b, dynprog_attr *dpat)
 
 #ifdef MEASURE
     auto end = std::chrono::system_clock::now();
-    dpat->dynprog_time += end - start;
+    tat->dynprog_time += end - start;
 #endif
     
     return dynitem;

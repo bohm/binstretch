@@ -19,8 +19,8 @@ void *evaluate_tasks(void * tid)
 {
     unsigned int threadid =  * (unsigned int *) tid;
     uint64_t taskcounter = 0;
-    dynprog_attr dpat;
-    dynprog_attr_init(&dpat);
+    thread_attr tat;
+    dynprog_attr_init(&tat);
     task current;
     //std::map<llu, task>::reverse_iterator task_it;
     bool taskmap_empty = false;
@@ -50,7 +50,7 @@ void *evaluate_tasks(void * tid)
 	   PROGRESS_PRINT_BINCONF(&current.bc);
 	}
 	
-	int ret = explore(&(current.bc), &dpat);
+	int ret = explore(&(current.bc), &tat);
 
 	// add task to the completed_tasks map
 	pthread_mutex_lock(&collection_lock[threadid]);
@@ -74,11 +74,13 @@ void *evaluate_tasks(void * tid)
     finished_task_count += taskcounter;
     time_spent += thread_end - thread_start;
 #ifdef MEASURE
-    total_dynprog_time += dpat.dynprog_time;
+    total_dynprog_time += tat.dynprog_time;
+    total_max_feasible += tat.maximum_feasible_counter;
+    total_hash_and_tests += tat.test_counter;
 #endif
     pthread_mutex_unlock(&thread_progress_lock);
 
-    dynprog_attr_free(&dpat);
+    dynprog_attr_free(&tat);
     return NULL;
 }
 
@@ -95,12 +97,12 @@ int scheduler(adversary_vertex *sapling)
     duplicate(&sapling_bc, sapling->bc);
     
     // initialize dp tables for the main thread
-    dynprog_attr dpat;
-    dynprog_attr_init(&dpat);
+    thread_attr tat;
+    dynprog_attr_init(&tat);
 
     generated_graph.clear();
     generated_graph[sapling->bc->loadhash ^ sapling->bc->itemhash] = sapling;
-    int ret = generate(&sapling_bc, &dpat, sapling);
+    int ret = generate(&sapling_bc, &tat, sapling);
     sapling->value = ret;
     
 #ifdef PROGRESS
@@ -204,7 +206,7 @@ int scheduler(adversary_vertex *sapling)
 	}	
     }
 
-    dynprog_attr_free(&dpat);
+    dynprog_attr_free(&tat);
 
 #ifdef PROGRESS
     fprintf(stderr, "End computation.\n");

@@ -117,15 +117,17 @@ struct task {
 typedef struct task task;
 
 
-/* dynprog global variables (separate for each thread) */
-struct dynprog_attr {
+/* dynprog global variables and other attributes separate for each thread */
+struct thread_attr {
     int *F;
     int *oldqueue;
     int *newqueue;
     std::chrono::duration<long double> dynprog_time;
+    uint64_t maximum_feasible_counter = 0;
+    uint64_t test_counter = 0;
 };
 
-typedef struct dynprog_attr dynprog_attr;
+typedef struct thread_attr thread_attr;
 
 // global task map indexed by binconf hashes
 std::map<llu, task> tm;
@@ -134,6 +136,8 @@ uint64_t task_count = 0;
 uint64_t finished_task_count = 0;
 uint64_t removed_task_count = 0; // number of tasks which are removed due to minimax pruning
 uint64_t decreased_task_count = 0;
+uint64_t total_max_feasible = 0;
+uint64_t total_hash_and_tests = 0;
 pthread_mutex_t taskq_lock;
 
 // global hash-like map of completed tasks (and their parents up to

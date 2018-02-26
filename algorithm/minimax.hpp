@@ -17,8 +17,8 @@
 #define _MINIMAX_H 1
 
 /* declarations */
-int adversary(binconf *b, int depth, int mode, dynprog_attr *dpat, tree_attr *outat); 
-int algorithm(binconf *b, int k, int depth, int mode, dynprog_attr *dpat, tree_attr *outat);
+int adversary(binconf *b, int depth, int mode, thread_attr *tat, tree_attr *outat); 
+int algorithm(binconf *b, int k, int depth, int mode, thread_attr *tat, tree_attr *outat);
 
 /* declaring which algorithm will be used */
 #define ALGORITHM algorithm
@@ -41,7 +41,7 @@ int algorithm(binconf *b, int k, int depth, int mode, dynprog_attr *dpat, tree_a
 
 // We currently do not use double_move and triple_move.
  
-int adversary(binconf *b, int depth, int mode, dynprog_attr *dpat, tree_attr *outat) {
+int adversary(binconf *b, int depth, int mode, thread_attr *tat, tree_attr *outat) {
 
     adversary_vertex *current_adversary = NULL;
     algorithm_vertex *previous_algorithm = NULL;
@@ -68,11 +68,7 @@ int adversary(binconf *b, int depth, int mode, dynprog_attr *dpat, tree_attr *ou
     }
 
     // finds the maximum feasible item that can be added using dyn. prog.
-    int maximum_feasible = MAXIMUM_FEASIBLE(b, dpat);
-    if(is_root(b)) {
-	DEBUG_PRINT("ROOT: bound from maximum feasible: %d\n", maximum_feasible);
-    }
-
+    int maximum_feasible = MAXIMUM_FEASIBLE(b, tat);
     bool postponed_branches_present = false;
     bool result_determined = false; // can be determined even when postponed branches are present
     int below = 1;
@@ -94,7 +90,7 @@ int adversary(binconf *b, int depth, int mode, dynprog_attr *dpat, tree_attr *ou
 	    outat->last_alg_v = analyzed_vertex;
 	}
 
-	below = ALGORITHM(b, item_size, depth+1, mode, dpat, outat);
+	below = ALGORITHM(b, item_size, depth+1, mode, tat, outat);
 
 	if (mode == GENERATING)
 	{
@@ -103,11 +99,6 @@ int adversary(binconf *b, int depth, int mode, dynprog_attr *dpat, tree_attr *ou
 	    outat->last_alg_v = previous_algorithm;
 	}
 
-	if (is_root(b))
-	{
-	    DEBUG_PRINT("ROOT: Sent item %d to algorithm, got %d\n", item_size, r);
-	}
-	
 	if (mode == EXPLORING)
 	{
 	    DEEP_DEBUG_PRINT("With item %d, algorithm's result is %d\n", item_size, r);
@@ -148,21 +139,10 @@ int adversary(binconf *b, int depth, int mode, dynprog_attr *dpat, tree_attr *ou
 	assert(current_adversary->out.empty());
     }
     
-    /*
-    if (mode == GENERATING && r == 1 && postponed_branches_present == false)
-    {
-        // add the vertex to the completed vertices (of the main tree)
-	// decrease the game tree from here below (no branches should be present,
-	// so it just marks this vertex as decreased)
-	
-	result_determined = true;
-    }
-    */
-
     return r;
 }
 
-int algorithm(binconf *b, int k, int depth, int mode, dynprog_attr *dpat, tree_attr *outat) {
+int algorithm(binconf *b, int k, int depth, int mode, thread_attr *tat, tree_attr *outat) {
 
     bool postponed_branches_present = false;
     bool building_tree = false;
@@ -254,7 +234,7 @@ int algorithm(binconf *b, int k, int depth, int mode, dynprog_attr *dpat, tree_a
 		    outat->last_adv_v = analyzed_vertex;
 		}
 
-		below = ADVERSARY(b, depth, mode, dpat, outat);
+		below = ADVERSARY(b, depth, mode, tat, outat);
 
 		if (mode == GENERATING)
 		{
@@ -317,26 +297,26 @@ int algorithm(binconf *b, int k, int depth, int mode, dynprog_attr *dpat, tree_a
 // wrapper for exploration
 // Returns value of the current position.
 
-int explore(binconf *b, dynprog_attr *dpat)
+int explore(binconf *b, thread_attr *tat)
 {
     hashinit(b);
     tree_attr *outat = NULL;
 
-    int ret = adversary(b, 0, EXPLORING, dpat, outat);
+    int ret = adversary(b, 0, EXPLORING, tat, outat);
     assert(ret != POSTPONED);
     
     return ret;
 }
 
 // wrapper for generation
-int generate(binconf *start, dynprog_attr *dpat, adversary_vertex *start_vert)
+int generate(binconf *start, thread_attr *tat, adversary_vertex *start_vert)
 {
     hashinit(start);
     tree_attr *outat = new tree_attr;
     outat->last_adv_v = start_vert;
     outat->last_alg_v = NULL;
     outat->vertex_counter = 1;
-    int ret = adversary(start, 0, GENERATING, dpat, outat);
+    int ret = adversary(start, 0, GENERATING, tat, outat);
     delete outat;
     return ret;
 }

@@ -355,7 +355,7 @@ void remove_outedges_except(adversary_vertex *v, int right_item)
     }
 
     v->out.remove_if( [right_item](adv_outedge *e){ return (e->item != right_item); } );
-    assert(v->out.size() == 1);
+    //assert(v->out.size() == 1);
 }
 
 #endif
