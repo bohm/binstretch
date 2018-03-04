@@ -35,26 +35,29 @@ typedef signed char tiny;
 #define ALPHA (RMOD-S)
 
 // Change this number for the selected number of bins.
-#define BINS 6
+#define BINS 7
 
-// bitwise length of indices of the hash table
-#define HASHLOG 29
-#define BCLOG 20
+// bitwise length of indices of hash tables and lock tables
+#define HASHLOG 30
+#define BCLOG 25
+#define BUCKETLOG 10
+
 // size of the hash table
 
 #define HASHSIZE (1ULL<<HASHLOG)
-
 #define BC_HASHSIZE (1ULL<<BCLOG)
 
 // size of buckets -- how many locks there are (each lock serves a group of hashes)
-#define BUCKETLOG 10
 #define BUCKETSIZE (1ULL<<BUCKETLOG)
+
+// linear probing limit
+#define LINPROBE_LIMIT 8
 
 // the number of threads
 #define THREADS 8
 // a bound on total load of a configuration before we split it into a task
 #define TASK_LOAD (S*BINS)/2
-#define TASK_DEPTH 4
+#define TASK_DEPTH 5
 
 // The following selects binarray size based on BINS. It does not need to be edited.
 #if BINS == 3
@@ -72,6 +75,10 @@ typedef signed char tiny;
 #if BINS == 7
 #define BINARRAY_SIZE (S+1)*(S+1)*(S+1)*(S+1)*(S+1)*(S+1)*(S+1)
 #endif
+#if BINS == 8
+#define BINARRAY_SIZE 1ULL*(S+1)*(S+1)*(S+1)*(S+1)*(S+1)*(S+1)*(S+1)*(S+1)
+#endif
+
 
 
 // end of configuration constants
@@ -117,19 +124,24 @@ typedef struct task task;
 
 /* dynprog global variables and other attributes separate for each thread */
 struct thread_attr {
-    int *F;
-    int *oldqueue;
-    int *newqueue;
+    std::vector<int>* F;
+    std::vector<uint64_t>* oldqueue;
+    std::vector<uint64_t>* newqueue;
     std::chrono::duration<long double> dynprog_time;
     uint64_t maximum_feasible_counter = 0;
     uint64_t test_counter = 0;
-    uint64_t dp_empty = 0;
+    uint64_t dp_full_not_found = 0;
     uint64_t dp_hit = 0;
     uint64_t dp_miss = 0;
-    uint64_t bc_empty = 0;
+    uint64_t dp_insertions = 0;
+    
+    uint64_t bc_full_not_found = 0;
     uint64_t bc_hit = 0;
     uint64_t bc_miss = 0;
     uint64_t until_break = 0;
+    uint64_t bc_insertions = 0;
+    uint64_t bc_hash_checks = 0;
+
 };
 
 typedef struct thread_attr thread_attr;
@@ -145,11 +157,15 @@ uint64_t total_max_feasible = 0;
 uint64_t total_hash_and_tests = 0;
 uint64_t total_until_break = 0;
 
-uint64_t total_dp_empty = 0;
+
 uint64_t total_dp_hit = 0;
 uint64_t total_dp_miss = 0;
+uint64_t total_dp_insertions = 0;
+uint64_t total_dp_full_not_found = 0;
 
-uint64_t total_bc_empty = 0;
+uint64_t total_bc_hash_checks = 0;
+uint64_t total_bc_insertions = 0;
+uint64_t total_bc_full_not_found = 0;
 uint64_t total_bc_hit = 0;
 uint64_t total_bc_miss = 0;
 

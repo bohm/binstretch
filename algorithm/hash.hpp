@@ -217,8 +217,7 @@ void printBits64(llu num)
    fprintf(stderr, "\n");
 }
 
-/* returns a lower HASHLOG bits of a 64-bit number */
-uint64_t hashlogpart(llu x)
+uint64_t lowerpart(llu x)
 {
     uint64_t mask,y;
     mask = (HASHSIZE) - 1;
@@ -226,26 +225,24 @@ uint64_t hashlogpart(llu x)
     return y;
 }
 
-/* returns a lower BCLOG bits of a 64-bit number */
-uint64_t bclogpart(llu x)
+/* returns upper HASHLOG bits of a 64-bit number */
+uint64_t hashlogpart(uint64_t x)
 {
-    uint64_t mask,y;
-    mask = (BC_HASHSIZE) - 1;
-    y = (x) & mask;
-    return y;
+    return x >> (64 - HASHLOG);
 }
 
 
-/* returns a lower BUCKETLOG bits of a 64-bit number */
-uint64_t bucketlockpart(llu x)
+/* returns upper BCLOG bits of a 64-bit number */
+uint64_t bclogpart(uint64_t x)
 {
-    uint64_t mask,y;
-    mask = (BUCKETSIZE) - 1;
-    y = (x) & mask;
-    //fprintf(stderr, "bucketlockpart(%llu) = %u\n", x,y);
-    //printBits64(x); fprintf(stderr, " -> "); printBits32(y); fprintf(stderr, "\n");
-    
-    return y;
+    return x >> (64 - BCLOG);
+}
+
+
+/* returns upper BUCKETLOG bits of a 64-bit number */
+uint64_t bucketlockpart(uint64_t x)
+{
+    return x >> (64 - BUCKETLOG);
 }
 
 // (re)calculates the hash of b completely.
@@ -376,11 +373,14 @@ void dp_unhash(binconf *d, int dynitem)
    or 0/1 if it is. */
 int8_t is_conf_hashed(uint64_t *hashtable, const binconf *d, thread_attr *tat)
 {
+#ifdef MEASURE
+    tat->bc_hash_checks++;
+#endif
     uint64_t bchash = d->itemhash ^ d->loadhash;
     //fprintf(stderr, "Bchash %" PRIu64 ", zero_last_bit %" PRIu64 " get_last_bit %" PRId8 " \n", bchash, zero_last_bit(bchash), get_last_bit(bchash));
 
     uint64_t lp = hashlogpart(bchash);
-    uint64_t blp = bucketlockpart((llu) lp);
+    uint64_t blp = bucketlockpart(bchash);
 
     uint64_t foundhash;
     llu lhash = 0;
@@ -388,35 +388,49 @@ int8_t is_conf_hashed(uint64_t *hashtable, const binconf *d, thread_attr *tat)
     int8_t posvalue = -1;
     //binconf r;
     assert(lp < HASHSIZE);
+
+    // Use linear probing to check for the hashed value.
+    // slight hack here: in theory, just looking a few indices ahead might look into the next bucket lock
+    // TODO: Fix that.
     
     pthread_mutex_lock(&bucketlock[blp]); // LOCK
-    //duplicate(&r, &(hashtable[lp]));
-    foundhash = hashtable[lp];
+
+    for( int i=0; i< LINPROBE_LIMIT; i++)
+    {
+	foundhash = hashtable[lp+i];
+	if (foundhash == 0)
+	{
+	    break;
+	}
+
+	if (zero_last_bit(bchash) == zero_last_bit(foundhash))
+	{
+	    posvalue = get_last_bit(foundhash);
+	    break;
+	}
+
+#ifdef MEASURE
+	if (i == LINPROBE_LIMIT-1)
+	{
+	    tat->bc_full_not_found++;
+	}
+#endif
+    }
+ 
     pthread_mutex_unlock(&bucketlock[blp]); // UNLOCK
 
 #ifdef MEASURE
-    // zero is found only in the case the slot is empty
-    if (foundhash == 0)
-    {
-	tat->bc_empty++;
-    } else if (zero_last_bit(foundhash) != zero_last_bit(bchash))
+    if (posvalue == -1)
     {
 	tat->bc_miss++;
     }
 
-    if (zero_last_bit(foundhash) == zero_last_bit(bchash))
+    if (posvalue != -1)
     {
 	tat->bc_hit++;
     }
-#endif
+#endif 
 
-
-    if (zero_last_bit(bchash) == zero_last_bit(foundhash))
-    {
-	posvalue = get_last_bit(foundhash);
-	DEEP_DEBUG_PRINT("Found the following position in a hash table:\n");
-	DEEP_DEBUG_PRINT_BINCONF(d);
-    }
     return posvalue;
 }
 
@@ -425,17 +439,35 @@ int8_t is_conf_hashed(uint64_t *hashtable, const binconf *d, thread_attr *tat)
    Also uses flat rewriting yet.
  */
 
-void conf_hashpush(uint64_t* hashtable, const binconf *d, int posvalue)
+void conf_hashpush(uint64_t* hashtable, const binconf *d, int posvalue, thread_attr *tat)
 {
+#ifdef MEASURE
+    tat->bc_insertions++;
+#endif
     assert(posvalue == 0 || posvalue == 1);
     uint64_t bchash = d->itemhash ^ d->loadhash;
     uint64_t hash_item = zero_last_bit(bchash) | ((uint64_t) posvalue);
     //fprintf(stderr, "Hash %" PRIu64 " hash_item %" PRIu64 "\n", bchash, hash_item);
     uint64_t lp = hashlogpart(bchash);
-    uint64_t blp = bucketlockpart((llu) lp);
-
+    uint64_t blp = bucketlockpart(bchash);
+    uint64_t position = lp;
     pthread_mutex_lock(&bucketlock[blp]); //LOCK
-    hashtable[lp] = hash_item;
+    for (int i=0; i< LINPROBE_LIMIT; i++)
+    {
+	uint64_t foundhash = hashtable[lp+i];
+	if (foundhash == 0)
+	{
+	    position = lp+i;
+	    break;
+	}
+
+	if (zero_last_bit(bchash) == zero_last_bit(foundhash))
+	{
+	    position = lp+i;
+	    break;
+	}
+    }
+    hashtable[position] = hash_item;
     pthread_mutex_unlock(&bucketlock[blp]); // UNLOCK
     
 #ifdef DEEP_DEBUG
@@ -451,48 +483,77 @@ int dp_hashed(const binconf* d, thread_attr *tat)
 {
     uint64_t foundhash;
     uint64_t lp = bclogpart(d->itemhash);
-    uint64_t blp = bucketlockpart((llu) lp);
-
+    uint64_t blp = bucketlockpart(d->itemhash);
+    int posvalue = -1;
     pthread_mutex_lock(&dpbucketlock[blp]); // LOCK
-    foundhash = dpht[lp];
+
+    for( int i=0; i< LINPROBE_LIMIT; i++)
+    {
+	foundhash = dpht[lp+i];
+	if (foundhash == 0)
+	{
+	    break;
+	}
+
+	if (zero_last_bit(d->itemhash) == zero_last_bit(foundhash))
+	{
+	    posvalue = get_last_bit(foundhash);
+	    break;
+	}
+
+#ifdef MEASURE
+	if (i == LINPROBE_LIMIT-1)
+	{
+	    tat->dp_full_not_found++;
+	}
+#endif
+    } 
     pthread_mutex_unlock(&dpbucketlock[blp]); // UNLOCK
 
 #ifdef MEASURE
     // zero is found only in the case the slot is empty
-    if (foundhash == 0)
-    {
-	tat->dp_empty++;
-    } else if (zero_last_bit(foundhash) != zero_last_bit(d->itemhash))
+    if (posvalue == -1)
     {
 	tat->dp_miss++;
-    }
-
-    if (zero_last_bit(foundhash) == zero_last_bit(d->itemhash))
-    {
+    } else {
 	tat->dp_hit++;
     }
 #endif
-    if (zero_last_bit(foundhash) == zero_last_bit(d->itemhash))
-    {
-	return get_last_bit(foundhash);
-    }
 
-    
-
-
-    return -1;
+    return posvalue;
 }
 
 
 // Adds an number to a dynamic programming hash table
-void dp_hashpush(const binconf *d, bool feasible)
+void dp_hashpush(const binconf *d, bool feasible, thread_attr *tat)
 {
+
+#ifdef MEASURE
+    tat->dp_insertions++;
+#endif
+
     uint64_t lp = bclogpart(d->itemhash);
-    uint64_t blp = bucketlockpart((llu) lp);
+    uint64_t blp = bucketlockpart(d->itemhash);
     uint64_t cache = zero_last_bit(d->itemhash) | ((uint64_t) feasible);
+    uint64_t position = lp;
     
     pthread_mutex_lock(&dpbucketlock[blp]); // LOCK
-    dpht[lp] = cache;
+    for (int i=0; i< LINPROBE_LIMIT; i++)
+    {
+	uint64_t foundhash = dpht[lp+i];
+	if (foundhash == 0)
+	{
+	    position = lp+i;
+	    break;
+	}
+
+	if (zero_last_bit(d->itemhash) == zero_last_bit(foundhash))
+	{
+	    position = lp+i;
+	    break;
+	}
+    }
+    dpht[position] = cache;
     pthread_mutex_unlock(&dpbucketlock[blp]); // UNLOCK
 }
 

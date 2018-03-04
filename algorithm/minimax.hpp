@@ -247,7 +247,7 @@ int algorithm(binconf *b, int k, int depth, int mode, thread_attr *tat, tree_att
 		DEEP_DEBUG_PRINT_BINCONF(b);
 
 		if (mode == EXPLORING) {
-		    conf_hashpush(ht,b,below);
+		    conf_hashpush(ht,b,below, tat);
 		}
 	    }
 

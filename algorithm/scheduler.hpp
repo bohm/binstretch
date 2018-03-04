@@ -80,14 +80,17 @@ void *evaluate_tasks(void * tid)
 
     total_dp_miss += tat.dp_miss;
     total_dp_hit += tat.dp_hit;
-    total_dp_empty += tat.dp_empty;
+    total_dp_insertions += tat.dp_insertions;
+    total_dp_full_not_found += tat.dp_full_not_found;
 
     total_bc_miss += tat.bc_miss;
     total_bc_hit += tat.bc_hit;
-    total_bc_empty += tat.bc_empty;
+    total_bc_full_not_found += tat.bc_full_not_found;
 
     total_until_break += tat.until_break;
-    MEASURE_PRINT("Until break: %" PRIu64 "\n", tat.until_break);
+    total_bc_insertions += tat.bc_insertions;
+    total_bc_hash_checks += tat.bc_hash_checks;
+    MEASURE_PRINT("Binarray size %d, oldqueue capacity %" PRIu64 ", newqueue capacity %" PRIu64 ".\n", BINARRAY_SIZE, tat.oldqueue->capacity(), tat.newqueue->capacity());
 #endif
     pthread_mutex_unlock(&thread_progress_lock);
     dynprog_attr_free(&tat);
