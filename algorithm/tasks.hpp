@@ -2,6 +2,7 @@
 #include <pthread.h>
 
 #include "common.hpp"
+#include "tree.hpp"
 
 /* This header file contains the task generation code and the task
 queue update code. */
@@ -9,17 +10,20 @@ queue update code. */
 #ifndef _TASKS_H
 #define _TASKS_H 1
 
-bool possible_task(const binconf *b, int depth)
+/* Return true if a vertex might be a task for the parallel
+   computation. */
+
+bool possible_task(adversary_vertex *v)
 {
-    if (depth == TASK_DEPTH)
+    if (v->depth - computation_root->depth == TASK_DEPTH)
     {
 	return true;
     }
 
-    if (totalload(b) >= TASK_LOAD)
+    /*if (totalload(b) >= TASK_LOAD)
     {
 	return true;
-    }
+    }*/
     
     return false;
 }

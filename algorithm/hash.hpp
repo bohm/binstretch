@@ -124,6 +124,23 @@ void local_hashtable_init()
     }
 }
 
+void dynprog_hashtable_clear()
+{
+    for (uint64_t i =0; i < BC_HASHSIZE; i++)
+    {
+	dpht[i] = 0;
+    }
+
+}
+
+void bc_hashtable_clear()
+{
+    for (uint64_t i =0; i < HASHSIZE; i++)
+    {
+	ht[i] = 0;
+    }
+}
+
 void bucketlock_init()
 {
     bucketlock = (pthread_mutex_t *) malloc(BUCKETSIZE * sizeof(pthread_mutex_t));

@@ -25,8 +25,8 @@ void *evaluate_tasks(void * tid)
     //std::map<llu, task>::reverse_iterator task_it;
     bool taskmap_empty = false;
     bool call_to_terminate = false;
-
     auto thread_start = std::chrono::system_clock::now();
+    DEBUG_PRINT("Thread %u started.\n", threadid);
     
     call_to_terminate = global_terminate_flag;
     while(!call_to_terminate)
@@ -102,19 +102,26 @@ int scheduler(adversary_vertex *sapling)
 {
 
     pthread_t threads[THREADS];
+    // a rather useless array of ids, but we can use it to grant IDs to threads
+    unsigned int ids[THREADS];
     int rc;
+    bool stop = false;
+    bool update_complete = false;
+    unsigned int collected_no;
+
+    // initialize dp tables for the main thread
+    thread_attr tat;
+    dynprog_attr_init(&tat);
+
+    pthread_mutex_lock(&thread_progress_lock);
+    global_terminate_flag = false;
+    pthread_mutex_unlock(&thread_progress_lock);
 
     // We create a copy of the sapling's bin configuration
     // which will be used as in-place memory for the algorithm.
     binconf sapling_bc;
     duplicate(&sapling_bc, sapling->bc);
     
-    // initialize dp tables for the main thread
-    thread_attr tat;
-    dynprog_attr_init(&tat);
-
-    generated_graph.clear();
-    generated_graph[sapling->bc->loadhash ^ sapling->bc->itemhash] = sapling;
     int ret = generate(&sapling_bc, &tat, sapling);
     sapling->value = ret;
     
@@ -134,9 +141,7 @@ int scheduler(adversary_vertex *sapling)
     fclose(tasklistfile);
     
 #endif
-     // a rather useless array of ids, but we can use it to grant IDs to threads
-    unsigned int ids[THREADS];
-    
+   
     // Thread initialization.
     pthread_mutex_lock(&thread_progress_lock); //LOCK
     for (unsigned int i=0; i < THREADS; i++) {
@@ -153,10 +158,6 @@ int scheduler(adversary_vertex *sapling)
 	}
     }	
 
-    // actively wait for their completion
-    bool stop = false;
-    bool update_complete = false;
-    unsigned int collected_no;
     while (!stop) {
 	sleep(1);
 	stop = true;
@@ -206,8 +207,8 @@ int scheduler(adversary_vertex *sapling)
 		timeval_print(&totaltime);
 #endif 
 
-		DEBUG_PRINT("sanity check: ");
-		DEBUG_PRINT_BINCONF(root);
+//		DEBUG_PRINT("sanity check: ");
+//		DEBUG_PRINT_BINCONF(root);
 		// instead of breaking, signal a call to terminate to other threads
 		// and wait for them to finish up
                 // this lock can potentially be removed without a race condition
@@ -228,30 +229,40 @@ int scheduler(adversary_vertex *sapling)
     return ret;
 }
 
-int solve()
+int solve(adversary_vertex *initial_vertex)
 {
+    generated_graph.clear();
+    generated_graph[initial_vertex->bc->loadhash ^ initial_vertex->bc->itemhash] = initial_vertex;
+    
+    sapling_queue.push(initial_vertex);
     while (!sapling_queue.empty())
     {
 	adversary_vertex* sapling = sapling_queue.front();
+	fprintf(stderr, "Sapling queue size: %lu, current sapling:\n", sapling_queue.size());
+	print_binconf_stream(stderr, sapling->bc);
 	sapling_queue.pop();
+
+	bc_hashtable_clear();
+	dynprog_hashtable_clear();
 	// temporarily isolate sapling (detach it from its parent, set depth to 0)
         int orig_value = sapling->value;
-	int orig_depth = sapling->depth;
+	//int orig_depth = sapling->depth;
 	sapling->task = false;
 	sapling->cached = false;
-	sapling->depth = 0;
+	//sapling->depth = 0;
 	sapling->value = POSTPONED;
+	computation_root = sapling;
 	// compute the sapling using the parallel minimax algorithm
 	int val = scheduler(sapling);
-	//regrow(sapling);
+	fprintf(stderr, "Value from scheduler: %d\n", val);
+	//print_compact(stdout, sapling);
+	regrow(sapling);
 	assert(orig_value == POSTPONED || orig_value == val);
 	
 	if (val == 1)
 	{
 	    return val;
 	}
-	// reattach original values
-	sapling->depth = orig_depth;
     }
 
     return 0;

@@ -52,7 +52,7 @@ int adversary(binconf *b, int depth, int mode, thread_attr *tat, tree_attr *outa
 	current_adversary = outat->last_adv_v;
 	previous_algorithm = outat->last_alg_v;
 
-	if (possible_task(b,depth))
+	if (possible_task(current_adversary))
 	{
 	    add_task(b);
 	    // mark current adversary vertex (created by algorithm() in previous step) as a task
@@ -83,7 +83,7 @@ int adversary(binconf *b, int depth, int mode, thread_attr *tat, tree_attr *outa
 	
 	if (mode == GENERATING)
 	{
-	    analyzed_vertex = new algorithm_vertex(item_size, &(outat->vertex_counter));
+	    analyzed_vertex = new algorithm_vertex(item_size);
 	    // create new edge, 
 	    new_edge = new adv_outedge(current_adversary, analyzed_vertex, item_size);
             // set the current adversary vertex to be the analyzed vertex
@@ -196,7 +196,7 @@ int algorithm(binconf *b, int k, int depth, int mode, thread_attr *tat, tree_att
 		it = generated_graph.find(b->loadhash ^ b->itemhash);
 		if (it == generated_graph.end())
 		{
-		    analyzed_vertex = new adversary_vertex(b, depth, &(outat->vertex_counter));
+		    analyzed_vertex = new adversary_vertex(b, depth);
 		    // create new edge
 		    alg_outedge* new_edge = new alg_outedge(current_algorithm, analyzed_vertex);
 		    // add to generated_graph
@@ -315,7 +315,6 @@ int generate(binconf *start, thread_attr *tat, adversary_vertex *start_vert)
     tree_attr *outat = new tree_attr;
     outat->last_adv_v = start_vert;
     outat->last_alg_v = NULL;
-    outat->vertex_counter = 1;
     int ret = adversary(start, 0, GENERATING, tat, outat);
     delete outat;
     return ret;

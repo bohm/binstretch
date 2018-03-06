@@ -159,39 +159,51 @@ int update(algorithm_vertex *v)
 
 // After the tree is evaluated, goes down and runs "generate" on the vertices
 // which were tasks and remain in the tree
-// void regrow(algorithm_vertex *v);
-// void regrow(adversary_vertex *v);
 
-// again, algorithm's vertices are never tasks, just pass down
-/* void regrow(algorithm_vertex *v)
-{
-    if (v == NULL) {
-	return;
-    }
+void regrow_recursive(algorithm_vertex *v);
+void regrow_recursive(adversary_vertex *v);
 
-    for (auto&& n: v->next) {
-	regrow(n);
-    }
-}
 
 void regrow(adversary_vertex *v)
 {
-    if (v == NULL) {
+    clear_visited_bits();
+    regrow_recursive(v);
+}
+
+// again, algorithm's vertices are never tasks, just pass down
+void regrow_recursive(algorithm_vertex *v)
+{
+    if (v->visited)
+    {
 	return;
     }
+    v->visited = true;
+    
+    for (auto&& n: v->out) {
+	regrow_recursive(n->to);
+    }
+}
 
-    if (v->task && !v->elsewhere)
+void regrow_recursive(adversary_vertex *v)
+{
+    if (v->visited)
+    {
+	return;
+    }
+    v->visited = true;
+
+    if (v->task)
     {
 	assert(v->value == 0);
 	sapling_queue.push(v);
-    }
-
-    for (auto&& n: v->next) {
-	    regrow(n);
+    } else
+    {
+	for (auto&& n: v->out)
+	{
+	    regrow_recursive(n->to);
+	}
     }
 
 }
-
-*/
 
 #endif

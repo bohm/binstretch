@@ -12,17 +12,9 @@
 #include <chrono>
 #include <queue>
 #include "common.hpp"
-#include "tasks.hpp"
 
 // a game tree (actually a DAG) used for outputting the resulting
 // strategy if the result is positive.
-
-typedef struct adversary_vertex adversary_vertex;
-typedef struct algorithm_vertex algorithm_vertex;
-
-
-class adv_outedge;
-class alg_outedge;
 
 struct algorithm_vertex {
     std::list<alg_outedge*> out; // next adversarial states
@@ -31,12 +23,19 @@ struct algorithm_vertex {
     bool visited;
     int value;
 
-    algorithm_vertex(int next_item, llu *vertex_counter)
+    algorithm_vertex(int next_item)
     {
-	this->id = ++(*vertex_counter);
+	this->id = ++global_vertex_counter;
 	this->value = POSTPONED;
 	this->visited = false;
-    }  
+	DEBUG_PRINT("Vertex %" PRIu64 "created.\n", this->id);
+
+    }
+
+    ~algorithm_vertex()
+    {
+	DEBUG_PRINT("Vertex %" PRIu64 "destroyed.\n", this->id);
+    }
 };
 
 struct adversary_vertex {
@@ -51,23 +50,26 @@ struct adversary_vertex {
     int value;
     uint64_t id;
 
-    adversary_vertex(const binconf *b, int depth, llu *vertex_counter)
+    adversary_vertex(const binconf *b, int depth)
     {
-	this->bc = (binconf *) malloc(sizeof(binconf));
+	this->bc = new binconf;
 	assert(this->bc != NULL);
 	init(this->bc);
 	this->cached = false;
 	this->task = false;
 	this->visited = false;
-	this->id = ++(*vertex_counter);
+	this->id = ++global_vertex_counter;
 	this->depth = depth;
 	this->value = POSTPONED;
 	duplicate(this->bc, b);
+	DEBUG_PRINT("Vertex %" PRIu64 "created.\n", this->id);
+
     }
 
     ~adversary_vertex()
     {
-	free(this->bc);
+	delete this->bc;
+	DEBUG_PRINT("Vertex %" PRIu64 "destroyed.\n", this->id);
     }
 
 };
@@ -104,6 +106,19 @@ public:
     }
 };
 
+// the root of the current computation,
+// may differ from the actual root of the graph.
+adversary_vertex *computation_root;
+
+// a simple bool function, currently used in progress reporting
+// constant-time but assumes the bins are sorted (which they should be)
+bool is_root(const binconf *b)
+{
+    return binconf_equal(b, computation_root->bc);
+}
+
+
+
 // global map of all (adversary) vertices generated;
 std::map<llu, adversary_vertex*> generated_graph;
 
@@ -114,7 +129,6 @@ typedef struct tree_attr tree_attr;
 struct tree_attr {
     algorithm_vertex *last_alg_v;
     adversary_vertex *last_adv_v;
-    llu vertex_counter;
 };
 
 // A sapling is an adversary vertex which will be processed by the parallel
@@ -275,6 +289,9 @@ void remove_inedge(adv_outedge *e);
 void remove_outedges(algorithm_vertex *v);
 void remove_outedges(adversary_vertex *v);
 
+/* Forward declaration of remove_task for inclusion purposes. */
+void remove_task(llu hash);
+
 void remove_inedge(adv_outedge *e)
 {
     e->to->in.erase(e->pos_child);
@@ -356,6 +373,12 @@ void remove_outedges_except(adversary_vertex *v, int right_item)
 
     v->out.remove_if( [right_item](adv_outedge *e){ return (e->item != right_item); } );
     //assert(v->out.size() == 1);
+}
+
+void graph_cleanup(adversary_vertex *root)
+{
+    remove_outedges(root); // should delete root
+    generated_graph.clear();
 }
 
 #endif

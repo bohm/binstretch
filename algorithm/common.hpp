@@ -17,7 +17,7 @@ typedef signed char tiny;
 
 // verbosity of the program
 //#define VERBOSE 1
-//#define DEBUG 1
+#define DEBUG 1
 //#define DEEP_DEBUG 1
 #define PROGRESS 1
 //#define THOROUGH_HASH_CHECKING 1
@@ -35,10 +35,10 @@ typedef signed char tiny;
 #define ALPHA (RMOD-S)
 
 // Change this number for the selected number of bins.
-#define BINS 7
+#define BINS 3
 
 // bitwise length of indices of hash tables and lock tables
-#define HASHLOG 30
+#define HASHLOG 24
 #define BCLOG 25
 #define BUCKETLOG 10
 
@@ -121,6 +121,15 @@ struct task {
 
 typedef struct task task;
 
+/* adversary_vertex and algorithm_vertex defined in tree.hpp */
+
+typedef struct adversary_vertex adversary_vertex;
+typedef struct algorithm_vertex algorithm_vertex;
+
+class adv_outedge;
+class alg_outedge;
+
+
 
 /* dynprog global variables and other attributes separate for each thread */
 struct thread_attr {
@@ -186,6 +195,8 @@ pthread_mutex_t collection_lock[THREADS];
 // counter of finished threads
 bool thread_finished[THREADS];
 
+llu global_vertex_counter = 0;
+
 // global map of finished subtrees, merged into the main tree when the subtree is evaluated (with 0)
 // indexed by bin configurations
 //std::map<uint64_t, gametree> treemap;
@@ -200,8 +211,7 @@ std::chrono::duration<long double> time_spent;
 std::chrono::duration<long double> total_dynprog_time;
 
 // root of the tree (deprecated)
-binconf *root;
-// adversary_vertex *root_vertex;
+// binconf *root;
 
 #ifdef MEASURE
 // time measuring global variable
@@ -279,13 +289,6 @@ bool binconf_equal(const binconf *a, const binconf *b)
     }
 
     return true;
-}
-
-// a simple bool function, currently used in progress reporting
-// constant-time but assumes the bins are sorted (which they should be)
-bool is_root(const binconf *b)
-{
-    return binconf_equal(b,root);
 }
 
 

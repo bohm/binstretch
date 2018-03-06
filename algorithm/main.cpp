@@ -27,20 +27,23 @@ int main(void)
     gettimeofday(&totaltime_start, NULL);
 #endif
 
-    root = (binconf *) malloc(sizeof(binconf));
+    binconf* root = new binconf;
     init(root); // init game tree
 
     // special heuristics for 19/14 lower bound for 7 bins
-    //root->items[5] = 1;
-    //root->loads[1] = 5;
-    //root->items[2] = 1;
-    //root->loads[2] = 2;
+    // root->items[5] = 1;
+    // root->loads[1] = 5;
+    /*
+    root->items[6] = 1;
+    root->items[3] = 3;
+    root->loads[1] = 9;
+    root->loads[2] = 5;
+    root->loads[3] = 3;
+    root->loads[4] = 3; */
     
     hashinit(root);
-    llu x = 0; //workaround
-    adversary_vertex root_vertex(root, 0, &x);
-    sapling_queue.push(&root_vertex); 
-    int ret = solve();
+    adversary_vertex* root_vertex = new adversary_vertex(root, 0);
+    int ret = solve(root_vertex);
     fprintf(stderr, "Number of tasks: %" PRIu64 ", completed tasks: %" PRIu64 ", pruned tasks %" PRIu64 ", decreased tasks %" PRIu64 " \n",
 	    task_count, finished_task_count, removed_task_count, decreased_task_count );
 
@@ -51,7 +54,7 @@ int main(void)
 	print_binconf_stream(stderr, root);
 	FILE* out = fopen("partial_tree.txt", "w");
 	assert(out != NULL);
-	print_compact(out, &root_vertex);
+	print_compact(out, root_vertex);
 	fclose(out);
     } else {
 	fprintf(stderr, "Algorithm wins %d/%d Bin Stretching on %d bins with root:\n", R,S,BINS);
@@ -74,6 +77,9 @@ int main(void)
     global_hashtable_cleanup();
     local_hashtable_cleanup();
     bucketlock_cleanup();
+    DEBUG_PRINT("Graph cleanup started.\n");
+    graph_cleanup(root_vertex);
+    
     delete root;
     return 0;
 }

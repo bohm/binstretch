@@ -19,9 +19,9 @@
 #endif
 
 using namespace std;
-const int BINS = 3;
-const int R = 45; // capacity of a stretched bin
-const int S = 33; // capacity of a unit bin
+const int BINS = 4;
+const int R = 19; // capacity of a stretched bin
+const int S = 14; // capacity of a unit bin
 
 typedef long long unsigned int llu;
 
