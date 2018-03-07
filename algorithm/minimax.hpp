@@ -243,7 +243,7 @@ int algorithm(binconf *b, int k, int depth, int mode, thread_attr *tat, tree_att
 		    outat->last_adv_v = previous_adversary;
 		}
 		
-		DEEP_DEBUG_PRINT(stderr, "We have calculated the following position, result is %d\n", r);
+		DEEP_DEBUG_PRINT("We have calculated the following position, result is %d\n", r);
 		DEEP_DEBUG_PRINT_BINCONF(b);
 
 		if (mode == EXPLORING) {
@@ -315,7 +315,7 @@ int generate(binconf *start, thread_attr *tat, adversary_vertex *start_vert)
     tree_attr *outat = new tree_attr;
     outat->last_adv_v = start_vert;
     outat->last_alg_v = NULL;
-    int ret = adversary(start, 0, GENERATING, tat, outat);
+    int ret = adversary(start, start_vert->depth, GENERATING, tat, outat);
     delete outat;
     return ret;
 }

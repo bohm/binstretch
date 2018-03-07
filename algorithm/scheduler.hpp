@@ -126,17 +126,17 @@ int scheduler(adversary_vertex *sapling)
     sapling->value = ret;
     
 #ifdef PROGRESS
-    fprintf(stderr, "Generated %" PRIu64 " tasks.\n", task_count);
+    fprintf(stderr, "Generated %d tasks.\n", tm.size());
 #endif
 
-#ifdef DEEP_DEBUG
-    DEEP_DEBUG_PRINT("Creating a dump of tasks into tasklist.txt.\n");
+#ifdef DEBUG
+    DEBUG_PRINT("Creating a dump of tasks into tasklist.txt.\n");
     FILE* tasklistfile = fopen("tasklist.txt", "w");
     assert(tasklistfile != NULL);
     
     for( std::map<llu, task>::const_iterator it = tm.begin(); it != tm.end(); it++)
     {
-	print_binconf_stream(&(it->second.bc), tasklistfile);
+	print_binconf_stream(tasklistfile, &(it->second.bc));
     }
     fclose(tasklistfile);
     
@@ -148,10 +148,13 @@ int scheduler(adversary_vertex *sapling)
 	thread_finished[i] = false;
     }
     pthread_mutex_unlock(&thread_progress_lock); //UNLOCK
-   
+
+    pthread_attr_t thread_attributes; pthread_attr_init(&thread_attributes);
+    pthread_attr_setdetachstate(&thread_attributes, PTHREAD_CREATE_DETACHED);
+    
     for (unsigned int i=0; i < THREADS; i++) {
 	ids[i] = i;
-	rc = pthread_create(&threads[i], NULL, evaluate_tasks, (void *) &(ids[i]));
+	rc = pthread_create(&threads[i], &thread_attributes, evaluate_tasks, (void *) &(ids[i]));
 	if(rc) {
 	    fprintf(stderr, "Error with thread control. Return value %d\n", rc);
 	    exit(-1);
@@ -238,12 +241,14 @@ int solve(adversary_vertex *initial_vertex)
     while (!sapling_queue.empty())
     {
 	adversary_vertex* sapling = sapling_queue.front();
-	fprintf(stderr, "Sapling queue size: %lu, current sapling:\n", sapling_queue.size());
+	fprintf(stderr, "Sapling queue size: %lu, current sapling of depth %d:\n", sapling_queue.size(), sapling->depth);
 	print_binconf_stream(stderr, sapling->bc);
 	sapling_queue.pop();
 
 	bc_hashtable_clear();
 	dynprog_hashtable_clear();
+	collected_tasks.clear();
+	tm.clear();
 	// temporarily isolate sapling (detach it from its parent, set depth to 0)
         int orig_value = sapling->value;
 	//int orig_depth = sapling->depth;

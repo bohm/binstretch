@@ -28,13 +28,13 @@ struct algorithm_vertex {
 	this->id = ++global_vertex_counter;
 	this->value = POSTPONED;
 	this->visited = false;
-	DEBUG_PRINT("Vertex %" PRIu64 "created.\n", this->id);
+	//DEBUG_PRINT("Vertex %" PRIu64 "created.\n", this->id);
 
     }
 
     ~algorithm_vertex()
     {
-	DEBUG_PRINT("Vertex %" PRIu64 "destroyed.\n", this->id);
+	//DEBUG_PRINT("Vertex %" PRIu64 "destroyed.\n", this->id);
     }
 };
 
@@ -62,14 +62,14 @@ struct adversary_vertex {
 	this->depth = depth;
 	this->value = POSTPONED;
 	duplicate(this->bc, b);
-	DEBUG_PRINT("Vertex %" PRIu64 "created.\n", this->id);
+	//DEBUG_PRINT("Vertex %" PRIu64 "created.\n", this->id);
 
     }
 
     ~adversary_vertex()
     {
 	delete this->bc;
-	DEBUG_PRINT("Vertex %" PRIu64 "destroyed.\n", this->id);
+	//DEBUG_PRINT("Vertex %" PRIu64 "destroyed.\n", this->id);
     }
 
 };
@@ -82,12 +82,20 @@ public:
     algorithm_vertex *to;
     std::list<adv_outedge*>::iterator pos;
     std::list<adv_outedge*>::iterator pos_child; // position in child
-
+    uint64_t id;
+    
     adv_outedge(adversary_vertex* from, algorithm_vertex* to, int item)
     {
 	this->from = from; this->to = to; this->item = item;
 	this->pos = from->out.insert(from->out.begin(), this);
 	this->pos_child = to->in.insert(to->in.begin(), this);
+	this->id = ++global_edge_counter;
+	//DEBUG_PRINT("Edge %" PRIu64 " created. \n", this->id);
+    }
+
+    ~adv_outedge()
+    {
+	//DEBUG_PRINT("Edge %" PRIu64 " destroyed.\n", this->id);
     }
 };
 
@@ -97,12 +105,20 @@ public:
     adversary_vertex *to;
     std::list<alg_outedge*>::iterator pos;
     std::list<alg_outedge*>::iterator pos_child;
+    uint64_t id;
 
     alg_outedge(algorithm_vertex* from, adversary_vertex* to)
     {
 	this->from = from; this->to = to;
 	this->pos = from->out.insert(from->out.begin(), this);
 	this->pos_child = to->in.insert(to->in.begin(), this);
+	this->id = ++global_edge_counter;
+	//DEBUG_PRINT("Edge %" PRIu64 " created.\n", this->id);
+
+    }
+    ~alg_outedge()
+    {
+	//DEBUG_PRINT("Edge %" PRIu64 " destroyed.\n", this->id);
     }
 };
 
@@ -363,15 +379,21 @@ void remove_edge(adv_outedge *e)
 // Remove all outedges except the right path.
 void remove_outedges_except(adversary_vertex *v, int right_item)
 {
+    adv_outedge *right_edge;
     for (auto&& e: v->out)
     {
 	if (e->item != right_item)
 	{
 	    remove_inedge(e);
+	    delete e;
+	} else {
+	    right_edge = e;
 	}
     }
 
-    v->out.remove_if( [right_item](adv_outedge *e){ return (e->item != right_item); } );
+    v->out.clear();
+    v->out.push_back(right_edge);
+    //v->out.remove_if( [right_item](adv_outedge *e){ return (e->item != right_item); } );
     //assert(v->out.size() == 1);
 }
 

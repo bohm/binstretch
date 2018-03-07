@@ -15,7 +15,7 @@ int main(void)
     local_hashtable_init();
     init_global_locks();
     bucketlock_init();
-    zobrist_init();
+    //zobrist_init();
     
 #if 3*ALPHA >= S
     fprintf(stderr, "Good situation heuristics will be applied.\n");
@@ -31,8 +31,8 @@ int main(void)
     init(root); // init game tree
 
     // special heuristics for 19/14 lower bound for 7 bins
-    // root->items[5] = 1;
-    // root->loads[1] = 5;
+    root->items[5] = 1;
+    root->loads[1] = 5;
     /*
     root->items[6] = 1;
     root->items[3] = 3;
@@ -40,6 +40,9 @@ int main(void)
     root->loads[2] = 5;
     root->loads[3] = 3;
     root->loads[4] = 3; */
+
+    //8-4-2-1-1- 21111000000000
+
     
     hashinit(root);
     adversary_vertex* root_vertex = new adversary_vertex(root, 0);
@@ -54,7 +57,10 @@ int main(void)
 	print_binconf_stream(stderr, root);
 	FILE* out = fopen("partial_tree.txt", "w");
 	assert(out != NULL);
+	fprintf(out, "strict digraph lowerbound {\n");
+	fprintf(out, "overlap = none;\n");
 	print_compact(out, root_vertex);
+	fprintf(out, "}\n");
 	fclose(out);
     } else {
 	fprintf(stderr, "Algorithm wins %d/%d Bin Stretching on %d bins with root:\n", R,S,BINS);
@@ -79,7 +85,7 @@ int main(void)
     bucketlock_cleanup();
     DEBUG_PRINT("Graph cleanup started.\n");
     graph_cleanup(root_vertex);
-    
+    delete root_vertex;
     delete root;
     return 0;
 }

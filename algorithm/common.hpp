@@ -17,12 +17,12 @@ typedef signed char tiny;
 
 // verbosity of the program
 //#define VERBOSE 1
-#define DEBUG 1
+//#define DEBUG 1
 //#define DEEP_DEBUG 1
 #define PROGRESS 1
 //#define THOROUGH_HASH_CHECKING 1
 //#define OUTPUT 1
-#define MEASURE 1
+//#define MEASURE 1
 //#define TICKER 1
 
 // maximum load of a bin in the optimal offline setting
@@ -35,10 +35,10 @@ typedef signed char tiny;
 #define ALPHA (RMOD-S)
 
 // Change this number for the selected number of bins.
-#define BINS 3
+#define BINS 6
 
 // bitwise length of indices of hash tables and lock tables
-#define HASHLOG 24
+#define HASHLOG 28
 #define BCLOG 25
 #define BUCKETLOG 10
 
@@ -195,7 +195,8 @@ pthread_mutex_t collection_lock[THREADS];
 // counter of finished threads
 bool thread_finished[THREADS];
 
-llu global_vertex_counter = 0;
+uint64_t global_vertex_counter = 0;
+uint64_t global_edge_counter = 0;
 
 // global map of finished subtrees, merged into the main tree when the subtree is evaluated (with 0)
 // indexed by bin configurations

@@ -166,14 +166,14 @@ int testgs(const binconf *b)
     if(gs1(b) == 1)
     {
 
-	DEEP_DEBUG_PRINT(stderr, "The following binconf hits GS1:\n");
+	DEEP_DEBUG_PRINT("The following binconf hits GS1:\n");
 	DEEP_DEBUG_PRINT_BINCONF(b);
 	return 1;
     }
     
     if( gs2variant(b) == 1)
     {
-	DEEP_DEBUG_PRINT(stderr, "The following binconf hits GS2variant:\n");
+	DEEP_DEBUG_PRINT("The following binconf hits GS2variant:\n");
 	DEEP_DEBUG_PRINT_BINCONF(b);
 	return 1;
     }
@@ -207,13 +207,13 @@ int testgs(const binconf *b)
    
     if(gs3(b) == 1)
     {
-	DEEP_DEBUG_PRINT(stderr, "The following binconf hits GS3:\n");
+	DEEP_DEBUG_PRINT("The following binconf hits GS3:\n");
 	DEEP_DEBUG_PRINT_BINCONF(b);
 	return 1;
     }
     if(gs4(b) == 1)
     {
-	DEEP_DEBUG_PRINT(stderr, "The following binconf hits GS4:\n");
+	DEEP_DEBUG_PRINT("The following binconf hits GS4:\n");
 	DEEP_DEBUG_PRINT_BINCONF(b);
 	return 1;
     }
