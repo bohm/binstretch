@@ -82,11 +82,9 @@ void dynprog_attr_free(thread_attr *tat)
 /* New dynprog test with some minor improvements. */
 bool sparse_dynprog_test2(const binconf *conf, thread_attr *tat)
 {
-    // binary array of feasibilities
-    // int f[S+1][S+1][S+1] = {0};
-    // int *F = tat->F;
-    //std::vector<uint64_t> *oldqueue = tat->oldqueue;
-    //std::vector<uint64_t> *newqueue = tat->newqueue;
+#ifdef MEASURE
+    tat->dynprog_test_counter++;
+#endif
 
     tat->newqueue->clear();
     tat->oldqueue->clear();
@@ -231,7 +229,7 @@ bool sparse_dynprog_test2(const binconf *conf, thread_attr *tat)
 bool hash_and_test(binconf *h, int item, thread_attr *tat)
 {
 #ifdef MEASURE
-    tat->test_counter++;
+    tat->hash_and_test_counter++;
 #endif
     
     bool feasible;
@@ -347,4 +345,114 @@ int maximum_feasible_dynprog(binconf *b, thread_attr *tat)
     return dynitem;
 }
 
+/* A heuristic for the adversary: try and send large items so that a bin
+   overflows. */
+
+bool try_and_send(binconf *b, int number_of_items, int minimum_size, thread_attr *tat)
+{
+    b->items[minimum_size] += number_of_items;
+    bool ret = TEST(b,tat);
+    b->items[minimum_size] -= number_of_items;
+    return ret;
+}
+
+std::pair<bool,int> large_item_heuristic(binconf *b, thread_attr *tat)
+{
+    std::pair<bool,int> ret(false, 0);
+    
+    for (int i=BINS; i>=1; i--)
+    {
+	int ideal_item_lb1 = R-b->loads[i];
+	// the +1 is there to round up
+	int ideal_item_lb2 = (R - b->loads[BINS]+1)/2; 
+
+	if ((ideal_item_lb1 <= S))
+	{
+	    int ideal_item = std::max(ideal_item_lb1, ideal_item_lb2);	    
+	    if (try_and_send(b, (BINS-i+1), ideal_item, tat))
+	    {
+/*		DEEP_DEBUG_PRINT(stderr, "Large item heuristic for bin %d, size %d : ", i, (R- b->loads[i]));
+		print_binconf_stream(stderr, b); */
+		
+		ret.first = true;
+		ret.second = ideal_item;
+		return ret;
+	    }
+	}
+    }
+
+    return ret;
+}
+
+bool large_item_fit_heuristic(binconf *b, thread_attr *tat)
+{
+    /* No need checking the largest bin, so we start from the second. */
+    for (int i=BINS; i>=2; i--)
+    {
+	int ideal_item = R-b->loads[i];
+	/* check if: 1) you can send an item that can fill the bin to R
+	   2) this item, if placed twice on the smallest bin, fills it up to R */
+	if ((ideal_item <= S) && (2*ideal_item + b->loads[BINS] >= R ))
+	{
+	    binconf h;
+	    int number_of_items = BINS-i+1;
+	    b->items[ideal_item] += number_of_items;
+	    bool ret = (bool) bestfit(&h, b);
+	    b->items[ideal_item] -= number_of_items;
+/*		DEEP_DEBUG_PRINT(stderr, "Large item heuristic for bin %d, size %d : ", i, (R- b->loads[i]));
+		print_binconf_stream(stderr, b); */
+	    if (ret)
+	    {
+		return true;
+	    }
+	}
+    }
+
+    return false;
+}
+
+bool custom_comparator(int a, int b)
+{
+    if (a == 14)
+    {
+	return true;
+    }
+
+    if (b == 14)
+    {
+	return false;
+    }
+
+    if (a == 8)
+    {
+	return true;
+    }
+
+    if (b == 8)
+    {
+	return false;
+    }
+
+    if (a == 5)
+    {
+	return true;
+    }
+
+    if (b == 5)
+    {
+	return false;
+    }
+
+    if (a == 3)
+    {
+	return true;
+    }
+
+    if (b == 3)
+    {
+	return false;
+    }
+
+    return (a >= b);
+}
 #endif

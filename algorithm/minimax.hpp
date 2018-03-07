@@ -39,14 +39,35 @@ int algorithm(binconf *b, int k, int depth, int mode, thread_attr *tat, tree_att
     * EXPLORING (general exploration done by individual threads)
 */
 
-// We currently do not use double_move and triple_move.
- 
 int adversary(binconf *b, int depth, int mode, thread_attr *tat, tree_attr *outat) {
 
     adversary_vertex *current_adversary = NULL;
     algorithm_vertex *previous_algorithm = NULL;
     adv_outedge *new_edge = NULL;
     
+   
+    /* Everything can be packed into one bin, return 1. */
+    if ((b->loads[BINS] + (BINS*S - totalload(b))) < R)
+    {
+	return 1;
+    }
+
+    /* Large items heuristic: if 2nd or later bin is at least R-S, check if enough large items
+       can be sent so that this bin (or some other) hits R. */
+    if (mode == GENERATING)
+    {
+	std::pair<bool, int> p;
+	p = large_item_heuristic(b,tat);
+	if (p.first)
+	{
+	    outat->last_adv_v->value = 0;
+	    outat->last_adv_v->heuristic = true;
+	    outat->last_adv_v->heuristic_item = p.second;
+	    return 0;
+	}
+    }
+
+
     if (mode == GENERATING)
     {
 	current_adversary = outat->last_adv_v;
@@ -62,22 +83,31 @@ int adversary(binconf *b, int depth, int mode, thread_attr *tat, tree_attr *outa
 	}
     }
 
-    if ((b->loads[BINS] + (BINS*S - totalload(b))) < R)
-    {
-	return 1;
-    }
-
     // finds the maximum feasible item that can be added using dyn. prog.
     int maximum_feasible = MAXIMUM_FEASIBLE(b, tat);
-    bool postponed_branches_present = false;
     bool result_determined = false; // can be determined even when postponed branches are present
     int below = 1;
     int r = 1;
     DEEP_DEBUG_PRINT("Trying player zero choices, with maxload starting at %d\n", maximum_feasible);
+
+    /*
+    std::vector<int> feasibilities;
     
     for (int item_size = maximum_feasible; item_size>0; item_size--)
     {
-	DEEP_DEBUG_PRINT("Sending item %d to algorithm.\n", item_size);
+	feasibilities.push_back(item_size);
+    }
+    */
+    
+    //std::sort(feasibilities.begin(), feasibilities.end(), custom_comparator);
+    
+    for (int item_size = maximum_feasible; item_size>0; item_size--)
+    { 
+	//for (int i = 0; i < maximum_feasible; i++)
+	//{
+    
+	//int item_size = feasibilities[i];
+        DEEP_DEBUG_PRINT("Sending item %d to algorithm.\n", item_size);
 	// algorithm's vertex for the next step
 	algorithm_vertex *analyzed_vertex; // used only in the GENERATING mode
 	
@@ -144,7 +174,6 @@ int adversary(binconf *b, int depth, int mode, thread_attr *tat, tree_attr *outa
 
 int algorithm(binconf *b, int k, int depth, int mode, thread_attr *tat, tree_attr *outat) {
 
-    bool postponed_branches_present = false;
     bool building_tree = false;
 
     algorithm_vertex* current_algorithm = NULL;
@@ -276,7 +305,6 @@ int algorithm(binconf *b, int k, int depth, int mode, thread_attr *tat, tree_att
 	    } else if (below == POSTPONED)
 	    {
  		assert(mode == GENERATING); // should not happen during anything else but GENERATING
-		postponed_branches_present = true;
 		// insert analyzed_vertex into algorithm's "next" list
 		if (r == 0)
 		{
@@ -286,7 +314,7 @@ int algorithm(binconf *b, int k, int depth, int mode, thread_attr *tat, tree_att
 
 
 	} else { // b->loads[i] + k >= R, so a good situation for the adversary
-	    // nothing to be done in exploration mode
+    // nothing to be done in exploration mode
 	    // currently nothing done in generating mode either
 	}
     }

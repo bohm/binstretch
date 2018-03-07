@@ -76,7 +76,8 @@ void *evaluate_tasks(void * tid)
 #ifdef MEASURE
     total_dynprog_time += tat.dynprog_time;
     total_max_feasible += tat.maximum_feasible_counter;
-    total_hash_and_tests += tat.test_counter;
+    total_hash_and_tests += tat.hash_and_test_counter;
+    total_dynprog_tests += tat.dynprog_test_counter;
 
     total_dp_miss += tat.dp_miss;
     total_dp_hit += tat.dp_hit;
@@ -126,11 +127,11 @@ int scheduler(adversary_vertex *sapling)
     sapling->value = ret;
     
 #ifdef PROGRESS
-    fprintf(stderr, "Generated %d tasks.\n", tm.size());
+    fprintf(stderr, "Generated %lu tasks.\n", tm.size());
 #endif
 
-#ifdef DEBUG
-    DEBUG_PRINT("Creating a dump of tasks into tasklist.txt.\n");
+#ifdef DEEP_DEBUG
+    DEEP_DEBUG_PRINT("Creating a dump of tasks into tasklist.txt.\n");
     FILE* tasklistfile = fopen("tasklist.txt", "w");
     assert(tasklistfile != NULL);
     
@@ -253,15 +254,16 @@ int solve(adversary_vertex *initial_vertex)
         int orig_value = sapling->value;
 	//int orig_depth = sapling->depth;
 	sapling->task = false;
-	sapling->cached = false;
 	//sapling->depth = 0;
 	sapling->value = POSTPONED;
 	computation_root = sapling;
 	// compute the sapling using the parallel minimax algorithm
 	int val = scheduler(sapling);
-	fprintf(stderr, "Value from scheduler: %d\n", val);
+	//fprintf(stderr, "Value from scheduler: %d\n", val);
 	//print_compact(stdout, sapling);
+#ifdef OUTPUT
 	regrow(sapling);
+#endif
 	assert(orig_value == POSTPONED || orig_value == val);
 	
 	if (val == 1)

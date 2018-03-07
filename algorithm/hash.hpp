@@ -370,6 +370,11 @@ void rehash_decreased_range(binconf *d, int item, int from, int to)
     d->itemhash ^= Zi[item][d->items[item]];
 }
 
+void dp_changehash(binconf *d, int dynitem, int old_count, int new_count)
+{
+    d->itemhash ^= Zi[dynitem][old_count];
+    d->itemhash ^= Zi[dynitem][new_count];
+}
 // rehash for dynamic programming purposes, assuming we have added
 // one item of size "dynitem"
 void dp_rehash(binconf *d, int dynitem)

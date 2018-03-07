@@ -33,7 +33,12 @@ int main(void)
     // special heuristics for 19/14 lower bound for 7 bins
     root->items[5] = 1;
     root->loads[1] = 5;
+    //root->items[2] = 1;
+    //root->loads[2] = 2;
+    
     /*
+    root->loads[3] = 3;
+    root->loads[4] = 3;
     root->items[6] = 1;
     root->items[3] = 3;
     root->loads[1] = 9;
@@ -53,18 +58,23 @@ int main(void)
     assert(ret == 0 || ret == 1);
     if(ret == 0)
     {
-	fprintf(stderr, "Lower bound for %d/%d Bin Stretching on %d bins with root:\n", R,S,BINS);
-	print_binconf_stream(stderr, root);
-	FILE* out = fopen("partial_tree.txt", "w");
+	fprintf(stdout, "Lower bound for %d/%d Bin Stretching on %d bins with root:\n", R,S,BINS);
+	print_binconf_stream(stdout, root);
+#ifdef OUTPUT
+	char buffer[50];
+	sprintf(buffer, "%d_%d_%dbins.dot", R,S,BINS);
+	FILE* out = fopen( buffer, "w");
+	fprintf(stdout, "Printing to file: %s.\n", buffer);
 	assert(out != NULL);
 	fprintf(out, "strict digraph lowerbound {\n");
 	fprintf(out, "overlap = none;\n");
 	print_compact(out, root_vertex);
 	fprintf(out, "}\n");
 	fclose(out);
+#endif
     } else {
-	fprintf(stderr, "Algorithm wins %d/%d Bin Stretching on %d bins with root:\n", R,S,BINS);
-	print_binconf_stream(stderr, root);
+	fprintf(stdout, "Algorithm wins %d/%d Bin Stretching on %d bins with root:\n", R,S,BINS);
+	print_binconf_stream(stdout, root);
 
     }
     
@@ -75,7 +85,7 @@ int main(void)
     long double ratio = (long double) total_hash_and_tests / (long double) total_until_break;
 #endif
     MEASURE_PRINT("Total time (all threads): %Lfs; total dynprog time: %Lfs.\n", time_spent.count(), total_dynprog_time.count());
-    MEASURE_PRINT(" DP test calls: %" PRIu64 "; maximum_feasible calls: %" PRIu64 ", DP/Inner loop: %Lf\n", total_hash_and_tests, total_max_feasible, ratio);
+    MEASURE_PRINT(" Hash and test calls: %" PRIu64 ", test calls: %" PRIu64 ", maximum_feasible calls: %" PRIu64 ", DP/Inner loop: %Lf\n", total_hash_and_tests, total_dynprog_tests, total_max_feasible, ratio);
     MEASURE_PRINT("Binconf table size: %llu, insertions: %" PRIu64 ", hash checks: %" PRIu64".\n", HASHSIZE, total_bc_insertions,
 		  total_bc_hash_checks);
     MEASURE_PRINT("Table hit: %" PRIu64 ", table miss: %" PRIu64 ", full not found: %" PRIu64 "\n", total_bc_hit, total_bc_miss, total_bc_full_not_found) ;

@@ -38,22 +38,6 @@ bool possible_task(adversary_vertex *v)
 
 // Adds a task to the global task queue. If it already exists, it increases the occurence.
 void add_task(const binconf *x) {
-    // First, check if the task is already present.
-    bool done = false;
-    pthread_mutex_lock(&taskq_lock); // LOCK
-    auto it = tm.find(x->loadhash ^ x->itemhash);
-    if(it != tm.end())
-    {
-	it->second.occurences++;
-	done = true;
-    }
-    
-    pthread_mutex_unlock(&taskq_lock); // UNLOCK 
-
-    if (done) {
-	return;
-    }
-    
     task_count++;
     task newtask;
     duplicate(&(newtask.bc), x);

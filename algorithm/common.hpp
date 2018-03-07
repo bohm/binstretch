@@ -22,7 +22,7 @@ typedef signed char tiny;
 #define PROGRESS 1
 //#define THOROUGH_HASH_CHECKING 1
 //#define OUTPUT 1
-//#define MEASURE 1
+#define MEASURE 1
 //#define TICKER 1
 
 // maximum load of a bin in the optimal offline setting
@@ -38,7 +38,7 @@ typedef signed char tiny;
 #define BINS 6
 
 // bitwise length of indices of hash tables and lock tables
-#define HASHLOG 28
+#define HASHLOG 30
 #define BCLOG 25
 #define BUCKETLOG 10
 
@@ -138,7 +138,8 @@ struct thread_attr {
     std::vector<uint64_t>* newqueue;
     std::chrono::duration<long double> dynprog_time;
     uint64_t maximum_feasible_counter = 0;
-    uint64_t test_counter = 0;
+    uint64_t hash_and_test_counter = 0;
+    uint64_t dynprog_test_counter = 0;
     uint64_t dp_full_not_found = 0;
     uint64_t dp_hit = 0;
     uint64_t dp_miss = 0;
@@ -157,6 +158,7 @@ typedef struct thread_attr thread_attr;
 
 // global task map indexed by binconf hashes
 std::map<llu, task> tm;
+//std::vector<task> tm;
 
 uint64_t task_count = 0;
 uint64_t finished_task_count = 0;
@@ -164,6 +166,7 @@ uint64_t removed_task_count = 0; // number of tasks which are removed due to min
 uint64_t decreased_task_count = 0;
 uint64_t total_max_feasible = 0;
 uint64_t total_hash_and_tests = 0;
+uint64_t total_dynprog_tests = 0;
 uint64_t total_until_break = 0;
 
 

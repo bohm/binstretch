@@ -44,9 +44,10 @@ struct adversary_vertex {
     std::list<alg_outedge*> in; // previous algorithmic states
 
     int depth; // depth increases only in adversary steps
-    bool cached;
     bool task;
     bool visited; // we use this temporarily for DFS (e.g. for printing)
+    bool heuristic = false;
+    int heuristic_item = 0;
     int value;
     uint64_t id;
 
@@ -55,7 +56,6 @@ struct adversary_vertex {
 	this->bc = new binconf;
 	assert(this->bc != NULL);
 	init(this->bc);
-	this->cached = false;
 	this->task = false;
 	this->visited = false;
 	this->id = ++global_vertex_counter;
@@ -264,7 +264,10 @@ void print_compact_subtree(FILE* stream, adversary_vertex *v)
     if (v->task)
     {
 	fprintf(stream, "task\"];\n");
-    } else
+    } else if(v->heuristic)
+    {
+	fprintf(stream, "h:%d\"];\n", v->heuristic_item);
+    } else 
     {
 	// print_compact_subtree currently works for only DAGs with outdegree 1 on alg vertices
 	assert(v->out.size() == 1);

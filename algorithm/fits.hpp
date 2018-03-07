@@ -201,4 +201,5 @@ std::pair<int,int> fitmaxone(const binconf *b)
     return std::pair<int,int>(1,best_remainder);
 }
 
+
 #endif
