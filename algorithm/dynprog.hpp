@@ -3,13 +3,14 @@
 
 #include <chrono>
 #include <algorithm>
+#include <array>
 
 #include "common.hpp"
 #include "fits.hpp"
 #include "measure.hpp"
 
 // which Test procedure are we using
-#define TEST sparse_dynprog_test2
+#define TEST sparse_dynprog_test4
 
 void print_tuple(const int* tuple)
 {
@@ -65,18 +66,32 @@ void decodetuple(int *new_tuple, uint64_t source, int pos)
 void dynprog_attr_init(thread_attr *tat)
 {
     assert(tat != NULL);
-    //tat->F = new std::vector<int>(BINARRAY_SIZE, 0);
     tat->oldqueue = new std::vector<uint64_t>();
     tat->oldqueue->reserve(DEFAULT_DP_SIZE);
     tat->newqueue = new std::vector<uint64_t>();
     tat->newqueue->reserve(DEFAULT_DP_SIZE);
+
+    // tuple queues
+    tat->oldtqueue = new std::vector<std::array<uint8_t, BINS> >();
+    tat->oldtqueue->reserve(DEFAULT_DP_SIZE);
+    tat->newtqueue = new std::vector<std::array<uint8_t, BINS> >();
+    tat->newtqueue->reserve(DEFAULT_DP_SIZE);
+
+    tat->oldset = new std::unordered_set<std::array<uint8_t, BINS> >();
+    tat->oldset->reserve(DEFAULT_DP_SIZE);
+    tat->newset = new std::unordered_set<std::array<uint8_t, BINS> >();
+    tat->newset->reserve(DEFAULT_DP_SIZE);
+
 }
 
 void dynprog_attr_free(thread_attr *tat)
 {
     delete tat->oldqueue;
     delete tat->newqueue;
-    //delete F;
+    delete tat->oldtqueue;
+    delete tat->newtqueue;
+    delete tat->oldset;
+    delete tat->newset;
 }
 
 /* New dynprog test with some minor improvements. */
@@ -101,6 +116,7 @@ bool sparse_dynprog_test2(const binconf *conf, thread_attr *tat)
     int phase = 0;
 
     uint64_t index;
+    
     for (int size=S; size>2; size--)
     {
 	int k = conf->items[size];
@@ -224,6 +240,197 @@ bool sparse_dynprog_test2(const binconf *conf, thread_attr *tat)
     return false;
 }
 
+// Sparse dynprog test which uses tuples directly (and does not encode/decode them)
+bool sparse_dynprog_test3(const binconf *conf, thread_attr *tat)
+{
+#ifdef MEASURE
+    tat->dynprog_test_counter++;
+#endif
+
+    tat->newtqueue->clear();
+    tat->oldtqueue->clear();
+    std::vector<std::array<uint8_t, BINS> > *poldq;
+    std::vector<std::array<uint8_t, BINS> > *pnewq;
+    std::vector<std::array<uint8_t, BINS> > *swapper;
+
+    poldq = tat->oldtqueue;
+    pnewq = tat->newtqueue;
+
+    int phase = 0;
+
+    for (int size=S; size>=1; size--)
+    {
+	int k = conf->items[size];
+	while (k > 0)
+	{
+	    phase++;
+	    if (phase == 1) {
+
+		std::array<uint8_t, BINS> first;
+		for (int i = 0; i < BINS; i++)
+		{
+		    first[i] = 0;
+		}
+		first[0] = size;
+		pnewq->push_back(first);
+	    } else {
+		for(int i=0; i < poldq->size(); i++)
+		{
+		    std::array<uint8_t, BINS> tuple = (*poldq)[i];
+
+		    // Instead of having a global array of feasibilities, we now sort the poldq array.
+		    if (i >= 1)
+		    {
+			if (tuple == (*poldq)[i-1])
+			{
+			    continue;
+			}
+		    }
+		    
+		    // try and place the item
+		    for(int i=0; i < BINS; i++)
+		    {
+			// same as with Algorithm, we can skip when sequential bins have the same load
+			if (i > 0 && tuple[i] == tuple[i-1])
+			{
+			    continue;
+			}
+			
+			if(tuple[i] + size > S) {
+			    continue;
+			}
+			
+			tuple[i] += size;
+			pnewq->push_back(tuple);
+			tuple[i] -= size;
+		    }
+		}
+		if (pnewq->size() == 0) {
+		    return false;
+		}
+	    }
+
+	    // swap queues
+	    swapper = pnewq; pnewq = poldq; poldq = swapper;
+	    // sort the old queue
+	    sort(poldq->begin(), poldq->end()); 
+	    pnewq->clear();
+	    k--;
+	}
+    }
+
+    return true;
+    
+    /* Heuristic: solve the cases of sizes 2 and 1 without generating new
+       configurations. */
+
+    /* Currently not used, but takes about 20 seconds of 19/14-6bins. */
+/*
+    for (int i=0; i < poldq->size(); i++)
+    {
+	std::array<uint8_t, BINS> tuple = (*poldq)[i];
+	// Instead of having a global array of feasibilities, we now sort the poldq array.
+	if (i >= 1)
+	{
+	    if (tuple == (*poldq)[i-1])
+	    {
+		continue;
+	    }
+	}
+
+	int free_size = 0, free_for_twos = 0;
+	for (int i=0; i<BINS; i++)
+	{
+	    free_size += (S - tuple[i]);
+	    free_for_twos += (S - tuple[i])/2;
+	}
+	
+	if ( free_size < conf->items[1] + 2*conf->items[2])
+	{
+	    continue;
+	}
+
+	if (free_for_twos >= conf->items[2])
+	{
+	    return true;
+	}
+
+}
+    return false;
+*/
+}
+
+// Sparse dynprog test which uses tuples directly (and does not encode/decode them)
+bool sparse_dynprog_test4(const binconf *conf, thread_attr *tat)
+{
+#ifdef MEASURE
+    tat->dynprog_test_counter++;
+#endif
+
+    tat->newset->clear();
+    tat->oldset->clear();
+    std::unordered_set<std::array<uint8_t, BINS> > *poldq;
+    std::unordered_set<std::array<uint8_t, BINS> > *pnewq;
+    std::unordered_set<std::array<uint8_t, BINS> > *swapper;
+
+    poldq = tat->oldset;
+    pnewq = tat->newset;
+
+    int phase = 0;
+
+    for (int size=S; size>=1; size--)
+    {
+	int k = conf->items[size];
+	while (k > 0)
+	{
+	    phase++;
+	    if (phase == 1) {
+
+		std::array<uint8_t, BINS> first;
+		for (int i = 0; i < BINS; i++)
+		{
+		    first[i] = 0;
+		}
+		first[0] = size;
+		pnewq->insert(first);
+	    } else {
+		for (const auto& tuple: *poldq)
+		{
+		    // try and place the item
+		    for (int i=0; i < BINS; i++)
+		    {
+			if (tuple[i] + size > S) {
+			    continue;
+			}
+
+			if (i > 0 && tuple[i] == tuple[i-1])
+			{
+			    continue;
+			} else {
+			    std::array<uint8_t, BINS> new_tuple = tuple;
+			    new_tuple[i] += size;
+			    std::sort(new_tuple.begin(), new_tuple.end(), std::greater<uint8_t>()); 
+			    pnewq->insert(new_tuple);
+			}
+		    }
+		}
+
+		if (pnewq->empty()) {
+		    return false;
+		}
+	    }
+
+	    // swap queues
+	    swapper = pnewq; pnewq = poldq; poldq = swapper;
+	    // sort the old queue
+	    // sort(poldq->begin(), poldq->end()); 
+	    pnewq->clear();
+	    k--;
+	}
+    }
+    return true;
+}
+
 // a wrapper that hashes the new configuration and if it is not in cache, runs TEST
 // it edits h but should return it to original state (due to Zobrist hashing)
 bool hash_and_test(binconf *h, int item, thread_attr *tat)
@@ -257,6 +464,198 @@ bool hash_and_test(binconf *h, int item, thread_attr *tat)
     return feasible;
 }
 
+
+// initializes dynprog array based on the bin configuration
+// essentially identical to the previous dynprog
+void dynprog_one_pass_init(binconf *b, std::vector<uint64_t> *resulting_step)
+{
+
+    resulting_step->clear();
+
+    std::vector<uint64_t> oldq;
+    oldq.reserve(DEFAULT_DP_SIZE);
+    std::vector<uint64_t> newq;
+    newq.reserve(DEFAULT_DP_SIZE);
+   
+    std::vector<uint64_t> *poldq;
+    std::vector<uint64_t> *pnewq;
+    std::vector<uint64_t> *swapper;
+
+    poldq = &oldq;
+    pnewq = &newq;
+    
+    int phase = 0;
+    int *tuple; tuple = (int *) calloc(BINS, sizeof(int));
+
+    uint64_t index;
+    for (int size=S; size>0; size--)
+    {
+	int k = b->items[size];
+	while (k > 0)
+	{
+	    phase++;
+	    if (phase == 1) {
+		
+		tuple[0] = size;
+		index = encodetuple(tuple, 0);
+		pnewq->push_back(index);
+		//tat->F[index] = 1;
+	    } else {
+		for(int i=0; i < poldq->size(); i++)
+		{
+		    index = (*poldq)[i];
+
+		    /* Instead of having a global array of feasibilities, we now sort the poldq array. */
+		    if (i >= 1)
+		    {
+			if (index == (*poldq)[i-1])
+			{
+			    continue;
+			}
+		    }
+		    
+		    decodetuple(tuple,index,0);
+		    //int testindex = encodetuple(tuple,0);
+		    //assert(testindex == index);
+		    
+		    //tat->F[index] = 0;
+		    
+		    // try and place the item
+		    for(int i=0; i < BINS; i++)
+		    {
+			// same as with Algorithm, we can skip when sequential bins have the same load
+			if (i > 0 && tuple[i] == tuple[i-1])
+			{
+			    continue;
+			}
+			
+			if(tuple[i] + size > S) {
+			    continue;
+			}
+			
+			tuple[i] += size;
+			int from = sortarray_one_increased(&tuple, i);
+			uint64_t newindex = encodetuple(tuple,0);
+
+			// debug assertions
+			if( ! (newindex <= BINARRAY_SIZE) && (newindex >= 0))
+			{
+			    fprintf(stderr, "Tuple and index %" PRIu64 " are weird.\n", newindex);
+			    print_tuple(tuple);
+			    exit(-1);
+			}
+			
+			/* if( tat->F[newindex] != 1)
+			{
+			    tat->F[newindex] = 1;
+			}
+			*/
+			pnewq->push_back(newindex);
+
+			tuple[from] -= size;
+			sortarray_one_decreased(&tuple, from);
+		    }
+		}
+		// since we are initializing, this should never happen
+		assert(!pnewq->empty());
+	    }
+
+	    // swap queues
+	    swapper = pnewq; pnewq = poldq; poldq = swapper;
+	    // sort the old queue
+	    sort(poldq->begin(), poldq->end()); 
+	    pnewq->clear();
+	    k--;
+	}
+    }
+
+    free(tuple);
+    
+    // poldq contains the generated configurations, move them to resulting step;
+    for (size_t i = 0; i < poldq->size(); i++)
+    {
+	resulting_step->push_back( (*poldq)[i]);
+    }
+}
+
+// does only one pass of dynamic programming, moving from all configurations in previous_step to upcoming_step
+void dynprog_one_pass(int size, std::vector<uint64_t>* upcoming_step, std::vector<uint64_t> *previous_step, thread_attr *tat)
+{
+    tat->dynprog_test_counter++;
+    // this is not a std::array<> or a static array because this way it can be passed to recursive functions.
+    
+    int *tuple; tuple = (int *) calloc(BINS, sizeof(int));
+    
+
+    uint64_t index;
+
+    if (previous_step->empty())
+    {
+	tuple[0] = size;
+	index = encodetuple(tuple, 0);
+	upcoming_step->push_back(index);
+	return;
+    }
+    
+    for (int i=0; i < previous_step->size(); i++)
+    {
+	index = (*previous_step)[i];
+	
+	if (i >= 1)
+	{
+	    if (index == (*previous_step)[i-1])
+	    {
+		continue;
+	    }
+	}
+
+	decodetuple(tuple,index,0);
+	//int testindex = encodetuple(tuple,0);
+	//assert(testindex == index);
+	
+	//tat->F[index] = 0;
+	
+	// try and place the item
+	for(int i=0; i < BINS; i++)
+	{
+	    // same as with Algorithm, we can skip when sequential bins have the same load
+	    if (i > 0 && tuple[i] == tuple[i-1])
+	    {
+		continue;
+	    }
+	    
+	    if(tuple[i] + size > S) {
+		continue;
+	    }
+	    
+	    tuple[i] += size;
+	    int from = sortarray_one_increased(&tuple, i);
+	    uint64_t newindex = encodetuple(tuple,0);
+	    
+	    // debug assertions
+	    if( ! (newindex <= BINARRAY_SIZE) && (newindex >= 0))
+	    {
+		fprintf(stderr, "Tuple and index %" PRIu64 " are weird.\n", newindex);
+		print_tuple(tuple);
+		exit(-1);
+	    }
+	    
+	    /* if( tat->F[newindex] != 1)
+	       {
+	       tat->F[newindex] = 1;
+	       }
+	    */
+	    upcoming_step->push_back(newindex);
+	    
+	    tuple[from] -= size;
+	    sortarray_one_decreased(&tuple, from);
+	}
+    }
+    sort(upcoming_step->begin(), upcoming_step->end());
+    free(tuple);
+    //fprintf(stderr, "Prev step size: %lu, Current step size: %lu\n", previous_step->size(), upcoming_step->size());
+}
+		      
 int maximum_feasible_dynprog(binconf *b, thread_attr *tat)
 {
 #ifdef MEASURE

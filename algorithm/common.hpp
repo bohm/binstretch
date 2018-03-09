@@ -11,6 +11,8 @@
 #include <atomic>
 #include <chrono>
 #include <queue>
+#include <array>
+#include <unordered_set>
 
 typedef unsigned long long int llu;
 typedef signed char tiny;
@@ -35,7 +37,7 @@ typedef signed char tiny;
 #define ALPHA (RMOD-S)
 
 // Change this number for the selected number of bins.
-#define BINS 6
+#define BINS 5
 
 // bitwise length of indices of hash tables and lock tables
 #define HASHLOG 30
@@ -129,13 +131,40 @@ typedef struct algorithm_vertex algorithm_vertex;
 class adv_outedge;
 class alg_outedge;
 
+namespace std
+{
+    template<typename T, size_t N>
+    struct hash<array<T, N> >
+    {
+        typedef array<T, N> argument_type;
+        typedef size_t result_type;
 
+        result_type operator()(const argument_type& a) const
+        {
+            hash<T> hasher;
+            result_type h = 0;
+            for (result_type i = 0; i < N; ++i)
+            {
+                h = h * 31 + hasher(a[i]);
+            }
+            return h;
+        }
+    };
+}
 
 /* dynprog global variables and other attributes separate for each thread */
 struct thread_attr {
     std::vector<int>* F;
     std::vector<uint64_t>* oldqueue;
     std::vector<uint64_t>* newqueue;
+
+    std::vector<std::array<uint8_t, BINS> >* oldtqueue;
+    std::vector<std::array<uint8_t, BINS> >* newtqueue;
+
+    std::unordered_set<std::array<uint8_t, BINS> >* oldset;
+    std::unordered_set<std::array<uint8_t, BINS> >* newset;
+
+    std::vector<uint64_t>* previous_pass;
     std::chrono::duration<long double> dynprog_time;
     uint64_t maximum_feasible_counter = 0;
     uint64_t hash_and_test_counter = 0;

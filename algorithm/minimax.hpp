@@ -272,7 +272,7 @@ int algorithm(binconf *b, int k, int depth, int mode, thread_attr *tat, tree_att
 		    outat->last_adv_v = previous_adversary;
 		}
 		
-		DEEP_DEBUG_PRINT("We have calculated the following position, result is %d\n", r);
+		DEEP_DEBUG_PRINT("We have calculated the following position, result is %d\n", below);
 		DEEP_DEBUG_PRINT_BINCONF(b);
 
 		if (mode == EXPLORING) {
@@ -329,8 +329,10 @@ int explore(binconf *b, thread_attr *tat)
 {
     hashinit(b);
     tree_attr *outat = NULL;
-
-    int ret = adversary(b, 0, EXPLORING, tat, outat);
+    std::vector<uint64_t> first_pass;
+    dynprog_one_pass_init(b, &first_pass);
+    tat->previous_pass = &first_pass;
+    int ret = ADVERSARY(b, 0, EXPLORING, tat, outat);
     assert(ret != POSTPONED);
     
     return ret;
@@ -343,9 +345,254 @@ int generate(binconf *start, thread_attr *tat, adversary_vertex *start_vert)
     tree_attr *outat = new tree_attr;
     outat->last_adv_v = start_vert;
     outat->last_alg_v = NULL;
-    int ret = adversary(start, start_vert->depth, GENERATING, tat, outat);
+
+    std::vector<uint64_t> first_pass;
+    dynprog_one_pass_init(start, &first_pass);
+    tat->previous_pass = &first_pass;
+
+    int ret = ADVERSARY(start, start_vert->depth, GENERATING, tat, outat);
     delete outat;
     return ret;
 }
+
+
+/* Currently not using onepass, because the heuristic led to slowdowns.
+
+int adversary_onepass(binconf *b, int depth, int mode, thread_attr *tat, tree_attr *outat) {
+
+    adversary_vertex *current_adversary = NULL;
+    algorithm_vertex *previous_algorithm = NULL;
+    adv_outedge *new_edge = NULL;
+    
+   
+    // Everything can be packed into one bin, return 1.
+    if ((b->loads[BINS] + (BINS*S - totalload(b))) < R)
+    {
+	return 1;
+    }
+
+    // Large items heuristic: if 2nd or later bin is at least R-S, check if enough large items
+    //   can be sent so that this bin (or some other) hits R.
+    if (mode == GENERATING)
+    {
+	std::pair<bool, int> p;
+	p = large_item_heuristic(b,tat);
+	if (p.first)
+	{
+	    outat->last_adv_v->value = 0;
+	    outat->last_adv_v->heuristic = true;
+	    outat->last_adv_v->heuristic_item = p.second;
+	    return 0;
+	}
+    }
+
+
+    if (mode == GENERATING)
+    {
+	current_adversary = outat->last_adv_v;
+	previous_algorithm = outat->last_alg_v;
+
+	if (possible_task(current_adversary))
+	{
+	    add_task(b);
+	    // mark current adversary vertex (created by algorithm() in previous step) as a task
+	    current_adversary->task = true;
+	    current_adversary->value = POSTPONED;
+	    return POSTPONED;
+	}
+    }
+    
+    // finds the maximum feasible item that can be added using dyn. prog.
+    int maximum_feasible = 0;
+    bool result_determined = false; // can be determined even when postponed branches are present
+    int below = 1;
+    int r = 1;
+    // we do now just one pass, integrating maximum_feasible_dynprog inside adversary
+    int explored_below[S+1] = {0};
+    std::vector<uint64_t> current_pass;
+    std::vector<uint64_t>* previous_pass = tat->previous_pass;
+    current_pass.reserve(DEFAULT_DP_SIZE);
+    
+
+    std::pair<int,int> fitresults = fitmaxone(b);
+    
+    int bestfitvalue = fitresults.second;
+    int maxvalue = (S*BINS) - totalload(b);
+    if (maxvalue > S)
+    {
+	maxvalue = S;
+    }
+
+    DEEP_DEBUG_PRINT("(D%d) Trying player zero choices, (BF,Max): (%d,%d)\n", depth, bestfitvalue, maxvalue);
+
+    if (maxvalue == bestfitvalue)
+    {
+	maximum_feasible = maxvalue;
+    } else {
+	int lb = bestfitvalue; int ub = maxvalue;
+	int mid = (lb+ub+1)/2;
+	bool feasible;
+	while (lb < ub)
+	{	
+	    dynprog_one_pass(mid, &current_pass, previous_pass, tat);
+	    if (!current_pass.empty())
+	    {
+		DEEP_DEBUG_PRINT("(D%d) Sending item %d is possible (mid).\n", depth, maxvalue);
+		// PREPASTE
+		algorithm_vertex *analyzed_vertex; // used only in the GENERATING mode
+		
+		if (mode == GENERATING)
+		{
+		    analyzed_vertex = new algorithm_vertex(mid);
+		    // create new edge, 
+		    new_edge = new adv_outedge(current_adversary, analyzed_vertex, mid);
+		    // set the current adversary vertex to be the analyzed vertex
+		    outat->last_alg_v = analyzed_vertex;
+		}
+		// END PREPASTE
+		
+		tat->previous_pass = &current_pass;
+		below = ALGORITHM(b, mid, depth+1, mode, tat, outat);
+		tat->previous_pass = previous_pass;
+		explored_below[mid] = 1;
+		current_pass.clear();
+		
+		// PASTE
+		if (mode == GENERATING)
+		{
+		    analyzed_vertex->value = below;
+		    // and set it back to the previous value
+		    outat->last_alg_v = previous_algorithm;
+		}
+		
+		if (mode == EXPLORING || mode == GENERATING)
+		{
+		    DEEP_DEBUG_PRINT("(D%d) With item %d, algorithm's result is %d\n", depth, mid, r);
+		    }
+		
+		if (below == 0)
+		{
+		    r = 0;
+		    
+		    if (mode == GENERATING)
+		    {
+			    // remove all outedges except the right one
+			remove_outedges_except(current_adversary, mid);
+		    }
+		} else if (below == 1)
+		    {
+			if (mode == GENERATING)
+			{
+			    // no decreasing, but remove this branch of the game tree
+			    remove_edge(new_edge);
+			    // assert(new_edge == NULL); // TODO: make a better assertion
+			}
+		    } else if (below == POSTPONED)
+		{
+		    assert(mode == GENERATING);
+		    if (r == 1)
+		    {
+			r = POSTPONED;
+		    }
+		}
+		// END PASTE
+		lb = mid;
+	    } else {
+		    ub = mid-1;
+	    }
+	    
+	    mid = (lb+ub+1)/2;
+	}
+	    maximum_feasible = lb;
+    }
+    
+    // an equivalent of break in the cycle below
+    if (r == 0)
+    {
+	return r;
+    }
+    
+    for (int item_size = maximum_feasible; item_size>0; item_size--)
+    {
+	if (explored_below[item_size])
+	{
+	    continue;
+	}
+	explored_below[item_size] = 1;
+	
+	//int item_size = feasibilities[i];
+        DEEP_DEBUG_PRINT("(D%d) Sending item %d to algorithm.\n", depth, item_size);
+	// algorithm's vertex for the next step
+	algorithm_vertex *analyzed_vertex; // used only in the GENERATING mode
+	
+	if (mode == GENERATING)
+	{
+	    analyzed_vertex = new algorithm_vertex(item_size);
+	    // create new edge, 
+	    new_edge = new adv_outedge(current_adversary, analyzed_vertex, item_size);
+            // set the current adversary vertex to be the analyzed vertex
+	    outat->last_alg_v = analyzed_vertex;
+	}
+
+	// definitely feasible, do one pass of dynamic programming
+        dynprog_one_pass(item_size, &current_pass, previous_pass, tat);
+	assert(!current_pass.empty());
+	tat->previous_pass = &current_pass;
+	below = ALGORITHM(b, item_size, depth+1, mode, tat, outat);
+	tat->previous_pass = previous_pass;
+	current_pass.clear();
+	
+	if (mode == GENERATING)
+	{
+	    analyzed_vertex->value = below;
+	    // and set it back to the previous value
+	    outat->last_alg_v = previous_algorithm;
+	}
+
+	if (mode == EXPLORING || mode == GENERATING)
+	{
+	    DEEP_DEBUG_PRINT("(D%d) With item %d, algorithm's result is %d\n", depth, item_size, r);
+	}
+
+	if (below == 0)
+	{
+	    r = 0;
+	    
+	    if (mode == GENERATING)
+	    {
+		// remove all outedges except the right one
+		remove_outedges_except(current_adversary, item_size);
+	    }
+	    break;
+	} else if (below == 1)
+	{
+	    if (mode == GENERATING)
+	    {
+		// no decreasing, but remove this branch of the game tree
+		remove_edge(new_edge);
+		// assert(new_edge == NULL); // TODO: make a better assertion
+	    }
+	} else if (below == POSTPONED)
+	{
+	    assert(mode == GENERATING);
+	    if (r == 1)
+	    {
+		r = POSTPONED;
+	    }
+	}
+    }
+
+    // Sanity check.
+    if (mode == GENERATING && r == 1)
+    {
+	assert(current_adversary->out.empty());
+    }
+
+    // DEEP_DEBUG_PRINT("Adversary_onepass returning value %d.\n",r );
+   
+    return r;
+}
+
+*/
 
 #endif
