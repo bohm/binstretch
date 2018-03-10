@@ -23,7 +23,6 @@ int algorithm(binconf *b, int k, int depth, int mode, thread_attr *tat, tree_att
 /* declaring which algorithm will be used */
 #define ALGORITHM algorithm
 #define ADVERSARY adversary
-#define MAXIMUM_FEASIBLE maximum_feasible_dynprog
 
 /* return values: 0: player 1 cannot pack the sequence starting with binconf b
  * 1: player 1 can pack all possible sequences starting with b.
@@ -52,22 +51,6 @@ int adversary(binconf *b, int depth, int mode, thread_attr *tat, tree_attr *outa
 	return 1;
     }
 
-    /* Large items heuristic: if 2nd or later bin is at least R-S, check if enough large items
-       can be sent so that this bin (or some other) hits R. */
-    if (mode == GENERATING)
-    {
-	std::pair<bool, int> p;
-	p = large_item_heuristic(b,tat);
-	if (p.first)
-	{
-	    outat->last_adv_v->value = 0;
-	    outat->last_adv_v->heuristic = true;
-	    outat->last_adv_v->heuristic_item = p.second;
-	    return 0;
-	}
-    }
-
-
     if (mode == GENERATING)
     {
 	current_adversary = outat->last_adv_v;
@@ -84,10 +67,29 @@ int adversary(binconf *b, int depth, int mode, thread_attr *tat, tree_attr *outa
     }
 
     // finds the maximum feasible item that can be added using dyn. prog.
-    int maximum_feasible = MAXIMUM_FEASIBLE(b, tat);
+    std::pair<int, dynprog_result> dp = maximum_feasible_dynprog(b, tat);
+    int maximum_feasible = dp.first;
     bool result_determined = false; // can be determined even when postponed branches are present
     int below = 1;
     int r = 1;
+
+    /* Large items heuristic: if 2nd or later bin is at least R-S, check if enough large items
+       can be sent so that this bin (or some other) hits R. */
+    /* std::pair<bool, int> p;
+    p = large_item_heuristic(b,dp.second, tat);
+    if (p.first)
+    {
+	if(mode == GENERATING)
+	{
+	    outat->last_adv_v->value = 0;
+	    outat->last_adv_v->heuristic = true;
+	    outat->last_adv_v->heuristic_item = p.second;
+	    return 0;
+	}
+    } 
+    */
+
+
     DEEP_DEBUG_PRINT("Trying player zero choices, with maxload starting at %d\n", maximum_feasible);
 
     /*
@@ -329,9 +331,9 @@ int explore(binconf *b, thread_attr *tat)
 {
     hashinit(b);
     tree_attr *outat = NULL;
-    std::vector<uint64_t> first_pass;
-    dynprog_one_pass_init(b, &first_pass);
-    tat->previous_pass = &first_pass;
+    //std::vector<uint64_t> first_pass;
+    //dynprog_one_pass_init(b, &first_pass);
+    //tat->previous_pass = &first_pass;
     int ret = ADVERSARY(b, 0, EXPLORING, tat, outat);
     assert(ret != POSTPONED);
     
@@ -346,9 +348,9 @@ int generate(binconf *start, thread_attr *tat, adversary_vertex *start_vert)
     outat->last_adv_v = start_vert;
     outat->last_alg_v = NULL;
 
-    std::vector<uint64_t> first_pass;
-    dynprog_one_pass_init(start, &first_pass);
-    tat->previous_pass = &first_pass;
+    //std::vector<uint64_t> first_pass;
+    //dynprog_one_pass_init(start, &first_pass);
+    //tat->previous_pass = &first_pass;
 
     int ret = ADVERSARY(start, start_vert->depth, GENERATING, tat, outat);
     delete outat;

@@ -31,7 +31,7 @@ pthread_mutex_t *bucketlock;
 pthread_mutex_t *dpbucketlock;
 
 // hash table for dynamic programming calls / feasibility checks
-uint64_t *dpht;
+dynprog_result *dpht;
 
 // DEBUG: Mersenne twister
 
@@ -100,13 +100,9 @@ void zobrist_init()
 void global_hashtable_init()
 {
 
-    dpht = (uint64_t *) malloc(BC_HASHSIZE * sizeof(dp_hash_item));
+    dpht = new dynprog_result[BC_HASHSIZE];
     assert(dpht != NULL);
 
-    for (uint64_t i =0; i < BC_HASHSIZE; i++)
-    {
-	dpht[i] = 0;
-    }
     zobrist_init();
 #ifdef MEASURE
     measure_init();
@@ -128,7 +124,7 @@ void dynprog_hashtable_clear()
 {
     for (uint64_t i =0; i < BC_HASHSIZE; i++)
     {
-	dpht[i] = 0;
+	dpht[i].hash = 0;
     }
 
 }
@@ -170,7 +166,7 @@ void global_hashtable_cleanup()
     free(Zl);
     free(Zi);
 
-    free(dpht);
+    delete dpht;
 }
 
 // cleanup function -- technically not necessary but useful for memory leak checking
@@ -500,29 +496,34 @@ void conf_hashpush(uint64_t* hashtable, const binconf *d, int posvalue, thread_a
 }
 
 // Checks if a number is in the dynamic programming hash.
-// Returns -1 (not hashed) and 0/1 (it is hashed, this is its feasibility)
-int dp_hashed(const binconf* d, thread_attr *tat)
+// Returns first bool (whether it is hashed) and the result (if it exists)
+std::pair<bool, dynprog_result> dp_hashed(const binconf* d, thread_attr *tat)
 {
-    uint64_t foundhash;
+    dynprog_result foundhash;
+    std::pair<bool,dynprog_result> ret;
+    ret.first = false;
+    
     uint64_t lp = bclogpart(d->itemhash);
     uint64_t blp = bucketlockpart(d->itemhash);
-    int posvalue = -1;
+
     pthread_mutex_lock(&dpbucketlock[blp]); // LOCK
 
     for( int i=0; i< LINPROBE_LIMIT; i++)
     {
-	foundhash = dpht[lp+i];
-	if (foundhash == 0)
+	dynprog_result candidate = dpht[lp+i];
+
+	// check if it is empty space
+	if (candidate.hash == 0)
 	{
 	    break;
 	}
 
-	if (zero_last_bit(d->itemhash) == zero_last_bit(foundhash))
+	if (candidate.hash == d->itemhash)
 	{
-	    posvalue = get_last_bit(foundhash);
+	    ret.first = true;
+	    ret.second = candidate;
 	    break;
 	}
-
 #ifdef MEASURE
 	if (i == LINPROBE_LIMIT-1)
 	{
@@ -534,20 +535,18 @@ int dp_hashed(const binconf* d, thread_attr *tat)
 
 #ifdef MEASURE
     // zero is found only in the case the slot is empty
-    if (posvalue == -1)
+    if(ret.first)
     {
-	tat->dp_miss++;
-    } else {
 	tat->dp_hit++;
     }
 #endif
 
-    return posvalue;
+    return ret;
 }
 
 
 // Adds an number to a dynamic programming hash table
-void dp_hashpush(const binconf *d, bool feasible, thread_attr *tat)
+void dp_hashpush(const binconf *d, dynprog_result data, thread_attr *tat)
 {
 
 #ifdef MEASURE
@@ -556,26 +555,27 @@ void dp_hashpush(const binconf *d, bool feasible, thread_attr *tat)
 
     uint64_t lp = bclogpart(d->itemhash);
     uint64_t blp = bucketlockpart(d->itemhash);
-    uint64_t cache = zero_last_bit(d->itemhash) | ((uint64_t) feasible);
     uint64_t position = lp;
+
+    data.hash = d->itemhash;
     
     pthread_mutex_lock(&dpbucketlock[blp]); // LOCK
     for (int i=0; i< LINPROBE_LIMIT; i++)
     {
-	uint64_t foundhash = dpht[lp+i];
-	if (foundhash == 0)
+	dynprog_result possible_entry = dpht[lp+i];
+	if (possible_entry.hash == 0)
 	{
 	    position = lp+i;
 	    break;
 	}
 
-	if (zero_last_bit(d->itemhash) == zero_last_bit(foundhash))
+	if (possible_entry.hash == data.hash)
 	{
 	    position = lp+i;
 	    break;
 	}
     }
-    dpht[position] = cache;
+    dpht[position] = data;
     pthread_mutex_unlock(&dpbucketlock[blp]); // UNLOCK
 }
 

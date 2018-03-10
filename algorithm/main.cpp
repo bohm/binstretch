@@ -31,8 +31,8 @@ int main(void)
     init(root); // init game tree
 
     // special heuristics for 19/14 lower bound for 7 bins
-    //root->items[5] = 1;
-    //root->loads[1] = 5;
+    root->items[5] = 1;
+    root->loads[1] = 5;
     //root->items[2] = 1;
     //root->loads[2] = 2;
     

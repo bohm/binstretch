@@ -37,7 +37,7 @@ typedef signed char tiny;
 #define ALPHA (RMOD-S)
 
 // Change this number for the selected number of bins.
-#define BINS 5
+#define BINS 6
 
 // bitwise length of indices of hash tables and lock tables
 #define HASHLOG 30
@@ -61,6 +61,10 @@ typedef signed char tiny;
 #define TASK_LOAD (S*BINS)/2
 #define TASK_DEPTH 5
 
+// how much the updater thread sleeps (in milliseconds)
+#define TICK_SLEEP 200
+// how many tasks are sufficient for the updater to run the main updater routine
+#define TICK_TASKS 100
 // The following selects binarray size based on BINS. It does not need to be edited.
 #if BINS == 3
 #define BINARRAY_SIZE (S+1)*(S+1)*(S+1)
@@ -123,6 +127,16 @@ struct task {
 
 typedef struct task task;
 
+// dynprog_result is data point about a particular configuration
+class dynprog_result
+{
+public:
+    bool feasible = false;
+    // largest_sendable[i] -- largest item sendable BINS-i times
+    // std::array<uint8_t, BINS> largest_sendable = {};
+    uint64_t hash = 0;
+};
+
 /* adversary_vertex and algorithm_vertex defined in tree.hpp */
 
 typedef struct adversary_vertex adversary_vertex;
@@ -133,38 +147,33 @@ class alg_outedge;
 
 namespace std
 {
-    template<typename T, size_t N>
-    struct hash<array<T, N> >
-    {
-        typedef array<T, N> argument_type;
-        typedef size_t result_type;
 
-        result_type operator()(const argument_type& a) const
-        {
-            hash<T> hasher;
-            result_type h = 0;
-            for (result_type i = 0; i < N; ++i)
-            {
-                h = h * 31 + hasher(a[i]);
-            }
-            return h;
-        }
+    template<> struct hash<array<uint8_t, BINS> >
+    {
+	typedef array<uint8_t, BINS> argument_type;
+	typedef size_t result_type;
+
+	result_type operator()(const argument_type& a) const
+	{
+	    //static_assert(sizeof(result_type) > BINS);
+
+	    array<uint8_t, sizeof(result_type)> expanded;
+
+	    std::copy(a.begin(), a.end(), expanded.begin());
+
+	    return *reinterpret_cast<const result_type*>(&expanded);
+	}
     };
 }
 
 /* dynprog global variables and other attributes separate for each thread */
 struct thread_attr {
-    std::vector<int>* F;
-    std::vector<uint64_t>* oldqueue;
-    std::vector<uint64_t>* newqueue;
-
-    std::vector<std::array<uint8_t, BINS> >* oldtqueue;
-    std::vector<std::array<uint8_t, BINS> >* newtqueue;
-
     std::unordered_set<std::array<uint8_t, BINS> >* oldset;
     std::unordered_set<std::array<uint8_t, BINS> >* newset;
 
-    std::vector<uint64_t>* previous_pass;
+    std::vector<std::array<uint8_t, BINS > > *oldtqueue;
+    std::vector<std::array<uint8_t, BINS > > *newtqueue;
+   
     std::chrono::duration<long double> dynprog_time;
     uint64_t maximum_feasible_counter = 0;
     uint64_t hash_and_test_counter = 0;
@@ -173,7 +182,7 @@ struct thread_attr {
     uint64_t dp_hit = 0;
     uint64_t dp_miss = 0;
     uint64_t dp_insertions = 0;
-    
+
     uint64_t bc_full_not_found = 0;
     uint64_t bc_hit = 0;
     uint64_t bc_miss = 0;
@@ -251,7 +260,7 @@ std::chrono::duration<long double> total_dynprog_time;
 timeval totaltime_start;
 #endif
 
-
+ 
 void duplicate(binconf *t, const binconf *s) {
     for(int i=1; i<=BINS; i++)
 	t->loads[i] = s->loads[i];
@@ -274,7 +283,7 @@ void init(binconf *b)
     b->posvalue = -1;
     for (int i=0; i<=BINS; i++)
     {
-	b->loads[i] = 0; 
+	b->loads[i] = 0;
     }
     for (int j=0; j<=S; j++)
     {
@@ -444,6 +453,20 @@ int sortloads_one_increased(binconf *b, int newly_increased)
 }
 
 // lower-level sortload (modifies array, counts from 0)
+int sortarray_one_increased(std::array<uint8_t, BINS>& array, int newly_increased)
+{
+    int i = newly_increased;
+    while (!((i == 0) || (array[i-1] >= array[i])))
+    {
+	std::swap(array[i-1],array[i]);
+	i--;
+    }
+
+    return i;
+
+}
+
+// lower-level sortload (modifies array, counts from 0)
 int sortarray_one_increased(int **array, int newly_increased)
 {
     int i, helper;
@@ -492,4 +515,15 @@ int sortarray_one_decreased(int **array, int newly_decreased)
     return i;
 }
 
+// lower-level sortload_one_decreased (modifies array, counts from 0)
+int sortarray_one_decreased(std::array<uint8_t, BINS>& array, int newly_decreased)
+{
+    int i = newly_decreased;
+    while (!((i == BINS-1) || (array[i+1] <= array[i])))
+    {
+	std::swap(array[i+1],array[i]);
+	i++;
+    }
+    return i;
+}
 #endif

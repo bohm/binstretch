@@ -3,6 +3,8 @@
 #include <pthread.h>
 #include <unistd.h>
 #include <cassert>
+#include <thread>
+#include <chrono>
 
 #include "common.hpp"
 #include "tree.hpp"
@@ -91,7 +93,7 @@ void *evaluate_tasks(void * tid)
     total_until_break += tat.until_break;
     total_bc_insertions += tat.bc_insertions;
     total_bc_hash_checks += tat.bc_hash_checks;
-    MEASURE_PRINT("Binarray size %d, oldqueue capacity %" PRIu64 ", newqueue capacity %" PRIu64 ".\n", BINARRAY_SIZE, tat.oldqueue->capacity(), tat.newqueue->capacity());
+    //MEASURE_PRINT("Binarray size %d, oldqueue capacity %" PRIu64 ", newqueue capacity %" PRIu64 ".\n", BINARRAY_SIZE, tat.oldqueue->capacity(), tat.newqueue->capacity());
 #endif
     pthread_mutex_unlock(&thread_progress_lock);
     dynprog_attr_free(&tat);
@@ -163,7 +165,8 @@ int scheduler(adversary_vertex *sapling)
     }	
 
     while (!stop) {
-	sleep(1);
+	
+	std::this_thread::sleep_for(std::chrono::milliseconds(TICK_SLEEP));
 	stop = true;
 
 	pthread_mutex_lock(&thread_progress_lock);
@@ -178,7 +181,7 @@ int scheduler(adversary_vertex *sapling)
 	// collect tasks from worker threads
 	collected_no = collect_tasks();
 	// update main tree and task map
-	if (!update_complete)
+	if (!update_complete && (collected_tasks.size() >= TICK_TASKS))
 	{
 #ifdef TICKER
 	    timeval update_start, update_end, time_difference;
@@ -187,6 +190,9 @@ int scheduler(adversary_vertex *sapling)
 #endif
 	    clear_visited_bits();
 	    ret = update(sapling);
+	    // clear collected tasks (all already collected tasks should be inside the tree)
+	    collected_tasks.clear();
+
 #ifdef TICKER
 	    uint64_t now_removed = removed_task_count;
 	    gettimeofday(&update_end, NULL);
