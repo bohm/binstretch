@@ -409,10 +409,15 @@ std::pair<int, dynprog_result> maximum_feasible_dynprog(binconf *b, thread_attr 
     return ret;
 }
 
-// run large_item_heuristic only after feasibility/dynprog is computed
+bool try_and_send(binconf *b, int number_of_items, int minimum_size, thread_attr *tat)
+{
+    b->items[minimum_size] += number_of_items;
+    dynprog_result ret = TEST(b,tat);
+    b->items[minimum_size] -= number_of_items;
+    return ret.feasible;
+}
 
-/*
-std::pair<bool,int> large_item_heuristic(const binconf *b, dynprog_result data, thread_attr *tat)
+std::pair<bool,int> large_item_heuristic(binconf *b, thread_attr *tat)
 {
     std::pair<bool,int> ret(false, 0);
     
@@ -421,46 +426,23 @@ std::pair<bool,int> large_item_heuristic(const binconf *b, dynprog_result data, 
 	int ideal_item_lb1 = R-b->loads[i];
 	// the +1 is there to round up
 	int ideal_item_lb2 = (R - b->loads[BINS]+1)/2; 
-	int ideal_item = std::max(ideal_item_lb1, ideal_item_lb2);
 
-	if ((ideal_item_lb1 <= S) && (data.largest_sendable[i] >= ideal_item))
+	if ((ideal_item_lb1 <= S))
 	{
-	    //fprintf(stderr, "Large item heuristic for bin %d, size %d : ", i, (R- b->loads[i]));
-	    //print_binconf_stream(stderr, b);
+	    int ideal_item = std::max(ideal_item_lb1, ideal_item_lb2);	    
+	    if (try_and_send(b, (BINS-i+1), ideal_item, tat))
+	    {
+/*		DEEP_DEBUG_PRINT(stderr, "Large item heuristic for bin %d, size %d : ", i, (R- b->loads[i]));
+		print_binconf_stream(stderr, b); */
 		
 		ret.first = true;
 		ret.second = ideal_item;
 		return ret;
-	}
-    }
-    return ret;
-}
-*/
-bool large_item_fit_heuristic(binconf *b, thread_attr *tat)
-{
-    /* No need checking the largest bin, so we start from the second. */
-    for (int i=BINS; i>=2; i--)
-    {
-	int ideal_item = R-b->loads[i];
-	/* check if: 1) you can send an item that can fill the bin to R
-	   2) this item, if placed twice on the smallest bin, fills it up to R */
-	if ((ideal_item <= S) && (2*ideal_item + b->loads[BINS] >= R ))
-	{
-	    binconf h;
-	    int number_of_items = BINS-i+1;
-	    b->items[ideal_item] += number_of_items;
-	    bool ret = (bool) bestfit(&h, b);
-	    b->items[ideal_item] -= number_of_items;
-		DEEP_DEBUG_PRINT(stderr, "Large item heuristic for bin %d, size %d : ", i, (R- b->loads[i]));
-		print_binconf_stream(stderr, b);
-	    if (ret)
-	    {
-		return true;
 	    }
 	}
     }
 
-    return false;
+    return ret;
 }
 
 #endif

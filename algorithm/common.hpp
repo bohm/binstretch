@@ -91,6 +91,7 @@ typedef signed char tiny;
 // ------------------------------------------------
 
 #define POSTPONED 2
+#define TERMINATING 3
 
 #define GENERATING 1
 #define EXPLORING 2
@@ -175,6 +176,8 @@ struct thread_attr {
     std::vector<std::array<uint8_t, BINS > > *newtqueue;
    
     std::chrono::duration<long double> dynprog_time;
+
+    uint64_t iterations = 0;
     uint64_t maximum_feasible_counter = 0;
     uint64_t hash_and_test_counter = 0;
     uint64_t dynprog_test_counter = 0;

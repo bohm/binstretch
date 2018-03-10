@@ -54,15 +54,18 @@ void *evaluate_tasks(void * tid)
 	
 	int ret = explore(&(current.bc), &tat);
 
-	// add task to the completed_tasks map
-	pthread_mutex_lock(&collection_lock[threadid]);
-	completed_tasks[threadid].insert(std::pair<uint64_t, int>(current.bc.loadhash ^ current.bc.itemhash, ret));
-	pthread_mutex_unlock(&collection_lock[threadid]);
+	if (ret != TERMINATING)
+	{
+	    // add task to the completed_tasks map
+	    pthread_mutex_lock(&collection_lock[threadid]);
+	    completed_tasks[threadid].insert(std::pair<uint64_t, int>(current.bc.loadhash ^ current.bc.itemhash, ret));
+	    pthread_mutex_unlock(&collection_lock[threadid]);
+	    
 
 
-
-	DEBUG_PRINT("THR%d: Finished bc (value %d) ", threadid, ret);
-	DEBUG_PRINT_BINCONF(&(current.bc));
+	    DEBUG_PRINT("THR%d: Finished bc (value %d) ", threadid, ret);
+	    DEBUG_PRINT_BINCONF(&(current.bc));
+	}
 
 	// check the (atomic) global terminate flag
         call_to_terminate = global_terminate_flag;

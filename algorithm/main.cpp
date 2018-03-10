@@ -89,7 +89,7 @@ int main(void)
     MEASURE_PRINT("Binconf table size: %llu, insertions: %" PRIu64 ", hash checks: %" PRIu64".\n", HASHSIZE, total_bc_insertions,
 		  total_bc_hash_checks);
     MEASURE_PRINT("Table hit: %" PRIu64 ", table miss: %" PRIu64 ", full not found: %" PRIu64 "\n", total_bc_hit, total_bc_miss, total_bc_full_not_found) ;
-    MEASURE_PRINT(" DP table size: %llu, insertions: %" PRIu64 ", full not found: %" PRIu64 ", table hit: %" PRIu64 ", table miss: %" PRIu64 "\n", BC_HASHSIZE, total_dp_insertions, total_dp_full_not_found, total_dp_hit, total_dp_miss) ;
+    MEASURE_PRINT(" DP table size: %llu, insertions: %" PRIu64 ", full not found: %" PRIu64 ", table hit: %" PRIu64 ".\n", BC_HASHSIZE, total_dp_insertions, total_dp_full_not_found, total_dp_hit) ;
     global_hashtable_cleanup();
     local_hashtable_cleanup();
     bucketlock_cleanup();

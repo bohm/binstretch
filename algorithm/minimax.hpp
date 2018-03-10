@@ -27,6 +27,7 @@ int algorithm(binconf *b, int k, int depth, int mode, thread_attr *tat, tree_att
 /* return values: 0: player 1 cannot pack the sequence starting with binconf b
  * 1: player 1 can pack all possible sequences starting with b.
  * POSTPONED: a task has been generated for the parallel environment.
+ * TERMINATING: computation finished globally, just exit.
 
  * Influenced by the global bool generating_tasks.
    depth: how deep in the game tree the given situation is
@@ -43,13 +44,27 @@ int adversary(binconf *b, int depth, int mode, thread_attr *tat, tree_attr *outa
     adversary_vertex *current_adversary = NULL;
     algorithm_vertex *previous_algorithm = NULL;
     adv_outedge *new_edge = NULL;
-    
-   
+
     /* Everything can be packed into one bin, return 1. */
     if ((b->loads[BINS] + (BINS*S - totalload(b))) < R)
     {
 	return 1;
     }
+
+    /* Large items heuristic: if 2nd or later bin is at least R-S, check if enough large items
+       can be sent so that this bin (or some other) hits R. */
+    if (mode == GENERATING)
+    {
+	std::pair<bool, int> p;
+	p = large_item_heuristic(b, tat);
+	if (p.first)
+	{
+	    outat->last_adv_v->value = 0;
+	    outat->last_adv_v->heuristic = true;
+	    outat->last_adv_v->heuristic_item = p.second;
+	    return 0;
+	}
+    } 
 
     if (mode == GENERATING)
     {
@@ -66,6 +81,19 @@ int adversary(binconf *b, int depth, int mode, thread_attr *tat, tree_attr *outa
 	}
     }
 
+    // if you are exploring, check the global terminate flag every 100th iteration
+    if (mode == EXPLORING)
+    {
+	tat->iterations++;
+	if (tat->iterations % 100 == 0)
+	{
+	    if (global_terminate_flag)
+	    {
+		return TERMINATING;
+	    }
+	}
+    }
+    
     // finds the maximum feasible item that can be added using dyn. prog.
     std::pair<int, dynprog_result> dp = maximum_feasible_dynprog(b, tat);
     int maximum_feasible = dp.first;
@@ -73,23 +101,7 @@ int adversary(binconf *b, int depth, int mode, thread_attr *tat, tree_attr *outa
     int below = 1;
     int r = 1;
 
-    /* Large items heuristic: if 2nd or later bin is at least R-S, check if enough large items
-       can be sent so that this bin (or some other) hits R. */
-    /* std::pair<bool, int> p;
-    p = large_item_heuristic(b,dp.second, tat);
-    if (p.first)
-    {
-	if(mode == GENERATING)
-	{
-	    outat->last_adv_v->value = 0;
-	    outat->last_adv_v->heuristic = true;
-	    outat->last_adv_v->heuristic_item = p.second;
-	    return 0;
-	}
-    } 
-    */
-
-
+    
     DEEP_DEBUG_PRINT("Trying player zero choices, with maxload starting at %d\n", maximum_feasible);
 
     /*
@@ -131,11 +143,12 @@ int adversary(binconf *b, int depth, int mode, thread_attr *tat, tree_attr *outa
 	    outat->last_alg_v = previous_algorithm;
 	}
 
-	if (mode == EXPLORING)
+	// send signal that we should terminate immediately upwards
+	if (below == TERMINATING)
 	{
-	    DEEP_DEBUG_PRINT("With item %d, algorithm's result is %d\n", item_size, r);
+	    return TERMINATING;
 	}
-
+	
 	if (below == 0)
 	{
 	    result_determined = true;
@@ -185,6 +198,20 @@ int algorithm(binconf *b, int k, int depth, int mode, thread_attr *tat, tree_att
 	current_algorithm = outat->last_alg_v;
 	previous_adversary = outat->last_adv_v;
     }
+
+    // if you are exploring, check the global terminate flag every 100th iteration
+    if (mode == EXPLORING)
+    {
+	tat->iterations++;
+	if (tat->iterations % 100 == 0)
+	{
+	    if (global_terminate_flag)
+	    {
+		return TERMINATING;
+	    }
+	}
+    }
+ 
     
     if (gsheuristic(b,k) == 1)
     {
@@ -266,6 +293,13 @@ int algorithm(binconf *b, int k, int depth, int mode, thread_attr *tat, tree_att
 		}
 
 		below = ADVERSARY(b, depth, mode, tat, outat);
+
+		// send signal that we should terminate immediately upwards
+		if (below == TERMINATING)
+		{
+		    return TERMINATING;
+		}
+		
 
 		if (mode == GENERATING)
 		{
