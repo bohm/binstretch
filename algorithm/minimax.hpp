@@ -41,12 +41,13 @@ int algorithm(binconf *b, int k, int depth, int mode, thread_attr *tat, tree_att
 
 int adversary(binconf *b, int depth, int mode, thread_attr *tat, tree_attr *outat) {
 
+    //assert(totalload(b) == b->totalload);
     adversary_vertex *current_adversary = NULL;
     algorithm_vertex *previous_algorithm = NULL;
     adv_outedge *new_edge = NULL;
 
     /* Everything can be packed into one bin, return 1. */
-    if ((b->loads[BINS] + (BINS*S - b->totalload)) < R)
+    if ((b->loads[BINS] + (BINS*S - b->totalload())) < R)
     {
 	return 1;
     }
@@ -94,7 +95,7 @@ int adversary(binconf *b, int depth, int mode, thread_attr *tat, tree_attr *outa
 	}
 
 	// a much weaker variant of large item heuristic, but takes O(1) time
-	if (b->totalload <= S && b->loads[2] >= R-S)
+	if (b->totalload() <= S && b->loads[2] >= R-S)
 	{
 	    return 0;
 	}
@@ -242,10 +243,7 @@ int algorithm(binconf *b, int k, int depth, int mode, thread_attr *tat, tree_att
 	    // TODO: it may be useful to add #ifdef sanity checks here
 	    // like the commented ones above
 	    
-	    b->loads[i] += k;
-	    b->items[k]++;
-	    int from = sortloads_one_increased(b,i);
-	    b->totalload += k;
+	    int from = b->assign_item(k,i);
 	    rehash_increased_range(b,k,from, i); 
 
 	    
@@ -324,11 +322,8 @@ int algorithm(binconf *b, int k, int depth, int mode, thread_attr *tat, tree_att
 	    }
 
 	    // return b to original form
-	    b->loads[from] -= k;
-	    b->items[k]--;
-	    int to = sortloads_one_decreased(b,from);
-	    rehash_decreased_range(b, k, from, to);
-	    b->totalload -= k;
+	    b->unassign_item(k,from);
+	    rehash_decreased_range(b, k, from, i);
 	    
 	    if (below == 1)
 	    {
@@ -371,7 +366,7 @@ int algorithm(binconf *b, int k, int depth, int mode, thread_attr *tat, tree_att
 
 int explore(binconf *b, thread_attr *tat)
 {
-    init(b);
+    hashinit(b);
     tree_attr *outat = NULL;
     //std::vector<uint64_t> first_pass;
     //dynprog_one_pass_init(b, &first_pass);
@@ -385,7 +380,7 @@ int explore(binconf *b, thread_attr *tat)
 // wrapper for generation
 int generate(binconf *start, thread_attr *tat, adversary_vertex *start_vert)
 {
-    init(start);
+    hashinit(start);
     tree_attr *outat = new tree_attr;
     outat->last_adv_v = start_vert;
     outat->last_alg_v = NULL;

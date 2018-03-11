@@ -18,7 +18,7 @@
 int gs1(const binconf *b)
 {
     // sum of all but the last bin
-    int sum = b->totalload - b->loads[BINS];
+    int sum = b->totalload() - b->loads[BINS];
     if (sum >= ((BINS-1)*S - ALPHA))
     {
 	return 1;
@@ -84,7 +84,7 @@ int gs2(const binconf *b)
 int gs2variant(const binconf *b)
 {
     /* Sum of all bins except the last two. */
-    int sum_but_two = b->totalload - b->loads[BINS] - b->loads[BINS-1];
+    int sum_but_two = b->totalload() - b->loads[BINS] - b->loads[BINS-1];
 
     int current_sbt;
     for (int i=1; i<=BINS; i++)
@@ -252,26 +252,14 @@ int gsheuristic(binconf *b, int k)
 	    //e->items[k]++;
 	    //sortloads(e);
 	    
-	    b->loads[i] += k;
-	    b->items[k]++;
-	    moved_load = sortloads_one_increased(b,i);
+	    moved_load = b->assign_item(k,i);
+	    int value = testgs(b);
 	    //assert(binconf_equal(b,e));
-	    if(testgs(b) == 1)
+	    b->unassign_item(k,moved_load);
+	    if(value == 1)
 	    {
-		b->loads[moved_load] -= k;
-		b->items[k]--;
-		sortloads_one_decreased(b,moved_load);
-		//assert(binconf_equal(b,d));
-		//delete e;
-		//delete d;
 		return 1;
 	    } else {
-		b->loads[moved_load] -= k;
-		b->items[k]--;
-		sortloads_one_decreased(b,moved_load);
-		//assert(binconf_equal(b,d));
-		//delete e;
-		//delete d;
 	    }
          }
     }

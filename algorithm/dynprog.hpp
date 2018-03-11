@@ -292,7 +292,7 @@ dynprog_result hash_and_test(binconf *h, int item, thread_attr *tat)
 	ret = TEST(h, tat);
 	// temporary sanity check
 	//assert(ret.feasible == sparse_dynprog_test3(h,tat));
-	DEEP_DEBUG_PRINT("Pushing dynprog value %d for hash %llu.\n", feasible, h->itemhash);
+	DEEP_DEBUG_PRINT("Pushing dynprog value %d for hash %llu.\n", ret.feasible, h->itemhash);
 	dp_hashpush(h,ret, tat);
     }
     h->items[item]--;
@@ -317,9 +317,7 @@ std::pair<int, dynprog_result> maximum_feasible_dynprog(binconf *b, thread_attr 
     int maximum_feasible = 0;
     
     // calculate lower bound for the optimum using Best Fit Decreasing
-    std::pair<int,int> fitresults = fitmaxone(b);
-    
-    int bestfitvalue = fitresults.second;
+    int bestfitvalue = bestfit(b);
     
     DEEP_DEBUG_PRINT("lower bound for dynprog: %d\n", bestfitvalue);
 
@@ -327,7 +325,7 @@ std::pair<int, dynprog_result> maximum_feasible_dynprog(binconf *b, thread_attr 
 	DEBUG_PRINT("ROOT: lower bound for dynprog: %d\n", bestfitvalue);
      } */
     // calculate upper bound for the optimum based on min(S,sum of remaining items)
-    int maxvalue = (S*BINS) - b->totalload;
+    int maxvalue = (S*BINS) - b->totalload();
     if( maxvalue > S)
 	maxvalue = S;
 

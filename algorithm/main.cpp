@@ -27,32 +27,11 @@ int main(void)
     gettimeofday(&totaltime_start, NULL);
 #endif
 
-    binconf* root = new binconf;
-
-    // special heuristics for 19/14 lower bound for 7 bins
-    root->items[5] = 1;
-    root->loads[1] = 5;
-    //root->items[2] = 1;
-    //root->loads[2] = 2;
-
-    //root->items[1] = 2;
-    //root->loads[3] = 1;
-    //root->loads[4] = 1;
-    /*
-    root->loads[3] = 3;
-    root->loads[4] = 3;
-    root->items[6] = 1;
-    root->items[3] = 3;
-    root->loads[1] = 9;
-    root->loads[2] = 5;
-    root->loads[3] = 3;
-    root->loads[4] = 3; */
-
-    //8-4-2-1-1- 21111000000000
-
+    binconf root;
+    root.assign_item(5,1);
+    hashinit(&root);
     
-    init(root);
-    adversary_vertex* root_vertex = new adversary_vertex(root, 0);
+    adversary_vertex* root_vertex = new adversary_vertex(&root, 0);
     int ret = solve(root_vertex);
     fprintf(stderr, "Number of tasks: %" PRIu64 ", completed tasks: %" PRIu64 ", pruned tasks %" PRIu64 ", decreased tasks %" PRIu64 " \n",
 	    task_count, finished_task_count, removed_task_count, decreased_task_count );
@@ -61,7 +40,7 @@ int main(void)
     if(ret == 0)
     {
 	fprintf(stdout, "Lower bound for %d/%d Bin Stretching on %d bins with root:\n", R,S,BINS);
-	print_binconf_stream(stdout, root);
+	print_binconf_stream(stdout, &root);
 #ifdef OUTPUT
 	char buffer[50];
 	sprintf(buffer, "%d_%d_%dbins.dot", R,S,BINS);
@@ -76,7 +55,7 @@ int main(void)
 #endif
     } else {
 	fprintf(stdout, "Algorithm wins %d/%d Bin Stretching on %d bins with root:\n", R,S,BINS);
-	print_binconf_stream(stdout, root);
+	print_binconf_stream(stdout, &root);
 
     }
     
@@ -98,6 +77,5 @@ int main(void)
     DEBUG_PRINT("Graph cleanup started.\n");
     graph_cleanup(root_vertex);
     delete root_vertex;
-    delete root;
     return 0;
 }

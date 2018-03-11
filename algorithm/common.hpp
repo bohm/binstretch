@@ -104,14 +104,43 @@ bool generating_tasks;
 
 // A bin configuration consisting of three loads and a list of items that have arrived so far.
 // The same DS is also used in the hash as an element.
-struct binconf {
+class binconf {
+public:
+    
     std::array<uint8_t,BINS+1> loads = {};
     std::array<uint8_t,S+1> items = {};
-
-    uint64_t totalload = 0;
+    int _totalload = 0;
     // hash related properties
-    uint64_t loadhash = 0;
-    uint64_t itemhash = 0;
+    uint64_t loadhash;
+    uint64_t itemhash;
+
+    int totalload() const
+    {
+	return _totalload;
+    } 
+
+    int totalload_explicit() const
+    {
+   	int total = 0;
+	for (int i=1; i<=BINS;i++)
+	{
+	    total += loads[i];
+	}
+	return total;
+    }
+    
+    inline int assign_item(int item, int bin);
+    inline void unassign_item(int item, int bin);
+
+    int itemcount() const
+    {
+	int total = 0;
+	for(int i=1; i <= S; i++)
+	{
+	    total += items[i];
+	}
+	return total;
+    }
 };
 
 static_assert(S*BINS <= 255, "Error: you can have more than 255 items.");
@@ -275,55 +304,22 @@ void duplicate(binconf *t, const binconf *s) {
 
     t->loadhash = s->loadhash;
     t->itemhash = s->itemhash;
+    t->_totalload = s->_totalload;
 }
 
-// should not be needed now
-/* void init(binconf *b)
-{
-    //b->next = NULL;
-    //b->accesses = 0;
-    b->itemhash = 0;
-    b->loadhash = 0;
-    for (int i=0; i<=BINS; i++)
-    {
-	b->loads[i] = 0;
-    }
-    for (int j=0; j<=S; j++)
-    {
-	b->items[j] = 0;
-    }
-    } */
-
-int itemcount(const binconf *b)
-{
-    int total = 0;
-    for(int i=1; i <= S; i++)
-    {
-	total += b->items[i];
-    }
-    return total;
-}
-
-uint64_t totalload(const binconf *b)
-{
-    uint64_t total = 0;
-    for(int i=1; i<=BINS;i++)
-    {
-	total += b->loads[i];
-    }
-    return total;
-}
 
 // declared in hash.hpp
 void hashinit(binconf *d);
 
 // new init: assumes the loads and items are set,
 // sets up totalload and hash
-void init(binconf *b)
+
+/* void init(binconf *b)
 {
     b->totalload = totalload(b);
     hashinit(b);
 }
+*/
 
 // returns true if two binconfs are item-wise and load-wise equal
 bool binconf_equal(const binconf *a, const binconf *b)
@@ -512,6 +508,35 @@ int sortloads_one_decreased(binconf *b, int newly_decreased)
     return i;
 }
 
+    inline int binconf::assign_item(int item, int bin)
+    {
+	loads[bin] += item;
+	_totalload += item;
+	items[item]++;
+/*	if(totalload() != totalload_explicit())
+	{
+	    fprintf(stderr, "Error: binconf is inconsistent %d %d:\n", totalload(), totalload_explicit());
+	    print_binconf_stream(stderr, this);
+	    assert(totalload_explicit() == totalload());
+
+	    } */
+	return sortloads_one_increased(this, bin);
+    }
+
+    inline void binconf::unassign_item(int item, int bin)
+    {
+	loads[bin] -= item;
+	_totalload -= item;
+	items[item]--;
+	sortloads_one_decreased(this, bin);
+/*	if(totalload() != totalload_explicit())
+	{
+	    fprintf(stderr, "Error: binconf is inconsistent:\n");
+	    print_binconf_stream(stderr, this);
+	    assert(totalload_explicit() == totalload());
+
+	    } */
+    }
 
 // lower-level sortload_one_decreased (modifies array, counts from 0)
 int sortarray_one_decreased(int **array, int newly_decreased)

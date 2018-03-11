@@ -145,7 +145,6 @@ int scheduler(adversary_vertex *sapling)
 	print_binconf_stream(tasklistfile, &(it->second.bc));
     }
     fclose(tasklistfile);
-    
 #endif
    
     // Thread initialization.
