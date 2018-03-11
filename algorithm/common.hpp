@@ -21,9 +21,10 @@ typedef signed char tiny;
 //#define VERBOSE 1
 //#define DEBUG 1
 //#define DEEP_DEBUG 1
-#define PROGRESS 1
 //#define THOROUGH_HASH_CHECKING 1
-//#define OUTPUT 1
+#define PROGRESS 1
+//#define REGROW 1
+#define OUTPUT 1
 #define MEASURE 1
 //#define TICKER 1
 
@@ -37,11 +38,11 @@ typedef signed char tiny;
 #define ALPHA (RMOD-S)
 
 // Change this number for the selected number of bins.
-#define BINS 6
+#define BINS 7
 
 // bitwise length of indices of hash tables and lock tables
 #define HASHLOG 30
-#define BCLOG 25
+#define BCLOG 27
 #define BUCKETLOG 10
 
 // size of the hash table
@@ -106,11 +107,14 @@ bool generating_tasks;
 struct binconf {
     uint8_t loads[BINS+1];
     uint8_t items[S+1];
+
+    //uint64_t totalload;
     // hash related properties
     uint64_t loadhash;
     uint64_t itemhash;
-    int8_t posvalue;
 };
+
+static_assert(S*BINS <= 255, "Error: you can have more than 255 items.");
 
 typedef struct binconf binconf;
 
@@ -180,7 +184,6 @@ struct thread_attr {
     uint64_t iterations = 0;
     uint64_t maximum_feasible_counter = 0;
     uint64_t hash_and_test_counter = 0;
-    uint64_t dynprog_test_counter = 0;
     uint64_t dp_full_not_found = 0;
     uint64_t dp_hit = 0;
     uint64_t dp_miss = 0;
@@ -189,7 +192,8 @@ struct thread_attr {
     uint64_t bc_full_not_found = 0;
     uint64_t bc_hit = 0;
     uint64_t bc_miss = 0;
-    uint64_t until_break = 0;
+    uint64_t inner_loop = 0;
+    uint64_t dynprog_calls = 0;
     uint64_t bc_insertions = 0;
     uint64_t bc_hash_checks = 0;
 
@@ -207,8 +211,8 @@ uint64_t removed_task_count = 0; // number of tasks which are removed due to min
 uint64_t decreased_task_count = 0;
 uint64_t total_max_feasible = 0;
 uint64_t total_hash_and_tests = 0;
-uint64_t total_dynprog_tests = 0;
-uint64_t total_until_break = 0;
+uint64_t total_dynprog_calls = 0;
+uint64_t total_inner_loop = 0;
 
 
 uint64_t total_dp_hit = 0;
@@ -270,11 +274,8 @@ void duplicate(binconf *t, const binconf *s) {
     for(int j=1; j<=S; j++)
 	t->items[j] = s->items[j];
 
-    //t->next = s->next;
     t->loadhash = s->loadhash;
     t->itemhash = s->itemhash;
-    //t->accesses = s->accesses;
-    t->posvalue = s->posvalue;
 }
 
 void init(binconf *b)
@@ -283,7 +284,6 @@ void init(binconf *b)
     //b->accesses = 0;
     b->itemhash = 0;
     b->loadhash = 0;
-    b->posvalue = -1;
     for (int i=0; i<=BINS; i++)
     {
 	b->loads[i] = 0;

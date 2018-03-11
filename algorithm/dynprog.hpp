@@ -55,10 +55,6 @@ void dynprog_attr_free(thread_attr *tat)
 // Sparse dynprog test which uses tuples directly (and does not encode/decode them)
 dynprog_result dynprog_test_sorting(const binconf *conf, thread_attr *tat)
 {
-#ifdef MEASURE
-    tat->dynprog_test_counter++;
-#endif
-
     tat->newtqueue->clear();
     tat->oldtqueue->clear();
     std::vector<std::array<uint8_t, BINS> > *poldq;
@@ -175,10 +171,6 @@ dynprog_result dynprog_test_sorting(const binconf *conf, thread_attr *tat)
 // Sparse dynprog test which uses tuples directly (and does not encode/decode them)
 dynprog_result dynprog_test_set(const binconf *conf, thread_attr *tat)
 {
-#ifdef MEASURE
-    tat->dynprog_test_counter++;
-#endif
-
     std::unordered_set<std::array<uint8_t, BINS> > *poldq = tat->oldset;
     std::unordered_set<std::array<uint8_t, BINS> > *pnewq = tat->newset;
     poldq->clear();
@@ -348,23 +340,24 @@ std::pair<int, dynprog_result> maximum_feasible_dynprog(binconf *b, thread_attr 
 
     // use binary search to find the value
 
-    int last_tested = -1;
+    //int last_tested = -1;
     
     if (maxvalue == bestfitvalue)
     {
 	maximum_feasible = bestfitvalue;
     } else {
 #ifdef MEASURE
-	tat->until_break++;
+	tat->inner_loop++;
 #endif
 	int lb = bestfitvalue; int ub = maxvalue;
 	int mid = (lb+ub+1)/2;
 
-	std::pair<bool, dynprog_result> feasible;
 	while (lb < ub)
 	{
 	    data = hash_and_test(b,mid,tat);
-	    last_tested = mid;
+#ifdef MEASURE
+	    tat->dynprog_calls++;
+#endif
 	    if (data.feasible)
 	    {
 		lb = mid;
@@ -374,32 +367,38 @@ std::pair<int, dynprog_result> maximum_feasible_dynprog(binconf *b, thread_attr 
 	    
 	    mid = (lb+ub+1)/2;
 	}
-
 	maximum_feasible = lb;
-    }
+/*	
+	// compare it with normal for loop
+	int dynitem = bestfitvalue;
+	for (dynitem=bestfitvalue+1; dynitem<=maxvalue; dynitem++)
+	{
+	    data = hash_and_test(b,dynitem, tat);
 
+#ifdef MEASURE
+	    tat->dynprog_calls++;
+#endif
+    
+	    if(!data.feasible)
+	    {
+		break;
+	    }
+	}
+	maximum_feasible = dynitem-1;
+*/
+    }
     // one more pass is needed sometimes
     ret.first = maximum_feasible;
-
-    if (maximum_feasible == last_tested)
-    {
-	ret.second = data;
+    // ret.second = data;
+    
+    //if (maximum_feasible == last_tested)
+    //{
 	
 	//} else {
 	//ret.second = hash_and_test(b,maximum_feasible,tat);
-    }
-    // DEBUG: compare it with ordinary for cycle
+    //}
 
-    /*
-    for (dynitem=maxvalue; dynitem>bestfitvalue; dynitem--)
-    {
-	bool feasible = hash_and_test(b,dynitem, tat);
-	if (feasible)
-	{
-	    tat->until_break++;
-	    break;
-	}
-    } */
+    // DEBUG: compare it with ordinary for cycle
 
 #ifdef MEASURE
     auto end = std::chrono::system_clock::now();

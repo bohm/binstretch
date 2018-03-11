@@ -181,34 +181,6 @@ void bucketlock_cleanup()
     free(bucketlock);
     free(dpbucketlock);
 }
-/*
-// Few debug functions.
-void hashtable_print()
-{
-    for(int i=0; i<HASHSIZE; i++)
-    {
-	if(ht[i].posvalue != -1)
-	{
-	    int c = 0;
-	    binconf *p;
-	    p = &(ht[i]);
-		p = p->next;
-		c++;
-	    }
-	    fprintf(stderr, "ht[%d] is occupied with %d elements.\n", i, c);
-	}
-    }
-}
-
-void zobrist_print()
-{
-    for(int i=1; i<=S; i++)
-	for(int j=1; j<=R; j++)
-	{
-	    fprintf(stderr, "Zi[%d][%d] = %llu\n", i,j, Zi[i][j]);
-	}
-}
-*/
 
 void printBits32(unsigned int num)
 {

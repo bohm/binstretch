@@ -82,7 +82,6 @@ void *evaluate_tasks(void * tid)
     total_dynprog_time += tat.dynprog_time;
     total_max_feasible += tat.maximum_feasible_counter;
     total_hash_and_tests += tat.hash_and_test_counter;
-    total_dynprog_tests += tat.dynprog_test_counter;
 
     total_dp_miss += tat.dp_miss;
     total_dp_hit += tat.dp_hit;
@@ -93,7 +92,8 @@ void *evaluate_tasks(void * tid)
     total_bc_hit += tat.bc_hit;
     total_bc_full_not_found += tat.bc_full_not_found;
 
-    total_until_break += tat.until_break;
+    total_dynprog_calls += tat.dynprog_calls;
+    total_inner_loop += tat.inner_loop;
     total_bc_insertions += tat.bc_insertions;
     total_bc_hash_checks += tat.bc_hash_checks;
     //MEASURE_PRINT("Binarray size %d, oldqueue capacity %" PRIu64 ", newqueue capacity %" PRIu64 ".\n", BINARRAY_SIZE, tat.oldqueue->capacity(), tat.newqueue->capacity());
@@ -270,7 +270,7 @@ int solve(adversary_vertex *initial_vertex)
 	int val = scheduler(sapling);
 	//fprintf(stderr, "Value from scheduler: %d\n", val);
 	//print_compact(stdout, sapling);
-#ifdef OUTPUT
+#ifdef REGROW
 	regrow(sapling);
 #endif
 	assert(orig_value == POSTPONED || orig_value == val);

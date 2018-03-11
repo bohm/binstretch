@@ -16,14 +16,15 @@ queue update code. */
 bool possible_task(adversary_vertex *v)
 {
 
+    int target_depth = computation_root->depth + TASK_DEPTH;
 
     if (computation_root->depth >= 5)
     {
-	return false;
+	target_depth--;
     }
-   
-    assert(v->depth <= computation_root->depth + TASK_DEPTH);
-    if (v->depth - computation_root->depth == TASK_DEPTH)
+
+    assert(v->depth <= target_depth);
+    if (target_depth - v->depth == 0)
     {
 	return true;
     }

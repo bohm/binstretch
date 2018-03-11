@@ -33,9 +33,12 @@ int main(void)
     // special heuristics for 19/14 lower bound for 7 bins
     root->items[5] = 1;
     root->loads[1] = 5;
-    //root->items[2] = 1;
-    //root->loads[2] = 2;
-    
+    root->items[2] = 1;
+    root->loads[2] = 2;
+
+    //root->items[1] = 2;
+    //root->loads[3] = 1;
+    //root->loads[4] = 1;
     /*
     root->loads[3] = 3;
     root->loads[4] = 3;
@@ -82,10 +85,10 @@ int main(void)
 	    task_count, finished_task_count, removed_task_count, decreased_task_count );
 
 #ifdef MEASURE
-    long double ratio = (long double) total_hash_and_tests / (long double) total_until_break;
+    long double ratio = (long double) total_dynprog_calls / (long double) total_inner_loop;
 #endif
     MEASURE_PRINT("Total time (all threads): %Lfs; total dynprog time: %Lfs.\n", time_spent.count(), total_dynprog_time.count());
-    MEASURE_PRINT(" Hash and test calls: %" PRIu64 ", test calls: %" PRIu64 ", maximum_feasible calls: %" PRIu64 ", DP/Inner loop: %Lf\n", total_hash_and_tests, total_dynprog_tests, total_max_feasible, ratio);
+    MEASURE_PRINT("Hash_and_test calls: %" PRIu64 ", max_feas calls: %" PRIu64 ", dynprog calls: %" PRIu64 ", DP/Inner loop: %Lf.\n", total_hash_and_tests, total_max_feasible, total_dynprog_calls, ratio);
     MEASURE_PRINT("Binconf table size: %llu, insertions: %" PRIu64 ", hash checks: %" PRIu64".\n", HASHSIZE, total_bc_insertions,
 		  total_bc_hash_checks);
     MEASURE_PRINT("Table hit: %" PRIu64 ", table miss: %" PRIu64 ", full not found: %" PRIu64 "\n", total_bc_hit, total_bc_miss, total_bc_full_not_found) ;
