@@ -24,7 +24,7 @@ typedef signed char tiny;
 //#define THOROUGH_HASH_CHECKING 1
 #define PROGRESS 1
 //#define REGROW 1
-#define OUTPUT 1
+//#define OUTPUT 1
 #define MEASURE 1
 //#define TICKER 1
 
@@ -38,7 +38,7 @@ typedef signed char tiny;
 #define ALPHA (RMOD-S)
 
 // Change this number for the selected number of bins.
-#define BINS 7
+#define BINS 6
 
 // bitwise length of indices of hash tables and lock tables
 #define HASHLOG 30
@@ -105,13 +105,13 @@ bool generating_tasks;
 // A bin configuration consisting of three loads and a list of items that have arrived so far.
 // The same DS is also used in the hash as an element.
 struct binconf {
-    uint8_t loads[BINS+1];
-    uint8_t items[S+1];
+    std::array<uint8_t,BINS+1> loads = {};
+    std::array<uint8_t,S+1> items = {};
 
-    //uint64_t totalload;
+    uint64_t totalload = 0;
     // hash related properties
-    uint64_t loadhash;
-    uint64_t itemhash;
+    uint64_t loadhash = 0;
+    uint64_t itemhash = 0;
 };
 
 static_assert(S*BINS <= 255, "Error: you can have more than 255 items.");
@@ -152,7 +152,6 @@ class alg_outedge;
 
 namespace std
 {
-
     template<> struct hash<array<uint8_t, BINS> >
     {
 	typedef array<uint8_t, BINS> argument_type;
@@ -160,7 +159,7 @@ namespace std
 
 	result_type operator()(const argument_type& a) const
 	{
-	    //static_assert(sizeof(result_type) > BINS);
+	    static_assert(sizeof(result_type) > BINS, "Error: result is bigger than BINS");
 
 	    array<uint8_t, sizeof(result_type)> expanded;
 
@@ -278,7 +277,8 @@ void duplicate(binconf *t, const binconf *s) {
     t->itemhash = s->itemhash;
 }
 
-void init(binconf *b)
+// should not be needed now
+/* void init(binconf *b)
 {
     //b->next = NULL;
     //b->accesses = 0;
@@ -292,7 +292,7 @@ void init(binconf *b)
     {
 	b->items[j] = 0;
     }
-}
+    } */
 
 int itemcount(const binconf *b)
 {
@@ -304,14 +304,25 @@ int itemcount(const binconf *b)
     return total;
 }
 
-int totalload(const binconf *b)
+uint64_t totalload(const binconf *b)
 {
-    int total = 0;
+    uint64_t total = 0;
     for(int i=1; i<=BINS;i++)
     {
 	total += b->loads[i];
     }
     return total;
+}
+
+// declared in hash.hpp
+void hashinit(binconf *d);
+
+// new init: assumes the loads and items are set,
+// sets up totalload and hash
+void init(binconf *b)
+{
+    b->totalload = totalload(b);
+    hashinit(b);
 }
 
 // returns true if two binconfs are item-wise and load-wise equal
@@ -529,4 +540,5 @@ int sortarray_one_decreased(std::array<uint8_t, BINS>& array, int newly_decrease
     }
     return i;
 }
+
 #endif

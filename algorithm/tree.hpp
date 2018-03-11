@@ -55,7 +55,7 @@ struct adversary_vertex {
     {
 	this->bc = new binconf;
 	assert(this->bc != NULL);
-	init(this->bc);
+	//init(this->bc);
 	this->task = false;
 	this->visited = false;
 	this->id = ++global_vertex_counter;

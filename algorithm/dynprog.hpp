@@ -327,7 +327,7 @@ std::pair<int, dynprog_result> maximum_feasible_dynprog(binconf *b, thread_attr 
 	DEBUG_PRINT("ROOT: lower bound for dynprog: %d\n", bestfitvalue);
      } */
     // calculate upper bound for the optimum based on min(S,sum of remaining items)
-    int maxvalue = (S*BINS) - totalload(b);
+    int maxvalue = (S*BINS) - b->totalload;
     if( maxvalue > S)
 	maxvalue = S;
 

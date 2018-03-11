@@ -14,7 +14,7 @@
 
 // Does not care about allocating *ret, you have to do that yourself.
 int bestfit(binconf *ret, const binconf *orig) {
-    init(ret);
+    //init(ret);
     int fitsbest; int remainder; int leastremainder;
     for(int size=S; size>0; size--)
     {
@@ -50,7 +50,7 @@ int bestfit(binconf *ret, const binconf *orig) {
 
 // Worst Fit Decreasing.
 int worstfit(binconf *ret, const binconf *orig) {
-    init(ret);
+    //init(ret);
     int fitsworst; int remainder; int mostremainder;
     for(int size=S; size>0; size--)
     {

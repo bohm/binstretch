@@ -28,13 +28,12 @@ int main(void)
 #endif
 
     binconf* root = new binconf;
-    init(root); // init game tree
 
     // special heuristics for 19/14 lower bound for 7 bins
     root->items[5] = 1;
     root->loads[1] = 5;
-    root->items[2] = 1;
-    root->loads[2] = 2;
+    //root->items[2] = 1;
+    //root->loads[2] = 2;
 
     //root->items[1] = 2;
     //root->loads[3] = 1;
@@ -52,7 +51,7 @@ int main(void)
     //8-4-2-1-1- 21111000000000
 
     
-    hashinit(root);
+    init(root);
     adversary_vertex* root_vertex = new adversary_vertex(root, 0);
     int ret = solve(root_vertex);
     fprintf(stderr, "Number of tasks: %" PRIu64 ", completed tasks: %" PRIu64 ", pruned tasks %" PRIu64 ", decreased tasks %" PRIu64 " \n",

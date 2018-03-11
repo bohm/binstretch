@@ -18,7 +18,7 @@
 int gs1(const binconf *b)
 {
     // sum of all but the last bin
-    int sum = totalload(b) - b->loads[BINS];
+    int sum = b->totalload - b->loads[BINS];
     if (sum >= ((BINS-1)*S - ALPHA))
     {
 	return 1;
@@ -84,7 +84,7 @@ int gs2(const binconf *b)
 int gs2variant(const binconf *b)
 {
     /* Sum of all bins except the last two. */
-    int sum_but_two = totalload(b) - b->loads[BINS] - b->loads[BINS-1];
+    int sum_but_two = b->totalload - b->loads[BINS] - b->loads[BINS-1];
 
     int current_sbt;
     for (int i=1; i<=BINS; i++)
