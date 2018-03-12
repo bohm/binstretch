@@ -30,8 +30,6 @@ void *evaluate_tasks(void * tid)
     auto thread_start = std::chrono::system_clock::now();
     DEBUG_PRINT("Thread %u started.\n", threadid);
 
-    int run = global_run;
-    
     call_to_terminate = global_terminate_flag;
     while(!call_to_terminate)
     {
@@ -55,7 +53,7 @@ void *evaluate_tasks(void * tid)
 	}
 
 	tat.last_item = current.last_item;
-	int ret = explore(&(current.bc), &tat, run);
+	int ret = explore(&(current.bc), &tat, explorer_run);
 
 	if (ret != TERMINATING)
 	{
@@ -118,8 +116,7 @@ int scheduler(adversary_vertex *sapling)
     bool update_complete = false;
     unsigned int collected_no;
     int ret;
-    
-    // initialize dp tables for the main thread
+// initialize dp tables for the main thread
     thread_attr tat;
     dynprog_attr_init(&tat);
 
@@ -140,7 +137,7 @@ int scheduler(adversary_vertex *sapling)
 	tm.clear();
 	purge_sapling(sapling);
 
-	ret = generate(&sapling_bc, &tat, sapling, global_run);
+	ret = generate(&sapling_bc, &tat, sapling, generator_run);
 	sapling->value = ret;
     
 #ifdef PROGRESS
@@ -207,7 +204,7 @@ int scheduler(adversary_vertex *sapling)
 		uint64_t previously_removed = removed_task_count;
 #endif
 		clear_visited_bits();
-		ret = update(sapling, global_run);
+		ret = update(sapling, generator_run);
 		// clear collected tasks (all already collected tasks should be inside the tree)
 		collected_tasks.clear();
 
@@ -245,7 +242,7 @@ int scheduler(adversary_vertex *sapling)
 	    break;
 #else
 	    fprintf(stderr, "Switching to full run.\n");
-	    global_run = FULL;
+	    global_run = generator_run = explorer_run = FULL;
 	    clear_monotone_of_ones();
 #endif
 	} else {
@@ -264,6 +261,18 @@ int scheduler(adversary_vertex *sapling)
 
 int solve(adversary_vertex *initial_vertex)
 {
+
+    generator_run = global_run;
+    explorer_run = global_run;
+
+    // in the mixed mode, we generate the top tree by full adversary, but restrict it to be monotone
+    // in the tasks
+    if (global_run == MIXED)
+    {
+	generator_run = FULL;
+	explorer_run = MONOTONE;
+    }
+ 
     generated_graph.clear();
     generated_graph[initial_vertex->bc->loadhash ^ initial_vertex->bc->itemhash] = initial_vertex;
     

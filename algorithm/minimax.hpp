@@ -54,15 +54,19 @@ int adversary(binconf *b, int depth, int mode, int run, thread_attr *tat, tree_a
 
     /* Large items heuristic: if 2nd or later bin is at least R-S, check if enough large items
        can be sent so that this bin (or some other) hits R. */
+
     if (mode == GENERATING)
     {
 	std::pair<bool, int> p;
 	p = large_item_heuristic(b, tat);
 	if (p.first)
 	{
-	    outat->last_adv_v->value = 0;
-	    outat->last_adv_v->heuristic = true;
-	    outat->last_adv_v->heuristic_item = p.second;
+	    if (mode == GENERATING)
+	    {
+		outat->last_adv_v->value = 0;
+		outat->last_adv_v->heuristic = true;
+		outat->last_adv_v->heuristic_item = p.second;
+	    }
 	    return 0;
 	}
     } 
@@ -136,9 +140,18 @@ int adversary(binconf *b, int depth, int mode, int run, thread_attr *tat, tree_a
 
 	
 	int li = tat->last_item;
-	tat->last_item = item_size;
+
+	if (run == MONOTONE)
+	{ 
+	    tat->last_item = item_size;
+	}
+	
 	below = ALGORITHM(b, item_size, depth+1, mode, run, tat, outat);
-	tat->last_item = li;
+
+	if (run == MONOTONE)
+	{
+	    tat->last_item = li;
+	}
 	
 	if (mode == GENERATING)
 	{

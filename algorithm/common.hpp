@@ -102,6 +102,7 @@ typedef signed char tiny;
 
 #define FULL 1
 #define MONOTONE 2
+#define MIXED 3
 
 bool generating_tasks;
 
@@ -291,7 +292,10 @@ pthread_mutex_t collection_lock[THREADS];
 // counter of finished threads
 bool thread_finished[THREADS];
 
+// global flags that describe whether we are looking for a monotone or full lower bound
 int global_run = MONOTONE;
+int generator_run = FULL;
+int explorer_run = FULL;
 
 uint64_t global_vertex_counter = 0;
 uint64_t global_edge_counter = 0;
