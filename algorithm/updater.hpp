@@ -24,10 +24,10 @@
    Both decrease() and update() are slimmed down versions of the minimax algorithm.
 */
 
-int update(adversary_vertex *v);
-int update(algorithm_vertex *v);
+int update(adversary_vertex *v, int run);
+int update(algorithm_vertex *v, int run);
 
-int update(adversary_vertex *v)
+int update(adversary_vertex *v, int run)
 {
     int result = 1;
     int right_move;
@@ -50,18 +50,20 @@ int update(adversary_vertex *v)
     if (v->task)
     {
 	uint64_t hash = v->bc->itemhash ^ v->bc->loadhash;
-	result = completion_check(hash);
+	result = completion_check(hash, run);
     } else {
 	std::list<adv_outedge*>::iterator it = v->out.begin();
 	while ( it != v->out.end())
 	{
 	    algorithm_vertex *n = (*it)->to;
-	    int below = update(n);
+	    int below = update(n, run);
 	    if (below == 0)
 	    {
 		result = 0;
 		right_move = (*it)->item;
-		it++;
+		// we can break here (in fact we should break here, so that assertion that only one edge remains is true)
+		break;
+		
 	    } else if (below == 1)
 	    {
 
@@ -100,7 +102,7 @@ int update(adversary_vertex *v)
     return result;
 }
 
-int update(algorithm_vertex *v)
+int update(algorithm_vertex *v, int run)
 {
     assert(v != NULL);
 
@@ -123,7 +125,7 @@ int update(algorithm_vertex *v)
     {
 	adversary_vertex *n = (*it)->to;
    
-	int below = update(n);
+	int below = update(n, run);
 	if (below == 1)
 	{
 	    result = 1;

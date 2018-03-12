@@ -28,6 +28,7 @@ typedef signed char tiny;
 #define MEASURE 1
 //#define TICKER 1
 
+//#define MONOTONE_ONLY 1
 // maximum load of a bin in the optimal offline setting
 #define S 14
 // target goal of the online bin stretching problem
@@ -38,16 +39,18 @@ typedef signed char tiny;
 #define ALPHA (RMOD-S)
 
 // Change this number for the selected number of bins.
-#define BINS 6
+#define BINS 5
 
 // bitwise length of indices of hash tables and lock tables
 #define HASHLOG 30
+#define MONOTONE_HASHLOG 28
 #define BCLOG 27
 #define BUCKETLOG 10
 
 // size of the hash table
 
 #define HASHSIZE (1ULL<<HASHLOG)
+#define MONOTONE_HASHSIZE (1ULL<<MONOTONE_HASHLOG)
 #define BC_HASHSIZE (1ULL<<BCLOG)
 
 // size of buckets -- how many locks there are (each lock serves a group of hashes)
@@ -96,6 +99,9 @@ typedef signed char tiny;
 
 #define GENERATING 1
 #define EXPLORING 2
+
+#define FULL 1
+#define MONOTONE 2
 
 bool generating_tasks;
 
@@ -156,7 +162,7 @@ typedef struct dp_hash_item dp_hash_item;
 
 struct task {
     binconf bc;
-    llu occurences;
+    int last_item = 1;
 };
 
 typedef struct task task;
@@ -181,21 +187,31 @@ class alg_outedge;
 
 namespace std
 {
-    template<> struct hash<array<uint8_t, BINS> >
+    template<>
+    struct hash<array<uint8_t, BINS> >
     {
-	typedef array<uint8_t, BINS> argument_type;
-	typedef size_t result_type;
+        typedef array<uint8_t, BINS> argument_type;
+        typedef size_t result_type;
 
-	result_type operator()(const argument_type& a) const
-	{
-	    static_assert(sizeof(result_type) > BINS, "Error: result is bigger than BINS");
+        result_type operator()(const argument_type& a) const
+        {
+            const int result_size = sizeof(result_type);
 
-	    array<uint8_t, sizeof(result_type)> expanded;
+            result_type result = 0;
 
-	    std::copy(a.begin(), a.end(), expanded.begin());
+            for (int i = 0; i < BINS; i += result_size)
+            {
+                array<uint8_t, result_size> expanded;
 
-	    return *reinterpret_cast<const result_type*>(&expanded);
-	}
+                auto end_index = std::min(i + result_size, BINS);
+
+                std::copy(a.begin() + i, a.begin() + end_index, expanded.begin());
+
+                result ^= *reinterpret_cast<const result_type*>(&expanded);
+            }
+
+            return result;
+        }
     };
 }
 
@@ -209,6 +225,7 @@ struct thread_attr {
    
     std::chrono::duration<long double> dynprog_time;
 
+    int last_item = 1;
     uint64_t iterations = 0;
     uint64_t maximum_feasible_counter = 0;
     uint64_t hash_and_test_counter = 0;
@@ -261,6 +278,9 @@ pthread_mutex_t taskq_lock;
 // the root)
 std::map<uint64_t, int> collected_tasks;
 
+// tasks which can be won with a monotone strategy (computed on the first run)
+std::map<uint64_t, int> monotone_tasks;
+
 // hash-like map of completed tasks, serving as output map for each
 // thread separately
 std::map<uint64_t, int> completed_tasks[THREADS];
@@ -270,6 +290,8 @@ pthread_mutex_t collection_lock[THREADS];
 
 // counter of finished threads
 bool thread_finished[THREADS];
+
+int global_run = MONOTONE;
 
 uint64_t global_vertex_counter = 0;
 uint64_t global_edge_counter = 0;

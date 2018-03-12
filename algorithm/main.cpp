@@ -30,8 +30,9 @@ int main(void)
     binconf root;
     root.assign_item(5,1);
     hashinit(&root);
-    
-    adversary_vertex* root_vertex = new adversary_vertex(&root, 0);
+
+    global_run = FULL;
+    adversary_vertex* root_vertex = new adversary_vertex(&root, 0, 1);
     int ret = solve(root_vertex);
     fprintf(stderr, "Number of tasks: %" PRIu64 ", completed tasks: %" PRIu64 ", pruned tasks %" PRIu64 ", decreased tasks %" PRIu64 " \n",
 	    task_count, finished_task_count, removed_task_count, decreased_task_count );
@@ -39,7 +40,12 @@ int main(void)
     assert(ret == 0 || ret == 1);
     if(ret == 0)
     {
-	fprintf(stdout, "Lower bound for %d/%d Bin Stretching on %d bins with root:\n", R,S,BINS);
+	if (global_run == MONOTONE)
+	{
+	    fprintf(stdout, "Monotone lower bound for %d/%d Bin Stretching on %d bins with root:\n", R,S,BINS);
+	} else {
+	    fprintf(stdout, "Lower bound for %d/%d Bin Stretching on %d bins with root:\n", R,S,BINS);
+	}
 	print_binconf_stream(stdout, &root);
 #ifdef OUTPUT
 	char buffer[50];
@@ -49,12 +55,17 @@ int main(void)
 	assert(out != NULL);
 	fprintf(out, "strict digraph lowerbound {\n");
 	fprintf(out, "overlap = none;\n");
+//	print_gametree(sout, root_vertex);
 	print_compact(out, root_vertex);
 	fprintf(out, "}\n");
 	fclose(out);
 #endif
     } else {
+#ifdef MONOTONE_ONLY
+	fprintf(stdout, "Algorithm wins Monotone %d/%d Bin Stretching on %d bins with root:\n", R,S,BINS);
+#else
 	fprintf(stdout, "Algorithm wins %d/%d Bin Stretching on %d bins with root:\n", R,S,BINS);
+#endif
 	print_binconf_stream(stdout, &root);
 
     }

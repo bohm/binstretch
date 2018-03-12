@@ -17,8 +17,8 @@
 #define _MINIMAX_H 1
 
 /* declarations */
-int adversary(binconf *b, int depth, int mode, thread_attr *tat, tree_attr *outat); 
-int algorithm(binconf *b, int k, int depth, int mode, thread_attr *tat, tree_attr *outat);
+int adversary(binconf *b, int depth, int mode, int run, thread_attr *tat, tree_attr *outat); 
+int algorithm(binconf *b, int k, int depth, int mode, int run, thread_attr *tat, tree_attr *outat);
 
 /* declaring which algorithm will be used */
 #define ALGORITHM algorithm
@@ -39,7 +39,7 @@ int algorithm(binconf *b, int k, int depth, int mode, thread_attr *tat, tree_att
     * EXPLORING (general exploration done by individual threads)
 */
 
-int adversary(binconf *b, int depth, int mode, thread_attr *tat, tree_attr *outat) {
+int adversary(binconf *b, int depth, int mode, int run, thread_attr *tat, tree_attr *outat) {
 
     //assert(totalload(b) == b->totalload);
     adversary_vertex *current_adversary = NULL;
@@ -74,7 +74,7 @@ int adversary(binconf *b, int depth, int mode, thread_attr *tat, tree_attr *outa
 
 	if (possible_task(current_adversary))
 	{
-	    add_task(b);
+	    add_task(b, tat);
 	    // mark current adversary vertex (created by algorithm() in previous step) as a task
 	    current_adversary->task = true;
 	    current_adversary->value = POSTPONED;
@@ -107,22 +107,15 @@ int adversary(binconf *b, int depth, int mode, thread_attr *tat, tree_attr *outa
     bool result_determined = false; // can be determined even when postponed branches are present
     int below = 1;
     int r = 1;
-
-    
     DEEP_DEBUG_PRINT("Trying player zero choices, with maxload starting at %d\n", maximum_feasible);
 
-    /*
-    std::vector<int> feasibilities;
-    
-    for (int item_size = maximum_feasible; item_size>0; item_size--)
+    int lower_bound = 1;
+    if (run == MONOTONE)
     {
-	feasibilities.push_back(item_size);
+	lower_bound = tat->last_item;
     }
-    */
     
-    //std::sort(feasibilities.begin(), feasibilities.end(), custom_comparator);
-    
-    for (int item_size = maximum_feasible; item_size>0; item_size--)
+    for (int item_size = maximum_feasible; item_size>=lower_bound; item_size--)
     { 
 	//for (int i = 0; i < maximum_feasible; i++)
 	//{
@@ -141,8 +134,12 @@ int adversary(binconf *b, int depth, int mode, thread_attr *tat, tree_attr *outa
 	    outat->last_alg_v = analyzed_vertex;
 	}
 
-	below = ALGORITHM(b, item_size, depth+1, mode, tat, outat);
-
+	
+	int li = tat->last_item;
+	tat->last_item = item_size;
+	below = ALGORITHM(b, item_size, depth+1, mode, run, tat, outat);
+	tat->last_item = li;
+	
 	if (mode == GENERATING)
 	{
 	    analyzed_vertex->value = below;
@@ -194,7 +191,7 @@ int adversary(binconf *b, int depth, int mode, thread_attr *tat, tree_attr *outa
     return r;
 }
 
-int algorithm(binconf *b, int k, int depth, int mode, thread_attr *tat, tree_attr *outat) {
+int algorithm(binconf *b, int k, int depth, int mode, int run, thread_attr *tat, tree_attr *outat) {
 
     bool building_tree = false;
 
@@ -259,7 +256,7 @@ int algorithm(binconf *b, int k, int depth, int mode, thread_attr *tat, tree_att
 		it = generated_graph.find(b->loadhash ^ b->itemhash);
 		if (it == generated_graph.end())
 		{
-		    analyzed_vertex = new adversary_vertex(b, depth);
+		    analyzed_vertex = new adversary_vertex(b, depth, tat->last_item);
 		    // create new edge
 		    alg_outedge* new_edge = new alg_outedge(current_algorithm, analyzed_vertex);
 		    // add to generated_graph
@@ -280,7 +277,7 @@ int algorithm(binconf *b, int k, int depth, int mode, thread_attr *tat, tree_att
 	    
 	    if (mode == EXPLORING)
 	    {
-		int conf_in_hashtable = is_conf_hashed(ht,b, tat);
+		int conf_in_hashtable = is_conf_hashed(ht,b, tat, run);
     
 		if (conf_in_hashtable != -1)
 		{
@@ -297,7 +294,7 @@ int algorithm(binconf *b, int k, int depth, int mode, thread_attr *tat, tree_att
 		    outat->last_adv_v = analyzed_vertex;
 		}
 
-		below = ADVERSARY(b, depth, mode, tat, outat);
+		below = ADVERSARY(b, depth, mode, run, tat, outat);
 
 		// send signal that we should terminate immediately upwards
 		if (below == TERMINATING)
@@ -317,7 +314,7 @@ int algorithm(binconf *b, int k, int depth, int mode, thread_attr *tat, tree_att
 		DEEP_DEBUG_PRINT_BINCONF(b);
 
 		if (mode == EXPLORING) {
-		    conf_hashpush(ht,b,below, tat);
+		    conf_hashpush(b, below, tat, run);
 		}
 	    }
 
@@ -364,21 +361,21 @@ int algorithm(binconf *b, int k, int depth, int mode, thread_attr *tat, tree_att
 // wrapper for exploration
 // Returns value of the current position.
 
-int explore(binconf *b, thread_attr *tat)
+int explore(binconf *b, thread_attr *tat, int run)
 {
     hashinit(b);
     tree_attr *outat = NULL;
     //std::vector<uint64_t> first_pass;
     //dynprog_one_pass_init(b, &first_pass);
     //tat->previous_pass = &first_pass;
-    int ret = ADVERSARY(b, 0, EXPLORING, tat, outat);
+    int ret = ADVERSARY(b, 0, EXPLORING, run, tat, outat);
     assert(ret != POSTPONED);
     
     return ret;
 }
 
 // wrapper for generation
-int generate(binconf *start, thread_attr *tat, adversary_vertex *start_vert)
+int generate(binconf *start, thread_attr *tat, adversary_vertex *start_vert, int run)
 {
     hashinit(start);
     tree_attr *outat = new tree_attr;
@@ -389,7 +386,7 @@ int generate(binconf *start, thread_attr *tat, adversary_vertex *start_vert)
     //dynprog_one_pass_init(start, &first_pass);
     //tat->previous_pass = &first_pass;
 
-    int ret = ADVERSARY(start, start_vert->depth, GENERATING, tat, outat);
+    int ret = ADVERSARY(start, start_vert->depth, GENERATING, run, tat, outat);
     delete outat;
     return ret;
 }

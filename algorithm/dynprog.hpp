@@ -130,13 +130,11 @@ dynprog_result dynprog_test_sorting(const binconf *conf, thread_attr *tat)
 	}
     }
 
-    return ret;
+    //return ret;
     
     /* Heuristic: solve the cases of sizes 2 and 1 without generating new
        configurations. */
 
-    /* Currently not used, but takes about 20 seconds of 19/14-6bins. */
-/*
     for (int i=0; i < poldq->size(); i++)
     {
 	std::array<uint8_t, BINS> tuple = (*poldq)[i];
@@ -161,11 +159,12 @@ dynprog_result dynprog_test_sorting(const binconf *conf, thread_attr *tat)
 	}
 	if (free_for_twos >= conf->items[2])
 	{
-	    return true;
+	    ret.feasible = true;
+	    return ret;
 	}
-}
-    return false;
-*/
+    }
+    ret.feasible = false;
+    return ret;
 }
 
 // Sparse dynprog test which uses tuples directly (and does not encode/decode them)
@@ -187,9 +186,9 @@ dynprog_result dynprog_test_set(const binconf *conf, thread_attr *tat)
     }
 
     dynprog_result ret;
-    ret.feasible = true;
+    ret.feasible = false;
     
-    for (int size=S; size>=1; size--)
+    for (int size=S; size>2; size--)
     {
 	int k = conf->items[size];
 	while (k > 0)
@@ -235,20 +234,6 @@ dynprog_result dynprog_test_set(const binconf *conf, thread_attr *tat)
 			    pnewq->insert(tuple);
 			    tuple[i] -= size;
 			    sortarray_one_decreased(tuple, newpos);
-			    
-			    /*
-			    // if it is the very last item, compute largest object that can be sent
-			    if (size == lastsize && k == 1)
-			    {
-				for (int i = 0; i < BINS; i++)
-				{
-				    if (S - new_tuple[BINS-i-1] > ret.largest_sendable[i])
-				    {
-					ret.largest_sendable[i] = S - new_tuple[i];
-				    }
-				}
-			    }
-			    */
 			}
 		    }
 		}
@@ -265,6 +250,31 @@ dynprog_result dynprog_test_set(const binconf *conf, thread_attr *tat)
 	    k--;
 	}
     }
+
+    /* Heuristic: solve the cases of sizes 2 and 1 without generating new
+    configurations. */
+
+    for (const auto &tuple : *poldq)
+    {
+	int free_size = 0, free_for_twos = 0;
+	for (int i=0; i<BINS; i++)
+	{
+	    free_size += (S - tuple[i]);
+	    free_for_twos += (S - tuple[i])/2;
+	}
+	
+	if ( free_size < conf->items[1] + 2*conf->items[2])
+	{
+	    continue;
+	}
+	if (free_for_twos >= conf->items[2])
+	{
+	    ret.feasible = true;
+	    return ret;
+	}
+    }
+
+    // return false;
     return ret;
 }
 

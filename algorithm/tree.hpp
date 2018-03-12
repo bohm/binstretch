@@ -48,10 +48,11 @@ struct adversary_vertex {
     bool visited; // we use this temporarily for DFS (e.g. for printing)
     bool heuristic = false;
     int heuristic_item = 0;
+    int last_item = 1;
     int value;
     uint64_t id;
 
-    adversary_vertex(const binconf *b, int depth)
+    adversary_vertex(const binconf *b, int depth, int last_item)
     {
 	this->bc = new binconf;
 	assert(this->bc != NULL);
@@ -61,6 +62,7 @@ struct adversary_vertex {
 	this->id = ++global_vertex_counter;
 	this->depth = depth;
 	this->value = POSTPONED;
+	this->last_item = last_item;
 	duplicate(this->bc, b);
 	//DEBUG_PRINT("Vertex %" PRIu64 "created.\n", this->id);
 
@@ -270,7 +272,12 @@ void print_compact_subtree(FILE* stream, adversary_vertex *v)
     } else 
     {
 	// print_compact_subtree currently works for only DAGs with outdegree 1 on alg vertices
-	assert(v->out.size() == 1);
+	if (v->out.size() > 1 || v->out.size() == 0)
+	{
+	    fprintf(stderr, "Trouble with vertex %" PRIu64  " with %d children and bc:\n", v->id, v->out.size());
+	    print_binconf_stream(stderr, v->bc);
+	    assert(v->out.size() == 1);
+	}
 	adv_outedge *right_edge = *(v->out.begin());
 	int right_item = right_edge->item;
 	fprintf(stream, "n:%d\"];\n", right_item);
@@ -406,4 +413,9 @@ void graph_cleanup(adversary_vertex *root)
     generated_graph.clear();
 }
 
+void purge_sapling(adversary_vertex *sapling)
+{
+    sapling->value = POSTPONED;
+    remove_outedges(sapling);
+}
 #endif

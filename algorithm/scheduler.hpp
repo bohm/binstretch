@@ -29,6 +29,8 @@ void *evaluate_tasks(void * tid)
     bool call_to_terminate = false;
     auto thread_start = std::chrono::system_clock::now();
     DEBUG_PRINT("Thread %u started.\n", threadid);
+
+    int run = global_run;
     
     call_to_terminate = global_terminate_flag;
     while(!call_to_terminate)
@@ -51,8 +53,9 @@ void *evaluate_tasks(void * tid)
 	   PROGRESS_PRINT("Thread %u takes up task number %" PRIu64 ": ", threadid, taskcounter);
 	   PROGRESS_PRINT_BINCONF(&current.bc);
 	}
-	
-	int ret = explore(&(current.bc), &tat);
+
+	tat.last_item = current.last_item;
+	int ret = explore(&(current.bc), &tat, run);
 
 	if (ret != TERMINATING)
 	{
@@ -63,7 +66,7 @@ void *evaluate_tasks(void * tid)
 	    
 
 
-	    DEBUG_PRINT("THR%d: Finished bc (value %d) ", threadid, ret);
+	    DEBUG_PRINT("THR%d: Finished task (value %d, last item %d) ", threadid, ret, current.last_item);
 	    DEBUG_PRINT_BINCONF(&(current.bc));
 	}
 
@@ -114,109 +117,113 @@ int scheduler(adversary_vertex *sapling)
     bool stop = false;
     bool update_complete = false;
     unsigned int collected_no;
-
+    int ret;
+    
     // initialize dp tables for the main thread
     thread_attr tat;
     dynprog_attr_init(&tat);
 
-    pthread_mutex_lock(&thread_progress_lock);
-    global_terminate_flag = false;
-    pthread_mutex_unlock(&thread_progress_lock);
-
     // We create a copy of the sapling's bin configuration
     // which will be used as in-place memory for the algorithm.
-    binconf sapling_bc;
-    duplicate(&sapling_bc, sapling->bc);
+    binconf sapling_bc; 
     
-    int ret = generate(&sapling_bc, &tat, sapling);
-    sapling->value = ret;
+    duplicate(&sapling_bc, sapling->bc);
+    tat.last_item = sapling->last_item;
+
+    //global_run = MONOTONE;
+    while(true)
+    {
+	pthread_mutex_lock(&thread_progress_lock);
+	global_terminate_flag = false;
+	pthread_mutex_unlock(&thread_progress_lock);
+
+	tm.clear();
+	purge_sapling(sapling);
+
+	ret = generate(&sapling_bc, &tat, sapling, global_run);
+	sapling->value = ret;
     
 #ifdef PROGRESS
-    fprintf(stderr, "Generated %lu tasks.\n", tm.size());
+	fprintf(stderr, "Generated %lu tasks.\n", tm.size());
 #endif
-
-#ifdef DEEP_DEBUG
-    DEEP_DEBUG_PRINT("Creating a dump of tasks into tasklist.txt.\n");
-    FILE* tasklistfile = fopen("tasklist.txt", "w");
-    assert(tasklistfile != NULL);
-    
-    for( std::map<llu, task>::const_iterator it = tm.begin(); it != tm.end(); it++)
-    {
-	print_binconf_stream(tasklistfile, &(it->second.bc));
-    }
-    fclose(tasklistfile);
-#endif
-   
-    // Thread initialization.
-    pthread_mutex_lock(&thread_progress_lock); //LOCK
-    for (unsigned int i=0; i < THREADS; i++) {
-	thread_finished[i] = false;
-    }
-    pthread_mutex_unlock(&thread_progress_lock); //UNLOCK
-
-    pthread_attr_t thread_attributes; pthread_attr_init(&thread_attributes);
-    pthread_attr_setdetachstate(&thread_attributes, PTHREAD_CREATE_DETACHED);
-    
-    for (unsigned int i=0; i < THREADS; i++) {
-	ids[i] = i;
-	rc = pthread_create(&threads[i], &thread_attributes, evaluate_tasks, (void *) &(ids[i]));
-	if(rc) {
-	    fprintf(stderr, "Error with thread control. Return value %d\n", rc);
-	    exit(-1);
-	}
-    }	
-
-    while (!stop) {
 	
-	std::this_thread::sleep_for(std::chrono::milliseconds(TICK_SLEEP));
-	stop = true;
+#ifdef DEEP_DEBUG
+	DEEP_DEBUG_PRINT("Creating a dump of tasks into tasklist.txt.\n");
+	FILE* tasklistfile = fopen("tasklist.txt", "w");
+	assert(tasklistfile != NULL);
+	
+	for( std::map<llu, task>::const_iterator it = tm.begin(); it != tm.end(); it++)
+	{
+	    print_binconf_stream(tasklistfile, &(it->second.bc));
+	}
+	fclose(tasklistfile);
+#endif
+	
+	// Thread initialization.i
+	pthread_mutex_lock(&thread_progress_lock); //LOCK
+	for (unsigned int i=0; i < THREADS; i++)
+	{
+	    thread_finished[i] = false;
+	    completed_tasks[i].clear();
+	}
+	pthread_mutex_unlock(&thread_progress_lock); //UNLOCK
+	
+	pthread_attr_t thread_attributes; pthread_attr_init(&thread_attributes);
+	pthread_attr_setdetachstate(&thread_attributes, PTHREAD_CREATE_DETACHED);
+	
+	for (unsigned int i=0; i < THREADS; i++) {
+	    ids[i] = i;
+	    rc = pthread_create(&threads[i], &thread_attributes, evaluate_tasks, (void *) &(ids[i]));
+	    if(rc) {
+		fprintf(stderr, "Error with thread control. Return value %d\n", rc);
+	    exit(-1);
+	    }
+	}	
 
-	pthread_mutex_lock(&thread_progress_lock);
-	for (unsigned int i = 0; i < THREADS; i++) {
-	    if (!thread_finished[i])
+	stop = false;
+	while (!stop) {
+	    
+	    std::this_thread::sleep_for(std::chrono::milliseconds(TICK_SLEEP));
+	    stop = true;
+	    
+	    pthread_mutex_lock(&thread_progress_lock);
+	    for (unsigned int i = 0; i < THREADS; i++) {
+		if (!thread_finished[i])
 	    {
 		stop = false;
 	    }
-	}
-	pthread_mutex_unlock(&thread_progress_lock);
-
-	// collect tasks from worker threads
-	collected_no = collect_tasks();
-	// update main tree and task map
-	if (!update_complete && (collected_tasks.size() >= TICK_TASKS))
-	{
-#ifdef TICKER
-	    timeval update_start, update_end, time_difference;
-	    gettimeofday(&update_start, NULL);
-	    uint64_t previously_removed = removed_task_count;
-#endif
-	    clear_visited_bits();
-	    ret = update(sapling);
-	    // clear collected tasks (all already collected tasks should be inside the tree)
-	    collected_tasks.clear();
-
-#ifdef TICKER
-	    uint64_t now_removed = removed_task_count;
-	    gettimeofday(&update_end, NULL);
-	    timeval_subtract(&time_difference, &update_end, &update_start);
-	    MEASURE_PRINT("Update tick took: ");
-	    timeval_print(&time_difference);
-	    MEASURE_PRINT(", collected %u tasks and removed %" PRIu64 " tasks. \n", collected_no, now_removed - previously_removed );
-#endif
-//	    print_gametree(stderr, sapling);
-	    if(ret != POSTPONED)
+	    }
+	    pthread_mutex_unlock(&thread_progress_lock);
+	    
+	    // collect tasks from worker threads
+	    collected_no = collect_tasks();
+	    // update main tree and task map
+	    bool should_do_update = (collected_tasks.size() >= TICK_TASKS) || (tm.size() <= TICK_TASKS) ;
+	    if (!update_complete && should_do_update)
 	    {
-		fprintf(stderr, "We have evaluated the tree: %d\n", ret);
+#ifdef TICKER
+		timeval update_start, update_end, time_difference;
+		gettimeofday(&update_start, NULL);
+		uint64_t previously_removed = removed_task_count;
+#endif
+		clear_visited_bits();
+		ret = update(sapling, global_run);
+		// clear collected tasks (all already collected tasks should be inside the tree)
+		collected_tasks.clear();
 
-		// we measure the time now, instead of when scheduler() terminates,
-		// because for large inputs, it can take quite a bit of time for
-		// all threads to terminate
+		if(ret != POSTPONED)
+		{
+		    fprintf(stderr, "We have evaluated the tree: %d\n", ret);
+
+		    // we measure the time now, instead of when scheduler() terminates,
+		    // because for large inputs, it can take quite a bit of time for
+		    // all threads to terminate
 #ifdef MEASURE
-		timeval totaltime_end, totaltime;
-		gettimeofday(&totaltime_end, NULL);
-		timeval_subtract(&totaltime, &totaltime_end, &totaltime_start);
-		MEASURE_PRINT("Total time: ");
-		timeval_print(&totaltime);
+		    timeval totaltime_end, totaltime;
+		    gettimeofday(&totaltime_end, NULL);
+		    timeval_subtract(&totaltime, &totaltime_end, &totaltime_start);
+		    MEASURE_PRINT("Total time: ");
+		    timeval_print(&totaltime);
 #endif 
 
 //		DEBUG_PRINT("sanity check: ");
@@ -224,14 +231,28 @@ int scheduler(adversary_vertex *sapling)
 		// instead of breaking, signal a call to terminate to other threads
 		// and wait for them to finish up
                 // this lock can potentially be removed without a race condition
-		pthread_mutex_lock(&thread_progress_lock);
-		global_terminate_flag = true;
-		pthread_mutex_unlock(&thread_progress_lock);
-		update_complete = true;
-	    }
-	}	
-    }
+		    pthread_mutex_lock(&thread_progress_lock);
+		    global_terminate_flag = true;
+		    pthread_mutex_unlock(&thread_progress_lock);
+		    update_complete = true;
+		}
+	    }	
+	}
 
+	if (global_run == MONOTONE && ret == 1)
+	{
+#ifdef MONOTONE_ONLY
+	    break;
+#else
+	    fprintf(stderr, "Switching to full run.\n");
+	    global_run = FULL;
+	    clear_monotone_of_ones();
+#endif
+	} else {
+	    //assert(global_run == FULL);
+	    break;
+	}
+    }
     dynprog_attr_free(&tat);
 
 #ifdef PROGRESS
@@ -269,15 +290,16 @@ int solve(adversary_vertex *initial_vertex)
 	int val = scheduler(sapling);
 	//fprintf(stderr, "Value from scheduler: %d\n", val);
 	//print_compact(stdout, sapling);
-#ifdef REGROW
-	regrow(sapling);
-#endif
-	assert(orig_value == POSTPONED || orig_value == val);
+ 	assert(orig_value == POSTPONED || orig_value == val);
 	
 	if (val == 1)
 	{
 	    return val;
 	}
+      
+#ifdef REGROW
+	regrow(sapling);
+#endif
     }
 
     return 0;

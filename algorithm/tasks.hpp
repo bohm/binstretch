@@ -37,12 +37,13 @@ bool possible_task(adversary_vertex *v)
     return false;
 }
 
-// Adds a task to the global task queue. If it already exists, it increases the occurence.
-void add_task(const binconf *x) {
+// Adds a task to the global task queue.
+void add_task(const binconf *x, thread_attr *tat) {
     task_count++;
     task newtask;
     duplicate(&(newtask.bc), x);
-    newtask.occurences = 1;
+    newtask.last_item = tat->last_item;
+    
     pthread_mutex_lock(&taskq_lock); // LOCK
     tm.insert(std::pair<llu, task>((x->loadhash ^ x->itemhash), newtask));
     pthread_mutex_unlock(&taskq_lock); // UNLOCK
@@ -71,16 +72,37 @@ void remove_task(llu hash)
    where n is the number of tasks.
 */
 
-int completion_check(llu hash)
+int completion_check(llu hash, int run)
 {
     //pthread_mutex_lock(&completed_tasks_lock);
     auto fin = collected_tasks.find(hash);
+
     int ret = POSTPONED;
-    if(fin != collected_tasks.end()) {
+    if (fin != collected_tasks.end())
+    {
 	ret = fin->second;
 	assert(ret == 0 || ret == 1);
+
+	/*if (run == MONOTONE && ret == 0)
+	{
+	    monotone_tasks.insert(*fin);
+	}
+	*/
     }
-    //pthread_mutex_unlock(&completed_tasks_lock);
+
+    /*
+    if (run == FULL)
+    {
+	auto mon = monotone_tasks.find(hash);
+	if (mon != monotone_tasks.end())
+	{
+	    return mon->second;
+	}
+    }
+    */
+
+
+   //pthread_mutex_unlock(&completed_tasks_lock);
 
     return ret;
 }
@@ -111,7 +133,6 @@ void print_tasks()
     for(auto it = tm.begin(); it != tm.end(); ++it)
     {
         DEBUG_PRINT_BINCONF(&(it->second.bc));
-	DEBUG_PRINT("Occur: %llu \n", it->second.occurences);
     }
 }
 #endif
