@@ -277,7 +277,7 @@ int algorithm(binconf *b, int k, int depth, int mode, int run, thread_attr *tat,
 	    
 	    if (mode == EXPLORING)
 	    {
-		int conf_in_hashtable = is_conf_hashed(ht,b, tat, run);
+		int conf_in_hashtable = is_conf_hashed(b, tat, run);
     
 		if (conf_in_hashtable != -1)
 		{
