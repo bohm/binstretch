@@ -17,8 +17,8 @@
 #define _MINIMAX_H 1
 
 /* declarations */
-template<int MODE, int RUN> int adversary(binconf *b, int depth, thread_attr *tat, tree_attr *outat);
-template<int MODE, int RUN> int algorithm(binconf *b, int k, int depth, thread_attr *tat, tree_attr *outat);
+template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_attr *outat);
+template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat, tree_attr *outat);
 
 /* return values: 0: player 1 cannot pack the sequence starting with binconf b
  * 1: player 1 can pack all possible sequences starting with b.
@@ -35,7 +35,7 @@ template<int MODE, int RUN> int algorithm(binconf *b, int k, int depth, thread_a
     * EXPLORING (general exploration done by individual threads)
 */
 
-template<int MODE, int RUN> int adversary(binconf *b, int depth, thread_attr *tat, tree_attr *outat) {
+template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_attr *outat) {
 
     //assert(totalload(b) == b->totalload);
     adversary_vertex *current_adversary = NULL;
@@ -109,18 +109,11 @@ template<int MODE, int RUN> int adversary(binconf *b, int depth, thread_attr *ta
     int r = 1;
     DEEP_DEBUG_PRINT("Trying player zero choices, with maxload starting at %d\n", maximum_feasible);
 
-    int lower_bound = 1;
-    if (RUN == MONOTONE)
-    {
-	lower_bound = tat->last_item;
-    }
+    // idea: start with monotonicity 0 (full monotone), and move towards S (full generality)
+    int lower_bound = std::max(1, tat->last_item - monotonicity);
     
     for (int item_size = maximum_feasible; item_size>=lower_bound; item_size--)
     { 
-	//for (int i = 0; i < maximum_feasible; i++)
-	//{
-    
-	//int item_size = feasibilities[i];
         DEEP_DEBUG_PRINT("Sending item %d to algorithm.\n", item_size);
 	// algorithm's vertex for the next step
 	algorithm_vertex *analyzed_vertex; // used only in the GENERATING mode
@@ -137,17 +130,11 @@ template<int MODE, int RUN> int adversary(binconf *b, int depth, thread_attr *ta
 	
 	int li = tat->last_item;
 
-	if (RUN == MONOTONE)
-	{ 
-	    tat->last_item = item_size;
-	}
+	tat->last_item = item_size;
 	
-	below = algorithm<MODE, RUN>(b, item_size, depth+1, tat, outat);
+	below = algorithm<MODE>(b, item_size, depth+1, tat, outat);
 
-	if (RUN == MONOTONE)
-	{
-	    tat->last_item = li;
-	}
+	tat->last_item = li;
 	
 	if (MODE == GENERATING)
 	{
@@ -200,7 +187,7 @@ template<int MODE, int RUN> int adversary(binconf *b, int depth, thread_attr *ta
     return r;
 }
 
-template<int MODE, int RUN> int algorithm(binconf *b, int k, int depth, thread_attr *tat, tree_attr *outat) {
+template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat, tree_attr *outat) {
 
     bool building_tree = false;
 
@@ -284,7 +271,7 @@ template<int MODE, int RUN> int algorithm(binconf *b, int k, int depth, thread_a
 	    
 	    if (MODE == EXPLORING)
 	    {
-		int conf_in_hashtable = is_conf_hashed<RUN>(b, tat);
+		int conf_in_hashtable = is_conf_hashed(b, tat);
     
 		if (conf_in_hashtable != -1)
 		{
@@ -301,7 +288,7 @@ template<int MODE, int RUN> int algorithm(binconf *b, int k, int depth, thread_a
 		    outat->last_adv_v = analyzed_vertex;
 		}
 
-		below = adversary<MODE, RUN>(b, depth, tat, outat);
+		below = adversary<MODE>(b, depth, tat, outat);
 
 		// send signal that we should terminate immediately upwards
 		if (below == TERMINATING)
@@ -321,7 +308,7 @@ template<int MODE, int RUN> int algorithm(binconf *b, int k, int depth, thread_a
 		DEEP_DEBUG_PRINT_BINCONF(b);
 
 		if (MODE == EXPLORING) {
-		    conf_hashpush<RUN>(b, below, tat);
+		    conf_hashpush(b, below, tat);
 		}
 	    }
 
@@ -368,21 +355,21 @@ template<int MODE, int RUN> int algorithm(binconf *b, int k, int depth, thread_a
 // wrapper for exploration
 // Returns value of the current position.
 
-template<int RUN> int explore(binconf *b, thread_attr *tat)
+int explore(binconf *b, thread_attr *tat)
 {
     hashinit(b);
     tree_attr *outat = NULL;
     //std::vector<uint64_t> first_pass;
     //dynprog_one_pass_init(b, &first_pass);
     //tat->previous_pass = &first_pass;
-    int ret = adversary<EXPLORING, RUN>(b, 0, tat, outat);
+    int ret = adversary<EXPLORING>(b, 0, tat, outat);
     assert(ret != POSTPONED);
     
     return ret;
 }
 
 // wrapper for generation
-template<int RUN> int generate(binconf *start, thread_attr *tat, adversary_vertex *start_vert)
+int generate(binconf *start, thread_attr *tat, adversary_vertex *start_vert)
 {
     hashinit(start);
     tree_attr *outat = new tree_attr;
@@ -393,7 +380,7 @@ template<int RUN> int generate(binconf *start, thread_attr *tat, adversary_verte
     //dynprog_one_pass_init(start, &first_pass);
     //tat->previous_pass = &first_pass;
 
-    int ret = adversary<GENERATING, RUN>(start, start_vert->depth, tat, outat);
+    int ret = adversary<GENERATING>(start, start_vert->depth, tat, outat);
     delete outat;
     return ret;
 }

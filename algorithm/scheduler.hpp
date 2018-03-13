@@ -54,12 +54,7 @@ void *evaluate_tasks(void * tid)
 
 	tat.last_item = current.last_item;
 	int ret;
-	if (explorer_run == MONOTONE)
-	{
-	    ret = explore<MONOTONE>(&(current.bc), &tat);
-	} else {
-	    ret = explore<FULL>(&(current.bc), &tat);
-	}
+	ret = explore(&(current.bc), &tat);
 
 	if (ret != TERMINATING)
 	{
@@ -120,7 +115,7 @@ int scheduler(adversary_vertex *sapling)
     int rc;
     bool stop = false;
     bool update_complete = false;
-    unsigned int collected_no;
+    unsigned int collected_no = 0;
     int ret;
 // initialize dp tables for the main thread
     thread_attr tat;
@@ -133,8 +128,13 @@ int scheduler(adversary_vertex *sapling)
     duplicate(&sapling_bc, sapling->bc);
     tat.last_item = sapling->last_item;
 
-    while(true)
+    int m = 0;
+#ifdef FULL_ONLY
+    m = S-1;
+#endif
+    for (; m <= S-1; m++)
     {
+	PROGRESS_PRINT("Iterating with monotonicity %d.\n", m);
 	pthread_mutex_lock(&thread_progress_lock);
 	global_terminate_flag = false;
 	pthread_mutex_unlock(&thread_progress_lock);
@@ -142,17 +142,11 @@ int scheduler(adversary_vertex *sapling)
 	tm.clear();
 	purge_sapling(sapling);
 
-	if (generator_run == MONOTONE)
-	{
-	    ret = generate<MONOTONE>(&sapling_bc, &tat, sapling);
-	} else {
-	    ret = generate<FULL>(&sapling_bc, &tat, sapling);
-	}
+	// monotonicity = S;	
+	monotonicity = m;
+	ret = generate(&sapling_bc, &tat, sapling);
 	sapling->value = ret;
-    
-#ifdef PROGRESS
-	fprintf(stderr, "Generated %lu tasks.\n", tm.size());
-#endif
+	PROGRESS_PRINT("Generated %lu tasks.\n", tm.size());
 	
 #ifdef DEEP_DEBUG
 	DEEP_DEBUG_PRINT("Creating a dump of tasks into tasklist.txt.\n");
@@ -188,41 +182,39 @@ int scheduler(adversary_vertex *sapling)
 	}	
 
 	stop = false;
-	while (!stop) {
-	    
-	    std::this_thread::sleep_for(std::chrono::milliseconds(TICK_SLEEP));
+	
+	while (!stop)
+	{
 	    stop = true;
-	    
 	    pthread_mutex_lock(&thread_progress_lock);
 	    for (unsigned int i = 0; i < THREADS; i++) {
 		if (!thread_finished[i])
-	    {
-		stop = false;
-	    }
+		{
+		    stop = false;
+		}
 	    }
 	    pthread_mutex_unlock(&thread_progress_lock);
-	    
+	   
+    
+	    std::this_thread::sleep_for(std::chrono::milliseconds(TICK_SLEEP));
 	    // collect tasks from worker threads
-	    collected_no = collect_tasks();
+	    collected_no += collect_tasks();
 	    // update main tree and task map
-	    bool should_do_update = (collected_tasks.size() >= TICK_TASKS) || (tm.size() <= TICK_TASKS) ;
-	    if (!update_complete && should_do_update)
+	    bool should_do_update = (collected_no >= TICK_TASKS) || (tm.size() <= TICK_TASKS) || stop == true;
+	    if (should_do_update)
 	    {
+		collected_no = 0;
 #ifdef TICKER
 		timeval update_start, update_end, time_difference;
 		gettimeofday(&update_start, NULL);
 		uint64_t previously_removed = removed_task_count;
 #endif
 		clear_visited_bits();
-		if (generator_run == MONOTONE)
-		{
-		    ret = update<MONOTONE>(sapling);
-		} else {
-		    ret = update<FULL>(sapling);
-		}
-		
-		// clear collected tasks (all already collected tasks should be inside the tree)
-		collected_tasks.clear();
+		ret = update(sapling);
+
+		// clear losing tasks (all already collected tasks should be inside the tree)
+		// we do not clear winning tasks because they will be useful for later iterations.
+		losing_tasks.clear();
 
 		if(ret != POSTPONED)
 		{
@@ -247,25 +239,24 @@ int scheduler(adversary_vertex *sapling)
 		    pthread_mutex_lock(&thread_progress_lock);
 		    global_terminate_flag = true;
 		    pthread_mutex_unlock(&thread_progress_lock);
-		    update_complete = true;
+		    break;
 		}
-	    }	
+	    }
+
 	}
 
-	if (global_run == MONOTONE && ret == 1)
+	
+	assert(ret != POSTPONED);
+	if (ret == 0)
 	{
-#ifdef MONOTONE_ONLY
 	    break;
-#else
-	    fprintf(stderr, "Switching to full run.\n");
-	    global_run = generator_run = explorer_run = FULL;
-	    clear_monotone_of_ones();
-#endif
 	} else {
-	    //assert(global_run == FULL);
-	    break;
+	    // we continue with higher generality
+	    clear_cache_of_ones();
+	    PROGRESS_PRINT("We remember %lu winning tasks.\n", winning_tasks.size());
 	}
     }
+    
     dynprog_attr_free(&tat);
 
 #ifdef PROGRESS
@@ -278,17 +269,6 @@ int scheduler(adversary_vertex *sapling)
 int solve(adversary_vertex *initial_vertex)
 {
 
-    generator_run = global_run;
-    explorer_run = global_run;
-
-    // in the mixed mode, we generate the top tree by full adversary, but restrict it to be monotone
-    // in the tasks
-    if (global_run == MIXED)
-    {
-	generator_run = FULL;
-	explorer_run = MONOTONE;
-    }
- 
     generated_graph.clear();
     generated_graph[initial_vertex->bc->loadhash ^ initial_vertex->bc->itemhash] = initial_vertex;
     
@@ -302,7 +282,8 @@ int solve(adversary_vertex *initial_vertex)
 
 	bc_hashtable_clear();
 	dynprog_hashtable_clear();
-	collected_tasks.clear();
+	losing_tasks.clear();
+	winning_tasks.clear();
 	tm.clear();
 	// temporarily isolate sapling (detach it from its parent, set depth to 0)
         int orig_value = sapling->value;

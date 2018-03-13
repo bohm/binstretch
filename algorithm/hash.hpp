@@ -4,6 +4,7 @@
 #include "common.hpp"
 #include "measure.hpp"
 #include <random>
+#include <limits>
 
 #ifndef _HASH_H
 #define _HASH_H 1
@@ -25,7 +26,8 @@ llu **Zl; // Zobrist table for loads
 
 // generic hash table (for configurations)
 uint64_t *ht;
-uint64_t *mht;
+
+const uint64_t REMOVED = std::numeric_limits<uint64_t>::max();
 
 pthread_mutex_t *bucketlock;
 pthread_mutex_t *dpbucketlock;
@@ -102,32 +104,25 @@ void local_hashtable_init()
 {
     ht = (uint64_t *) malloc(HASHSIZE * sizeof(uint64_t));
     assert(ht != NULL);
-    mht = (uint64_t *) malloc(MONOTONE_HASHSIZE * sizeof(uint64_t));
 
     for (uint64_t i =0; i < HASHSIZE; i++)
     {
 	ht[i] = 0;
     }
-
-    for (uint64_t i =0; i < MONOTONE_HASHSIZE; i++)
-    {
-	mht[i] = 0;
-    }
-
 }
 
-void clear_monotone_of_ones()
+void clear_cache_of_ones()
 {
 
     uint64_t kept = 0, erased = 0;
-    for (uint64_t i =0; i < MONOTONE_HASHSIZE; i++)
+    for (uint64_t i =0; i < HASHSIZE; i++)
     {
-        if (mht[i] != 0)
+        if (ht[i] != 0 && ht[i] != REMOVED)
 	{
-	    int8_t last_bit = get_last_bit(mht[i]);
+	    int8_t last_bit = get_last_bit(ht[i]);
 	    if (last_bit != 0)
 	    {
-		mht[i] = 0;
+		ht[i] = REMOVED;
 		erased++;
 	    } else {
 		kept++;
@@ -135,8 +130,9 @@ void clear_monotone_of_ones()
 	}
     }
 
-    MEASURE_PRINT("Monotone hashtable size: %llu, kept: %" PRIu64 ", erased: %" PRIu64 "\n", MONOTONE_HASHSIZE, kept, erased);
+    MEASURE_PRINT("Hashtable size: %llu, kept: %" PRIu64 ", erased: %" PRIu64 "\n", HASHSIZE, kept, erased);
 }
+
 void dynprog_hashtable_clear()
 {
     for (uint64_t i =0; i < BC_HASHSIZE; i++)
@@ -191,7 +187,6 @@ void local_hashtable_cleanup()
 {
     //hashtable cleanup
     free(ht);
-    free(mht);
 }
 
 void bucketlock_cleanup()
@@ -232,11 +227,6 @@ uint64_t lowerpart(llu x)
 uint64_t hashlogpart(uint64_t x)
 {
     return x >> (64 - HASHLOG);
-}
-
-uint64_t mlogpart(uint64_t x)
-{
-    return x >> (64 - MONOTONE_HASHLOG);
 }
 
 /* returns upper BCLOG bits of a 64-bit number */
@@ -383,27 +373,13 @@ void dp_unhash(binconf *d, int dynitem)
 
 int8_t is_conf_hashed(uint64_t *hashtable, const binconf *d, thread_attr *tat, uint64_t logpart);
 
-template<int RUN> int8_t is_conf_hashed(const binconf *d, thread_attr *tat)
+int8_t is_conf_hashed(const binconf *d, thread_attr *tat)
 {
 #ifdef MEASURE
     tat->bc_hash_checks++;
 #endif
     uint64_t bchash = d->itemhash ^ d->loadhash;
-    // In MONOTONE mode, check just one cache for both.
-    // In FULL mode, check both caches.
-    if (RUN == MONOTONE)
-    {
-	return is_conf_hashed(mht, d, tat, mlogpart(bchash));
-    } else {
-
-	int8_t ret = is_conf_hashed(mht, d, tat, mlogpart(bchash));
-	if (ret == 0)
- 	{
-	    return ret;
-	} else {
-	    return is_conf_hashed(ht, d, tat, hashlogpart(bchash));
-	}
-    }
+    return is_conf_hashed(ht, d, tat, hashlogpart(bchash));
 }
 
 /* Checks if an element is hashed, returns -1 (not hashed)
@@ -437,6 +413,11 @@ int8_t is_conf_hashed(uint64_t *hashtable, const binconf *d, thread_attr *tat, u
 	    break;
 	}
 
+	// we have to continue in this case, because it might be stored after this element
+	if (foundhash == REMOVED)
+	{
+	    continue;
+	}
 	if (zero_last_bit(bchash) == zero_last_bit(foundhash))
 	{
 	    posvalue = get_last_bit(foundhash);
@@ -474,17 +455,10 @@ int8_t is_conf_hashed(uint64_t *hashtable, const binconf *d, thread_attr *tat, u
  */
 void conf_hashpush(uint64_t* hashtable, const binconf *d, int posvalue, thread_attr *tat, uint64_t logpart);
 
-template<int RUN> void conf_hashpush(const binconf *d, int posvalue, thread_attr *tat)
+void conf_hashpush(const binconf *d, int posvalue, thread_attr *tat)
 {
     uint64_t bchash = d->itemhash ^ d->loadhash;
-    // In MONOTONE mode, insert just into monotone cache.
-    // In FULL mode, insert just into the full cache.
-    if (RUN == MONOTONE)
-    {
-	conf_hashpush(mht, d, posvalue, tat, mlogpart(bchash));
-    } else {
-	conf_hashpush(ht, d, posvalue, tat, hashlogpart(bchash));
-    }
+    conf_hashpush(ht, d, posvalue, tat, hashlogpart(bchash));
 }
 
 void conf_hashpush(uint64_t* hashtable, const binconf *d, int posvalue, thread_attr *tat, uint64_t logpart)
@@ -500,22 +474,31 @@ void conf_hashpush(uint64_t* hashtable, const binconf *d, int posvalue, thread_a
     uint64_t blp = bucketlockpart(bchash);
     uint64_t position = lp;
     pthread_mutex_lock(&bucketlock[blp]); //LOCK
+    bool found_a_spot = false;
     for (int i=0; i< LINPROBE_LIMIT; i++)
     {
 	uint64_t foundhash = hashtable[lp+i];
-	if (foundhash == 0)
+	if (foundhash == 0 || foundhash == REMOVED)
 	{
 	    position = lp+i;
+	    hashtable[position] = hash_item;
+	    found_a_spot = true;
 	    break;
-	}
-
-	if (zero_last_bit(bchash) == zero_last_bit(foundhash))
+	} else if (zero_last_bit(bchash) == zero_last_bit(foundhash))
 	{
 	    position = lp+i;
+	    found_a_spot=true;
 	    break;
 	}
     }
-    hashtable[position] = hash_item;
+
+    // if the cache is full, choose a random position
+    if(!found_a_spot)
+    {
+	int offset = rand() % LINPROBE_LIMIT;
+	hashtable[position + offset] = hash_item;
+    }
+    
     pthread_mutex_unlock(&bucketlock[blp]); // UNLOCK
     
 #ifdef DEEP_DEBUG

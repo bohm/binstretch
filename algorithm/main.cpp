@@ -29,9 +29,10 @@ int main(void)
 
     binconf root;
     root.assign_item(5,1);
+    //root.assign_item(1,1);
+    //root.assign_item(1,2);
     hashinit(&root);
 
-    global_run = FULL;
     adversary_vertex* root_vertex = new adversary_vertex(&root, 0, 1);
     int ret = solve(root_vertex);
     fprintf(stderr, "Number of tasks: %" PRIu64 ", completed tasks: %" PRIu64 ", pruned tasks %" PRIu64 ", decreased tasks %" PRIu64 " \n",
@@ -40,12 +41,7 @@ int main(void)
     assert(ret == 0 || ret == 1);
     if(ret == 0)
     {
-	if (global_run == MONOTONE)
-	{
-	    fprintf(stdout, "Monotone lower bound for %d/%d Bin Stretching on %d bins with root:\n", R,S,BINS);
-	} else {
-	    fprintf(stdout, "Lower bound for %d/%d Bin Stretching on %d bins with root:\n", R,S,BINS);
-	}
+	fprintf(stdout, "Lower bound for %d/%d Bin Stretching on %d bins with monotonicity %d: \n", R,S,BINS, monotonicity);
 	print_binconf_stream(stdout, &root);
 #ifdef OUTPUT
 	char buffer[50];
@@ -61,13 +57,8 @@ int main(void)
 	fclose(out);
 #endif
     } else {
-#ifdef MONOTONE_ONLY
-	fprintf(stdout, "Algorithm wins Monotone %d/%d Bin Stretching on %d bins with root:\n", R,S,BINS);
-#else
 	fprintf(stdout, "Algorithm wins %d/%d Bin Stretching on %d bins with root:\n", R,S,BINS);
-#endif
 	print_binconf_stream(stdout, &root);
-
     }
     
     fprintf(stderr, "Number of tasks: %" PRIu64 ", completed tasks: %" PRIu64 ", pruned tasks %" PRIu64 ", decreased tasks %" PRIu64 " \n",

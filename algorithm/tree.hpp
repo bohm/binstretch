@@ -274,7 +274,7 @@ void print_compact_subtree(FILE* stream, adversary_vertex *v)
 	// print_compact_subtree currently works for only DAGs with outdegree 1 on alg vertices
 	if (v->out.size() > 1 || v->out.size() == 0)
 	{
-	    fprintf(stderr, "Trouble with vertex %" PRIu64  " with %d children and bc:\n", v->id, v->out.size());
+	    fprintf(stderr, "Trouble with vertex %" PRIu64  " with %lu children and bc:\n", v->id, v->out.size());
 	    print_binconf_stream(stderr, v->bc);
 	    assert(v->out.size() == 1);
 	}

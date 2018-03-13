@@ -72,37 +72,23 @@ void remove_task(llu hash)
    where n is the number of tasks.
 */
 
-template<int RUN> int completion_check(llu hash)
+int completion_check(llu hash)
 {
-    //pthread_mutex_lock(&completed_tasks_lock);
-    auto fin = collected_tasks.find(hash);
+    auto fin = losing_tasks.find(hash);
 
     int ret = POSTPONED;
-    if (fin != collected_tasks.end())
+    if (fin != losing_tasks.end())
     {
 	ret = fin->second;
-	assert(ret == 0 || ret == 1);
-
-	/*if (run == MONOTONE && ret == 0)
-	{
-	    monotone_tasks.insert(*fin);
-	}
-	*/
+	assert(ret == 1);
     }
 
-    /*
-    if (run == FULL)
+    fin = winning_tasks.find(hash);
+    if (fin != winning_tasks.end())
     {
-	auto mon = monotone_tasks.find(hash);
-	if (mon != monotone_tasks.end())
-	{
-	    return mon->second;
-	}
+	ret = fin->second;
+	assert(ret == 0);
     }
-    */
-
-
-   //pthread_mutex_unlock(&completed_tasks_lock);
 
     return ret;
 }
@@ -117,7 +103,13 @@ unsigned int collect_tasks()
 
 	for (auto &kv: completed_tasks[i])
 	{
-	    collected_tasks.insert(kv);
+
+	    if (kv.second == 0)
+	    {
+		winning_tasks.insert(kv);
+	    } else {
+		losing_tasks.insert(kv);
+	    }
 	    collected++;
 	}
 

@@ -24,71 +24,49 @@ typedef signed char tiny;
 //#define THOROUGH_HASH_CHECKING 1
 #define PROGRESS 1
 //#define REGROW 1
-//#define OUTPUT 1
+#define OUTPUT 1
 #define MEASURE 1
 //#define TICKER 1
+//#define FULL_ONLY 1
 
-//#define MONOTONE_ONLY 1
 // maximum load of a bin in the optimal offline setting
-#define S 14
+const int S = 14;
 // target goal of the online bin stretching problem
-#define R 19
+const int R = 19;
 
 // constants used for good situations
-#define RMOD (R-1)
-#define ALPHA (RMOD-S)
+const int RMOD = (R-1);
+const int ALPHA = (RMOD-S);
 
 // Change this number for the selected number of bins.
-#define BINS 5
+const int BINS = 8;
 
 // bitwise length of indices of hash tables and lock tables
-#define HASHLOG 30
-#define MONOTONE_HASHLOG 28
-#define BCLOG 27
-#define BUCKETLOG 10
+const int HASHLOG = 30;
+const int BCLOG = 27;
+const int BUCKETLOG = 10;
 
 // size of the hash table
 
-#define HASHSIZE (1ULL<<HASHLOG)
-#define MONOTONE_HASHSIZE (1ULL<<MONOTONE_HASHLOG)
-#define BC_HASHSIZE (1ULL<<BCLOG)
+const llu HASHSIZE = (1ULL<<HASHLOG);
+const llu BC_HASHSIZE = (1ULL<<BCLOG);
 
 // size of buckets -- how many locks there are (each lock serves a group of hashes)
-#define BUCKETSIZE (1ULL<<BUCKETLOG)
+const llu BUCKETSIZE = (1ULL<<BUCKETLOG);
 
 // linear probing limit
-#define LINPROBE_LIMIT 8
+const int LINPROBE_LIMIT = 8;
 
 // the number of threads
-#define THREADS 8
+const int THREADS = 8;
 // a bound on total load of a configuration before we split it into a task
-#define TASK_LOAD (S*BINS)/2
-#define TASK_DEPTH 5
+const int TASK_LOAD = (S*BINS)/2;
+const int TASK_DEPTH = 4;
 
 // how much the updater thread sleeps (in milliseconds)
-#define TICK_SLEEP 200
+const int TICK_SLEEP = 200;
 // how many tasks are sufficient for the updater to run the main updater routine
-#define TICK_TASKS 100
-// The following selects binarray size based on BINS. It does not need to be edited.
-#if BINS == 3
-#define BINARRAY_SIZE (S+1)*(S+1)*(S+1)
-#endif
-#if BINS == 4
-#define BINARRAY_SIZE (S+1)*(S+1)*(S+1)*(S+1)
-#endif
-#if BINS == 5
-#define BINARRAY_SIZE (S+1)*(S+1)*(S+1)*(S+1)*(S+1)
-#endif
-#if BINS == 6
-#define BINARRAY_SIZE (S+1)*(S+1)*(S+1)*(S+1)*(S+1)*(S+1)
-#endif
-#if BINS == 7
-#define BINARRAY_SIZE (S+1)*(S+1)*(S+1)*(S+1)*(S+1)*(S+1)*(S+1)
-#endif
-#if BINS == 8
-#define BINARRAY_SIZE 1ULL*(S+1)*(S+1)*(S+1)*(S+1)*(S+1)*(S+1)*(S+1)*(S+1)
-#endif
-
+const int TICK_TASKS = 100;
 
 
 // end of configuration constants
@@ -227,6 +205,7 @@ struct thread_attr {
     std::chrono::duration<long double> dynprog_time;
 
     int last_item = 1;
+    
     uint64_t iterations = 0;
     uint64_t maximum_feasible_counter = 0;
     uint64_t hash_and_test_counter = 0;
@@ -277,10 +256,8 @@ pthread_mutex_t taskq_lock;
 
 // global hash-like map of completed tasks (and their parents up to
 // the root)
-std::map<uint64_t, int> collected_tasks;
-
-// tasks which can be won with a monotone strategy (computed on the first run)
-std::map<uint64_t, int> monotone_tasks;
+std::map<uint64_t, int> winning_tasks;
+std::map<uint64_t, int> losing_tasks;
 
 // hash-like map of completed tasks, serving as output map for each
 // thread separately
@@ -292,10 +269,9 @@ pthread_mutex_t collection_lock[THREADS];
 // counter of finished threads
 bool thread_finished[THREADS];
 
-// global flags that describe whether we are looking for a monotone or full lower bound
-int global_run = MONOTONE;
-int generator_run = FULL;
-int explorer_run = FULL;
+// monotonicity 0: monotonely non-decreasing lower bound
+// monotonicity S: equivalent to full generality lower bound
+int monotonicity = S;
 
 uint64_t global_vertex_counter = 0;
 uint64_t global_edge_counter = 0;
