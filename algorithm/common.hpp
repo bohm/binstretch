@@ -27,29 +27,30 @@ typedef signed char tiny;
 #define OUTPUT 1
 #define MEASURE 1
 //#define TICKER 1
-//#define FULL_ONLY 1
+#define FULL_ONLY 1
 
 // maximum load of a bin in the optimal offline setting
-const int S = 14;
+const int S = 63;
 // target goal of the online bin stretching problem
-const int R = 19;
+const int R = 86;
 
 // constants used for good situations
 const int RMOD = (R-1);
 const int ALPHA = (RMOD-S);
 
 // Change this number for the selected number of bins.
-const int BINS = 8;
+const int BINS = 3;
 
 // bitwise length of indices of hash tables and lock tables
 const int HASHLOG = 30;
-const int BCLOG = 27;
+const int BCLOG = 25;
 const int BUCKETLOG = 10;
-
+const int BESTMOVELOG = 20;
 // size of the hash table
 
 const llu HASHSIZE = (1ULL<<HASHLOG);
 const llu BC_HASHSIZE = (1ULL<<BCLOG);
+const llu BESTMOVESIZE = (1ULL<<BESTMOVELOG);
 
 // size of buckets -- how many locks there are (each lock serves a group of hashes)
 const llu BUCKETSIZE = (1ULL<<BUCKETLOG);

@@ -24,10 +24,80 @@ value of the item. */
 llu **Zi; // Zobrist table for items
 llu **Zl; // Zobrist table for loads
 
-// generic hash table (for configurations)
-uint64_t *ht;
+llu *Ai; // Zobrist table for next item to pack (used for the algorithm's best move table)
 
 const uint64_t REMOVED = std::numeric_limits<uint64_t>::max();
+
+// zeroes last bit of a number -- useful to check hashes
+inline uint64_t zero_last_bit(uint64_t n)
+{
+    return ((n >> 1) << 1);
+}
+
+inline int8_t get_last_bit(uint64_t n)
+{
+    return ((n & 1) == 1);
+}
+
+
+class conf_el
+{
+public:
+    uint64_t _data;
+
+    conf_el()
+	{
+	}
+    
+    conf_el(uint64_t d)
+	{
+	    _data = d;
+	}
+    conf_el(uint64_t hash, uint64_t posvalue)
+	{
+	    _data = (zero_last_bit(hash) | posvalue);
+	}
+    inline int8_t value() const
+	{
+	    return get_last_bit(_data);
+	}
+    inline uint64_t hash() const
+	{
+	    return zero_last_bit(_data);
+	}
+    inline bool empty() const
+	{
+	    return _data == 0;
+	}
+    inline bool removed() const
+	{
+	    return _data == REMOVED;
+	}
+};
+
+class best_move_el
+{
+public:
+    uint64_t _hash;
+    int8_t _move;
+    
+    int8_t value() const
+	{
+	    return _move;
+	}
+
+    uint64_t hash() const
+	{
+	    return _hash;
+	}
+};
+
+
+// generic hash table (for configurations)
+conf_el *ht;
+
+// a hash table for best moves for the algorithm (so far)
+best_move_el *bmc;
 
 pthread_mutex_t *bucketlock;
 pthread_mutex_t *dpbucketlock;
@@ -45,17 +115,6 @@ llu rand_64bit()
     return r;
 }
 
-// zeroes last bit of a number -- useful to check hashes
-inline uint64_t zero_last_bit(uint64_t n)
-{
-    return ((n >> 1) << 1);
-}
-
-int8_t get_last_bit(uint64_t n)
-{
-    return ((n & 1) == 1);
-}
-
 /* Initializes the Zobrist hash table.
    Adding Zl[i][0] and Zi[i][0] enables us
    to "unhash" zero.
@@ -67,6 +126,8 @@ void zobrist_init()
     Zi = (llu **) malloc((S+1)*sizeof(llu *));
     Zl = (llu **) malloc((BINS+1)*sizeof(llu *));
 
+    Ai = new llu[S+1];
+    
     for(int i=1; i<=BINS; i++)
     {
 	Zl[i] = (llu *) malloc((R+1)* sizeof(llu));
@@ -77,14 +138,15 @@ void zobrist_init()
     }
     
     
-    for(int i=1; i<=S; i++) // different sizes of items
+    for (int i=1; i<=S; i++) // different sizes of items
     {
 	Zi[i] = (llu *) malloc((R+1)*BINS*sizeof(llu));
-	
-	for(int j=0; j<=R*BINS; j++) // number of items of this size
+	for (int j=0; j<=R*BINS; j++) // number of items of this size
 	{
 	    Zi[i][j] = rand_64bit(); 
 	}
+
+	Ai[i] = rand_64bit();
     }
 }
 
@@ -102,12 +164,18 @@ void global_hashtable_init()
 
 void local_hashtable_init()
 {
-    ht = (uint64_t *) malloc(HASHSIZE * sizeof(uint64_t));
-    assert(ht != NULL);
-
+    ht = new conf_el[HASHSIZE];
+    bmc = new best_move_el[BESTMOVESIZE];
+    
     for (uint64_t i =0; i < HASHSIZE; i++)
     {
-	ht[i] = 0;
+	ht[i]._data = 0;
+    }
+
+    for (uint64_t i =0; i < BESTMOVESIZE; i++)
+    {
+	bmc[i]._hash = 0;
+	bmc[i]._move = 0;
     }
 }
 
@@ -117,12 +185,12 @@ void clear_cache_of_ones()
     uint64_t kept = 0, erased = 0;
     for (uint64_t i =0; i < HASHSIZE; i++)
     {
-        if (ht[i] != 0 && ht[i] != REMOVED)
+        if (ht[i]._data != 0 && ht[i]._data != REMOVED)
 	{
-	    int8_t last_bit = get_last_bit(ht[i]);
+	    int8_t last_bit = ht[i].value();
 	    if (last_bit != 0)
 	    {
-		ht[i] = REMOVED;
+		ht[i]._data = REMOVED;
 		erased++;
 	    } else {
 		kept++;
@@ -146,7 +214,7 @@ void bc_hashtable_clear()
 {
     for (uint64_t i =0; i < HASHSIZE; i++)
     {
-	ht[i] = 0;
+	ht[i]._data = 0;
     }
 }
 
@@ -180,13 +248,15 @@ void global_hashtable_cleanup()
     free(Zi);
 
     delete dpht;
+    delete Ai;
 }
 
 // cleanup function -- technically not necessary but useful for memory leak checking
 void local_hashtable_cleanup()
 {
     //hashtable cleanup
-    free(ht);
+    delete ht;
+    delete bmc;
 }
 
 void bucketlock_cleanup()
@@ -221,6 +291,12 @@ uint64_t lowerpart(llu x)
     mask = (HASHSIZE) - 1;
     y = (x) & mask;
     return y;
+}
+
+inline uint64_t bmhash(const binconf* b, int8_t next_item)
+{
+    //assert(next_item >= 1 && next_item <= S);
+    return b->loadhash ^ b->itemhash ^ Ai[next_item];
 }
 
 /* returns upper HASHLOG bits of a 64-bit number */
@@ -371,33 +447,14 @@ void dp_unhash(binconf *d, int dynitem)
     d->itemhash ^= Zi[dynitem][d->items[dynitem]];
 }
 
-int8_t is_conf_hashed(uint64_t *hashtable, const binconf *d, thread_attr *tat, uint64_t logpart);
-
-int8_t is_conf_hashed(const binconf *d, thread_attr *tat)
-{
-#ifdef MEASURE
-    tat->bc_hash_checks++;
-#endif
-    uint64_t bchash = d->itemhash ^ d->loadhash;
-    return is_conf_hashed(ht, d, tat, hashlogpart(bchash));
-}
-
 /* Checks if an element is hashed, returns -1 (not hashed)
-   or 0/1 if it is. */
-int8_t is_conf_hashed(uint64_t *hashtable, const binconf *d, thread_attr *tat, uint64_t logpart)
+   or VALUE if it is. */
+template<class T>int8_t is_hashed(T *hashtable, uint64_t hash, uint64_t logpart, thread_attr *tat)
 {
-    uint64_t bchash = d->itemhash ^ d->loadhash;
     //fprintf(stderr, "Bchash %" PRIu64 ", zero_last_bit %" PRIu64 " get_last_bit %" PRId8 " \n", bchash, zero_last_bit(bchash), get_last_bit(bchash));
 
-    uint64_t lp = logpart;
-    uint64_t blp = bucketlockpart(bchash);
-
-    uint64_t foundhash;
-    llu lhash = 0;
-    llu ihash = 0;
+    uint64_t blp = bucketlockpart(hash);
     int8_t posvalue = -1;
-    //binconf r;
-    //assert(lp < HASHSIZE);
 
     // Use linear probing to check for the hashed value.
     // slight hack here: in theory, just looking a few indices ahead might look into the next bucket lock
@@ -407,20 +464,20 @@ int8_t is_conf_hashed(uint64_t *hashtable, const binconf *d, thread_attr *tat, u
 
     for( int i=0; i< LINPROBE_LIMIT; i++)
     {
-	foundhash = hashtable[lp+i];
-	if (foundhash == 0)
+	const T& candidate = hashtable[logpart+i];
+	if (candidate.empty())
 	{
 	    break;
 	}
 
 	// we have to continue in this case, because it might be stored after this element
-	if (foundhash == REMOVED)
+	if (candidate.removed())
 	{
 	    continue;
 	}
-	if (zero_last_bit(bchash) == zero_last_bit(foundhash))
+	if (candidate.hash() == hash)
 	{
-	    posvalue = get_last_bit(foundhash);
+	    posvalue = candidate.value();
 	    break;
 	}
 
@@ -435,11 +492,6 @@ int8_t is_conf_hashed(uint64_t *hashtable, const binconf *d, thread_attr *tat, u
     pthread_mutex_unlock(&bucketlock[blp]); // UNLOCK
 
 #ifdef MEASURE
-    if (posvalue == -1)
-    {
-	tat->bc_miss++;
-    }
-
     if (posvalue != -1)
     {
 	tat->bc_hit++;
@@ -449,44 +501,31 @@ int8_t is_conf_hashed(uint64_t *hashtable, const binconf *d, thread_attr *tat, u
     return posvalue;
 }
 
-/* Adds an element to a configuration hash.
-   Because the table is flat, this is easier.
-   Also uses flat rewriting yet.
- */
-void conf_hashpush(uint64_t* hashtable, const binconf *d, int posvalue, thread_attr *tat, uint64_t logpart);
-
-void conf_hashpush(const binconf *d, int posvalue, thread_attr *tat)
-{
-    uint64_t bchash = d->itemhash ^ d->loadhash;
-    conf_hashpush(ht, d, posvalue, tat, hashlogpart(bchash));
-}
-
-void conf_hashpush(uint64_t* hashtable, const binconf *d, int posvalue, thread_attr *tat, uint64_t logpart)
+template <class T> void hashpush(T* hashtable, T item, uint64_t logpart, thread_attr *tat)
 {
 #ifdef MEASURE
     tat->bc_insertions++;
 #endif
-    assert(posvalue == 0 || posvalue == 1);
-    uint64_t bchash = d->itemhash ^ d->loadhash;
-    uint64_t hash_item = zero_last_bit(bchash) | ((uint64_t) posvalue);
-    //fprintf(stderr, "Hash %" PRIu64 " hash_item %" PRIu64 "\n", bchash, hash_item);
-    uint64_t lp = logpart;
-    uint64_t blp = bucketlockpart(bchash);
-    uint64_t position = lp;
+    //assert(posvalue == 0 || posvalue == 1);
+    //uint64_t bchash = d->itemhash ^ d->loadhash;
+
+    uint64_t hash = item.hash();
+    uint64_t blp = bucketlockpart(item.hash());
+    uint64_t position = logpart;
+    
     pthread_mutex_lock(&bucketlock[blp]); //LOCK
     bool found_a_spot = false;
     for (int i=0; i< LINPROBE_LIMIT; i++)
     {
-	uint64_t foundhash = hashtable[lp+i];
-	if (foundhash == 0 || foundhash == REMOVED)
+	T& candidate = hashtable[logpart+i];
+	if (candidate.empty() || candidate.removed())
 	{
-	    position = lp+i;
-	    hashtable[position] = hash_item;
+	    hashtable[logpart+i] = item;
 	    found_a_spot = true;
 	    break;
-	} else if (zero_last_bit(bchash) == zero_last_bit(foundhash))
+	} else if (item.hash() == candidate.hash())
 	{
-	    position = lp+i;
+	    hashtable[logpart+i] = item;
 	    found_a_spot=true;
 	    break;
 	}
@@ -496,7 +535,7 @@ void conf_hashpush(uint64_t* hashtable, const binconf *d, int posvalue, thread_a
     if(!found_a_spot)
     {
 	int offset = rand() % LINPROBE_LIMIT;
-	hashtable[position + offset] = hash_item;
+	hashtable[position + offset] = item;
     }
     
     pthread_mutex_unlock(&bucketlock[blp]); // UNLOCK
@@ -507,6 +546,28 @@ void conf_hashpush(uint64_t* hashtable, const binconf *d, int posvalue, thread_a
     printBits32(lp);
 #endif
 }
+
+/* Adds an element to a configuration hash.
+   Because the table is flat, this is easier.
+   Also uses flat rewriting yet.
+ */
+void conf_hashpush(const binconf *d, int posvalue, thread_attr *tat)
+{
+    uint64_t bchash = d->itemhash ^ d->loadhash;
+    conf_el el(bchash, (uint64_t) posvalue);
+    hashpush<conf_el>(ht, el, hashlogpart(bchash), tat);
+}
+
+
+int8_t is_conf_hashed(const binconf *d, thread_attr *tat)
+{
+#ifdef MEASURE
+    tat->bc_hash_checks++;
+#endif
+    uint64_t bchash = zero_last_bit(d->itemhash ^ d->loadhash);
+    return is_hashed<conf_el>(ht, bchash, hashlogpart(bchash), tat);
+}
+
 
 // Checks if a number is in the dynamic programming hash.
 // Returns first bool (whether it is hashed) and the result (if it exists)
