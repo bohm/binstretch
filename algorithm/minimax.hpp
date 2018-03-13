@@ -17,12 +17,8 @@
 #define _MINIMAX_H 1
 
 /* declarations */
-int adversary(binconf *b, int depth, int mode, int run, thread_attr *tat, tree_attr *outat); 
-int algorithm(binconf *b, int k, int depth, int mode, int run, thread_attr *tat, tree_attr *outat);
-
-/* declaring which algorithm will be used */
-#define ALGORITHM algorithm
-#define ADVERSARY adversary
+template<int MODE, int RUN> int adversary(binconf *b, int depth, thread_attr *tat, tree_attr *outat);
+template<int MODE, int RUN> int algorithm(binconf *b, int k, int depth, thread_attr *tat, tree_attr *outat);
 
 /* return values: 0: player 1 cannot pack the sequence starting with binconf b
  * 1: player 1 can pack all possible sequences starting with b.
@@ -39,7 +35,7 @@ int algorithm(binconf *b, int k, int depth, int mode, int run, thread_attr *tat,
     * EXPLORING (general exploration done by individual threads)
 */
 
-int adversary(binconf *b, int depth, int mode, int run, thread_attr *tat, tree_attr *outat) {
+template<int MODE, int RUN> int adversary(binconf *b, int depth, thread_attr *tat, tree_attr *outat) {
 
     //assert(totalload(b) == b->totalload);
     adversary_vertex *current_adversary = NULL;
@@ -55,13 +51,13 @@ int adversary(binconf *b, int depth, int mode, int run, thread_attr *tat, tree_a
     /* Large items heuristic: if 2nd or later bin is at least R-S, check if enough large items
        can be sent so that this bin (or some other) hits R. */
 
-    if (mode == GENERATING)
+    if (MODE == GENERATING)
     {
 	std::pair<bool, int> p;
 	p = large_item_heuristic(b, tat);
 	if (p.first)
 	{
-	    if (mode == GENERATING)
+	    if (MODE == GENERATING)
 	    {
 		outat->last_adv_v->value = 0;
 		outat->last_adv_v->heuristic = true;
@@ -71,7 +67,7 @@ int adversary(binconf *b, int depth, int mode, int run, thread_attr *tat, tree_a
 	}
     } 
 
-    if (mode == GENERATING)
+    if (MODE == GENERATING)
     {
 	current_adversary = outat->last_adv_v;
 	previous_algorithm = outat->last_alg_v;
@@ -87,7 +83,7 @@ int adversary(binconf *b, int depth, int mode, int run, thread_attr *tat, tree_a
     }
 
     // if you are exploring, check the global terminate flag every 100th iteration
-    if (mode == EXPLORING)
+    if (MODE == EXPLORING)
     {
 	tat->iterations++;
 	if (tat->iterations % 100 == 0)
@@ -114,7 +110,7 @@ int adversary(binconf *b, int depth, int mode, int run, thread_attr *tat, tree_a
     DEEP_DEBUG_PRINT("Trying player zero choices, with maxload starting at %d\n", maximum_feasible);
 
     int lower_bound = 1;
-    if (run == MONOTONE)
+    if (RUN == MONOTONE)
     {
 	lower_bound = tat->last_item;
     }
@@ -129,7 +125,7 @@ int adversary(binconf *b, int depth, int mode, int run, thread_attr *tat, tree_a
 	// algorithm's vertex for the next step
 	algorithm_vertex *analyzed_vertex; // used only in the GENERATING mode
 	
-	if (mode == GENERATING)
+	if (MODE == GENERATING)
 	{
 	    analyzed_vertex = new algorithm_vertex(item_size);
 	    // create new edge, 
@@ -141,19 +137,19 @@ int adversary(binconf *b, int depth, int mode, int run, thread_attr *tat, tree_a
 	
 	int li = tat->last_item;
 
-	if (run == MONOTONE)
+	if (RUN == MONOTONE)
 	{ 
 	    tat->last_item = item_size;
 	}
 	
-	below = ALGORITHM(b, item_size, depth+1, mode, run, tat, outat);
+	below = algorithm<MODE, RUN>(b, item_size, depth+1, tat, outat);
 
-	if (run == MONOTONE)
+	if (RUN == MONOTONE)
 	{
 	    tat->last_item = li;
 	}
 	
-	if (mode == GENERATING)
+	if (MODE == GENERATING)
 	{
 	    analyzed_vertex->value = below;
 	    // and set it back to the previous value
@@ -171,7 +167,7 @@ int adversary(binconf *b, int depth, int mode, int run, thread_attr *tat, tree_a
 	    result_determined = true;
 	    r = 0;
 	    
-	    if (mode == GENERATING)
+	    if (MODE == GENERATING)
 	    {
 		// remove all outedges except the right one
 		remove_outedges_except(current_adversary, item_size);
@@ -179,7 +175,7 @@ int adversary(binconf *b, int depth, int mode, int run, thread_attr *tat, tree_a
 	    break;
 	} else if (below == 1)
 	{
-	    if (mode == GENERATING)
+	    if (MODE == GENERATING)
 	    {
 		// no decreasing, but remove this branch of the game tree
 		remove_edge(new_edge);
@@ -187,7 +183,7 @@ int adversary(binconf *b, int depth, int mode, int run, thread_attr *tat, tree_a
 	    }
 	} else if (below == POSTPONED)
 	{
-	    assert(mode == GENERATING);
+	    assert(MODE == GENERATING);
 	    if (r == 1)
 	    {
 		r = POSTPONED;
@@ -196,7 +192,7 @@ int adversary(binconf *b, int depth, int mode, int run, thread_attr *tat, tree_a
     }
 
     /* Sanity check. */
-    if (mode == GENERATING && r == 1)
+    if (MODE == GENERATING && r == 1)
     {
 	assert(current_adversary->out.empty());
     }
@@ -204,20 +200,20 @@ int adversary(binconf *b, int depth, int mode, int run, thread_attr *tat, tree_a
     return r;
 }
 
-int algorithm(binconf *b, int k, int depth, int mode, int run, thread_attr *tat, tree_attr *outat) {
+template<int MODE, int RUN> int algorithm(binconf *b, int k, int depth, thread_attr *tat, tree_attr *outat) {
 
     bool building_tree = false;
 
     algorithm_vertex* current_algorithm = NULL;
     adversary_vertex* previous_adversary = NULL;
-    if (mode == GENERATING)
+    if (MODE == GENERATING)
     {
 	current_algorithm = outat->last_alg_v;
 	previous_adversary = outat->last_adv_v;
     }
 
     // if you are exploring, check the global terminate flag every 100th iteration
-    if (mode == EXPLORING)
+    if (MODE == EXPLORING)
     {
 	tat->iterations++;
 	if (tat->iterations % 100 == 0)
@@ -250,8 +246,6 @@ int algorithm(binconf *b, int k, int depth, int mode, int run, thread_attr *tat,
 	{
 
 	    // editing binconf in place -- undoing changes later
-	    // TODO: it may be useful to add #ifdef sanity checks here
-	    // like the commented ones above
 	    
 	    int from = b->assign_item(k,i);
 	    rehash_increased_range(b,k,from, i); 
@@ -262,7 +256,7 @@ int algorithm(binconf *b, int k, int depth, int mode, int run, thread_attr *tat,
 	    bool already_generated = false;
 	    bool found_in_cache = false;
 
-	    if (mode == GENERATING)
+	    if (MODE == GENERATING)
 	    {
 		/* Check vertex cache if this adversarial vertex is already present */
 		std::map<llu, adversary_vertex*>::iterator it;
@@ -288,9 +282,9 @@ int algorithm(binconf *b, int k, int depth, int mode, int run, thread_attr *tat,
 	    // We only do this in exploration mode; while this could be also done
 	    // when generating we want the whole lower bound tree to be generated.
 	    
-	    if (mode == EXPLORING)
+	    if (MODE == EXPLORING)
 	    {
-		int conf_in_hashtable = is_conf_hashed(b, tat, run);
+		int conf_in_hashtable = is_conf_hashed<RUN>(b, tat);
     
 		if (conf_in_hashtable != -1)
 		{
@@ -301,13 +295,13 @@ int algorithm(binconf *b, int k, int depth, int mode, int run, thread_attr *tat,
 	    
 	    if (!found_in_cache && !already_generated)
 	    {
-		if (mode == GENERATING)
+		if (MODE == GENERATING)
 		{
 		    // set the current adversary vertex to be the analyzed vertex
 		    outat->last_adv_v = analyzed_vertex;
 		}
 
-		below = ADVERSARY(b, depth, mode, run, tat, outat);
+		below = adversary<MODE, RUN>(b, depth, tat, outat);
 
 		// send signal that we should terminate immediately upwards
 		if (below == TERMINATING)
@@ -316,7 +310,7 @@ int algorithm(binconf *b, int k, int depth, int mode, int run, thread_attr *tat,
 		}
 		
 
-		if (mode == GENERATING)
+		if (MODE == GENERATING)
 		{
 		    analyzed_vertex->value = below;
 		    // and set it back to the previous value
@@ -326,8 +320,8 @@ int algorithm(binconf *b, int k, int depth, int mode, int run, thread_attr *tat,
 		DEEP_DEBUG_PRINT("We have calculated the following position, result is %d\n", below);
 		DEEP_DEBUG_PRINT_BINCONF(b);
 
-		if (mode == EXPLORING) {
-		    conf_hashpush(b, below, tat, run);
+		if (MODE == EXPLORING) {
+		    conf_hashpush<RUN>(b, below, tat);
 		}
 	    }
 
@@ -339,7 +333,7 @@ int algorithm(binconf *b, int k, int depth, int mode, int run, thread_attr *tat,
 	    {
 		r = below;
 		VERBOSE_PRINT("Winning position for algorithm, returning 1.\n");
-		if(mode == GENERATING)
+		if(MODE == GENERATING)
 		{
 		    // delete all edges from the current algorithmic vertex
 		    // which should also delete the adversary vertex
@@ -353,7 +347,7 @@ int algorithm(binconf *b, int k, int depth, int mode, int run, thread_attr *tat,
 		// nothing needs to be currently done, the edge is already created
 	    } else if (below == POSTPONED)
 	    {
- 		assert(mode == GENERATING); // should not happen during anything else but GENERATING
+ 		assert(MODE == GENERATING); // should not happen during anything else but GENERATING
 		// insert analyzed_vertex into algorithm's "next" list
 		if (r == 0)
 		{
@@ -374,21 +368,21 @@ int algorithm(binconf *b, int k, int depth, int mode, int run, thread_attr *tat,
 // wrapper for exploration
 // Returns value of the current position.
 
-int explore(binconf *b, thread_attr *tat, int run)
+template<int RUN> int explore(binconf *b, thread_attr *tat)
 {
     hashinit(b);
     tree_attr *outat = NULL;
     //std::vector<uint64_t> first_pass;
     //dynprog_one_pass_init(b, &first_pass);
     //tat->previous_pass = &first_pass;
-    int ret = ADVERSARY(b, 0, EXPLORING, run, tat, outat);
+    int ret = adversary<EXPLORING, RUN>(b, 0, tat, outat);
     assert(ret != POSTPONED);
     
     return ret;
 }
 
 // wrapper for generation
-int generate(binconf *start, thread_attr *tat, adversary_vertex *start_vert, int run)
+template<int RUN> int generate(binconf *start, thread_attr *tat, adversary_vertex *start_vert)
 {
     hashinit(start);
     tree_attr *outat = new tree_attr;
@@ -399,7 +393,7 @@ int generate(binconf *start, thread_attr *tat, adversary_vertex *start_vert, int
     //dynprog_one_pass_init(start, &first_pass);
     //tat->previous_pass = &first_pass;
 
-    int ret = ADVERSARY(start, start_vert->depth, GENERATING, run, tat, outat);
+    int ret = adversary<GENERATING, RUN>(start, start_vert->depth, tat, outat);
     delete outat;
     return ret;
 }

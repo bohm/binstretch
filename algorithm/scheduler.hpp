@@ -53,7 +53,13 @@ void *evaluate_tasks(void * tid)
 	}
 
 	tat.last_item = current.last_item;
-	int ret = explore(&(current.bc), &tat, explorer_run);
+	int ret;
+	if (explorer_run == MONOTONE)
+	{
+	    ret = explore<MONOTONE>(&(current.bc), &tat);
+	} else {
+	    ret = explore<FULL>(&(current.bc), &tat);
+	}
 
 	if (ret != TERMINATING)
 	{
@@ -127,7 +133,6 @@ int scheduler(adversary_vertex *sapling)
     duplicate(&sapling_bc, sapling->bc);
     tat.last_item = sapling->last_item;
 
-    //global_run = MONOTONE;
     while(true)
     {
 	pthread_mutex_lock(&thread_progress_lock);
@@ -137,7 +142,12 @@ int scheduler(adversary_vertex *sapling)
 	tm.clear();
 	purge_sapling(sapling);
 
-	ret = generate(&sapling_bc, &tat, sapling, generator_run);
+	if (generator_run == MONOTONE)
+	{
+	    ret = generate<MONOTONE>(&sapling_bc, &tat, sapling);
+	} else {
+	    ret = generate<FULL>(&sapling_bc, &tat, sapling);
+	}
 	sapling->value = ret;
     
 #ifdef PROGRESS
@@ -204,7 +214,13 @@ int scheduler(adversary_vertex *sapling)
 		uint64_t previously_removed = removed_task_count;
 #endif
 		clear_visited_bits();
-		ret = update(sapling, generator_run);
+		if (generator_run == MONOTONE)
+		{
+		    ret = update<MONOTONE>(sapling);
+		} else {
+		    ret = update<FULL>(sapling);
+		}
+		
 		// clear collected tasks (all already collected tasks should be inside the tree)
 		collected_tasks.clear();
 

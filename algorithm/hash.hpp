@@ -383,7 +383,7 @@ void dp_unhash(binconf *d, int dynitem)
 
 int8_t is_conf_hashed(uint64_t *hashtable, const binconf *d, thread_attr *tat, uint64_t logpart);
 
-int8_t is_conf_hashed(const binconf *d, thread_attr *tat, int run)
+template<int RUN> int8_t is_conf_hashed(const binconf *d, thread_attr *tat)
 {
 #ifdef MEASURE
     tat->bc_hash_checks++;
@@ -391,7 +391,7 @@ int8_t is_conf_hashed(const binconf *d, thread_attr *tat, int run)
     uint64_t bchash = d->itemhash ^ d->loadhash;
     // In MONOTONE mode, check just one cache for both.
     // In FULL mode, check both caches.
-    if (run == MONOTONE)
+    if (RUN == MONOTONE)
     {
 	return is_conf_hashed(mht, d, tat, mlogpart(bchash));
     } else {
@@ -474,12 +474,12 @@ int8_t is_conf_hashed(uint64_t *hashtable, const binconf *d, thread_attr *tat, u
  */
 void conf_hashpush(uint64_t* hashtable, const binconf *d, int posvalue, thread_attr *tat, uint64_t logpart);
 
-void conf_hashpush(const binconf *d, int posvalue, thread_attr *tat, int run)
+template<int RUN> void conf_hashpush(const binconf *d, int posvalue, thread_attr *tat)
 {
     uint64_t bchash = d->itemhash ^ d->loadhash;
     // In MONOTONE mode, insert just into monotone cache.
     // In FULL mode, insert just into the full cache.
-    if (run == MONOTONE)
+    if (RUN == MONOTONE)
     {
 	conf_hashpush(mht, d, posvalue, tat, mlogpart(bchash));
     } else {

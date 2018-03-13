@@ -72,7 +72,7 @@ void remove_task(llu hash)
    where n is the number of tasks.
 */
 
-int completion_check(llu hash, int run)
+template<int RUN> int completion_check(llu hash)
 {
     //pthread_mutex_lock(&completed_tasks_lock);
     auto fin = collected_tasks.find(hash);
