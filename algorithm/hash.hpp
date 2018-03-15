@@ -73,6 +73,11 @@ public:
 	{
 	    return _data == REMOVED;
 	}
+
+    inline bool remove()
+	{
+	    _data = REMOVED;
+	}
 };
 
 class best_move_el
@@ -80,16 +85,37 @@ class best_move_el
 public:
     uint64_t _hash;
     int8_t _move;
+
+    best_move_el()
+	{
+	}
     
-    int8_t value() const
+    best_move_el(uint64_t hash, int8_t move) : _hash(hash), _move(move) {}
+   
+    inline int8_t value() const
 	{
 	    return _move;
 	}
 
-    uint64_t hash() const
+    inline uint64_t hash() const
 	{
 	    return _hash;
 	}
+
+     inline bool empty() const
+	{
+	    return _hash == 0;
+	}
+    inline bool removed() const
+	{
+	    return _hash == REMOVED;
+	}
+
+    inline bool remove()
+	{
+	    _hash = REMOVED;
+	}
+   
 };
 
 
@@ -316,6 +342,11 @@ uint64_t bclogpart(uint64_t x)
 uint64_t bucketlockpart(uint64_t x)
 {
     return x >> (64 - BUCKETLOG);
+}
+
+template<unsigned int LOG> inline uint64_t logpart(uint64_t x)
+{
+    return x >> (64 - LOG); 
 }
 
 // (re)calculates the hash of b completely.
@@ -547,6 +578,46 @@ template <class T> void hashpush(T* hashtable, T item, uint64_t logpart, thread_
 #endif
 }
 
+
+// remove an element from the hash (the lazy way)
+template <class T> void hashremove(T* hashtable, uint64_t hash, uint64_t logpart, thread_attr *tat)
+{
+
+    uint64_t blp = bucketlockpart(hash);
+
+    // Use linear probing to check for the hashed value.
+    // slight hack here: in theory, just looking a few indices ahead might look into the next bucket lock
+    // TODO: Fix that.
+    
+    pthread_mutex_lock(&bucketlock[blp]); // LOCK
+
+    for( int i=0; i< LINPROBE_LIMIT; i++)
+    {
+	T& candidate = hashtable[logpart+i];
+	if (candidate.empty())
+	{
+	    break;
+	}
+
+	// we have to continue in this case, because it might be stored after this element
+	if (candidate.removed())
+	{
+	    continue;
+	}
+	if (candidate.hash() == hash)
+	{
+	    candidate.remove();
+	    break;
+	}
+
+    }
+ 
+    pthread_mutex_unlock(&bucketlock[blp]); // UNLOCK
+}
+
+
+
+
 /* Adds an element to a configuration hash.
    Because the table is flat, this is easier.
    Also uses flat rewriting yet.
@@ -568,6 +639,25 @@ int8_t is_conf_hashed(const binconf *d, thread_attr *tat)
     return is_hashed<conf_el>(ht, bchash, hashlogpart(bchash), tat);
 }
 
+/* Adds an element to an algorithm's best move cache. */
+void bmc_hashpush(const binconf *d, int item, int8_t bin, thread_attr *tat)
+{
+    uint64_t bmc_hash = d->itemhash ^ d->loadhash ^ Ai[item];
+    best_move_el el(bmc_hash, bin);
+    hashpush<best_move_el>(bmc, el, logpart<BESTMOVELOG>(bmc_hash), tat);
+}
+
+void bmc_remove(const binconf *d, int item, thread_attr *tat)
+{
+    uint64_t bmc_hash = d->itemhash ^ d->loadhash ^ Ai[item];
+    return hashremove<best_move_el>(bmc, bmc_hash, logpart<BESTMOVELOG>(bmc_hash), tat);
+   
+}
+int8_t is_move_hashed(const binconf *d, int item, thread_attr *tat)
+{
+    uint64_t bmc_hash = d->itemhash ^ d->loadhash ^ Ai[item];
+    return is_hashed<best_move_el>(bmc, bmc_hash, logpart<BESTMOVELOG>(bmc_hash), tat);
+}
 
 // Checks if a number is in the dynamic programming hash.
 // Returns first bool (whether it is hashed) and the result (if it exists)

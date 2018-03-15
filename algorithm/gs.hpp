@@ -185,51 +185,55 @@ int testgs(const binconf *b)
 
 
 // Apply the rest of the heuristics only with 3 bins and ALPHA >= 1/3
-#if (BINS == 3) &&((3*ALPHA) >= S)
+    if ((BINS == 3) && ((3*ALPHA) >= S))
+    {
 
-    //assert(gs2(b) == gs2variant(b));
+	//assert(gs2(b) == gs2variant(b));
 
-    /*if(gs2(b) == 1)
-    {
-	DEEP_DEBUG_PRINT(stderr, "The following binconf hits GS2:\n");
-	DEEP_DEBUG_PRINT_BINCONF(b);
-	return 1;
-    }*/
+	/*if(gs2(b) == 1)
+	  {
+	  DEEP_DEBUG_PRINT(stderr, "The following binconf hits GS2:\n");
+	  DEEP_DEBUG_PRINT_BINCONF(b);
+	  return 1;
+	  }*/
+	
+	/*
+	  if( gs1mod(b) == 1 && gs1(b) == -1 && gs3(b) == -1)
+	  {
+	  fprintf(stderr, "Problematic binconf:\n");
+	  print_binconf_stream(stderr, b);
+	  //return 1;
+	  }*/
+	
+	
+	if(gs3(b) == 1)
+	{
+	    DEEP_DEBUG_PRINT("The following binconf hits GS3:\n");
+	    DEEP_DEBUG_PRINT_BINCONF(b);
+	    return 1;
+	}
+	
+	if(gs4(b) == 1)
+	{
+	    DEEP_DEBUG_PRINT("The following binconf hits GS4:\n");
+	    DEEP_DEBUG_PRINT_BINCONF(b);
+	    return 1;
+	}
+	
+	if(gs5(b) == 1)
+	{
+	    DEEP_DEBUG_PRINT("The following binconf hits GS5:\n");
+	    DEEP_DEBUG_PRINT_BINCONF(b);
+	    return 1;
+	}
+	
+	if(gs6(b) == 1)
+	{
+	    return 1;
+	}
 
-    /*
-    if( gs1mod(b) == 1 && gs1(b) == -1 && gs3(b) == -1)
-    {
-	fprintf(stderr, "Problematic binconf:\n");
-	print_binconf_stream(stderr, b);
-	//return 1;
-    }*/
-
-   
-    if(gs3(b) == 1)
-    {
-	DEEP_DEBUG_PRINT("The following binconf hits GS3:\n");
-	DEEP_DEBUG_PRINT_BINCONF(b);
-	return 1;
-    }
-    if(gs4(b) == 1)
-    {
-	DEEP_DEBUG_PRINT("The following binconf hits GS4:\n");
-	DEEP_DEBUG_PRINT_BINCONF(b);
-	return 1;
-    }
-    if(gs5(b) == 1)
-    {
-	DEEP_DEBUG_PRINT("The following binconf hits GS5:\n");
-	DEEP_DEBUG_PRINT_BINCONF(b);
-	return 1;
-    }
-
-    if(gs6(b) == 1)
-    {
-	return 1;
     }
     
-#endif // run only heuristics with BINS=3 and ALPHA >= 1/3
     return -1;
 }
 

@@ -17,18 +17,15 @@ int main(void)
     bucketlock_init();
     //zobrist_init();
     
-#if 3*ALPHA >= S
-    fprintf(stderr, "Good situation heuristics will be applied.\n");
-#else
-    fprintf(stderr, "Only some good situations will be applied.\n");
-#endif
-
-#ifdef MEASURE
-    gettimeofday(&totaltime_start, NULL);
-#endif
+    if (3*ALPHA >= S)
+    {
+	fprintf(stderr, "Good situation heuristics will be applied.\n");
+    } else {
+	fprintf(stderr, "Only some good situations will be applied.\n");
+    }
 
     binconf root;
-    //root.assign_item(5,1);
+    root.assign_item(5,1);
     //root.assign_item(1,1);
     //root.assign_item(1,2);
     hashinit(&root);

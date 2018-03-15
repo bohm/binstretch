@@ -47,7 +47,7 @@ void *evaluate_tasks(void * tid)
 	}
 	taskcounter++;
 
-	if(taskcounter % 300 == 0) {
+	if(taskcounter % 1000 == 0) {
 	   PROGRESS_PRINT("Thread %u takes up task number %" PRIu64 ": ", threadid, taskcounter);
 	   PROGRESS_PRINT_BINCONF(&current.bc);
 	}
@@ -134,7 +134,12 @@ int scheduler(adversary_vertex *sapling)
 #endif
     for (; m <= S-1; m++)
     {
+	
 	PROGRESS_PRINT("Iterating with monotonicity %d.\n", m);
+#ifdef MEASURE
+	auto iteration_start = std::chrono::system_clock::now();
+#endif
+
 	pthread_mutex_lock(&thread_progress_lock);
 	global_terminate_flag = false;
 	pthread_mutex_unlock(&thread_progress_lock);
@@ -224,11 +229,9 @@ int scheduler(adversary_vertex *sapling)
 		    // because for large inputs, it can take quite a bit of time for
 		    // all threads to terminate
 #ifdef MEASURE
-		    timeval totaltime_end, totaltime;
-		    gettimeofday(&totaltime_end, NULL);
-		    timeval_subtract(&totaltime, &totaltime_end, &totaltime_start);
-		    MEASURE_PRINT("Total time: ");
-		    timeval_print(&totaltime);
+		    auto iteration_end = std::chrono::system_clock::now();
+		    std::chrono::duration<long double> iter_time = iteration_end - iteration_start;
+		    MEASURE_PRINT("Iteration time: %Lfs.\n", iter_time.count());
 #endif 
 
 //		DEBUG_PRINT("sanity check: ");

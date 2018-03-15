@@ -217,18 +217,49 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
     {
 	return 1;
     }
+
+    // check best move cache
+    int8_t previously_good_move = -1;
+    bool good_move_first = false;
+
+    
+    if (MODE == EXPLORING)
+    {
+	previously_good_move = is_move_hashed(b,k,tat);
+	if (previously_good_move != -1)
+	{
+	    //fprintf(stderr, "Previously good move is %" PRIi8 ".\n", previously_good_move);
+	    good_move_first = true;
+	}
+    }
     
     int r = 0;
     int below = 0;
-    for (int i = 1; i<=BINS; i++)
+    int8_t i = 1;
+    while(i <= BINS)
     {
+
+	// we do previously_good_move first, so we skip it on any subsequent run
+	if (MODE == EXPLORING && i == previously_good_move)
+	{
+	    assert(i != 1);
+	    i++; continue;
+	}
+	
 	// simply skip a step where two bins have the same load
 	// any such bins are sequential if we assume loads are sorted (and they should be)
 	if (i > 1 && b->loads[i] == b->loads[i-1])
 	{
-	    continue;
+	    i++; continue;
 	}
-	
+
+	// set i to be the good move for the first run of the while cycle
+	if (MODE == EXPLORING && good_move_first)
+	{
+	    assert(i == 1);
+	    i = previously_good_move;
+	}
+
 	if ((b->loads[i] + k < R))
 	{
 
@@ -327,10 +358,27 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 		    remove_outedges(current_algorithm);
 		    // assert(current_algorithm == NULL); // sanity check
 		}
+
+		if (MODE == EXPLORING)
+		{
+
+                    // do not cache if the winning move is the first one -- we will try it first anyway
+		    if (i != 1 && !good_move_first)
+		    {
+			bmc_hashpush(b, k, i, tat);
+		    }
+		}
+		
 		return r;
 		
 	    } else if (below == 0)
 	    {
+
+		// good move turned out to be bad
+		if (MODE == EXPLORING && good_move_first)
+		{
+		    bmc_remove(b,k,tat);
+		}
 		// nothing needs to be currently done, the edge is already created
 	    } else if (below == POSTPONED)
 	    {
@@ -346,6 +394,16 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 	} else { // b->loads[i] + k >= R, so a good situation for the adversary
     // nothing to be done in exploration mode
 	    // currently nothing done in generating mode either
+	}
+
+	// if we ran the good_move_first, we come back and try from the start
+	if (MODE == EXPLORING && good_move_first)
+	{
+	    bmc_remove(b,k,tat);
+	    good_move_first = false;
+	    i = 1;
+	} else {
+	    i++;
 	}
     }
 
