@@ -325,29 +325,35 @@ inline uint64_t bmhash(const binconf* b, int8_t next_item)
     return b->loadhash ^ b->itemhash ^ Ai[next_item];
 }
 
-/* returns upper HASHLOG bits of a 64-bit number */
+/*
+// returns upper HASHLOG bits of a 64-bit number
 uint64_t hashlogpart(uint64_t x)
 {
     return x >> (64 - HASHLOG);
 }
 
-/* returns upper BCLOG bits of a 64-bit number */
+// returns upper BCLOG bits of a 64-bit number
 uint64_t bclogpart(uint64_t x)
 {
     return x >> (64 - BCLOG);
 }
 
 
-/* returns upper BUCKETLOG bits of a 64-bit number */
+// returns upper BUCKETLOG bits of a 64-bit number
 uint64_t bucketlockpart(uint64_t x)
 {
     return x >> (64 - BUCKETLOG);
 }
+*/
 
 template<unsigned int LOG> inline uint64_t logpart(uint64_t x)
 {
     return x >> (64 - LOG); 
 }
+
+const auto bucketlockpart = logpart<BUCKETLOG>;
+const auto bclogpart = logpart<BCLOG>;
+const auto hashlogpart = logpart<HASHLOG>;
 
 // (re)calculates the hash of b completely.
 void hashinit(binconf *d)
