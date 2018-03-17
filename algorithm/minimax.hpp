@@ -192,6 +192,10 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
 	}
     }
 
+    if (MODE == EXPLORING) {
+	conf_hashpush(b, r, tat);
+    }
+
     /* Sanity check. */
     if (MODE == GENERATING && r == 1)
     {
@@ -279,9 +283,7 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 
 	    // editing binconf in place -- undoing changes later
 	    
-	    int from = b->assign_item(k,i);
-	    rehash_increased_range(b,k,from, i); 
-
+	    int from = b->assign_and_rehash(k,i);
 	    
 	    // initialize the adversary's next vertex in the tree (corresponding to d)
 	    adversary_vertex *analyzed_vertex;
@@ -337,14 +339,10 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 		DEEP_DEBUG_PRINT("We have calculated the following position, result is %d\n", below);
 		DEEP_DEBUG_PRINT_BINCONF(b);
 
-		if (MODE == EXPLORING) {
-		    conf_hashpush(b, below, tat);
-		}
 	    }
 
 	    // return b to original form
-	    b->unassign_item(k,from);
-	    rehash_decreased_range(b, k, from, i);
+	    b->unassign_and_rehash(k,from);
 	    
 	    if (below == 1)
 	    {
