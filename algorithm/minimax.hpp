@@ -222,13 +222,13 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
     int8_t previously_good_move = -1;
     bool good_move_first = false;
 
-    
+
     if (MODE == EXPLORING)
     {
-	previously_good_move = is_move_hashed(b,k,tat);
+	//previously_good_move = is_move_hashed(b,k,tat);
 	if (previously_good_move != -1)
 	{
-	    //fprintf(stderr, "Previously good move is %" PRIi8 ".\n", previously_good_move);
+	    fprintf(stderr, "Previously good move is %" PRIi8 ".\n", previously_good_move);
 	    good_move_first = true;
 	}
     }
@@ -363,10 +363,10 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 		{
 
                     // do not cache if the winning move is the first one -- we will try it first anyway
-		    if (i != 1 && !good_move_first)
+		    /*if (i != 1 && !good_move_first)
 		    {
 			bmc_hashpush(b, k, i, tat);
-		    }
+			}*/
 		}
 		
 		return r;
@@ -375,10 +375,11 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 	    {
 
 		// good move turned out to be bad
-		if (MODE == EXPLORING && good_move_first)
+		/*if (MODE == EXPLORING && good_move_first)
 		{
 		    bmc_remove(b,k,tat);
 		}
+		*/
 		// nothing needs to be currently done, the edge is already created
 	    } else if (below == POSTPONED)
 	    {
@@ -397,14 +398,14 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 	}
 
 	// if we ran the good_move_first, we come back and try from the start
-	if (MODE == EXPLORING && good_move_first)
+	/* if (MODE == EXPLORING && good_move_first)
 	{
 	    bmc_remove(b,k,tat);
 	    good_move_first = false;
 	    i = 1;
-	} else {
+	    } else { */
 	    i++;
-	}
+	    //}
     }
 
     return r;

@@ -27,7 +27,12 @@ typedef signed char tiny;
 #define OUTPUT 1
 #define MEASURE 1
 //#define TICKER 1
-//#define FULL_ONLY 1
+
+#define ONLY_ONE_PASS 1
+
+#ifdef ONLY_ONE_PASS
+const int PASS = 0;
+#endif
 
 // maximum load of a bin in the optimal offline setting
 const int S = 14;

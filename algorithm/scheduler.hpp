@@ -129,8 +129,8 @@ int scheduler(adversary_vertex *sapling)
     tat.last_item = sapling->last_item;
 
     int m = 0;
-#ifdef FULL_ONLY
-    m = S-1;
+#ifdef ONLY_ONE_PASS
+    m = PASS;
 #endif
     for (; m <= S-1; m++)
     {
@@ -247,9 +247,12 @@ int scheduler(adversary_vertex *sapling)
 	    }
 
 	}
-
-	
 	assert(ret != POSTPONED);
+	
+#ifdef ONLY_ONE_PASS
+	break;
+#endif
+
 	if (ret == 0)
 	{
 	    break;

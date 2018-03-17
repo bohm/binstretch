@@ -25,7 +25,7 @@ int main(void)
     }
 
     binconf root;
-    root.assign_item(5,1);
+    //root.assign_item(5,1);
     //root.assign_item(1,1);
     //root.assign_item(1,2);
     hashinit(&root);
