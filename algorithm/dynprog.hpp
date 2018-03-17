@@ -8,9 +8,11 @@
 #include "common.hpp"
 #include "fits.hpp"
 #include "measure.hpp"
+#include "hash.hpp"
 
 // which Test procedure are we using
 #define TEST dynprog_test_set
+
 
 void print_tuple(const int* tuple)
 {
@@ -33,15 +35,17 @@ void dynprog_attr_init(thread_attr *tat)
 {
     assert(tat != NULL);
     tat->oldset = new std::unordered_set<std::array<uint8_t, BINS> >();
-    //tat->oldset->reserve(DEFAULT_DP_SIZE);
     tat->newset = new std::unordered_set<std::array<uint8_t, BINS> >();
-    //tat->newset->reserve(DEFAULT_DP_SIZE);
 
     tat->oldtqueue = new std::vector<std::array<uint8_t, BINS> >();
     tat->oldtqueue->reserve(DEFAULT_DP_SIZE);
     tat->newtqueue = new std::vector<std::array<uint8_t, BINS> >();
     tat->newtqueue->reserve(DEFAULT_DP_SIZE);
 
+    tat->oldloadqueue = new std::vector<loadconf>();
+    tat->oldloadqueue->reserve(DEFAULT_DP_SIZE);
+    tat->newloadqueue = new std::vector<loadconf>();
+    tat->newloadqueue->reserve(DEFAULT_DP_SIZE);
 }
 
 void dynprog_attr_free(thread_attr *tat)
@@ -50,6 +54,8 @@ void dynprog_attr_free(thread_attr *tat)
     delete tat->newset;
     delete tat->oldtqueue;
     delete tat->newtqueue;
+    delete tat->oldloadqueue;
+    delete tat->newloadqueue;
 }
 
 // Sparse dynprog test which uses tuples directly (and does not encode/decode them)

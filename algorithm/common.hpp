@@ -92,20 +92,125 @@ const int PROGRESS_AFTER = 500;
 
 bool generating_tasks;
 
-// a global variable for indexing the game tree vertices
-//llu Treeid=1;
+llu **Zi; // Zobrist table for items
+llu **Zl; // Zobrist table for loads
+llu *Ai; // Zobrist table for next item to pack (used for the algorithm's best move table)
+
 
 // A bin configuration consisting of three loads and a list of items that have arrived so far.
 // The same DS is also used in the hash as an element.
-class binconf {
+
+// a cut version of binconf which only uses the loads
+class loadconf {
+public:
+    std::array<uint8_t,BINS+1> loads = {};
+    uint64_t loadhash = 0;
+
+// sorts the loads with advice: the advice
+// being that only one load has increased, namely
+// at position newly_loaded
+
+// returns new position of the newly loaded bin
+    int sortloads_one_increased(int newly_increased)
+	{
+	    int i = newly_increased;
+	    while (!((i == 1) || (loads[i-1] >= loads[i])))
+	    {
+		std::swap(loads[i], loads[i-1]);
+		i--;
+	    }
+	    
+	    return i;
+	}
+
+// inverse to sortloads_one_increased.
+    int sortloads_one_decreased(int newly_decreased)
+	{
+	    int i, helper;
+	    i = newly_decreased;
+	    while (!((i == BINS) || (loads[i+1] <= loads[i])))
+	    {
+		std::swap(loads[i], loads[i+1]);
+		i++;
+	    }
+	    
+	    return i;
+	}
+
+
+        void rehash_loads_increased_range(int item, int from, int to)
+	{
+	    if (from == to)
+	    {
+		loadhash ^= Zl[from][loads[from] - item]; // old load
+		loadhash ^= Zl[from][loads[from]]; // new load
+	    } else {
+		
+		// rehash loads in [from, to).
+		// here it is easy: the load on i changed from
+		// loads[i+1] to loads[i]
+		for (int i = from; i < to; i++)
+		{
+		    loadhash ^= Zl[i][loads[i+1]]; // the old load on i
+		    loadhash ^= Zl[i][loads[i]]; // the new load on i
+		}
+		
+		// the last load is tricky, because it is the increased load
+		
+		loadhash ^= Zl[to][loads[from] - item]; // the old load
+		loadhash ^= Zl[to][loads[to]]; // the new load
+	    }
+	}
+
+
+    void rehash_loads_decreased_range(int item, int from, int to)
+	{
+	    if (from == to)
+	    {
+		loadhash ^= Zl[from][loads[from] + item]; // old load
+		loadhash ^= Zl[from][loads[from]]; // new load
+	    } else {
+		
+		// rehash loads in (from, to].
+		// here it is easy: the load on i changed from
+		// d->loads[i] to d->loads[i-1]
+		for (int i = from+1; i <= to; i++)
+		{
+		    loadhash ^= Zl[i][loads[i-1]]; // the old load on i
+		    loadhash ^= Zl[i][loads[i]]; // the new load on i
+		}
+		
+		// the first load is tricky
+		
+		loadhash ^= Zl[from][loads[to] + item]; // the old load
+		loadhash ^= Zl[from][loads[from]]; // the new load
+	    }
+	}
+
+    int assign_and_rehash(int item, int bin)
+	{
+	    loads[bin] += item;
+	    int from = sortloads_one_increased(bin);
+	    rehash_loads_increased_range(item,from,bin);
+	    return from;
+	}
+
+    void unassign_and_rehash(int item, int bin)
+	{
+	    loads[bin] -= item;
+	    int from = sortloads_one_decreased(bin);
+	    rehash_loads_decreased_range(item, bin, from);
+	}
+
+};
+
+class binconf: public loadconf {
 public:
     
-    std::array<uint8_t,BINS+1> loads = {};
     std::array<uint8_t,S+1> items = {};
     int _totalload = 0;
     // hash related properties
-    uint64_t loadhash;
-    uint64_t itemhash;
+    uint64_t itemhash = 0;
 
     int totalload() const
     {
@@ -137,11 +242,25 @@ public:
 	}
 	return total;
     }
+
+    void rehash_increased_range(int item, int from, int to)
+	{
+	    // rehash loads, then items
+	    rehash_loads_increased_range(item, from, to);
+	    itemhash ^= Zi[item][items[item]-1];
+	    itemhash ^= Zi[item][items[item]];
+	}
+
+    void rehash_decreased_range(int item, int from, int to)
+	{
+	    rehash_loads_decreased_range(item, from, to);
+	    itemhash ^= Zi[item][items[item]+1];
+	    itemhash ^= Zi[item][items[item]];
+	}
 };
 
 static_assert(S*BINS <= 255, "Error: you can have more than 255 items.");
 
-typedef struct binconf binconf;
 
 struct dp_hash_item {
     int8_t feasible;
@@ -174,10 +293,6 @@ typedef struct algorithm_vertex algorithm_vertex;
 
 class adv_outedge;
 class alg_outedge;
-
-/* rehash_increased_range and rehash_decreased_range defined in hash.hpp */
-void rehash_increased_range(binconf *d, int item, int from, int to);
-void rehash_decreased_range(binconf *d, int item, int from, int to);
 
 namespace std
 {
@@ -216,6 +331,10 @@ struct thread_attr {
 
     std::vector<std::array<uint8_t, BINS > > *oldtqueue;
     std::vector<std::array<uint8_t, BINS > > *newtqueue;
+
+    std::vector<loadconf> *oldloadqueue;
+    std::vector<loadconf> *newloadqueue;
+
    
     std::chrono::duration<long double> dynprog_time;
 
@@ -459,26 +578,6 @@ void sortloads(binconf *b)
     }
 }
 
-// sorts the loads with advice: the advice
-// being that only one load has increased, namely
-// at position newly_loaded
-
-// returns new position of the newly loaded bin
-int sortloads_one_increased(binconf *b, int newly_increased)
-{
-    int i, helper;
-    i = newly_increased;
-    while (!((i == 1) || (b->loads[i-1] >= b->loads[i])))
-    {
-	helper = b->loads[i-1];
-	b->loads[i-1] = b->loads[i];
-	b->loads[i] = helper;
-	i--;
-    }
-
-    return i;
-}
-
 // lower-level sortload (modifies array, counts from 0)
 int sortarray_one_increased(std::array<uint8_t, BINS>& array, int newly_increased)
 {
@@ -509,28 +608,12 @@ int sortarray_one_increased(int **array, int newly_increased)
     return i;
 }
 
-// inverse to sortloads_one_increased.
-int sortloads_one_decreased(binconf *b, int newly_decreased)
-{
-    int i, helper;
-    i = newly_decreased;
-    while (!((i == BINS) || (b->loads[i+1] <= b->loads[i])))
-    {
-	helper = b->loads[i+1];
-	b->loads[i+1] = b->loads[i];
-	b->loads[i] = helper;
-	i++;
-    }
-
-    return i;
-}
-
 int binconf::assign_item(int item, int bin)
 {
     loads[bin] += item;
     _totalload += item;
     items[item]++;
-    return sortloads_one_increased(this, bin);
+    return sortloads_one_increased(bin);
 }
 
 void binconf::unassign_item(int item, int bin)
@@ -538,7 +621,7 @@ void binconf::unassign_item(int item, int bin)
     loads[bin] -= item;
     _totalload -= item;
     items[item]--;
-    sortloads_one_decreased(this, bin);
+    sortloads_one_decreased(bin);
 }
 
 int binconf::assign_and_rehash(int item, int bin)
@@ -546,8 +629,8 @@ int binconf::assign_and_rehash(int item, int bin)
      loads[bin] += item;
     _totalload += item;
     items[item]++;
-    int from = sortloads_one_increased(this, bin);
-    rehash_increased_range(this,item,from,bin);
+    int from = sortloads_one_increased(bin);
+    rehash_increased_range(item,from,bin);
     return from;
 }
 
@@ -556,8 +639,8 @@ void binconf::unassign_and_rehash(int item, int bin)
     loads[bin] -= item;
     _totalload -= item;
     items[item]--;
-    int from = sortloads_one_decreased(this, bin);
-    rehash_decreased_range(this, item, bin, from);
+    int from = sortloads_one_decreased(bin);
+    rehash_decreased_range(item, bin, from);
 }
 
 // lower-level sortload_one_decreased (modifies array, counts from 0)
