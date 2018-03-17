@@ -47,7 +47,7 @@ const int ALPHA = (RMOD-S);
 const int BINS = 8;
 
 // bitwise length of indices of hash tables and lock tables
-const unsigned int HASHLOG = 30;
+const unsigned int HASHLOG = 28;
 const unsigned int BCLOG = 25;
 const unsigned int BUCKETLOG = 10;
 const unsigned int BESTMOVELOG = 25;
