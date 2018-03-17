@@ -123,12 +123,14 @@ int scheduler(adversary_vertex *sapling)
 
     // We create a copy of the sapling's bin configuration
     // which will be used as in-place memory for the algorithm.
-    binconf sapling_bc; 
-    
+    binconf sapling_bc;  
+    int m = 0;
     duplicate(&sapling_bc, sapling->bc);
     tat.last_item = sapling->last_item;
-
-    int m = 0;
+    
+#ifdef MEASURE
+    auto scheduler_start = std::chrono::system_clock::now();
+#endif
 #ifdef ONLY_ONE_PASS
     m = PASS;
 #endif
@@ -262,6 +264,7 @@ int scheduler(adversary_vertex *sapling)
 	    break;
 	} else {
 	    // we continue with higher generality
+
 	    clear_cache_of_ones();
 	    PROGRESS_PRINT("We remember %lu winning tasks.\n", winning_tasks.size());
 	}
@@ -269,10 +272,13 @@ int scheduler(adversary_vertex *sapling)
     
     dynprog_attr_free(&tat);
 
-#ifdef PROGRESS
-    fprintf(stderr, "End computation.\n");
+    PROGRESS_PRINT("End computation.\n");
+#ifdef MEASURE
+    auto scheduler_end = std::chrono::system_clock::now();
+    std::chrono::duration<long double> scheduler_time = scheduler_end - scheduler_start;
+    MEASURE_PRINT("Full evaluation time: %Lfs.\n", scheduler_time.count());
+    
 #endif
-
     return ret;
 }
 
