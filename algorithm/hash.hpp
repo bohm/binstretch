@@ -74,7 +74,7 @@ public:
 	    return _data == REMOVED;
 	}
 
-    inline bool remove()
+    inline void remove()
 	{
 	    _data = REMOVED;
 	}
@@ -111,7 +111,7 @@ public:
 	    return _hash == REMOVED;
 	}
 
-    inline bool remove()
+    inline void remove()
 	{
 	    _hash = REMOVED;
 	}
