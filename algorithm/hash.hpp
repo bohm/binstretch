@@ -205,6 +205,33 @@ void local_hashtable_init()
     }
 }
 
+void cache_measurements()
+{
+    uint64_t empty = 0, winning = 0, losing = 0, removed = 0;
+
+    for (uint64_t i = 0; i < HASHSIZE; i++)
+    {
+	if (ht[i].empty())
+	{
+	    empty++;
+	} else if (ht[i].removed())
+	{
+	    removed++;
+	} else if (ht[i].value() == 0)
+	{
+	    winning++;
+	} else if (ht[i].value() == 1)
+	{
+	    losing++;
+	}
+    }
+
+    uint64_t total = empty+winning+losing+removed;
+    assert(total == HASHSIZE);
+    fprintf(stderr, "Cache all: %" PRIu64 ", empty: %" PRIu64 ", removed: %" PRIu64 ", winning: %" PRIu64 ", losing: %" PRIu64 ".\n",
+	    total, empty, removed, winning, losing);
+}
+
 void clear_cache_of_ones()
 {
 

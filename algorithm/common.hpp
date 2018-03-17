@@ -28,7 +28,7 @@ typedef signed char tiny;
 #define MEASURE 1
 //#define TICKER 1
 
-#define ONLY_ONE_PASS 1
+//#define ONLY_ONE_PASS 1
 
 #ifdef ONLY_ONE_PASS
 const int PASS = 0;
@@ -73,7 +73,8 @@ const int TASK_DEPTH = 4;
 const int TICK_SLEEP = 200;
 // how many tasks are sufficient for the updater to run the main updater routine
 const int TICK_TASKS = 100;
-
+// the number of completed tasks after which the exploring thread reports progress
+const int PROGRESS_AFTER = 500;
 
 // end of configuration constants
 // ------------------------------------------------

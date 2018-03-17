@@ -67,6 +67,20 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
 	}
     } 
 
+    // Check cache here (after we have solved trivial cases).
+    // We only do this in exploration mode; while this could be also done
+    // when generating we want the whole lower bound tree to be generated.
+    
+    if (MODE == EXPLORING)
+    {
+	int conf_in_hashtable = is_conf_hashed(b, tat);
+	
+	if (conf_in_hashtable != -1)
+	{
+	    return conf_in_hashtable;
+	}
+    }
+    
     if (MODE == GENERATING)
     {
 	current_adversary = outat->last_adv_v;
@@ -272,7 +286,6 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 	    // initialize the adversary's next vertex in the tree (corresponding to d)
 	    adversary_vertex *analyzed_vertex;
 	    bool already_generated = false;
-	    bool found_in_cache = false;
 
 	    if (MODE == GENERATING)
 	    {
@@ -296,22 +309,8 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 		}
 	    }
 	    
-	    // Query the large hashtable about the new binconf.
-	    // We only do this in exploration mode; while this could be also done
-	    // when generating we want the whole lower bound tree to be generated.
 	    
-	    if (MODE == EXPLORING)
-	    {
-		int conf_in_hashtable = is_conf_hashed(b, tat);
-    
-		if (conf_in_hashtable != -1)
-		{
-		    found_in_cache = true;
-		    below = conf_in_hashtable;
-		}
-	    }
-	    
-	    if (!found_in_cache && !already_generated)
+	    if (!already_generated)
 	    {
 		if (MODE == GENERATING)
 		{

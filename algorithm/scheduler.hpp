@@ -47,7 +47,7 @@ void *evaluate_tasks(void * tid)
 	}
 	taskcounter++;
 
-	if(taskcounter % 1000 == 0) {
+	if(taskcounter % PROGRESS_AFTER == 0) {
 	   PROGRESS_PRINT("Thread %u takes up task number %" PRIu64 ": ", threadid, taskcounter);
 	   PROGRESS_PRINT_BINCONF(&current.bc);
 	}
@@ -248,7 +248,11 @@ int scheduler(adversary_vertex *sapling)
 
 	}
 	assert(ret != POSTPONED);
-	
+
+#ifdef MEASURE
+	cache_measurements();
+#endif	
+
 #ifdef ONLY_ONE_PASS
 	break;
 #endif
