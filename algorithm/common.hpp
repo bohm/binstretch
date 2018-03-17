@@ -28,7 +28,7 @@ typedef signed char tiny;
 #define MEASURE 1
 //#define TICKER 1
 
-//#define ONLY_ONE_PASS 1
+#define ONLY_ONE_PASS 1
 
 #ifdef ONLY_ONE_PASS
 const int PASS = 0;
