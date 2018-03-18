@@ -52,17 +52,22 @@ const unsigned int HASHLOG = 28;
 const unsigned int BCLOG = 25;
 const unsigned int BUCKETLOG = 10;
 const unsigned int BESTMOVELOG = 25;
+const unsigned int LOADLOG = 12;
+
 // size of the hash table
 
 const llu HASHSIZE = (1ULL<<HASHLOG);
 const llu BC_HASHSIZE = (1ULL<<BCLOG);
 const llu BESTMOVESIZE = (1ULL<<BESTMOVELOG);
+const llu LOADSIZE = (1ULL<<LOADLOG);
 
 // size of buckets -- how many locks there are (each lock serves a group of hashes)
 const llu BUCKETSIZE = (1ULL<<BUCKETLOG);
 
 // linear probing limit
 const int LINPROBE_LIMIT = 8;
+
+const int DEFAULT_DP_SIZE = 100000;
 
 // the number of threads
 const int THREADS = 8;
@@ -110,6 +115,18 @@ public:
 // being that only one load has increased, namely
 // at position newly_loaded
 
+    // (re)calculates the hash of b completely.
+    void hashinit()
+	{
+	    loadhash=0;
+	    
+	    for(int i=1; i<=BINS; i++)
+	    {
+		loadhash ^= Zl[i][loads[i]];
+	    }
+	}
+
+
 // returns new position of the newly loaded bin
     int sortloads_one_increased(int newly_increased)
 	{
@@ -133,6 +150,13 @@ public:
 		std::swap(loads[i], loads[i+1]);
 		i++;
 	    }
+
+	    //consistency check
+	    /*
+	    for (int j=2; j<=BINS; j++)
+	    {
+		assert(loads[j] <= loads[j-1]);
+		}*/
 	    
 	    return i;
 	}
@@ -140,6 +164,9 @@ public:
 
         void rehash_loads_increased_range(int item, int from, int to)
 	{
+	    assert(item >= 1); assert(from <= to); assert(from >= 1); assert(to <= BINS);
+	    assert(loads[from] >= item);
+	    
 	    if (from == to)
 	    {
 		loadhash ^= Zl[from][loads[from] - item]; // old load
@@ -165,6 +192,7 @@ public:
 
     void rehash_loads_decreased_range(int item, int from, int to)
 	{
+	    assert(item >= 1); assert(from <= to); assert(from >= 1); assert(to <= BINS);
 	    if (from == to)
 	    {
 		loadhash ^= Zl[from][loads[from] + item]; // old load
@@ -192,14 +220,33 @@ public:
 	    loads[bin] += item;
 	    int from = sortloads_one_increased(bin);
 	    rehash_loads_increased_range(item,from,bin);
+
+	    // consistency check
+	    /*
+	    uint64_t testhash = 0;
+	    for (int i=1; i<=BINS; i++)
+	    {
+		testhash ^= Zl[i][loads[i]];
+	    }
+	    assert(testhash == loadhash);
+	    */
 	    return from;
 	}
 
     void unassign_and_rehash(int item, int bin)
 	{
 	    loads[bin] -= item;
-	    int from = sortloads_one_decreased(bin);
-	    rehash_loads_decreased_range(item, bin, from);
+	    int to = sortloads_one_decreased(bin);
+	    rehash_loads_decreased_range(item, bin, to);
+
+	    // consistency check
+	    /*uint64_t testhash = 0;
+	    for (int i=1; i<=BINS; i++)
+	    {
+		testhash ^= Zl[i][loads[i]];
+	    }
+	    assert(testhash == loadhash);
+	    */
 	}
 
 };
@@ -226,7 +273,18 @@ public:
 	}
 	return total;
     }
-    
+
+    void hashinit()
+	{
+	    loadconf::hashinit();
+	    itemhash=0;
+	    
+	    for (int j=1; j<=S; j++)
+	    {
+		itemhash ^= Zi[j][items[j]];
+	    }
+	}
+
     int assign_item(int item, int bin);
     void unassign_item(int item, int bin);
 
@@ -335,7 +393,7 @@ struct thread_attr {
     std::vector<loadconf> *oldloadqueue;
     std::vector<loadconf> *newloadqueue;
 
-   
+    uint64_t *loadht;
     std::chrono::duration<long double> dynprog_time;
 
     int last_item = 1;
@@ -355,6 +413,7 @@ struct thread_attr {
     uint64_t dynprog_calls = 0;
     uint64_t bc_insertions = 0;
     uint64_t bc_hash_checks = 0;
+    uint64_t largest_queue_observed = 0;
 
 };
 
@@ -385,6 +444,7 @@ uint64_t total_bc_full_not_found = 0;
 uint64_t total_bc_hit = 0;
 uint64_t total_bc_miss = 0;
 
+uint64_t total_largest_queue = 0;
 
 pthread_mutex_t taskq_lock;
 

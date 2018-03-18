@@ -377,6 +377,8 @@ const auto bucketlockpart = logpart<BUCKETLOG>;
 const auto bclogpart = logpart<BCLOG>;
 const auto hashlogpart = logpart<HASHLOG>;
 
+const auto loadlogpart = logpart<LOADLOG>;
+
 // (re)calculates the hash of b completely.
 void hashinit(binconf *d)
 {
@@ -620,6 +622,19 @@ int8_t is_move_hashed(const binconf *d, int item, thread_attr *tat)
     return is_hashed<best_move_el>(bmc, bmc_hash, logpart<BESTMOVELOG>(bmc_hash), tat);
 }
 
+
+// checks for a load in the hash table used by dynprog_test_loadhash()
+// dumb/fast collision detection (treats them as non-found objects)
+bool loadconf_hashfind(uint64_t loadhash, thread_attr *tat)
+{
+    return (tat->loadht[loadlogpart(loadhash)] == loadhash);
+}
+
+// pushes into the hash table used by dynprog_test_loadhash.
+void loadconf_hashpush(uint64_t loadhash, thread_attr *tat)
+{
+    tat->loadht[loadlogpart(loadhash)] = loadhash;
+}
 // Checks if a number is in the dynamic programming hash.
 // Returns first bool (whether it is hashed) and the result (if it exists)
 std::pair<bool, dynprog_result> dp_hashed(const binconf* d, thread_attr *tat)

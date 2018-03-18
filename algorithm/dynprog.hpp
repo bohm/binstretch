@@ -4,6 +4,7 @@
 #include <chrono>
 #include <algorithm>
 #include <array>
+#include <cstring>
 
 #include "common.hpp"
 #include "fits.hpp"
@@ -11,10 +12,9 @@
 #include "hash.hpp"
 
 // which Test procedure are we using
-#define TEST dynprog_test_set
+#define TEST dynprog_test_loadhash
 
-
-void print_tuple(const int* tuple)
+void print_tuple(const std::array<uint8_t, BINS>& tuple)
 {
     fprintf(stderr, "(");
     bool first = true;
@@ -29,7 +29,6 @@ void print_tuple(const int* tuple)
     fprintf(stderr, ")\n");
 }
 
-#define DEFAULT_DP_SIZE 100000
 
 void dynprog_attr_init(thread_attr *tat)
 {
@@ -46,6 +45,8 @@ void dynprog_attr_init(thread_attr *tat)
     tat->oldloadqueue->reserve(DEFAULT_DP_SIZE);
     tat->newloadqueue = new std::vector<loadconf>();
     tat->newloadqueue->reserve(DEFAULT_DP_SIZE);
+
+    tat->loadht = new uint64_t[LOADSIZE];
 }
 
 void dynprog_attr_free(thread_attr *tat)
@@ -56,6 +57,7 @@ void dynprog_attr_free(thread_attr *tat)
     delete tat->newtqueue;
     delete tat->oldloadqueue;
     delete tat->newloadqueue;
+    delete tat->loadht;
 }
 
 // Sparse dynprog test which uses tuples directly (and does not encode/decode them)
@@ -70,11 +72,11 @@ dynprog_result dynprog_test_sorting(const binconf *conf, thread_attr *tat)
     pnewq = tat->newtqueue;
 
     dynprog_result ret;
-    ret.feasible = true;
+    //ret.feasible = false;
  
     int phase = 0;
 
-    for (int size=S; size>=1; size--)
+    for (int size=S; size>=3; size--)
     {
 	int k = conf->items[size];
 	while (k > 0)
@@ -119,7 +121,7 @@ dynprog_result dynprog_test_sorting(const binconf *conf, thread_attr *tat)
 			tuple[i] += size;
 			int newpos = sortarray_one_increased(tuple, i);
 			pnewq->push_back(tuple);
-			tuple[i] -= size;
+			tuple[newpos] -= size;
 			sortarray_one_decreased(tuple, newpos);
 		    }
 		}
@@ -136,11 +138,13 @@ dynprog_result dynprog_test_sorting(const binconf *conf, thread_attr *tat)
 	}
     }
 
+    //ret.feasible = true;
     //return ret;
     
     /* Heuristic: solve the cases of sizes 2 and 1 without generating new
        configurations. */
 
+   
     for (int i=0; i < poldq->size(); i++)
     {
 	std::array<uint8_t, BINS> tuple = (*poldq)[i];
@@ -169,10 +173,119 @@ dynprog_result dynprog_test_sorting(const binconf *conf, thread_attr *tat)
 	    return ret;
 	}
     }
+
     ret.feasible = false;
     return ret;
 }
 
+// Sparse dynprog test which uses tuples directly (and does not encode/decode them)
+dynprog_result dynprog_test_loadhash(const binconf *conf, thread_attr *tat)
+{
+    tat->newloadqueue->clear();
+    tat->oldloadqueue->clear();
+    std::vector<loadconf> *poldq;
+    std::vector<loadconf> *pnewq;
+
+    //std::unordered_set<uint64_t> hashset;
+    poldq = tat->oldloadqueue;
+    pnewq = tat->newloadqueue;
+
+    dynprog_result ret;
+ 
+    int phase = 0;
+
+    //empty the loadhash first
+    memset(tat->loadht, 0, LOADSIZE*8);
+
+    for (int size=S; size>=3; size--)
+    {
+	int k = conf->items[size];
+	while (k > 0)
+	{
+	    phase++;
+	    if (phase == 1) {
+
+		loadconf first;
+		for (int i = 1; i <= BINS; i++)
+		{
+		    first.loads[i] = 0;
+		}	
+		first.hashinit();
+		first.assign_and_rehash(size, 1);
+		pnewq->push_back(first);
+	    } else {
+#ifdef MEASURE
+		tat->largest_queue_observed = std::max(tat->largest_queue_observed, poldq->size());
+#endif
+		for (int q=0; q < poldq->size(); q++)
+		{
+		    loadconf tuple = (*poldq)[q];
+
+		    // try and place the item
+		    for (int i=1; i <= BINS; i++)
+		    {
+			// same as with Algorithm, we can skip when sequential bins have the same load
+			if (i > 1 && tuple.loads[i] == tuple.loads[i-1])
+			{
+			    continue;
+			}
+			
+			if (tuple.loads[i] + size > S) {
+			    continue;
+			}
+
+			int newpos = tuple.assign_and_rehash(size, i);
+			if(! loadconf_hashfind(tuple.loadhash, tat))
+			//if(hashset.find(tuple.loadhash) == hashset.end())
+			{
+			    pnewq->push_back(tuple);
+			    loadconf_hashpush(tuple.loadhash, tat);
+			    //hashset.insert(tuple.loadhash);
+			}
+
+		        tuple.unassign_and_rehash(size, newpos);
+		    }
+		}
+		if (pnewq->size() == 0) {
+		    ret.feasible = false;
+		    return ret;
+		}
+	    }
+
+	    //hashset.clear();
+	    std::swap(poldq, pnewq);
+	    pnewq->clear();
+	    k--;
+	}
+    }
+
+    /* Heuristic: solve the cases of sizes 2 and 1 without generating new
+       configurations. */
+
+    for (int q=0; q < poldq->size(); q++)
+    {
+	const loadconf& tuple = (*poldq)[q];
+	int free_size = 0, free_for_twos = 0;
+	for (int i=1; i<=BINS; i++)
+	{
+	    free_size += (S - tuple.loads[i]);
+	    free_for_twos += (S - tuple.loads[i])/2;
+	}
+	
+	if ( free_size < conf->items[1] + 2*conf->items[2])
+	{
+	    continue;
+	}
+	if (free_for_twos >= conf->items[2])
+	{
+	    ret.feasible = true;
+	    return ret;
+	}
+    }
+    
+    ret.feasible = false;
+    return ret;
+}
 // Sparse dynprog test which uses tuples directly (and does not encode/decode them)
 dynprog_result dynprog_test_set(const binconf *conf, thread_attr *tat)
 {
@@ -194,7 +307,7 @@ dynprog_result dynprog_test_set(const binconf *conf, thread_attr *tat)
     dynprog_result ret;
     ret.feasible = false;
     
-    for (int size=S; size>2; size--)
+    for (int size=S; size>=3; size--)
     {
 	int k = conf->items[size];
 	while (k > 0)
@@ -238,7 +351,7 @@ dynprog_result dynprog_test_set(const binconf *conf, thread_attr *tat)
 			    tuple[i] += size;
 			    int newpos = sortarray_one_increased(tuple, i);
 			    pnewq->insert(tuple);
-			    tuple[i] -= size;
+			    tuple[newpos] -= size;
 			    sortarray_one_decreased(tuple, newpos);
 			}
 		    }
@@ -307,7 +420,16 @@ dynprog_result hash_and_test(binconf *h, int item, thread_attr *tat)
 	DEEP_DEBUG_PRINT("Nothing found in dynprog cache for hash %llu.\n", h->itemhash);
 	ret = TEST(h, tat);
 	// temporary sanity check
-	//assert(ret.feasible == sparse_dynprog_test3(h,tat));
+	/*bool loadhash = dynprog_test_loadhash(h,tat).feasible;
+	bool set = dynprog_test_set(h,tat).feasible;
+	if(loadhash != set)
+	{
+	    bool sorting = dynprog_test_sorting(h,tat).feasible;
+	    
+	    fprintf(stderr, "The following binconf gives %d for loadhash, %d for sorting and %d for set:\n", loadhash, sorting, set);
+	    print_binconf_stream(stderr, h);
+	    assert(loadhash == set && loadhash == sorting);
+	    }*/
 	DEEP_DEBUG_PRINT("Pushing dynprog value %d for hash %llu.\n", ret.feasible, h->itemhash);
 	dp_hashpush(h,ret, tat);
     }
