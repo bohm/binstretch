@@ -116,7 +116,6 @@ int scheduler(adversary_vertex *sapling)
     unsigned int ids[THREADS];
     int rc;
     bool stop = false;
-    bool update_complete = false;
     unsigned int collected_no = 0;
     int ret;
 // initialize dp tables for the main thread

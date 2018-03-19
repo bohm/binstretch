@@ -92,7 +92,7 @@ dynprog_result dynprog_test_sorting(const binconf *conf, thread_attr *tat)
 		first[0] = size;
 		pnewq->push_back(first);
 	    } else {
-		for(int i=0; i < poldq->size(); i++)
+		for (unsigned int i=0; i < poldq->size(); i++)
 		{
 		    std::array<uint8_t, BINS> tuple = (*poldq)[i];
 
@@ -145,7 +145,7 @@ dynprog_result dynprog_test_sorting(const binconf *conf, thread_attr *tat)
        configurations. */
 
    
-    for (int i=0; i < poldq->size(); i++)
+    for (unsigned int i=0; i < poldq->size(); i++)
     {
 	std::array<uint8_t, BINS> tuple = (*poldq)[i];
 	// Instead of having a global array of feasibilities, we now sort the poldq array.
@@ -217,9 +217,9 @@ dynprog_result dynprog_test_loadhash(const binconf *conf, thread_attr *tat)
 #ifdef MEASURE
 		tat->largest_queue_observed = std::max(tat->largest_queue_observed, poldq->size());
 #endif
-		for (int q=0; q < poldq->size(); q++)
+		for (loadconf& tuple: *poldq)
 		{
-		    loadconf tuple = (*poldq)[q];
+		    //loadconf tuple = tupleit;
 
 		    // try and place the item
 		    for (int i=1; i <= BINS; i++)
@@ -262,9 +262,8 @@ dynprog_result dynprog_test_loadhash(const binconf *conf, thread_attr *tat)
     /* Heuristic: solve the cases of sizes 2 and 1 without generating new
        configurations. */
 
-    for (int q=0; q < poldq->size(); q++)
+    for (const loadconf& tuple: *poldq)
     {
-	const loadconf& tuple = (*poldq)[q];
 	int free_size = 0, free_for_twos = 0;
 	for (int i=1; i<=BINS; i++)
 	{
@@ -294,15 +293,7 @@ dynprog_result dynprog_test_set(const binconf *conf, thread_attr *tat)
     poldq->clear();
     pnewq->clear();
 
-    int phase = 0, lastsize = 0;
-
-    for (int size=S; size>=1; size--)
-    {
-	if (conf->items[size] > 0)
-	{
-	    lastsize = size;
-	}
-    }
+    int phase = 0;
 
     dynprog_result ret;
     ret.feasible = false;
@@ -322,15 +313,6 @@ dynprog_result dynprog_test_set(const binconf *conf, thread_attr *tat)
 		}
 		first[0] = size;
 		pnewq->insert(first);
-
-		// not using largest_sendable right now
-		/* if (size == lastsize && k == 1)
-		{
-		    for (int i = 0; i < BINS; i++)
-		    {
-			ret.largest_sendable[i] = S - first[i];
-		    }
-		    }*/
 	    } else {
 		for (const auto& tupleit: *poldq)
 		{
@@ -406,7 +388,6 @@ dynprog_result hash_and_test(binconf *h, int item, thread_attr *tat)
 #endif
 
     dynprog_result ret;
-    int hashedvalue;
     
     h->items[item]++;
     dp_rehash(h,item);
@@ -414,22 +395,15 @@ dynprog_result hash_and_test(binconf *h, int item, thread_attr *tat)
     std::pair<bool, dynprog_result> hash_check = dp_hashed(h, tat);
     if (hash_check.first)
     {
-	DEEP_DEBUG_PRINT("Found a cached value of hash %llu in dynprog instance: %d.\n", h->itemhash, hashedvalue);
 	ret = hash_check.second;
     } else {
 	DEEP_DEBUG_PRINT("Nothing found in dynprog cache for hash %llu.\n", h->itemhash);
 	ret = TEST(h, tat);
-	// temporary sanity check
-	/*bool loadhash = dynprog_test_loadhash(h,tat).feasible;
-	bool set = dynprog_test_set(h,tat).feasible;
-	if(loadhash != set)
-	{
-	    bool sorting = dynprog_test_sorting(h,tat).feasible;
-	    
-	    fprintf(stderr, "The following binconf gives %d for loadhash, %d for sorting and %d for set:\n", loadhash, sorting, set);
-	    print_binconf_stream(stderr, h);
-	    assert(loadhash == set && loadhash == sorting);
-	    }*/
+	// consistency check
+	//bool loadhash = dynprog_test_loadhash(h,tat).feasible;
+	//bool set = dynprog_test_set(h,tat).feasible;
+	//bool sorting = dynprog_test_sorting(h,tat).feasible;
+	//assert(loadhash == set && set == sorting);
 	DEEP_DEBUG_PRINT("Pushing dynprog value %d for hash %llu.\n", ret.feasible, h->itemhash);
 	dp_hashpush(h,ret, tat);
     }

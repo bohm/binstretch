@@ -52,7 +52,7 @@ const unsigned int HASHLOG = 28;
 const unsigned int BCLOG = 25;
 const unsigned int BUCKETLOG = 10;
 const unsigned int BESTMOVELOG = 25;
-const unsigned int LOADLOG = 12;
+const unsigned int LOADLOG = 10;
 
 // size of the hash table
 
@@ -65,7 +65,7 @@ const llu LOADSIZE = (1ULL<<LOADLOG);
 const llu BUCKETSIZE = (1ULL<<BUCKETLOG);
 
 // linear probing limit
-const int LINPROBE_LIMIT = 8;
+const int LINPROBE_LIMIT = 16;
 
 const int DEFAULT_DP_SIZE = 100000;
 
@@ -128,9 +128,9 @@ public:
 
 
 // returns new position of the newly loaded bin
-    int sortloads_one_increased(int newly_increased)
+    int sortloads_one_increased(int i)
 	{
-	    int i = newly_increased;
+	    //int i = newly_increased;
 	    while (!((i == 1) || (loads[i-1] >= loads[i])))
 	    {
 		std::swap(loads[i], loads[i-1]);
@@ -141,10 +141,9 @@ public:
 	}
 
 // inverse to sortloads_one_increased.
-    int sortloads_one_decreased(int newly_decreased)
+    int sortloads_one_decreased(int i)
 	{
-	    int i, helper;
-	    i = newly_decreased;
+	    //int i = newly_decreased;
 	    while (!((i == BINS) || (loads[i+1] <= loads[i])))
 	    {
 		std::swap(loads[i], loads[i+1]);

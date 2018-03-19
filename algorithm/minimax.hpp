@@ -118,7 +118,6 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
     // finds the maximum feasible item that can be added using dyn. prog.
     std::pair<int, dynprog_result> dp = maximum_feasible_dynprog(b, tat);
     int maximum_feasible = dp.first;
-    bool result_determined = false; // can be determined even when postponed branches are present
     int below = 1;
     int r = 1;
     DEEP_DEBUG_PRINT("Trying player zero choices, with maxload starting at %d\n", maximum_feasible);
@@ -165,7 +164,6 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
 	
 	if (below == 0)
 	{
-	    result_determined = true;
 	    r = 0;
 	    
 	    if (MODE == GENERATING)
@@ -206,8 +204,6 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
 }
 
 template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat, tree_attr *outat) {
-
-    bool building_tree = false;
 
     algorithm_vertex* current_algorithm = NULL;
     adversary_vertex* previous_adversary = NULL;
@@ -298,7 +294,7 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 		{
 		    analyzed_vertex = new adversary_vertex(b, depth, tat->last_item);
 		    // create new edge
-		    alg_outedge* new_edge = new alg_outedge(current_algorithm, analyzed_vertex);
+		    new alg_outedge(current_algorithm, analyzed_vertex);
 		    // add to generated_graph
 		    generated_graph[b->loadhash ^ b->itemhash] = analyzed_vertex;
 		} else {
@@ -306,7 +302,7 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 		    analyzed_vertex = it->second;
 		    
 		    // create new edge
-    		    alg_outedge* new_edge = new alg_outedge(current_algorithm, analyzed_vertex);
+    		    new alg_outedge(current_algorithm, analyzed_vertex);
 		    below = it->second->value;
 		}
 	    }

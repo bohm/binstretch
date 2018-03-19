@@ -503,7 +503,6 @@ template <class T> void hashpush(T* hashtable, T item, uint64_t logpart, thread_
     //assert(posvalue == 0 || posvalue == 1);
     //uint64_t bchash = d->itemhash ^ d->loadhash;
 
-    uint64_t hash = item.hash();
     uint64_t blp = bucketlockpart(item.hash());
     uint64_t position = logpart;
     
