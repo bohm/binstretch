@@ -124,7 +124,7 @@ conf_el *ht;
 // a hash table for best moves for the algorithm (so far)
 best_move_el *bmc;
 
-pthread_mutex_t *bucketlock;
+pthread_rwlock_t *bucketlock;
 pthread_mutex_t *dpbucketlock;
 
 // hash table for dynamic programming calls / feasibility checks
@@ -272,14 +272,14 @@ void bc_hashtable_clear()
 
 void bucketlock_init()
 {
-    bucketlock = (pthread_mutex_t *) malloc(BUCKETSIZE * sizeof(pthread_mutex_t));
+    bucketlock = (pthread_rwlock_t *) malloc(BUCKETSIZE * sizeof(pthread_rwlock_t));
     dpbucketlock = (pthread_mutex_t *) malloc(BUCKETSIZE * sizeof(pthread_mutex_t));
 
     assert(bucketlock != NULL);
     assert(dpbucketlock != NULL);
     for (llu i =0; i < BUCKETSIZE; i++)
     {
-        pthread_mutex_init(&bucketlock[i], NULL);
+        pthread_rwlock_init(&bucketlock[i], NULL);
 	pthread_mutex_init(&dpbucketlock[i], NULL);
     }
 }
@@ -458,7 +458,7 @@ template<class T, int PROBE_LIMIT>int8_t is_hashed(T *hashtable, uint64_t hash, 
     // slight hack here: in theory, just looking a few indices ahead might look into the next bucket lock
     // TODO: Fix that.
     
-    pthread_mutex_lock(&bucketlock[blp]); // LOCK
+    pthread_rwlock_rdlock(&bucketlock[blp]); // LOCK
 
     for( int i=0; i< PROBE_LIMIT; i++)
     {
@@ -487,7 +487,7 @@ template<class T, int PROBE_LIMIT>int8_t is_hashed(T *hashtable, uint64_t hash, 
 #endif
     }
  
-    pthread_mutex_unlock(&bucketlock[blp]); // UNLOCK
+    pthread_rwlock_unlock(&bucketlock[blp]); // UNLOCK
 
 #ifdef MEASURE
     if (posvalue != -1)
@@ -510,7 +510,7 @@ template <class T, int PROBE_LIMIT> void hashpush(T* hashtable, T item, uint64_t
     uint64_t blp = bucketlockpart(item.hash());
     uint64_t position = logpart;
     
-    pthread_mutex_lock(&bucketlock[blp]); //LOCK
+    pthread_rwlock_wrlock(&bucketlock[blp]); //LOCK
     bool found_a_spot = false;
     for (int i=0; i< PROBE_LIMIT; i++)
     {
@@ -535,7 +535,7 @@ template <class T, int PROBE_LIMIT> void hashpush(T* hashtable, T item, uint64_t
 	hashtable[position + offset] = item;
     }
     
-    pthread_mutex_unlock(&bucketlock[blp]); // UNLOCK
+    pthread_rwlock_unlock(&bucketlock[blp]); // UNLOCK
     
 #ifdef DEEP_DEBUG
     DEEP_DEBUG_PRINT("Hashing the following position with value %d:\n", posvalue);
@@ -555,7 +555,7 @@ template <class T, int PROBE_LIMIT> void hashremove(T* hashtable, uint64_t hash,
     // slight hack here: in theory, just looking a few indices ahead might look into the next bucket lock
     // TODO: Fix that.
     
-    pthread_mutex_lock(&bucketlock[blp]); // LOCK
+    pthread_rwlock_wrlock(&bucketlock[blp]); // LOCK
 
     for( int i=0; i< PROBE_LIMIT; i++)
     {
@@ -578,7 +578,7 @@ template <class T, int PROBE_LIMIT> void hashremove(T* hashtable, uint64_t hash,
 
     }
  
-    pthread_mutex_unlock(&bucketlock[blp]); // UNLOCK
+    pthread_rwlock_unlock(&bucketlock[blp]); // UNLOCK
 }
 
 

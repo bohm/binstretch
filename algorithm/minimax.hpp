@@ -31,7 +31,7 @@ int time_stats(thread_attr *tat)
 	auto iter_time = cur - tat->eval_start;
 	if (iter_time >= THRESHOLD && tat->expansion_depth <= (MAX_EXPANSION-1))
 	{
-	    fprintf(stderr, "Setting overdue to true with depth %d\n", tat->expansion_depth);
+	    //fprintf(stderr, "Setting overdue to true with depth %d\n", tat->expansion_depth);
 	    tat->overdue_tasks++;
 #ifdef OVERDUES
 	    tat->current_overdue = true;
@@ -521,15 +521,15 @@ int generate(binconf *start, thread_attr *tat, adversary_vertex *start_vert)
 // wrapper for expansion of a task into multiple tasks
 int expand(adversary_vertex *overdue_task)
 {
-    fprintf(stderr, "Expanding task: " );
-    print_binconf_stream(stderr, overdue_task->bc);
+    //fprintf(stderr, "Expanding task: " );
+    //print_binconf_stream(stderr, overdue_task->bc);
 
     assert(overdue_task->task);
     overdue_task->task = false;
     overdue_task->expansion_depth++;
     expansion_root = overdue_task;
 
-    fprintf(stderr, "Current taskmap depth: %d,  size: %lu\n", overdue_task->expansion_depth, tm.size());
+    //fprintf(stderr, "Current taskmap depth: %d,  size: %lu\n", overdue_task->expansion_depth, tm.size());
 
 
     thread_attr tat; 
@@ -541,7 +541,7 @@ int expand(adversary_vertex *overdue_task)
     tat.expansion_depth = overdue_task->expansion_depth;
 
     int ret = adversary<EXPANDING>(expansion_root->bc, expansion_root->depth, &tat, &outat);
-    fprintf(stderr, "New taskmap size: %lu\n", tm.size());
+    //fprintf(stderr, "New taskmap size: %lu\n", tm.size());
     dynprog_attr_free(&tat);
     return ret;
 }

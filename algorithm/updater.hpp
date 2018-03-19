@@ -57,7 +57,7 @@ int update(adversary_vertex *v)
 
 	if (result == OVERDUE)
 	{
-	    fprintf(stderr, "Overdue task found during update.\n");
+	    //fprintf(stderr, "Overdue task found during update.\n");
 	    result = expand(v);
 	}
 	

@@ -50,22 +50,26 @@ void *evaluate_tasks(void * tid)
 	    call_to_terminate = global_terminate_flag;
 	    continue;
 	}
-	taskcounter++;
-
-	if(taskcounter % PROGRESS_AFTER == 0) {
-	   PROGRESS_PRINT("Thread %u takes up task number %" PRIu64 ": ", threadid, taskcounter);
-	   PROGRESS_PRINT_BINCONF(&current.bc);
-	}
-
 	tat.last_item = current.last_item;
 	tat.expansion_depth = current.expansion_depth;
 	int ret;
 	ret = explore(&(current.bc), &tat);
 
+	if (ret == 0 || ret == 1)
+	{
+	    taskcounter++;
+	    if(taskcounter % PROGRESS_AFTER == 0) {
+		PROGRESS_PRINT("Thread %u completes task number %" PRIu64 ", %lu remain: ", threadid, taskcounter, tm.size());
+		PROGRESS_PRINT_BINCONF(&current.bc);
+	    }
+	}
+
+
+
 	if (ret == OVERDUE)
 	{
-	    fprintf(stderr, "Task is overdue: ");
-	    print_binconf_stream(stderr, &(current.bc));
+	    //fprintf(stderr, "Task is overdue: ");
+	    //print_binconf_stream(stderr, &(current.bc));
 	}
 	if (ret != TERMINATING)
 	{
