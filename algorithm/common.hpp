@@ -28,7 +28,7 @@ typedef signed char tiny;
 #define OUTPUT 1
 #define MEASURE 1
 //#define TICKER 1
-
+//#define GOOD_MOVES 1
 #define ONLY_ONE_PASS 1
 
 #ifdef ONLY_ONE_PASS
@@ -52,7 +52,7 @@ const unsigned int HASHLOG = 28;
 const unsigned int BCLOG = 25;
 const unsigned int BUCKETLOG = 10;
 const unsigned int BESTMOVELOG = 25;
-const unsigned int LOADLOG = 10;
+const unsigned int LOADLOG = 12;
 
 // size of the hash table
 
@@ -66,6 +66,7 @@ const llu BUCKETSIZE = (1ULL<<BUCKETLOG);
 
 // linear probing limit
 const int LINPROBE_LIMIT = 16;
+const int BMC_LIMIT = 2;
 
 const int DEFAULT_DP_SIZE = 100000;
 
@@ -81,6 +82,9 @@ const int TICK_SLEEP = 200;
 const int TICK_TASKS = 100;
 // the number of completed tasks after which the exploring thread reports progress
 const int PROGRESS_AFTER = 500;
+
+// a threshold for a task becoming overdue
+const std::chrono::seconds THRESHOLD = std::chrono::seconds(5);
 
 // end of configuration constants
 // ------------------------------------------------
@@ -414,6 +418,9 @@ struct thread_attr {
     uint64_t bc_hash_checks = 0;
     uint64_t largest_queue_observed = 0;
 
+    std::chrono::time_point<std::chrono::system_clock> eval_start;
+    bool current_overdue = false;
+    uint64_t overdue_tasks = 0;
 };
 
 typedef struct thread_attr thread_attr;
@@ -444,6 +451,8 @@ uint64_t total_bc_hit = 0;
 uint64_t total_bc_miss = 0;
 
 uint64_t total_largest_queue = 0;
+
+uint64_t total_overdue_tasks = 0;
 
 pthread_mutex_t taskq_lock;
 

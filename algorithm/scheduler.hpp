@@ -100,6 +100,9 @@ void *evaluate_tasks(void * tid)
     total_bc_hash_checks += tat.bc_hash_checks;
 
     total_largest_queue = std::max(total_largest_queue, tat.largest_queue_observed);
+
+    total_overdue_tasks += tat.overdue_tasks;
+
     //MEASURE_PRINT("Binarray size %d, oldqueue capacity %" PRIu64 ", newqueue capacity %" PRIu64 ".\n", BINARRAY_SIZE, tat.oldqueue->capacity(), tat.newqueue->capacity());
 #endif
     pthread_mutex_unlock(&thread_progress_lock);

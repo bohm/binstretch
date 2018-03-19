@@ -85,7 +85,11 @@ public:
 	{
 	}
     
-    best_move_el(uint64_t hash, int8_t move) : _hash(hash), _move(move) {}
+    best_move_el(uint64_t hash, int8_t move)
+	{
+	    _hash = hash;
+	    _move = move;
+	}
    
     inline int8_t value() const
 	{
@@ -443,7 +447,7 @@ void dp_unhash(binconf *d, int dynitem)
 
 /* Checks if an element is hashed, returns -1 (not hashed)
    or VALUE if it is. */
-template<class T>int8_t is_hashed(T *hashtable, uint64_t hash, uint64_t logpart, thread_attr *tat)
+template<class T, int PROBE_LIMIT>int8_t is_hashed(T *hashtable, uint64_t hash, uint64_t logpart, thread_attr *tat)
 {
     //fprintf(stderr, "Bchash %" PRIu64 ", zero_last_bit %" PRIu64 " get_last_bit %" PRId8 " \n", bchash, zero_last_bit(bchash), get_last_bit(bchash));
 
@@ -456,7 +460,7 @@ template<class T>int8_t is_hashed(T *hashtable, uint64_t hash, uint64_t logpart,
     
     pthread_mutex_lock(&bucketlock[blp]); // LOCK
 
-    for( int i=0; i< LINPROBE_LIMIT; i++)
+    for( int i=0; i< PROBE_LIMIT; i++)
     {
 	const T& candidate = hashtable[logpart+i];
 	if (candidate.empty())
@@ -476,7 +480,7 @@ template<class T>int8_t is_hashed(T *hashtable, uint64_t hash, uint64_t logpart,
 	}
 
 #ifdef MEASURE
-	if (i == LINPROBE_LIMIT-1)
+	if (i == PROBE_LIMIT-1)
 	{
 	    tat->bc_full_not_found++;
 	}
@@ -495,7 +499,7 @@ template<class T>int8_t is_hashed(T *hashtable, uint64_t hash, uint64_t logpart,
     return posvalue;
 }
 
-template <class T> void hashpush(T* hashtable, T item, uint64_t logpart, thread_attr *tat)
+template <class T, int PROBE_LIMIT> void hashpush(T* hashtable, T item, uint64_t logpart, thread_attr *tat)
 {
 #ifdef MEASURE
     tat->bc_insertions++;
@@ -508,7 +512,7 @@ template <class T> void hashpush(T* hashtable, T item, uint64_t logpart, thread_
     
     pthread_mutex_lock(&bucketlock[blp]); //LOCK
     bool found_a_spot = false;
-    for (int i=0; i< LINPROBE_LIMIT; i++)
+    for (int i=0; i< PROBE_LIMIT; i++)
     {
 	T& candidate = hashtable[logpart+i];
 	if (candidate.empty() || candidate.removed())
@@ -527,7 +531,7 @@ template <class T> void hashpush(T* hashtable, T item, uint64_t logpart, thread_
     // if the cache is full, choose a random position
     if(!found_a_spot)
     {
-	int offset = rand() % LINPROBE_LIMIT;
+	int offset = rand() % PROBE_LIMIT;
 	hashtable[position + offset] = item;
     }
     
@@ -542,7 +546,7 @@ template <class T> void hashpush(T* hashtable, T item, uint64_t logpart, thread_
 
 
 // remove an element from the hash (the lazy way)
-template <class T> void hashremove(T* hashtable, uint64_t hash, uint64_t logpart, thread_attr *tat)
+template <class T, int PROBE_LIMIT> void hashremove(T* hashtable, uint64_t hash, uint64_t logpart, thread_attr *tat)
 {
 
     uint64_t blp = bucketlockpart(hash);
@@ -553,7 +557,7 @@ template <class T> void hashremove(T* hashtable, uint64_t hash, uint64_t logpart
     
     pthread_mutex_lock(&bucketlock[blp]); // LOCK
 
-    for( int i=0; i< LINPROBE_LIMIT; i++)
+    for( int i=0; i< PROBE_LIMIT; i++)
     {
 	T& candidate = hashtable[logpart+i];
 	if (candidate.empty())
@@ -588,7 +592,7 @@ void conf_hashpush(const binconf *d, int posvalue, thread_attr *tat)
 {
     uint64_t bchash = d->itemhash ^ d->loadhash;
     conf_el el(bchash, (uint64_t) posvalue);
-    hashpush<conf_el>(ht, el, hashlogpart(bchash), tat);
+    hashpush<conf_el, LINPROBE_LIMIT>(ht, el, hashlogpart(bchash), tat);
 }
 
 
@@ -598,7 +602,7 @@ int8_t is_conf_hashed(const binconf *d, thread_attr *tat)
     tat->bc_hash_checks++;
 #endif
     uint64_t bchash = zero_last_bit(d->itemhash ^ d->loadhash);
-    return is_hashed<conf_el>(ht, bchash, hashlogpart(bchash), tat);
+    return is_hashed<conf_el, LINPROBE_LIMIT>(ht, bchash, hashlogpart(bchash), tat);
 }
 
 /* Adds an element to an algorithm's best move cache. */
@@ -606,19 +610,19 @@ void bmc_hashpush(const binconf *d, int item, int8_t bin, thread_attr *tat)
 {
     uint64_t bmc_hash = d->itemhash ^ d->loadhash ^ Ai[item];
     best_move_el el(bmc_hash, bin);
-    hashpush<best_move_el>(bmc, el, logpart<BESTMOVELOG>(bmc_hash), tat);
+    hashpush<best_move_el, BMC_LIMIT>(bmc, el, logpart<BESTMOVELOG>(bmc_hash), tat);
 }
 
 void bmc_remove(const binconf *d, int item, thread_attr *tat)
 {
     uint64_t bmc_hash = d->itemhash ^ d->loadhash ^ Ai[item];
-    return hashremove<best_move_el>(bmc, bmc_hash, logpart<BESTMOVELOG>(bmc_hash), tat);
+    return hashremove<best_move_el, BMC_LIMIT>(bmc, bmc_hash, logpart<BESTMOVELOG>(bmc_hash), tat);
    
 }
 int8_t is_move_hashed(const binconf *d, int item, thread_attr *tat)
 {
     uint64_t bmc_hash = d->itemhash ^ d->loadhash ^ Ai[item];
-    return is_hashed<best_move_el>(bmc, bmc_hash, logpart<BESTMOVELOG>(bmc_hash), tat);
+    return is_hashed<best_move_el, BMC_LIMIT>(bmc, bmc_hash, logpart<BESTMOVELOG>(bmc_hash), tat);
 }
 
 

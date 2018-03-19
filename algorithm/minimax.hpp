@@ -20,6 +20,22 @@
 template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_attr *outat);
 template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat, tree_attr *outat);
 
+
+void time_stats(thread_attr *tat)
+{
+    if (!tat->current_overdue)
+    {
+	std::chrono::time_point<std::chrono::system_clock> cur = std::chrono::system_clock::now();
+
+	auto iter_time = cur - tat->eval_start;
+	if(iter_time >= THRESHOLD)
+	{
+	    tat->overdue_tasks++;
+	    tat->current_overdue = true;
+	}
+    }
+}
+
 /* return values: 0: player 1 cannot pack the sequence starting with binconf b
  * 1: player 1 can pack all possible sequences starting with b.
  * POSTPONED: a task has been generated for the parallel environment.
@@ -102,6 +118,10 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
 	tat->iterations++;
 	if (tat->iterations % 100 == 0)
 	{
+
+#ifdef MEASURE
+	    time_stats(tat);
+#endif
 	    if (global_terminate_flag)
 	    {
 		return TERMINATING;
@@ -232,20 +252,22 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 	return 1;
     }
 
+#ifdef GOOD_MOVES
     // check best move cache
     int8_t previously_good_move = -1;
     bool good_move_first = false;
-
+    bool good_move_eliminated = false;
 
     if (MODE == EXPLORING)
     {
-	//previously_good_move = is_move_hashed(b,k,tat);
+	previously_good_move = is_move_hashed(b,k,tat);
 	if (previously_good_move != -1)
 	{
-	    fprintf(stderr, "Previously good move is %" PRIi8 ".\n", previously_good_move);
+	    //fprintf(stderr, "Previously good move is %" PRIi8 ".\n", previously_good_move);
 	    good_move_first = true;
 	}
     }
+#endif
     
     int r = 0;
     int below = 0;
@@ -253,13 +275,15 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
     while(i <= BINS)
     {
 
+
+#ifdef GOOD_MOVES
 	// we do previously_good_move first, so we skip it on any subsequent run
 	if (MODE == EXPLORING && i == previously_good_move)
 	{
 	    assert(i != 1);
 	    i++; continue;
 	}
-	
+#endif	
 	// simply skip a step where two bins have the same load
 	// any such bins are sequential if we assume loads are sorted (and they should be)
 	if (i > 1 && b->loads[i] == b->loads[i-1])
@@ -267,12 +291,14 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 	    i++; continue;
 	}
 
+#ifdef GOOD_MOVES
 	// set i to be the good move for the first run of the while cycle
 	if (MODE == EXPLORING && good_move_first)
 	{
 	    assert(i == 1);
 	    i = previously_good_move;
 	}
+#endif	
 
 	if ((b->loads[i] + k < R))
 	{
@@ -352,27 +378,31 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 		    // assert(current_algorithm == NULL); // sanity check
 		}
 
+#ifdef GOOD_MOVES
 		if (MODE == EXPLORING)
 		{
 
                     // do not cache if the winning move is the first one -- we will try it first anyway
-		    /*if (i != 1 && !good_move_first)
+		    if (i != 1 && !good_move_first)
 		    {
 			bmc_hashpush(b, k, i, tat);
-			}*/
+		    }
 		}
+#endif
 		
 		return r;
 		
 	    } else if (below == 0)
 	    {
 
+#ifdef GOOD_MOVES
 		// good move turned out to be bad
-		/*if (MODE == EXPLORING && good_move_first)
+		if (MODE == EXPLORING && good_move_first)
 		{
 		    bmc_remove(b,k,tat);
+		    good_move_eliminated = true;
 		}
-		*/
+#endif		
 		// nothing needs to be currently done, the edge is already created
 	    } else if (below == POSTPONED)
 	    {
@@ -390,15 +420,19 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 	    // currently nothing done in generating mode either
 	}
 
-	// if we ran the good_move_first, we come back and try from the start
-	/* if (MODE == EXPLORING && good_move_first)
+#ifdef GOOD_MOVES
+        // if we ran the good_move_first, we come back and try from the start
+	if (MODE == EXPLORING && good_move_first && !good_move_eliminated)
 	{
 	    bmc_remove(b,k,tat);
 	    good_move_first = false;
 	    i = 1;
-	    } else { */
+	} else {
 	    i++;
-	    //}
+	}
+#else
+	i++;
+#endif
     }
 
     return r;
@@ -414,6 +448,8 @@ int explore(binconf *b, thread_attr *tat)
     //std::vector<uint64_t> first_pass;
     //dynprog_one_pass_init(b, &first_pass);
     //tat->previous_pass = &first_pass;
+    tat->eval_start = std::chrono::system_clock::now();
+    tat->current_overdue = false;
     int ret = adversary<EXPLORING>(b, 0, tat, outat);
     assert(ret != POSTPONED);
     
@@ -431,7 +467,6 @@ int generate(binconf *start, thread_attr *tat, adversary_vertex *start_vert)
     //std::vector<uint64_t> first_pass;
     //dynprog_one_pass_init(start, &first_pass);
     //tat->previous_pass = &first_pass;
-
     int ret = adversary<GENERATING>(start, start_vert->depth, tat, outat);
     delete outat;
     return ret;
