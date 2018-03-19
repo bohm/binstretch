@@ -30,6 +30,7 @@ typedef signed char tiny;
 //#define TICKER 1
 //#define GOOD_MOVES 1
 #define ONLY_ONE_PASS 1
+#define OVERDUES 1
 
 #ifdef ONLY_ONE_PASS
 const int PASS = 0;
@@ -45,14 +46,14 @@ const int RMOD = (R-1);
 const int ALPHA = (RMOD-S);
 
 // Change this number for the selected number of bins.
-const int BINS = 8;
+const int BINS = 9;
 
 // bitwise length of indices of hash tables and lock tables
-const unsigned int HASHLOG = 28;
+const unsigned int HASHLOG = 30;
 const unsigned int BCLOG = 25;
 const unsigned int BUCKETLOG = 10;
 const unsigned int BESTMOVELOG = 25;
-const unsigned int LOADLOG = 12;
+const unsigned int LOADLOG = 13;
 
 // size of the hash table
 
@@ -75,7 +76,7 @@ const int THREADS = 8;
 // a bound on total load of a configuration before we split it into a task
 const int TASK_LOAD = (S*BINS)/2;
 const int TASK_DEPTH = 4;
-
+const int EXPANSION_DEPTH = 3;
 // how much the updater thread sleeps (in milliseconds)
 const int TICK_SLEEP = 200;
 // how many tasks are sufficient for the updater to run the main updater routine
@@ -84,16 +85,19 @@ const int TICK_TASKS = 100;
 const int PROGRESS_AFTER = 500;
 
 // a threshold for a task becoming overdue
-const std::chrono::seconds THRESHOLD = std::chrono::seconds(5);
+const std::chrono::seconds THRESHOLD = std::chrono::seconds(8);
+const int MAX_EXPANSION = 3;
 
 // end of configuration constants
 // ------------------------------------------------
 
 #define POSTPONED 2
 #define TERMINATING 3
+#define OVERDUE 4
 
 #define GENERATING 1
 #define EXPLORING 2
+#define EXPANDING 3
 
 #define FULL 1
 #define MONOTONE 2
@@ -333,6 +337,7 @@ typedef struct dp_hash_item dp_hash_item;
 struct task {
     binconf bc;
     int last_item = 1;
+    int expansion_depth = 0;
 };
 
 typedef struct task task;
@@ -421,6 +426,10 @@ struct thread_attr {
     std::chrono::time_point<std::chrono::system_clock> eval_start;
     bool current_overdue = false;
     uint64_t overdue_tasks = 0;
+
+    int expansion_depth = 0;
+
+    uint64_t explore_roothash = 0;
 };
 
 typedef struct thread_attr thread_attr;
@@ -455,11 +464,15 @@ uint64_t total_largest_queue = 0;
 uint64_t total_overdue_tasks = 0;
 
 pthread_mutex_t taskq_lock;
-
+pthread_rwlock_t running_and_removed_lock;
 // global hash-like map of completed tasks (and their parents up to
 // the root)
 std::map<uint64_t, int> winning_tasks;
 std::map<uint64_t, int> losing_tasks;
+std::map<uint64_t, int> overdue_tasks;
+
+std::unordered_set<uint64_t> running_and_removed;
+
 
 // hash-like map of completed tasks, serving as output map for each
 // thread separately
@@ -612,6 +625,7 @@ void init_global_locks(void)
 	pthread_mutex_init(&collection_lock[i], NULL);
     }
 //    pthread_mutex_init(&treemap_lock, NULL);
+    pthread_rwlock_init(&running_and_removed_lock, NULL);
 
 }
 

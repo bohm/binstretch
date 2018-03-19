@@ -25,7 +25,7 @@ void *evaluate_tasks(void * tid)
     dynprog_attr_init(&tat);
     task current;
     //std::map<llu, task>::reverse_iterator task_it;
-    bool taskmap_empty = false;
+    bool taskmap_empty;
     bool call_to_terminate = false;
     auto thread_start = std::chrono::system_clock::now();
     DEBUG_PRINT("Thread %u started.\n", threadid);
@@ -33,6 +33,7 @@ void *evaluate_tasks(void * tid)
     call_to_terminate = global_terminate_flag;
     while(!call_to_terminate)
     {
+	taskmap_empty = false;
 	pthread_mutex_lock(&taskq_lock); // LOCK
 	if(tm.size() == 0)
 	{
@@ -42,8 +43,12 @@ void *evaluate_tasks(void * tid)
 	    tm.erase(tm.begin());
 	}
 	pthread_mutex_unlock(&taskq_lock); // UNLOCK
-	if (taskmap_empty) {
-	    break;
+	// more things could appear, so just sleep and wait for the global terminate flag
+	if (taskmap_empty)
+	{
+	    std::this_thread::sleep_for(std::chrono::milliseconds(TICK_SLEEP));
+	    call_to_terminate = global_terminate_flag;
+	    continue;
 	}
 	taskcounter++;
 
@@ -53,18 +58,21 @@ void *evaluate_tasks(void * tid)
 	}
 
 	tat.last_item = current.last_item;
+	tat.expansion_depth = current.expansion_depth;
 	int ret;
 	ret = explore(&(current.bc), &tat);
 
+	if (ret == OVERDUE)
+	{
+	    fprintf(stderr, "Task is overdue: ");
+	    print_binconf_stream(stderr, &(current.bc));
+	}
 	if (ret != TERMINATING)
 	{
-	    // add task to the completed_tasks map
+	    // add task to the completed_tasks map (might be OVERDUE)
 	    pthread_mutex_lock(&collection_lock[threadid]);
 	    completed_tasks[threadid].insert(std::pair<uint64_t, int>(current.bc.loadhash ^ current.bc.itemhash, ret));
 	    pthread_mutex_unlock(&collection_lock[threadid]);
-	    
-
-
 	    DEBUG_PRINT("THR%d: Finished task (value %d, last item %d) ", threadid, ret, current.last_item);
 	    DEBUG_PRINT_BINCONF(&(current.bc));
 	}
@@ -77,6 +85,7 @@ void *evaluate_tasks(void * tid)
 
     /* update global variables regarding this thread's performance */
     pthread_mutex_lock(&thread_progress_lock);
+    DEBUG_PRINT("Thread %d terminating.\n", threadid);
     thread_finished[threadid] = true;
     finished_task_count += taskcounter;
     time_spent += thread_end - thread_start;
@@ -120,7 +129,7 @@ int scheduler(adversary_vertex *sapling)
     int rc;
     bool stop = false;
     unsigned int collected_no = 0;
-    int ret;
+    int ret = POSTPONED;
 // initialize dp tables for the main thread
     thread_attr tat;
     dynprog_attr_init(&tat);
@@ -151,6 +160,8 @@ int scheduler(adversary_vertex *sapling)
 	pthread_mutex_unlock(&thread_progress_lock);
 
 	tm.clear();
+	running_and_removed.clear();
+	
 	purge_sapling(sapling);
 
 	// monotonicity = S;	
@@ -211,7 +222,7 @@ int scheduler(adversary_vertex *sapling)
 	    // collect tasks from worker threads
 	    collected_no += collect_tasks();
 	    // update main tree and task map
-	    bool should_do_update = (collected_no >= TICK_TASKS) || (tm.size() <= TICK_TASKS) || stop == true;
+	    bool should_do_update = ((collected_no >= TICK_TASKS) || (tm.size() <= TICK_TASKS)) && (ret == POSTPONED);
 	    if (should_do_update)
 	    {
 		collected_no = 0;
@@ -221,11 +232,16 @@ int scheduler(adversary_vertex *sapling)
 		uint64_t previously_removed = removed_task_count;
 #endif
 		clear_visited_bits();
+		//MEASURE_PRINT("Begin update, win: %lu, lose: %lu, overdue: %lu.\n",
+		//	      winning_tasks.size(), losing_tasks.size(), overdue_tasks.size());
+		
 		ret = update(sapling);
-
+		//MEASURE_PRINT("Update complete, result is %d\n", ret);
 		// clear losing tasks (all already collected tasks should be inside the tree)
+		// and overdue tasks (they should be made into tasks by now)
 		// we do not clear winning tasks because they will be useful for later iterations.
 		losing_tasks.clear();
+		overdue_tasks.clear();
 
 		if(ret != POSTPONED)
 		{
@@ -240,18 +256,14 @@ int scheduler(adversary_vertex *sapling)
 		    MEASURE_PRINT("Iteration time: %Lfs.\n", iter_time.count());
 #endif 
 
-//		DEBUG_PRINT("sanity check: ");
-//		DEBUG_PRINT_BINCONF(root);
 		// instead of breaking, signal a call to terminate to other threads
 		// and wait for them to finish up
                 // this lock can potentially be removed without a race condition
 		    pthread_mutex_lock(&thread_progress_lock);
 		    global_terminate_flag = true;
 		    pthread_mutex_unlock(&thread_progress_lock);
-		    break;
 		}
 	    }
-
 	}
 	assert(ret != POSTPONED);
 

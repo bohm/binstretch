@@ -51,6 +51,16 @@ int update(adversary_vertex *v)
     {
 	uint64_t hash = v->bc->itemhash ^ v->bc->loadhash;
 	result = completion_check(hash);
+	//fprintf(stderr, "Completion check:");
+	//print_binconf_stream(stderr, v->bc);
+        //fprintf(stderr, "Completion check result: %d\n", result);
+
+	if (result == OVERDUE)
+	{
+	    fprintf(stderr, "Overdue task found during update.\n");
+	    result = expand(v);
+	}
+	
     } else {
 	std::list<adv_outedge*>::iterator it = v->out.begin();
 	while ( it != v->out.end())

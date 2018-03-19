@@ -10,19 +10,27 @@ queue update code. */
 #ifndef _TASKS_H
 #define _TASKS_H 1
 
-/* Return true if a vertex might be a task for the parallel
-   computation. */
+// Return true if a vertex might be a task for the parallel
+// computation. Now works in two modes: GENERATING (starting generation) and EXPANDING
+// (expanding an overdue task).
 
-bool possible_task(adversary_vertex *v)
+template<int MODE> bool possible_task(adversary_vertex *v)
 {
 
-    int target_depth = computation_root->depth + TASK_DEPTH;
-
-    if (computation_root->depth >= 5)
+    int target_depth;
+    if (MODE == GENERATING)
     {
-	target_depth--;
+	target_depth = computation_root->depth + TASK_DEPTH;
+	
+	if (computation_root->depth >= 5)
+	{
+	    target_depth--;
+	}
+    } else //if (MODE == EXPANDING)
+    {
+	target_depth = expansion_root->depth + EXPANSION_DEPTH;
     }
-
+    
     assert(v->depth <= target_depth);
     if (target_depth - v->depth == 0)
     {
@@ -43,7 +51,7 @@ void add_task(const binconf *x, thread_attr *tat) {
     task newtask;
     duplicate(&(newtask.bc), x);
     newtask.last_item = tat->last_item;
-    
+    newtask.expansion_depth = tat->expansion_depth; 
     pthread_mutex_lock(&taskq_lock); // LOCK
     tm.insert(std::pair<llu, task>((x->loadhash ^ x->itemhash), newtask));
     pthread_mutex_unlock(&taskq_lock); // UNLOCK
@@ -61,6 +69,10 @@ void remove_task(llu hash)
 	DEBUG_PRINT("Erasing task: ");
 	DEBUG_PRINT_BINCONF(&(it->second.bc));
 	tm.erase(it);
+    } else {
+	pthread_rwlock_wrlock(&running_and_removed_lock);
+	running_and_removed.insert(it->first);
+	pthread_rwlock_unlock(&running_and_removed_lock);
     }
     pthread_mutex_unlock(&taskq_lock); // UNLOCK
 }
@@ -83,11 +95,18 @@ int completion_check(llu hash)
 	assert(ret == 1);
     }
 
-    fin = winning_tasks.find(hash);
-    if (fin != winning_tasks.end())
+    auto fin2 = winning_tasks.find(hash);
+    if (fin2 != winning_tasks.end())
     {
-	ret = fin->second;
+	ret = fin2->second;
 	assert(ret == 0);
+    }
+
+    auto fin3 = overdue_tasks.find(hash);
+    if (fin3 != overdue_tasks.end())
+    {
+	ret = fin3->second;
+	assert(ret == OVERDUE);
     }
 
     return ret;
@@ -107,8 +126,11 @@ unsigned int collect_tasks()
 	    if (kv.second == 0)
 	    {
 		winning_tasks.insert(kv);
-	    } else {
+	    } else if (kv.second == 1) {
 		losing_tasks.insert(kv);
+	    } else if (kv.second == OVERDUE)
+	    {
+		overdue_tasks.insert(kv);
 	    }
 	    collected++;
 	}

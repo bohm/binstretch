@@ -51,7 +51,8 @@ struct adversary_vertex {
     int last_item = 1;
     int value;
     uint64_t id;
-
+    int expansion_depth = 0;
+    
     adversary_vertex(const binconf *b, int depth, int last_item)
     {
 	this->bc = new binconf;
@@ -127,6 +128,8 @@ public:
 // the root of the current computation,
 // may differ from the actual root of the graph.
 adversary_vertex *computation_root;
+
+adversary_vertex *expansion_root;
 
 // a simple bool function, currently used in progress reporting
 // constant-time but assumes the bins are sorted (which they should be)
