@@ -24,6 +24,8 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 int time_stats(thread_attr *tat)
 {
     int ret = 0;
+    
+#ifdef OVERDUES
     if (!tat->current_overdue)
     {
 	std::chrono::time_point<std::chrono::system_clock> cur = std::chrono::system_clock::now();
@@ -33,12 +35,11 @@ int time_stats(thread_attr *tat)
 	{
 	    //fprintf(stderr, "Setting overdue to true with depth %d\n", tat->expansion_depth);
 	    tat->overdue_tasks++;
-#ifdef OVERDUES
 	    tat->current_overdue = true;
-#endif
 	}
     }
-
+#endif
+    
     pthread_rwlock_rdlock(&running_and_removed_lock);
     auto it = running_and_removed.find(tat->explore_roothash);
     if(it != running_and_removed.end())
@@ -140,10 +141,12 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
 	    }
 	    
 #endif
+#ifdef OVERDUES
 	    if (tat->current_overdue)
 	    {
 		return OVERDUE;
 	    }
+#endif
 	    if (global_terminate_flag)
 	    {
 		return TERMINATING;
@@ -272,10 +275,12 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 	    
 
 #endif
+#ifdef OVERDUE
 	    if (tat->current_overdue)
 	    {
 		return OVERDUE;
 	    }
+#endif
 	    if (global_terminate_flag)
 	    {
 		return TERMINATING;
