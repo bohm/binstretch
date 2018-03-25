@@ -65,13 +65,6 @@ void *evaluate_tasks(void * tid)
 	    }
 	}
 
-
-
-	if (ret == OVERDUE)
-	{
-	    //fprintf(stderr, "Task is overdue: ");
-	    //print_binconf_stream(stderr, &(current.bc));
-	}
 	if (ret != TERMINATING)
 	{
 	    // add task to the completed_tasks map (might be OVERDUE)
@@ -174,7 +167,6 @@ int scheduler(adversary_vertex *sapling)
 	
 	purge_sapling(sapling);
 
-	// monotonicity = S;	
 	monotonicity = m;
 	ret = generate(&sapling_bc, &tat, sapling);
 	sapling->value = ret;

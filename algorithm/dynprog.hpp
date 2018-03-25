@@ -11,7 +11,7 @@
 #include "measure.hpp"
 #include "hash.hpp"
 
-// which Test procedure are we using
+// which test procedure are we using
 #define TEST dynprog_test_loadhash
 
 void print_tuple(const std::array<uint8_t, BINS>& tuple)
