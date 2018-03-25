@@ -15,11 +15,13 @@
 
 // All functions return 1 if player 1 (algorithm) wins, -1 otherwise.
    
+const int GS1BOUND = (BINS-1)*S -ALPHA;
+
 int gs1(const binconf *b)
 {
     // sum of all but the last bin
     int sum = b->totalload() - b->loads[BINS];
-    if (sum >= ((BINS-1)*S - ALPHA))
+    if (sum >= GS1BOUND)
     {
 	return 1;
     }
@@ -28,31 +30,55 @@ int gs1(const binconf *b)
 
 
 // Experimental: A strange variant of GS1 where you add up sequential pairs of bins below 1 to have
-// load (S + ALPHA)/2 
+// load (S + ALPHA + 1 + load of the bigger one - load of the smaller one)
 int gs1mod(const binconf *b)
 {
-    int sum = 0, summand = 0;
+    int summand = 0;
     bool previous_below_alpha = false;
-    bool previous_paired = false;
+    bool previous_paired = true;
+
+    int sum_without_smallest_above_alpha = 0;
+
+    bool first_above_alpha = true;
     for (int i = BINS; i >=1; i--)
     {
-
+	// if all bins are below alpha, skip the biggest one instead
+	if (i == 0 && first_above_alpha)
+	{
+	    continue;
+	}
+	
 	if (previous_below_alpha && !previous_paired)
 	{
 	    if (b->loads[i] <= ALPHA)
 	    {
-		summand = (S+ALPHA + b->loads[i])/2;	
+		// you fit everything into i+1 until it does not fit, then the next item into i
+		summand = (S + ALPHA + 1) + b->loads[i] - b->loads[i+1];	
 	    } else {
-		summand = std::max( (int) (S+ALPHA)/2, (int) b->loads[i]);
+		// skip first bin above alpha
+		if (first_above_alpha)
+		{
+		    first_above_alpha = false;
+		    continue;
+		}
+		// you fit everything into the bin over ALPHA until it does not fit,
+		// then place the overload into the bin below alpha
+		summand = (S + ALPHA + 1);
 	    }
 	    
 	    previous_paired = true;
 	} else {
+	    // skip first bin above alpha
+	    if (first_above_alpha)
+	    {
+		first_above_alpha = false;
+		continue;
+	    }
 	    summand = b->loads[i];
 	    previous_paired = false;
 	}
 	
-	sum += summand;
+	sum_without_smallest_above_alpha += summand;
 	
 	if (b->loads[i] <= ALPHA)
 	{
@@ -63,11 +89,51 @@ int gs1mod(const binconf *b)
 
     }
 
-    sum -= b->loads[BINS];
-    if (sum >= ((BINS-1)*S - ALPHA))
+    if (sum_without_smallest_above_alpha >= GS1BOUND)
     {
 	return 1;
     }
+
+    previous_below_alpha = false;
+    previous_paired = true;
+    int sum_without_last = 0;
+    for (int i = BINS-1; i >=1; i--)
+    {
+	if (previous_below_alpha && !previous_paired)
+	{
+	    if (b->loads[i] <= ALPHA)
+	    {
+		// you fit everything into i+1 until it does not fit, then the next item into i
+		summand = (S + ALPHA + 1) + b->loads[i] - b->loads[i+1];	
+	    } else {
+		// you fit everything into the bin over ALPHA until it does not fit,
+		// then place the overload into the bin below alpha
+		summand = (S + ALPHA + 1);
+	    }
+	    
+	    previous_paired = true;
+	} else {
+	    // skip first bin above alpha
+	    summand = b->loads[i];
+	    previous_paired = false;
+	}
+	
+	sum_without_last += summand;
+	
+	if (b->loads[i] <= ALPHA)
+	{
+	    previous_below_alpha = true;
+	} else {
+	    previous_below_alpha = false;
+	}
+
+    }
+
+    if (sum_without_last >= GS1BOUND)
+    {
+	return 1;
+    }
+
     return -1;
 }
 
@@ -87,7 +153,7 @@ int gs2variant(const binconf *b)
     int sum_but_two = b->totalload() - b->loads[BINS] - b->loads[BINS-1];
 
     int current_sbt;
-    for (int i=1; i<=BINS; i++)
+    for (int i=BINS-2; i<=BINS; i++)
     {
 	/* First, modify the sum_but_two in the case that i is the second to last or last */
 	if (i == BINS-1 || i == BINS)
@@ -97,13 +163,89 @@ int gs2variant(const binconf *b)
 	    current_sbt = sum_but_two;
 	}
 
-	if (b->loads[i] <= ALPHA && current_sbt >= ( (BINS-2)*S - 2*ALPHA ) )
+	// the last -1 is due to granularity; for any sized item, the right side
+	// would be (BINS-2)*S - 2*ALPHA
+	if (b->loads[i] <= ALPHA && current_sbt >= ( (BINS-2)*S - 2*ALPHA -1 ) )
 	{
 	    return 1;
 	}
     }
 
     return -1;
+}
+
+// This should be a generalization of GS3.
+int gs3variant(const binconf *b)
+{
+     int sum_but_two = b->totalload() - b->loads[BINS] - b->loads[BINS-1];
+
+     int last_bin_load_req = GS1BOUND - sum_but_two;
+     if (last_bin_load_req > S+ALPHA)
+     {
+	 return -1;
+     }
+
+     assert(last_bin_load_req <= S+ALPHA);
+     int overflow = S + ALPHA - last_bin_load_req + 1;
+     if (b->loads[BINS-1] <= ALPHA && sum_but_two + overflow + b->loads[BINS-1] >= GS1BOUND)
+     {
+	 return 1;
+     }
+     else if (b->loads[BINS] <= ALPHA && sum_but_two + overflow + b->loads[BINS] >= GS1BOUND)
+     {
+	 return 1;
+     }
+     else
+     {
+	 return -1;
+     }
+}
+
+// A generalization of GS4 which works for general amount of bins.
+// It works slightly differently -- instead of fixed numbers, it tries to guess
+// the "virtual load" on BINS-2 and deduce the total gain from that.
+int gs4variant(const binconf *b)
+{
+    if (b->loads[BINS-1] > ALPHA)
+    {
+	return -1;
+    }
+    
+    int sum_but_two = b->totalload() - b->loads[BINS] - b->loads[BINS-1];
+    
+    int load_req = GS1BOUND - sum_but_two;
+    if (load_req > S+ALPHA)
+    {
+	return -1;
+    }
+    
+    // items of size [critical, S] trigger GS2 when placed into BINS-1.
+    int critical = load_req - b->loads[BINS-1];
+
+    // So an item of size < critical arrives which does not fit into bin BINS-2.
+    // For such an item: 
+    for (int item = 1; item < critical; item++)
+    {
+	// We have load >= S+ALPHA - item +1 on bin BINS-2
+	int virtual_lowerbound = S+ALPHA - item+1;
+	int virtual_gain = virtual_lowerbound - b->loads[BINS-2];
+	if (virtual_gain >= critical)
+	{
+	    continue;
+	} else {
+	    // how many times an item of size <= critical-1 fits on bin BINS
+	    // after we place one item of size "item" there
+	    int how_many = (S+ALPHA - b->loads[BINS] - item) / (critical-1);
+	    int virtual_on_last = b->loads[BINS] + item + how_many*item;
+	    if (virtual_gain + virtual_on_last + sum_but_two < GS1BOUND)
+	    {
+		return -1;
+	    }
+	}
+    }
+
+    // passed all cases, is a good situation
+    return 1;
 }
 
 int gs3(const binconf *b)
@@ -184,6 +326,17 @@ int testgs(const binconf *b)
     }
 
 
+    if( gs3variant(b) == 1)
+    {
+	return 1;
+    }
+
+    if( gs4variant(b) == 1)
+    {
+	//fprintf(stderr, "GS4 hit\n");
+	return 1;
+    }
+    
 // Apply the rest of the heuristics only with 3 bins and ALPHA >= 1/3
     if ((BINS == 3) && ((3*ALPHA) >= S))
     {

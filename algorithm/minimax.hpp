@@ -6,6 +6,7 @@
 #include "common.hpp"
 #include "tree.hpp"
 #include "hash.hpp"
+#include "caching.hpp"
 #include "fits.hpp"
 #include "dynprog.hpp"
 #include "measure.hpp"
@@ -236,7 +237,7 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
     }
 
     if (MODE == EXPLORING) {
-	conf_hashpush(b, r, tat);
+	conf_hashpush(b, r, depth, tat);
     }
 
     /* Sanity check. */
@@ -306,22 +307,32 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 	if (previously_good_move != -1)
 	{
 	    //fprintf(stderr, "Previously good move is %" PRIi8 ".\n", previously_good_move);
+	    assert(previously_good_move != 1);
 	    good_move_first = true;
 	}
     }
 #endif
-    
+
+#ifdef GOOD_MOVES
+    int8_t first_feasible = 0;
+#endif
+   
     int r = 0;
     int below = 0;
     int8_t i = 1;
+    
     while(i <= BINS)
     {
 
-
 #ifdef GOOD_MOVES
 	// we do previously_good_move first, so we skip it on any subsequent run
-	if (MODE == EXPLORING && i == previously_good_move)
+	if ((MODE == EXPLORING) && (i == previously_good_move))
 	{
+
+	    if( i == 1)
+	    {
+		fprintf(stderr, "%d %d", previously_good_move, i);
+	    }
 	    assert(i != 1);
 	    i++; continue;
 	}
@@ -340,10 +351,17 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 	    assert(i == 1);
 	    i = previously_good_move;
 	}
+
 #endif	
 
 	if ((b->loads[i] + k < R))
 	{
+#ifdef GOOD_MOVES
+	    if (first_feasible == 0)
+	    {
+		first_feasible = i;
+	    }
+#endif
 
 	    // editing binconf in place -- undoing changes later
 	    
@@ -427,8 +445,13 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 		if (MODE == EXPLORING)
 		{
 
+		    if (good_move_first)
+		    {
+			tat->good_move_hit++;
+		    }
+		    
                     // do not cache if the winning move is the first one -- we will try it first anyway
-		    if (i != 1 && !good_move_first)
+		    if (i != 1 && i != first_feasible && !good_move_first)
 		    {
 			bmc_hashpush(b, k, i, tat);
 		    }
@@ -446,6 +469,7 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 		{
 		    bmc_remove(b,k,tat);
 		    good_move_eliminated = true;
+		    tat->good_move_miss++;
 		}
 #endif		
 		// nothing needs to be currently done, the edge is already created
@@ -472,9 +496,14 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 
 #ifdef GOOD_MOVES
         // if we ran the good_move_first, we come back and try from the start
-	if (MODE == EXPLORING && good_move_first && !good_move_eliminated)
+	if (MODE == EXPLORING && good_move_first)
 	{
-	    bmc_remove(b,k,tat);
+	    if(!good_move_eliminated)
+	    {
+		tat->good_move_miss++;
+		bmc_remove(b,k,tat);
+		good_move_eliminated = true;
+	    }
 	    good_move_first = false;
 	    i = 1;
 	} else {

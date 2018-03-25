@@ -33,7 +33,9 @@ typedef signed char tiny;
 #define OVERDUES 1
 
 #ifdef ONLY_ONE_PASS
-const int PASS = 0;
+const int PASS = 1;
+#else
+const int FIRST_PASS = 0;
 #endif
 
 // maximum load of a bin in the optimal offline setting
@@ -46,12 +48,12 @@ const int RMOD = (R-1);
 const int ALPHA = (RMOD-S);
 
 // Change this number for the selected number of bins.
-const int BINS = 9;
+const int BINS = 8;
 
 // bitwise length of indices of hash tables and lock tables
-const unsigned int HASHLOG = 30;
+const unsigned int HASHLOG = 29;
 const unsigned int BCLOG = 25;
-const unsigned int BUCKETLOG = 10;
+const unsigned int BUCKETLOG = 15;
 const unsigned int BESTMOVELOG = 25;
 const unsigned int LOADLOG = 13;
 
@@ -66,7 +68,7 @@ const llu LOADSIZE = (1ULL<<LOADLOG);
 const llu BUCKETSIZE = (1ULL<<BUCKETLOG);
 
 // linear probing limit
-const int LINPROBE_LIMIT = 16;
+const int LINPROBE_LIMIT = 4;
 const int BMC_LIMIT = 2;
 
 const int DEFAULT_DP_SIZE = 100000;
@@ -86,7 +88,7 @@ const int PROGRESS_AFTER = 500;
 
 // a threshold for a task becoming overdue
 const std::chrono::seconds THRESHOLD = std::chrono::seconds(8);
-const int MAX_EXPANSION = 3;
+const int MAX_EXPANSION = 1;
 
 // end of configuration constants
 // ------------------------------------------------
@@ -423,6 +425,10 @@ struct thread_attr {
     uint64_t bc_hash_checks = 0;
     uint64_t largest_queue_observed = 0;
 
+#ifdef GOOD_MOVES
+    uint64_t good_move_hit = 0;
+    uint64_t good_move_miss = 0;
+#endif
     std::chrono::time_point<std::chrono::system_clock> eval_start;
     bool current_overdue = false;
     uint64_t overdue_tasks = 0;
@@ -462,6 +468,11 @@ uint64_t total_bc_miss = 0;
 uint64_t total_largest_queue = 0;
 
 uint64_t total_overdue_tasks = 0;
+
+#ifdef GOOD_MOVES
+uint64_t total_good_move_miss = 0;
+uint64_t total_good_move_hit = 0;
+#endif
 
 pthread_mutex_t taskq_lock;
 pthread_rwlock_t running_and_removed_lock;
@@ -615,6 +626,15 @@ void print_binconf_stream(FILE* stream, const binconf* b)
 #define PROGRESS_PRINT(format,...)
 #define PROGRESS_PRINT_BINCONF(x)
 #endif
+
+#ifdef GOOD_MOVES
+#define GOOD_MOVES_PRINT(...) fprintf(stderr,  __VA_ARGS__ )
+#define GOOD_MOVES_PRINT_BINCONF(x) print_binconf_stream(stderr, x)
+#else
+#define GOOD_MOVES_PRINT(format,...)
+#define GOOD_MOVES_PRINT_BINCONF(x)
+#endif
+
 
 void init_global_locks(void)
 {

@@ -10,6 +10,7 @@
 #include "tree.hpp"
 #include "minimax.hpp"
 #include "hash.hpp"
+#include "caching.hpp"
 #include "updater.hpp"
 #include "measure.hpp"
 
@@ -115,7 +116,10 @@ void *evaluate_tasks(void * tid)
     total_largest_queue = std::max(total_largest_queue, tat.largest_queue_observed);
 
     total_overdue_tasks += tat.overdue_tasks;
-
+#ifdef GOOD_MOVES
+    total_good_move_hit += tat.good_move_hit;
+    total_good_move_miss += tat.good_move_miss;
+#endif
     //MEASURE_PRINT("Binarray size %d, oldqueue capacity %" PRIu64 ", newqueue capacity %" PRIu64 ".\n", BINARRAY_SIZE, tat.oldqueue->capacity(), tat.newqueue->capacity());
 #endif
     pthread_mutex_unlock(&thread_progress_lock);
@@ -150,6 +154,8 @@ int scheduler(adversary_vertex *sapling)
 #endif
 #ifdef ONLY_ONE_PASS
     m = PASS;
+#else
+    m = FIRST_PASS;
 #endif
     for (; m <= S-1; m++)
     {
