@@ -137,7 +137,7 @@ int scheduler(adversary_vertex *sapling)
 
     // We create a copy of the sapling's bin configuration
     // which will be used as in-place memory for the algorithm.
-    binconf sapling_bc;  
+    binconfplus sapling_bc;  
     int m = 0;
     duplicate(&sapling_bc, sapling->bc);
     tat.last_item = sapling->last_item;

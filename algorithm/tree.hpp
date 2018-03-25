@@ -39,7 +39,7 @@ struct algorithm_vertex {
 };
 
 struct adversary_vertex {
-    binconf *bc; /* Bin configuration of the current node. */
+    binconfplus *bc; /* Bin configuration of the current node. */
     std::list<adv_outedge*> out; // next algorithmic states
     std::list<alg_outedge*> in; // previous algorithmic states
 
@@ -53,9 +53,9 @@ struct adversary_vertex {
     uint64_t id;
     int expansion_depth = 0;
     
-    adversary_vertex(const binconf *b, int depth, int last_item)
+    adversary_vertex(const binconfplus *b, int depth, int last_item)
     {
-	this->bc = new binconf;
+	this->bc = new binconfplus;
 	assert(this->bc != NULL);
 	//init(this->bc);
 	this->task = false;
@@ -133,7 +133,7 @@ adversary_vertex *expansion_root;
 
 // a simple bool function, currently used in progress reporting
 // constant-time but assumes the bins are sorted (which they should be)
-bool is_root(const binconf *b)
+bool is_root(const binconfplus *b)
 {
     return binconf_equal(b, computation_root->bc);
 }

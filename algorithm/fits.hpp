@@ -11,7 +11,7 @@
 // Heuristics for bypassing dynamic programming. Currently only
 // best fit decreasing.
 
-int bestfit(const binconf *orig)
+int bestfitalg(const binconf *orig)
 {
     binconf b;
     
@@ -25,9 +25,11 @@ int bestfit(const binconf *orig)
 	    {
 		if (b.loads[i] + size <= S)
 		{
+		    // compact-pack
+		    int items_to_pack = std::min(k, (S-b.loads[i])/size);
 		    packed = true;
-		    b.assign_item(size,i);
-		    k--;
+		    b.assign_multiple(size,i,items_to_pack);
+		    k -= items_to_pack;
 		    break;
 		}
 	    }
