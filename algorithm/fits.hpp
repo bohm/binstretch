@@ -45,6 +45,73 @@ int bestfitalg(const binconf *orig)
 }
 
 
+// init the online loads (essentially BFD)
+void onlineloads_init(loadconf &ol, const binconf *bc)
+{
+    std::fill(ol.loads.begin(), ol.loads.end(), 0);
+    for(int size=S; size>0; size--)
+    {
+	int k = bc->items[size];
+	while (k > 0)
+	{
+	    bool packed = false;
+	    for (int i=1; i<=BINS; i++)
+	    {
+		if (ol.loads[i] + size <= S)
+		{
+		    // compact-pack
+		    int items_to_pack = std::min(k, (S - ol.loads[i])/size);
+		    packed = true;
+		    ol.assign_multiple(size,i,items_to_pack);
+		    k -= items_to_pack;
+		    break;
+		}
+	    }
+
+	    // if it is not packed, pack it into the first bin
+	    // hopefully this will not happen (as we cannot remove the items afterwards)
+	    if (!packed)
+	    {
+		ol.assign_multiple(size, 1, k);
+		k = 0;
+	    }
+	}
+    }
+}
+
+// assigns an item, returns the position of the (online) bin where it is packed
+int onlineloads_assign(loadconf& ol, int item)
+{
+    for (int i=1; i<=BINS; i++)
+    {
+	if (ol.loads[i] + item <= S)
+	{
+	    return ol.assign_without_hash(item, i);
+	}
+    }
+
+    // if it cannot be legally packed, pack it into the first bin
+    return ol.assign_without_hash(item, 1);
+}
+
+// unassign an item if you know he
+void onlineloads_unassign(loadconf& ol, int item, int bin)
+{
+    ol.unassign_without_hash(item, bin);
+}
+
+int onlineloads_bestfit(const loadconf& ol)
+{
+    // if best fit was not able to legally pack it, return 0
+    if(ol.loads[1] > S)
+    {
+	return 0;
+    }
+    else
+    {
+	return S - ol.loads[BINS];
+    }
+}
 
 // First fit decreasing.
 int firstfit(const binconf *orig)

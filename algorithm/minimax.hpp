@@ -162,7 +162,7 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
     }
     
     // finds the maximum feasible item that can be added using dyn. prog.
-    std::pair<int, dynprog_result> dp = maximum_feasible_dynprog(b, tat);
+    std::pair<int, dynprog_result> dp = maximum_feasible_dynprog(b, depth, tat);
     int maximum_feasible = dp.first;
     int below = 1;
     int r = 1;
@@ -366,7 +366,8 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 	    // editing binconf in place -- undoing changes later
 	    
 	    int from = b->assign_and_rehash(k,i);
-	    
+	    //int ol_from = onlineloads_assign(tat->ol, k);
+	    //assert(tat->ol.loadsum() == b->totalload());
 	    // initialize the adversary's next vertex in the tree (corresponding to d)
 	    adversary_vertex *analyzed_vertex;
 	    bool already_generated = false;
@@ -429,6 +430,8 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 
 	    // return b to original form
 	    b->unassign_and_rehash(k,from);
+	    //onlineloads_unassign(tat->ol, k, ol_from);
+	    //assert(tat->ol.loadsum() == b->totalload());
 
 	    if (below == 1)
 	    {
@@ -524,6 +527,9 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 int explore(binconf *b, thread_attr *tat)
 {
     hashinit(b);
+    //onlineloads_init(tat->ol, b);
+    //assert(tat->ol.loadsum() == b->totalload());
+
     tree_attr *outat = NULL;
     //std::vector<uint64_t> first_pass;
     //dynprog_one_pass_init(b, &first_pass);
@@ -541,6 +547,9 @@ int explore(binconf *b, thread_attr *tat)
 int generate(binconf *start, thread_attr *tat, adversary_vertex *start_vert)
 {
     hashinit(start);
+    //onlineloads_init(tat->ol, start);
+    //assert(tat->ol.loadsum() == start->totalload());
+    
     tree_attr *outat = new tree_attr;
     outat->last_adv_v = start_vert;
     outat->last_alg_v = NULL;

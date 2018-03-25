@@ -136,8 +136,64 @@ public:
 	}
 };
 
+// item for the largest feasible cache
+static_assert(S <= 127, "S is bigger than 127, fix int8_t in transposition tables.");
 
+class lf_el
+{
+public:
+    uint64_t _hash;
+    int8_t _lf;
+    uint8_t _depth;
+    
+    lf_el()
+	{
+	}
+    
+    lf_el(uint64_t d)
+	{
+	    _hash = d;
+	}
+    lf_el(uint64_t hash, int8_t lf, uint8_t depth)
+	{
+	    _hash = hash;
+	    _lf = lf;
+	    _depth = depth;
+	}
+    inline int8_t value() const
+	{
+	    return _lf;
+	}
+    inline uint64_t hash() const
+	{
+	    return _hash;
+	}
+    inline bool empty() const
+	{
+	    return _hash == 0;
+	}
+    inline bool removed() const
+	{
+	    return _hash == REMOVED;
+	}
 
+    inline void remove()
+	{
+	    _hash = REMOVED; _depth = 0; _lf = 0;
+	}
+
+    inline void erase()
+	{
+	    _hash = 0; _depth = 0; _lf = 0;
+	}
+
+    uint8_t depth() const
+	{
+	    return _depth;
+	}
+};
+
+// item for the best move cache
 class best_move_el
 {
 public:
@@ -200,6 +256,11 @@ pthread_mutex_t *dpbucketlock;
 // a hash table for best moves for the algorithm (so far)
 best_move_el *bmc;
 pthread_rwlock_t *bestmovelock;
+#endif
+
+#ifdef LF
+lf_el *lfht;
+pthread_rwlock_t *lflock;
 #endif
 
 // hash table for dynamic programming calls / feasibility checks
@@ -279,6 +340,16 @@ void local_hashtable_init()
 	bmc[i]._move = 0;
     }
 #endif
+
+#ifdef LF
+    lfht = new lf_el[LFEASSIZE];
+    for (uint64_t i =0; i < LFEASSIZE; i++)
+    {
+	lfht[i]._hash = 0;
+	lfht[i]._depth = 0;
+	lfht[i]._lf = -1;
+    }
+#endif
 }
 
 void cache_measurements()
@@ -354,13 +425,21 @@ void bucketlock_init()
 #ifdef GOOD_MOVES
     bestmovelock = new pthread_rwlock_t[BUCKETSIZE];
 #endif
+
+#ifdef LF
+    lflock = new pthread_rwlock_t[BUCKETSIZE];
+#endif
     
     for (llu i =0; i < BUCKETSIZE; i++)
     {
         pthread_rwlock_init(&bucketlock[i], NULL);
 #ifdef GOOD_MOVES
         pthread_rwlock_init(&bestmovelock[i], NULL);
-#endif	
+#endif
+#ifdef LF
+        pthread_rwlock_init(&lflock[i], NULL);
+#endif
+
 	pthread_mutex_init(&dpbucketlock[i], NULL);
     }
 }
@@ -392,6 +471,10 @@ void local_hashtable_cleanup()
 #ifdef GOOD_MOVES
     delete bmc;
 #endif
+
+#ifdef LF
+    delete lfht;
+#endif
 }
 
 void bucketlock_cleanup()
@@ -400,6 +483,10 @@ void bucketlock_cleanup()
     delete dpbucketlock;
 #ifdef GOOD_MOVES
     delete bestmovelock;
+#endif
+
+#ifdef LF
+    delete lflock;
 #endif
 }
 
@@ -469,6 +556,7 @@ const auto hashlogpart = logpart<HASHLOG>;
 
 const auto loadlogpart = logpart<LOADLOG>;
 
+const auto lflogpart = logpart<LFEASLOG>;
 // (re)calculates the hash of b completely.
 void hashinit(binconf *d)
 {

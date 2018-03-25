@@ -414,7 +414,7 @@ dynprog_result hash_and_test(binconf *h, int item, thread_attr *tat)
 }
 
 
-std::pair<int, dynprog_result> maximum_feasible_dynprog(binconf *b, thread_attr *tat)
+std::pair<int8_t, dynprog_result> maximum_feasible_dynprog(binconf *b, const int depth, thread_attr *tat)
 {
 #ifdef MEASURE
     tat->maximum_feasible_counter++;
@@ -424,13 +424,22 @@ std::pair<int, dynprog_result> maximum_feasible_dynprog(binconf *b, thread_attr 
     DEEP_DEBUG_PRINT_BINCONF(b);
     DEEP_DEBUG_PRINT("\n"); 
 
-    std::pair<int, dynprog_result> ret;
+    std::pair<int8_t, dynprog_result> ret;
     ret.first = 0;
     dynprog_result data;
     int maximum_feasible = 0;
-    
+
+#ifdef LF
+    int8_t check = is_lf_hashed(b, tat);
+    if(check != -1)
+    {
+	ret.first = check;
+	return ret;
+    }
+#endif
     // calculate lower bound for the optimum using Best Fit Decreasing
     int bestfitvalue = bestfitalg(b);
+
     DEEP_DEBUG_PRINT("lower bound for dynprog: %d\n", bestfitvalue);
 
     // calculate upper bound for the optimum based on min(S,sum of remaining items)
@@ -490,7 +499,12 @@ std::pair<int, dynprog_result> maximum_feasible_dynprog(binconf *b, thread_attr 
 */
     }
     // one more pass is needed sometimes
-    ret.first = maximum_feasible;
+    // assert(maximum_feasible < 128);
+    ret.first = (int8_t) maximum_feasible;
+
+#ifdef LF
+    lf_hashpush(b, maximum_feasible, depth, tat);
+#endif 
     // ret.second = data;
     
     //if (maximum_feasible == last_tested)

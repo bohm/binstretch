@@ -282,4 +282,28 @@ void loadconf_hashpush(uint64_t loadhash, thread_attr *tat)
     tat->loadht[loadlogpart(loadhash)] = loadhash;
 }
 
-#endif
+#ifdef LF
+void lf_hashpush(const binconf *d, int8_t largest_feasible, int depth, thread_attr *tat)
+{
+    uint64_t bchash = d->itemhash ^ d->loadhash;
+    uint8_t shortdepth = 0;
+    if (depth < 255)
+    {
+	shortdepth = depth;
+    } else {
+	shortdepth = 255;
+    }
+    
+    lf_el el(bchash, largest_feasible, shortdepth);
+    HASHPUSH<lf_el, LINPROBE_LIMIT>(lfht, lflock, el, lflogpart(bchash), tat);
+}
+
+
+int8_t is_lf_hashed(const binconf *d, thread_attr *tat)
+{
+    uint64_t bchash = d->itemhash ^ d->loadhash;
+    return IS_HASHED<lf_el, LINPROBE_LIMIT>(lfht, lflock, bchash, lflogpart(bchash), tat);
+}
+#endif // LF
+
+#endif // define _CACHING_HPP

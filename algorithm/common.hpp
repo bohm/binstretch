@@ -30,13 +30,15 @@ typedef signed char tiny;
 #define MEASURE 1
 //#define TICKER 1
 //#define GOOD_MOVES 1
-//#define ONLY_ONE_PASS 1
+#define ONLY_ONE_PASS 1
 //#define OVERDUES 1
 
+#define LF 1
+
 // maximum load of a bin in the optimal offline setting
-const int S = 63;
+const int S = 14;
 // target goal of the online bin stretching problem
-const int R = 86;
+const int R = 19;
 
 #ifdef ONLY_ONE_PASS
 const int PASS = 0;
@@ -49,7 +51,7 @@ const int RMOD = (R-1);
 const int ALPHA = (RMOD-S);
 
 // Change this number for the selected number of bins.
-const int BINS = 3;
+const int BINS = 8;
 
 // bitwise length of indices of hash tables and lock tables
 const unsigned int HASHLOG = 29;
@@ -58,12 +60,16 @@ const unsigned int BUCKETLOG = 15;
 const unsigned int BESTMOVELOG = 25;
 const unsigned int LOADLOG = 13;
 
+// experimental: caching of largest feasible item that can be sent
+const unsigned int LFEASLOG = 20;
 // size of the hash table
 
 const llu HASHSIZE = (1ULL<<HASHLOG);
 const llu BC_HASHSIZE = (1ULL<<BCLOG);
 const llu BESTMOVESIZE = (1ULL<<BESTMOVELOG);
 const llu LOADSIZE = (1ULL<<LOADLOG);
+
+const llu LFEASSIZE = (1ULL<<LFEASLOG);
 
 // size of buckets -- how many locks there are (each lock serves a group of hashes)
 const llu BUCKETSIZE = (1ULL<<BUCKETLOG);
@@ -249,6 +255,13 @@ public:
 	    return from;
 	}
 
+    int assign_multiple(int item, int bin, int count)
+	{
+	    loads[bin] += count*item;
+	    return sortloads_one_increased(bin);
+	}
+
+
     void unassign_without_hash(int item, int bin)
 	{
 	    loads[bin] -= item;
@@ -342,6 +355,9 @@ public:
 	    itemhash ^= Zi[item][items[item]+1];
 	    itemhash ^= Zi[item][items[item]];
 	}
+
+
+
 };
 
 static_assert(S*BINS <= 255, "Error: you can have more than 255 items.");
@@ -423,6 +439,7 @@ struct thread_attr {
     uint64_t *loadht;
     std::chrono::duration<long double> dynprog_time;
 
+    //loadconf ol = {};
     int last_item = 1;
     
     uint64_t iterations = 0;
