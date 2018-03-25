@@ -18,8 +18,8 @@
 #define _MINIMAX_H 1
 
 /* declarations */
-template<int MODE> int adversary(binconfplus *b, int depth, thread_attr *tat, tree_attr *outat);
-template<int MODE> int algorithm(binconfplus *b, int k, int depth, thread_attr *tat, tree_attr *outat);
+template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_attr *outat);
+template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat, tree_attr *outat);
 
 
 int time_stats(thread_attr *tat)
@@ -66,7 +66,7 @@ int time_stats(thread_attr *tat)
     * EXPLORING (general exploration done by individual threads)
 */
 
-template<int MODE> int adversary(binconfplus *b, int depth, thread_attr *tat, tree_attr *outat) {
+template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_attr *outat) {
 
     //assert(totalload(b) == b->totalload);
     adversary_vertex *current_adversary = NULL;
@@ -249,7 +249,7 @@ template<int MODE> int adversary(binconfplus *b, int depth, thread_attr *tat, tr
     return r;
 }
 
-template<int MODE> int algorithm(binconfplus *b, int k, int depth, thread_attr *tat, tree_attr *outat) {
+template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat, tree_attr *outat) {
 
     algorithm_vertex* current_algorithm = NULL;
     adversary_vertex* previous_adversary = NULL;
@@ -366,7 +366,6 @@ template<int MODE> int algorithm(binconfplus *b, int k, int depth, thread_attr *
 	    // editing binconf in place -- undoing changes later
 	    
 	    int from = b->assign_and_rehash(k,i);
-	    b->stage_new_item(k);
 	    
 	    // initialize the adversary's next vertex in the tree (corresponding to d)
 	    adversary_vertex *analyzed_vertex;
@@ -430,7 +429,6 @@ template<int MODE> int algorithm(binconfplus *b, int k, int depth, thread_attr *
 
 	    // return b to original form
 	    b->unassign_and_rehash(k,from);
-    	    b->unstage_item(k);
 
 	    if (below == 1)
 	    {
@@ -523,10 +521,9 @@ template<int MODE> int algorithm(binconfplus *b, int k, int depth, thread_attr *
 // wrapper for exploration
 // Returns value of the current position.
 
-int explore(binconfplus *b, thread_attr *tat)
+int explore(binconf *b, thread_attr *tat)
 {
     hashinit(b);
-    b->init_stages();
     tree_attr *outat = NULL;
     //std::vector<uint64_t> first_pass;
     //dynprog_one_pass_init(b, &first_pass);
@@ -541,7 +538,7 @@ int explore(binconfplus *b, thread_attr *tat)
 }
 
 // wrapper for generation
-int generate(binconfplus *start, thread_attr *tat, adversary_vertex *start_vert)
+int generate(binconf *start, thread_attr *tat, adversary_vertex *start_vert)
 {
     hashinit(start);
     tree_attr *outat = new tree_attr;

@@ -24,12 +24,11 @@ int main(void)
 	fprintf(stderr, "Only some good situations will be applied.\n");
     }
 
-    binconfplus root;
+    binconf root;
     //root.assign_item(5,1);
     //root.assign_item(1,1);
     //root.assign_item(1,2);
     hashinit(&root);
-    root.init_stages();
 
     adversary_vertex* root_vertex = new adversary_vertex(&root, 0, 1);
     int ret = solve(root_vertex);

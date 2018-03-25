@@ -346,156 +346,6 @@ public:
 
 static_assert(S*BINS <= 255, "Error: you can have more than 255 items.");
 
-// a binconf that is able to carry inside all iterations of the best fit heuristic
-
-class binconfplus: public binconf
-{
-public:
-    std::array<loadconf, S+1> stage;
-    int largest_inconsistent = 0;
-
-    void recompute_stage(int s)
-	{
-	    //fprintf(stderr, "Recomputing stage %d.\n", s);
-	    // copy the previous stage
-	    if(s != S)
-	    {
-		std::copy(stage[s+1].loads.begin(), stage[s+1].loads.end(), stage[s].loads.begin());
-	    } else
-	    {
-		std::fill(stage[s].loads.begin(), stage[s].loads.end(), 0);
-	    }
-
-	    // process the new stage
-	    loadconf& currentstage = stage[s];
-	    int k = items[s];
-	    bool inconsistency = false;
-	    while (k > 0)
-	    {
-		bool packed = false;
-		for (int i=1; i<=BINS; i++)
-		{
-		    if (currentstage.loads[i] + s <= S)
-		    {
-			//fprintf(stderr, "Packing into bin %d", i);
-			packed = true;
-			currentstage.assign_without_hash(s, i);
-			k--;
-			break;
-		    }
-		}
-
-		if (!packed)
-		{
-		    inconsistency = true;
-		    break;
-		}
-	    }
-
-	    if (inconsistency)
-	    {
-		largest_inconsistent = s;
-	    } else if (largest_inconsistent == s)
-	    {
-		//largest inconsistent became consistent
-		largest_inconsistent--;
-	    }
-	}
-
-    // Inserts one item into the stages list and recomputes the smaller stages.
-    void stage_new_item(int item)
-	{
-	    //fprintf(stderr, "Staging item of size %d, largest inc: %d.\n", item, largest_inconsistent);
-	    // add one item to the current stage
-	    loadconf& currentstage = stage[item];
-	    bool packed = false;
-	    for (int bin=1; bin<=BINS; bin++)
-	    {
-		if (currentstage.loads[bin] + item <= S)
-		{
-		    //fprintf(stderr, "Packing into bin %d", bin);
-
-		    packed = true;
-		    stage[item].assign_without_hash(item, bin);
-		    break;
-		}
-	    }
-	    
-	    if(!packed)
-	    {
-		largest_inconsistent = item;
-		return;
-	    }
-	    //fprintf(stderr, "Processing the remaining stages, largest inc: %d.\n", largest_inconsistent);
-    
-	    // Process the remaining stages again.
-	    for (int size = item-1; size>=1; size--)
-	    {
-		if (largest_inconsistent != 0)
-		{
-		    return;
-		} else {
-		    recompute_stage(size);
-		}
-	    }
-	}
-
-    // Since we do store loads only as numbers and not assignments,
-    // the unstaging is done as a recomputation of all affected stages.
-    void unstage_item(int item)
-	{
-	    for (int size=item; size>= 1; size--)
-	    {
-		if (largest_inconsistent > size)
-		{
-		    return;
-		} else {
-		    recompute_stage(size);
-		}
-	    }
-	}
-
-    void init_stages()
-	{
-	    largest_inconsistent = 0;
-	    for (int size=S; size>= 1; size--)
-	    {
-		if (largest_inconsistent > size)
-		{
-		    return;
-		} else {
-		    recompute_stage(size);
-		}
-	    }
-	}
-
-    int bestfit() const
-	{
-	    if(largest_inconsistent == 0)
-	    {
-		return S - stage[1].loads[BINS];
-	    } else {
-		return 0;
-	    }
-	}
-
-    void print_stages(FILE* stream)
-	{
-	    fprintf(stream, "Printing stages; largest inconsistent: %d\n", largest_inconsistent);
-	    for (int j=S; j>=1; j--)
-	    {
-		fprintf(stream, "stage %d:", j); 
-		for (int i=1; i<=BINS; i++)
-		{
-		    fprintf(stream, "%d-", stage[j].loads[i]);
-		}
-		fprintf(stream, "\n");
-	    }
-	   
-	}
-};
-
-
 struct dp_hash_item {
     int8_t feasible;
     llu itemhash;
@@ -504,7 +354,7 @@ struct dp_hash_item {
 typedef struct dp_hash_item dp_hash_item;
 
 struct task {
-    binconfplus bc;
+    binconf bc;
     int last_item = 1;
     int expansion_depth = 0;
 };
@@ -689,20 +539,6 @@ std::chrono::duration<long double> total_dynprog_time;
 // time measuring global variable
 timeval totaltime_start;
 #endif
-
-void duplicate(binconfplus *t, const binconfplus *s) {
-    for(int i=1; i<=BINS; i++)
-	t->loads[i] = s->loads[i];
-    for(int j=1; j<=S; j++)
-	t->items[j] = s->items[j];
-
-    t->loadhash = s->loadhash;
-    t->itemhash = s->itemhash;
-    t->_totalload = s->_totalload;
-
-    std::copy(s->stage.begin(), s->stage.end(), t->stage.begin());
-}
-
 
 void duplicate(binconf *t, const binconf *s) {
     for(int i=1; i<=BINS; i++)

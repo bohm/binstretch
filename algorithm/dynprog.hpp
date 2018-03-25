@@ -179,7 +179,7 @@ dynprog_result dynprog_test_sorting(const binconf *conf, thread_attr *tat)
 }
 
 // Sparse dynprog test which uses tuples directly (and does not encode/decode them)
-dynprog_result dynprog_test_loadhash(const binconfplus *conf, thread_attr *tat)
+dynprog_result dynprog_test_loadhash(const binconf *conf, thread_attr *tat)
 {
     tat->newloadqueue->clear();
     tat->oldloadqueue->clear();
@@ -382,7 +382,7 @@ dynprog_result dynprog_test_set(const binconf *conf, thread_attr *tat)
 
 // a wrapper that hashes the new configuration and if it is not in cache, runs TEST
 // it edits h but should return it to original state (due to Zobrist hashing)
-dynprog_result hash_and_test(binconfplus *h, int item, thread_attr *tat)
+dynprog_result hash_and_test(binconf *h, int item, thread_attr *tat)
 {
 #ifdef MEASURE
     tat->hash_and_test_counter++;
@@ -414,7 +414,7 @@ dynprog_result hash_and_test(binconfplus *h, int item, thread_attr *tat)
 }
 
 
-std::pair<int, dynprog_result> maximum_feasible_dynprog(binconfplus *b, thread_attr *tat)
+std::pair<int, dynprog_result> maximum_feasible_dynprog(binconf *b, thread_attr *tat)
 {
 #ifdef MEASURE
     tat->maximum_feasible_counter++;
@@ -430,30 +430,7 @@ std::pair<int, dynprog_result> maximum_feasible_dynprog(binconfplus *b, thread_a
     int maximum_feasible = 0;
     
     // calculate lower bound for the optimum using Best Fit Decreasing
-    int bestfitvalue = b->bestfit();
-    //int algvalue = bestfitalg(b);
-    /*if (bestfitvalue != algvalue)
-    {
-	fprintf(stderr, "bestfit() says %d (larg. inc.: %d), bestfitalg() says %d for:\n", bestfitvalue, b->largest_inconsistent, algvalue);
-	print_binconf_stream(stderr, b);
-	b->print_stages(stderr);
-	assert(bestfitvalue == algvalue); //toggles error
-    }
-    */
-
-    /*
-    if (bestfitvalue != 0)
-    {
-	if(b->stage[1].loadsum() != b->totalload())
-	{
-	    fprintf(stderr, "Loads do not match: %d vs. %d\n", b->stage[1].loadsum(), b->totalload());
-	    print_binconf_stream(stderr, b);
-	    b->print_stages(stderr);
-	    assert(b->stage[1].loadsum() == b->totalload());
-	}
-    }
-    */
-    
+    int bestfitvalue = bestfitalg(b);
     DEEP_DEBUG_PRINT("lower bound for dynprog: %d\n", bestfitvalue);
 
     // calculate upper bound for the optimum based on min(S,sum of remaining items)
@@ -533,7 +510,7 @@ std::pair<int, dynprog_result> maximum_feasible_dynprog(binconfplus *b, thread_a
     return ret;
 }
 
-bool try_and_send(binconfplus *b, int number_of_items, int minimum_size, thread_attr *tat)
+bool try_and_send(binconf *b, int number_of_items, int minimum_size, thread_attr *tat)
 {
     b->items[minimum_size] += number_of_items;
     dynprog_result ret = TEST(b,tat);
@@ -541,7 +518,7 @@ bool try_and_send(binconfplus *b, int number_of_items, int minimum_size, thread_
     return ret.feasible;
 }
 
-std::pair<bool,int> large_item_heuristic(binconfplus *b, thread_attr *tat)
+std::pair<bool,int> large_item_heuristic(binconf *b, thread_attr *tat)
 {
     std::pair<bool,int> ret(false, 0);
     
