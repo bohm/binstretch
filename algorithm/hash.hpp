@@ -9,11 +9,6 @@
 #ifndef _HASH_H
 #define _HASH_H 1
 
-/* Hashing routines. This variant uses a dynamically allocated, fixed
-size hash table. Does not use CHAINLEN. The hashing table should
-behave more predictably in terms of memory use.
-*/
-
 /* As an experiment to save space, we will make the caching table
 values only 64-bit long, where the first 63 bits correspond to the 
 stored value's 63-bit hash and the last bit corresponds to the victory
@@ -85,6 +80,9 @@ public:
 	}
 };
 
+
+// An extended variant of conf_el which stores the depth of the configuration
+// being stored. This allows for more complicated cache replacement algorithms.
 
 class conf_el_extended
 {
@@ -195,11 +193,14 @@ public:
 // generic hash table (for configurations)
 conf_el_extended *ht;
 
-// a hash table for best moves for the algorithm (so far)
-best_move_el *bmc;
-
 pthread_rwlock_t *bucketlock;
 pthread_mutex_t *dpbucketlock;
+
+#ifdef GOOD_MOVES
+// a hash table for best moves for the algorithm (so far)
+best_move_el *bmc;
+pthread_rwlock_t *bestmovelock;
+#endif
 
 // hash table for dynamic programming calls / feasibility checks
 dynprog_result *dpht;
@@ -264,18 +265,20 @@ void global_hashtable_init()
 void local_hashtable_init()
 {
     ht = new conf_el_extended[HASHSIZE];
-    bmc = new best_move_el[BESTMOVESIZE];
     
     for (uint64_t i =0; i < HASHSIZE; i++)
     {
 	ht[i]._data = 0;
     }
 
+#ifdef GOOD_MOVES
+    bmc = new best_move_el[BESTMOVESIZE];
     for (uint64_t i =0; i < BESTMOVESIZE; i++)
     {
 	bmc[i]._hash = 0;
 	bmc[i]._move = 0;
     }
+#endif
 }
 
 void cache_measurements()
@@ -346,14 +349,18 @@ void bc_hashtable_clear()
 
 void bucketlock_init()
 {
-    bucketlock = (pthread_rwlock_t *) malloc(BUCKETSIZE * sizeof(pthread_rwlock_t));
-    dpbucketlock = (pthread_mutex_t *) malloc(BUCKETSIZE * sizeof(pthread_mutex_t));
-
-    assert(bucketlock != NULL);
-    assert(dpbucketlock != NULL);
+    bucketlock = new pthread_rwlock_t[BUCKETSIZE];
+    dpbucketlock = new pthread_mutex_t[BUCKETSIZE];
+#ifdef GOOD_MOVES
+    bestmovelock = new pthread_rwlock_t[BUCKETSIZE];
+#endif
+    
     for (llu i =0; i < BUCKETSIZE; i++)
     {
         pthread_rwlock_init(&bucketlock[i], NULL);
+#ifdef GOOD_MOVES
+        pthread_rwlock_init(&bestmovelock[i], NULL);
+#endif	
 	pthread_mutex_init(&dpbucketlock[i], NULL);
     }
 }
@@ -382,13 +389,18 @@ void local_hashtable_cleanup()
 {
     //hashtable cleanup
     delete ht;
+#ifdef GOOD_MOVES
     delete bmc;
+#endif
 }
 
 void bucketlock_cleanup()
 {
-    free(bucketlock);
-    free(dpbucketlock);
+    delete bucketlock;
+    delete dpbucketlock;
+#ifdef GOOD_MOVES
+    delete bestmovelock;
+#endif
 }
 
 void printBits32(unsigned int num)

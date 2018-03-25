@@ -247,28 +247,30 @@ int8_t is_conf_hashed(const binconf *d, thread_attr *tat)
     return IS_HASHED<conf_el_extended, LINPROBE_LIMIT>(ht, bucketlock, bchash, hashlogpart(bchash), tat);
 }
 
-/* Adds an element to an algorithm's best move cache. */
+#ifdef GOOD_MOVES
+// Adds an element to an algorithm's best move cache.
 void bmc_hashpush(const binconf *d, int item, int8_t bin, thread_attr *tat)
 {
     uint64_t bmc_hash = d->itemhash ^ d->loadhash ^ Ai[item];
     best_move_el el(bmc_hash, bin);
-    HASHPUSH<best_move_el, BMC_LIMIT>(bmc, bucketlock, el, logpart<BESTMOVELOG>(bmc_hash), tat);
+    HASHPUSH<best_move_el, BMC_LIMIT>(bmc, bestmovelock, el, logpart<BESTMOVELOG>(bmc_hash), tat);
 }
 
 void bmc_remove(const binconf *d, int item, thread_attr *tat)
 {
     uint64_t bmc_hash = d->itemhash ^ d->loadhash ^ Ai[item];
-    HASHREMOVE<best_move_el, BMC_LIMIT>(bmc, bucketlock, bmc_hash, logpart<BESTMOVELOG>(bmc_hash), tat);
+    HASHREMOVE<best_move_el, BMC_LIMIT>(bmc, bestmovelock, bmc_hash, logpart<BESTMOVELOG>(bmc_hash), tat);
    
 }
 int8_t is_move_hashed(const binconf *d, int item, thread_attr *tat)
 {
     uint64_t bmc_hash = d->itemhash ^ d->loadhash ^ Ai[item];
-    return IS_HASHED<best_move_el, BMC_LIMIT>(bmc, bucketlock, bmc_hash, logpart<BESTMOVELOG>(bmc_hash), tat);
+    return IS_HASHED<best_move_el, BMC_LIMIT>(bmc, bestmovelock, bmc_hash, logpart<BESTMOVELOG>(bmc_hash), tat);
 }
+#endif
 
 // checks for a load in the hash table used by dynprog_test_loadhash()
-// dumb/fast collision detection (treats them as non-found objects)
+// dumb/fast collision detection (treats them as not-found objects)
 bool loadconf_hashfind(uint64_t loadhash, thread_attr *tat)
 {
     return (tat->loadht[loadlogpart(loadhash)] == loadhash);
