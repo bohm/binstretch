@@ -11,7 +11,8 @@
 // Heuristics for bypassing dynamic programming. Currently only
 // best fit decreasing.
 
-int bestfit(const binconf *orig) {
+int bestfit(const binconf *orig)
+{
     binconf b;
     
     for(int size=S; size>0; size--)
@@ -40,6 +41,8 @@ int bestfit(const binconf *orig) {
     // return the largest item that would fit on the smallest bin
     return S - b.loads[BINS];
 }
+
+
 
 // First fit decreasing.
 int firstfit(const binconf *orig)

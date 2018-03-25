@@ -262,6 +262,7 @@ dynprog_result dynprog_test_loadhash(const binconf *conf, thread_attr *tat)
     /* Heuristic: solve the cases of sizes 2 and 1 without generating new
        configurations. */
 
+    
     for (const loadconf& tuple: *poldq)
     {
 	int free_size = 0, free_for_twos = 0;

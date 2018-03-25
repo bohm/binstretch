@@ -71,7 +71,9 @@ int main(void)
     MEASURE_PRINT("Table hit: %" PRIu64 ", table miss: %" PRIu64 ", full not found: %" PRIu64 "\n", total_bc_hit, total_bc_miss, total_bc_full_not_found) ;
     MEASURE_PRINT(" DP table size: %llu, insertions: %" PRIu64 ", full not found: %" PRIu64 ", table hit: %" PRIu64 ".\n", BC_HASHSIZE, total_dp_insertions, total_dp_full_not_found, total_dp_hit) ;
     MEASURE_PRINT("Largest queue observed: %" PRIu64 "\n", total_largest_queue);
+#ifdef OVERDUES
     MEASURE_PRINT("Overdue tasks: %" PRIu64 "\n", total_overdue_tasks);
+#endif
     GOOD_MOVES_PRINT("Total good move hit: %" PRIu64 ", miss: %" PRIu64 "\n", total_good_move_hit, total_good_move_miss);
     global_hashtable_cleanup();
     local_hashtable_cleanup();

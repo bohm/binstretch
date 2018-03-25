@@ -25,23 +25,23 @@ typedef signed char tiny;
 //#define THOROUGH_HASH_CHECKING 1
 #define PROGRESS 1
 //#define REGROW 1
-#define OUTPUT 1
+//#define OUTPUT 1
 #define MEASURE 1
 //#define TICKER 1
 //#define GOOD_MOVES 1
 #define ONLY_ONE_PASS 1
-#define OVERDUES 1
-
-#ifdef ONLY_ONE_PASS
-const int PASS = 1;
-#else
-const int FIRST_PASS = 0;
-#endif
+//#define OVERDUES 1
 
 // maximum load of a bin in the optimal offline setting
 const int S = 14;
 // target goal of the online bin stretching problem
 const int R = 19;
+
+#ifdef ONLY_ONE_PASS
+const int PASS = 0;
+#else
+const int FIRST_PASS = 0;
+#endif
 
 // constants used for good situations
 const int RMOD = (R-1);
