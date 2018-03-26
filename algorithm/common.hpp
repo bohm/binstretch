@@ -21,24 +21,24 @@ typedef signed char tiny;
 
 // verbosity of the program
 //#define VERBOSE 1
-#define DEBUG 1
+//#define DEBUG 1
 //#define DEEP_DEBUG 1
 //#define THOROUGH_HASH_CHECKING 1
 #define PROGRESS 1
 //#define REGROW 1
 //#define OUTPUT 1
-//#define MEASURE 1
+#define MEASURE 1
 //#define TICKER 1
 //#define GOOD_MOVES 1
-#define ONLY_ONE_PASS 1
+//#define ONLY_ONE_PASS 1
 //#define OVERDUES 1
 
 //#define LF 1
 
 // maximum load of a bin in the optimal offline setting
-const int S = 14;
+const int S = 101;
 // target goal of the online bin stretching problem
-const int R = 19;
+const int R = 138;
 
 #ifdef ONLY_ONE_PASS
 const int PASS = 0;
@@ -51,14 +51,14 @@ const int RMOD = (R-1);
 const int ALPHA = (RMOD-S);
 
 // Change this number for the selected number of bins.
-const int BINS = 8;
+const int BINS = 3;
 
 // bitwise length of indices of hash tables and lock tables
 const unsigned int HASHLOG = 28;
-const unsigned int BCLOG = 27;
+const unsigned int BCLOG = 28;
 const unsigned int BUCKETLOG = 15;
 const unsigned int BESTMOVELOG = 25;
-const unsigned int LOADLOG = 13;
+const unsigned int LOADLOG = 9;
 
 // experimental: caching of largest feasible item that can be sent
 const unsigned int LFEASLOG = 25;
@@ -84,14 +84,14 @@ const int DEFAULT_DP_SIZE = 100000;
 const int THREADS = 8;
 // a bound on total load of a configuration before we split it into a task
 const int TASK_LOAD = (S*BINS)/2;
-const int TASK_DEPTH = 4;
+const int TASK_DEPTH = 3;
 const int EXPANSION_DEPTH = 3;
 // how much the updater thread sleeps (in milliseconds)
 const int TICK_SLEEP = 200;
 // how many tasks are sufficient for the updater to run the main updater routine
 const int TICK_TASKS = 100;
 // the number of completed tasks after which the exploring thread reports progress
-const int PROGRESS_AFTER = 500;
+const int PROGRESS_AFTER = 1000;
 
 // a threshold for a task becoming overdue
 const std::chrono::seconds THRESHOLD = std::chrono::seconds(10);
@@ -128,7 +128,7 @@ typedef int16_t bin_int;
 // A bin configuration consisting of three loads and a list of items that have arrived so far.
 // The same DS is also used in the hash as an element.
 
-// a cut version of binconf which only uses the loads
+// a cut version of binconf which only uses the loads.
 class loadconf {
 public:
     std::array<bin_int,BINS+1> loads = {};

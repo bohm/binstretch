@@ -136,9 +136,6 @@ public:
 	}
 };
 
-// item for the largest feasible cache
-static_assert(S <= 127, "S is bigger than 127, fix bin_int in transposition tables.");
-
 class lf_el
 {
 public:

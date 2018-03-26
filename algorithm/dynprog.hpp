@@ -12,7 +12,7 @@
 #include "hash.hpp"
 
 // which test procedure are we using
-#define TEST dynprog_test_loadhash
+#define TEST dynprog_test_dangerous
 
 void print_tuple(const std::array<bin_int, BINS>& tuple)
 {
@@ -37,14 +37,14 @@ void dynprog_attr_init(thread_attr *tat)
     tat->newset = new std::unordered_set<std::array<bin_int, BINS> >();
 
     tat->oldtqueue = new std::vector<std::array<bin_int, BINS> >();
-    tat->oldtqueue->reserve(DEFAULT_DP_SIZE);
+    tat->oldtqueue->reserve(LOADSIZE);
     tat->newtqueue = new std::vector<std::array<bin_int, BINS> >();
-    tat->newtqueue->reserve(DEFAULT_DP_SIZE);
+    tat->newtqueue->reserve(LOADSIZE);
 
     tat->oldloadqueue = new std::vector<loadconf>();
-    tat->oldloadqueue->reserve(DEFAULT_DP_SIZE);
+    tat->oldloadqueue->reserve(LOADSIZE);
     tat->newloadqueue = new std::vector<loadconf>();
-    tat->newloadqueue->reserve(DEFAULT_DP_SIZE);
+    tat->newloadqueue->reserve(LOADSIZE);
 
     tat->loadht = new uint64_t[LOADSIZE];
 }
@@ -205,6 +205,115 @@ dynprog_result dynprog_test_loadhash(const binconf *conf, thread_attr *tat)
 	    phase++;
 	    if (phase == 1) {
 
+		loadconf  first;
+		for (int i = 1; i <= BINS; i++)
+		{
+		    first.loads[i] = 0;
+		}	
+		first.hashinit();
+		first.assign_and_rehash(size, 1);
+		pnewq->push_back(first);
+	    } else {
+#ifdef MEASURE
+		tat->largest_queue_observed = std::max(tat->largest_queue_observed, poldq->size());
+#endif
+		for (loadconf & tuple: *poldq)
+		{
+		    //loadconf  tuple = tupleit;
+
+		    // try and place the item
+		    for (int i=1; i <= BINS; i++)
+		    {
+			// same as with Algorithm, we can skip when sequential bins have the same load
+			if (i > 1 && tuple.loads[i] == tuple.loads[i-1])
+			{
+			    continue;
+			}
+			
+			if (tuple.loads[i] + size > S) {
+			    continue;
+			}
+
+			int newpos = tuple.assign_and_rehash(size, i);
+			if(! loadconf_hashfind(tuple.loadhash, tat))
+			//if(hashset.find(tuple.loadhash) == hashset.end())
+			{
+			    pnewq->push_back(tuple);
+			    loadconf_hashpush(tuple.loadhash, tat);
+			    //hashset.insert(tuple.loadhash);
+			}
+
+		        tuple.unassign_and_rehash(size, newpos);
+		    }
+		}
+		if (pnewq->size() == 0) {
+		    ret.feasible = false;
+		    return ret;
+		}
+	    }
+
+	    //hashset.clear();
+	    std::swap(poldq, pnewq);
+	    pnewq->clear();
+	    k--;
+	}
+    }
+
+    /* Heuristic: solve the cases of sizes 2 and 1 without generating new
+       configurations. */
+
+    
+    for (const loadconf& tuple: *poldq)
+    {
+	int free_size = 0, free_for_twos = 0;
+	for (int i=1; i<=BINS; i++)
+	{
+	    free_size += (S - tuple.loads[i]);
+	    free_for_twos += (S - tuple.loads[i])/2;
+	}
+	
+	if ( free_size < conf->items[1] + 2*conf->items[2])
+	{
+	    continue;
+	}
+	if (free_for_twos >= conf->items[2])
+	{
+	    ret.feasible = true;
+	    return ret;
+	}
+    }
+    
+    ret.feasible = false;
+    return ret;
+}
+
+// loadhash() test which avoids zeroing by using the itemhash as a "seed" that guarantees uniqueness
+// therefore it may answer incorrectly since we assume uint64_t hashes are perfect
+dynprog_result dynprog_test_dangerous(const binconf *conf, thread_attr *tat)
+{
+    tat->newloadqueue->clear();
+    tat->oldloadqueue->clear();
+    std::vector<loadconf> *poldq;
+    std::vector<loadconf> *pnewq;
+
+    //std::unordered_set<uint64_t> hashset;
+    poldq = tat->oldloadqueue;
+    pnewq = tat->newloadqueue;
+
+    dynprog_result ret;
+ 
+    int phase = 0;
+
+    // do not empty the loadht, instead XOR in the itemhash
+
+    for (int size=S; size>=3; size--)
+    {
+	int k = conf->items[size];
+	while (k > 0)
+	{
+	    phase++;
+	    if (phase == 1) {
+
 		loadconf first;
 		for (int i = 1; i <= BINS; i++)
 		{
@@ -212,6 +321,7 @@ dynprog_result dynprog_test_loadhash(const binconf *conf, thread_attr *tat)
 		}	
 		first.hashinit();
 		first.assign_and_rehash(size, 1);
+		first.loadhash ^= conf->itemhash;
 		pnewq->push_back(first);
 	    } else {
 #ifdef MEASURE
@@ -390,7 +500,7 @@ dynprog_result hash_and_test(binconf *h, int item, thread_attr *tat)
 
     dynprog_result ret;
     
-    h->items[item]++;
+    h->items[item]++; // in some sense, it is an inconsistent state, since "item" is not packed in "h"
     dp_rehash(h,item);
     
     std::pair<bool, dynprog_result> hash_check = dp_hashed(h, tat);

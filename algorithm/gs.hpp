@@ -366,10 +366,10 @@ int testgs(const binconf *b, thread_attr *tat) {
     }
 
     // temporarily disabling to see if performance improves
-    /* if( gs4variant(b, tat) == 1)
+    /*if( gs4variant(b, tat) == 1)
     {
 	return 1;
-	}*/ 
+	}*/
     
 // Apply the rest of the heuristics only with 3 bins and ALPHA >= 1/3
     if ((BINS == 3) && ((3*ALPHA) >= S))
@@ -392,8 +392,10 @@ int testgs(const binconf *b, thread_attr *tat) {
 	  //return 1;
 	  }*/
 	
-	
-	if(gs3(b, tat) == 1)
+
+	// GS3, GS4 and GS5 are never hit for BINS == 3 now, it seems.
+
+	/*if(gs3(b, tat) == 1)
 	{
 	    DEEP_DEBUG_PRINT("The following binconf hits GS3:\n");
 	    DEEP_DEBUG_PRINT_BINCONF(b);
@@ -412,7 +414,7 @@ int testgs(const binconf *b, thread_attr *tat) {
 	    DEEP_DEBUG_PRINT("The following binconf hits GS5:\n");
 	    DEEP_DEBUG_PRINT_BINCONF(b);
 	    return 1;
-	}
+	}*/
 	
 	if(gs6(b, tat) == 1)
 	{
