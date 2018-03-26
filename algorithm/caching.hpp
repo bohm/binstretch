@@ -14,10 +14,10 @@
 #define HASHPUSH hashpush_probe
 #define HASHREMOVE hashremove_probe
 
-template<class T, int PROBE_LIMIT> int8_t is_hashed_simple(T *hashtable, pthread_rwlock_t *locks, uint64_t hash, uint64_t logpart, thread_attr *tat)
+template<class T, int PROBE_LIMIT> bin_int is_hashed_simple(T *hashtable, pthread_rwlock_t *locks, uint64_t hash, uint64_t logpart, thread_attr *tat)
 {
     uint64_t blp = bucketlockpart(hash);
-    int8_t posvalue = -1;
+    bin_int posvalue = -1;
 
     // Use linear probing to check for the hashed value.
     // slight hack here: in theory, just looking a few indices ahead might look into the next bucket lock
@@ -78,13 +78,15 @@ template <class T, int PROBE_LIMIT> void hashremove_simple(T* hashtable, pthread
     pthread_rwlock_unlock(&locks[blp]); // UNLOCK
 }
 
+const int FULL_NOT_FOUND = -2;
+const int NOT_FOUND = -1;
 
-template<class T, int PROBE_LIMIT> int8_t is_hashed_probe(T *hashtable, pthread_rwlock_t *locks, uint64_t hash, uint64_t logpart, thread_attr *tat)
+template<class T, int PROBE_LIMIT> bin_int is_hashed_probe(T *hashtable, pthread_rwlock_t *locks, uint64_t hash, uint64_t logpart, thread_attr *tat)
 {
     //fprintf(stderr, "Bchash %" PRIu64 ", zero_last_bit %" PRIu64 " get_last_bit %" PRId8 " \n", bchash, zero_last_bit(bchash), get_last_bit(bchash));
 
     uint64_t blp = bucketlockpart(hash);
-    int8_t posvalue = -1;
+    bin_int posvalue = -1;
 
     // Use linear probing to check for the hashed value.
     // slight hack here: in theory, just looking a few indices ahead might look into the next bucket lock
@@ -111,22 +113,13 @@ template<class T, int PROBE_LIMIT> int8_t is_hashed_probe(T *hashtable, pthread_
 	    break;
 	}
 
-#ifdef MEASURE
 	if (i == PROBE_LIMIT-1)
 	{
-	    tat->bc_full_not_found++;
+	    posvalue = FULL_NOT_FOUND;
 	}
-#endif
     }
  
     pthread_rwlock_unlock(&locks[blp]); // UNLOCK
-
-#ifdef MEASURE
-    if (posvalue != -1)
-    {
-	tat->bc_hit++;
-    }
-#endif 
 
     return posvalue;
 }
@@ -134,14 +127,11 @@ template<class T, int PROBE_LIMIT> int8_t is_hashed_probe(T *hashtable, pthread_
 
 template <class T, int PROBE_LIMIT> void hashpush_probe(T* hashtable, pthread_rwlock_t *locks, const T& item, uint64_t logpart, thread_attr *tat)
 {
-#ifdef MEASURE
-    tat->bc_insertions++;
-#endif
     //assert(posvalue == 0 || posvalue == 1);
     //uint64_t bchash = d->itemhash ^ d->loadhash;
 
     uint64_t blp = bucketlockpart(item.hash());
-    uint8_t maxdepth = item.depth();
+    bin_int maxdepth = item.depth();
     uint64_t maxposition = logpart;
     
     pthread_rwlock_wrlock(&locks[blp]); //LOCK
@@ -222,34 +212,43 @@ template <class T, int PROBE_LIMIT> void hashremove_probe(T* hashtable, pthread_
    Because the table is flat, this is easier.
    Also uses flat rewriting yet.
  */
-void conf_hashpush(const binconf *d, int posvalue, int depth, thread_attr *tat)
+void conf_hashpush(const binconf *d, int posvalue, bin_int depth, thread_attr *tat)
 {
+#ifdef MEASURE
+    tat->bc_insertions++;
+#endif
+
     uint64_t bchash = d->itemhash ^ d->loadhash;
-    uint8_t shortdepth = 0;
-    if (depth < 255)
-    {
-	shortdepth = depth;
-    } else {
-	shortdepth = 255;
-    }
-    
-    conf_el_extended el(bchash, (uint64_t) posvalue, shortdepth);
+    conf_el_extended el(bchash, (uint64_t) posvalue, depth);
     HASHPUSH<conf_el_extended, LINPROBE_LIMIT>(ht, bucketlock, el, hashlogpart(bchash), tat);
 }
 
 
-int8_t is_conf_hashed(const binconf *d, thread_attr *tat)
+bin_int is_conf_hashed(const binconf *d, thread_attr *tat)
 {
 #ifdef MEASURE
     tat->bc_hash_checks++;
 #endif
     uint64_t bchash = zero_last_bit(d->itemhash ^ d->loadhash);
-    return IS_HASHED<conf_el_extended, LINPROBE_LIMIT>(ht, bucketlock, bchash, hashlogpart(bchash), tat);
+    bin_int ret = IS_HASHED<conf_el_extended, LINPROBE_LIMIT>(ht, bucketlock, bchash, hashlogpart(bchash), tat);
+
+#ifdef MEASURE
+    if (ret >= 0)
+    {
+	tat->bc_hit++;
+    } else if( ret == FULL_NOT_FOUND)
+    {
+	tat->bc_full_not_found++;
+	ret = NOT_FOUND; // TODO: make sure this works even with MEASURE turned off
+    }
+#endif 
+    return ret;
+
 }
 
 #ifdef GOOD_MOVES
 // Adds an element to an algorithm's best move cache.
-void bmc_hashpush(const binconf *d, int item, int8_t bin, thread_attr *tat)
+void bmc_hashpush(const binconf *d, int item, bin_int bin, thread_attr *tat)
 {
     uint64_t bmc_hash = d->itemhash ^ d->loadhash ^ Ai[item];
     best_move_el el(bmc_hash, bin);
@@ -262,7 +261,7 @@ void bmc_remove(const binconf *d, int item, thread_attr *tat)
     HASHREMOVE<best_move_el, BMC_LIMIT>(bmc, bestmovelock, bmc_hash, logpart<BESTMOVELOG>(bmc_hash), tat);
    
 }
-int8_t is_move_hashed(const binconf *d, int item, thread_attr *tat)
+bin_int is_move_hashed(const binconf *d, int item, thread_attr *tat)
 {
     uint64_t bmc_hash = d->itemhash ^ d->loadhash ^ Ai[item];
     return IS_HASHED<best_move_el, BMC_LIMIT>(bmc, bestmovelock, bmc_hash, logpart<BESTMOVELOG>(bmc_hash), tat);
@@ -283,26 +282,37 @@ void loadconf_hashpush(uint64_t loadhash, thread_attr *tat)
 }
 
 #ifdef LF
-void lf_hashpush(const binconf *d, int8_t largest_feasible, int depth, thread_attr *tat)
+void lf_hashpush(const binconf *d, bin_int largest_feasible, bin_int depth, thread_attr *tat)
 {
+
+#ifdef MEASURE
+    tat->lf_insertions++;
+#endif
+
     uint64_t bchash = d->itemhash ^ d->loadhash;
-    uint8_t shortdepth = 0;
-    if (depth < 255)
-    {
-	shortdepth = depth;
-    } else {
-	shortdepth = 255;
-    }
-    
-    lf_el el(bchash, largest_feasible, shortdepth);
+    lf_el el(bchash, largest_feasible, depth);
     HASHPUSH<lf_el, LINPROBE_LIMIT>(lfht, lflock, el, lflogpart(bchash), tat);
 }
 
 
-int8_t is_lf_hashed(const binconf *d, thread_attr *tat)
+bin_int is_lf_hashed(const binconf *d, thread_attr *tat)
 {
     uint64_t bchash = d->itemhash ^ d->loadhash;
-    return IS_HASHED<lf_el, LINPROBE_LIMIT>(lfht, lflock, bchash, lflogpart(bchash), tat);
+    bin_int ret = IS_HASHED<lf_el, LINPROBE_LIMIT>(lfht, lflock, bchash, lflogpart(bchash), tat);
+#ifdef MEASURE
+    if (ret >= 0)
+    {
+	tat->lf_hit++;
+    } else if (ret ==  NOT_FOUND)
+    {
+	tat->lf_partial_nf++;
+    } else if (ret == FULL_NOT_FOUND)
+    {
+	tat->lf_full_nf++;
+	ret = NOT_FOUND; // TODO: make sure this works even with MEASURE turned off
+    }
+#endif // MEASURE
+    return ret;
 }
 #endif // LF
 

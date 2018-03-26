@@ -21,19 +21,19 @@ typedef signed char tiny;
 
 // verbosity of the program
 //#define VERBOSE 1
-//#define DEBUG 1
+#define DEBUG 1
 //#define DEEP_DEBUG 1
 //#define THOROUGH_HASH_CHECKING 1
 #define PROGRESS 1
 //#define REGROW 1
 //#define OUTPUT 1
-#define MEASURE 1
+//#define MEASURE 1
 //#define TICKER 1
 //#define GOOD_MOVES 1
 #define ONLY_ONE_PASS 1
 //#define OVERDUES 1
 
-#define LF 1
+//#define LF 1
 
 // maximum load of a bin in the optimal offline setting
 const int S = 14;
@@ -54,14 +54,14 @@ const int ALPHA = (RMOD-S);
 const int BINS = 8;
 
 // bitwise length of indices of hash tables and lock tables
-const unsigned int HASHLOG = 29;
-const unsigned int BCLOG = 25;
+const unsigned int HASHLOG = 28;
+const unsigned int BCLOG = 27;
 const unsigned int BUCKETLOG = 15;
 const unsigned int BESTMOVELOG = 25;
 const unsigned int LOADLOG = 13;
 
 // experimental: caching of largest feasible item that can be sent
-const unsigned int LFEASLOG = 20;
+const unsigned int LFEASLOG = 25;
 // size of the hash table
 
 const llu HASHSIZE = (1ULL<<HASHLOG);
@@ -94,7 +94,7 @@ const int TICK_TASKS = 100;
 const int PROGRESS_AFTER = 500;
 
 // a threshold for a task becoming overdue
-const std::chrono::seconds THRESHOLD = std::chrono::seconds(8);
+const std::chrono::seconds THRESHOLD = std::chrono::seconds(10);
 const int MAX_EXPANSION = 1;
 
 // end of configuration constants
@@ -118,14 +118,20 @@ llu **Zi; // Zobrist table for items
 llu **Zl; // Zobrist table for loads
 llu *Ai; // Zobrist table for next item to pack (used for the algorithm's best move table)
 
+// use this type for values of loads and items
+// reasonable settings are either int8_t or int16_t, depending on whether a bin can contain more
+// than 127 items or not.
+// we allow it to go negative for signalling -1/-2.
 
+typedef int16_t bin_int;
+//static_assert(BINS*S <= 127, "S is bigger than 127, fix bin_int in transposition tables.");
 // A bin configuration consisting of three loads and a list of items that have arrived so far.
 // The same DS is also used in the hash as an element.
 
 // a cut version of binconf which only uses the loads
 class loadconf {
 public:
-    std::array<uint8_t,BINS+1> loads = {};
+    std::array<bin_int,BINS+1> loads = {};
     uint64_t loadhash = 0;
 
 // sorts the loads with advice: the advice
@@ -288,12 +294,19 @@ public:
 	{
 	    return std::accumulate(loads.begin(), loads.end(), 0);
 	}
+
+    void print(FILE *stream) const
+	{
+	    for (int i=1; i<=BINS; i++) {
+		fprintf(stream, "%d-", loads[i]);
+	    }
+	}
 };
 
 class binconf: public loadconf {
 public:
     
-    std::array<uint8_t,S+1> items = {};
+    std::array<bin_int,S+1> items = {};
     int _totalload = 0;
     // hash related properties
     uint64_t itemhash = 0;
@@ -360,8 +373,6 @@ public:
 
 };
 
-static_assert(S*BINS <= 255, "Error: you can have more than 255 items.");
-
 struct dp_hash_item {
     int8_t feasible;
     llu itemhash;
@@ -398,9 +409,9 @@ class alg_outedge;
 namespace std
 {
     template<>
-    struct hash<array<uint8_t, BINS> >
+    struct hash<array<bin_int, BINS> >
     {
-        typedef array<uint8_t, BINS> argument_type;
+        typedef array<bin_int, BINS> argument_type;
         typedef size_t result_type;
 
         result_type operator()(const argument_type& a) const
@@ -411,7 +422,7 @@ namespace std
 
             for (int i = 0; i < BINS; i += result_size)
             {
-                array<uint8_t, result_size> expanded;
+                array<bin_int, result_size> expanded;
 
                 auto end_index = std::min(i + result_size, BINS);
 
@@ -425,13 +436,31 @@ namespace std
     };
 }
 
+// aliases for measurements of good situations
+const int SITUATIONS = 10;
+
+const int GS1 = 0;
+const int GS1MOD = 1;
+const int GS2 = 2;
+const int GS2VARIANT = 3;
+const int GS3 = 4;
+const int GS3VARIANT = 5;
+const int GS4 = 6;
+const int GS4VARIANT = 7;
+const int GS5 = 8;
+const int GS6 = 9;
+
+const std::array<std::string, SITUATIONS> gsnames = {"GS1", "GS1MOD", "GS2", "GS2VARIANT", "GS3",
+				"GS3VARIANT", "GS4", "GS4VARIANT", "GS5", "GS6"};
+
+
 /* dynprog global variables and other attributes separate for each thread */
 struct thread_attr {
-    std::unordered_set<std::array<uint8_t, BINS> >* oldset;
-    std::unordered_set<std::array<uint8_t, BINS> >* newset;
+    std::unordered_set<std::array<bin_int, BINS> >* oldset;
+    std::unordered_set<std::array<bin_int, BINS> >* newset;
 
-    std::vector<std::array<uint8_t, BINS > > *oldtqueue;
-    std::vector<std::array<uint8_t, BINS > > *newtqueue;
+    std::vector<std::array<bin_int, BINS > > *oldtqueue;
+    std::vector<std::array<bin_int, BINS > > *newtqueue;
 
     std::vector<loadconf> *oldloadqueue;
     std::vector<loadconf> *newloadqueue;
@@ -439,7 +468,7 @@ struct thread_attr {
     uint64_t *loadht;
     std::chrono::duration<long double> dynprog_time;
 
-    //loadconf ol = {};
+    loadconf ol = {};
     int last_item = 1;
     
     uint64_t iterations = 0;
@@ -459,6 +488,13 @@ struct thread_attr {
     uint64_t bc_hash_checks = 0;
     uint64_t largest_queue_observed = 0;
 
+#ifdef LF
+    uint64_t lf_full_nf = 0;
+    uint64_t lf_partial_nf = 0;
+    uint64_t lf_hit = 0;
+    uint64_t lf_insertions = 0;
+#endif
+    
 #ifdef GOOD_MOVES
     uint64_t good_move_hit = 0;
     uint64_t good_move_miss = 0;
@@ -467,6 +503,14 @@ struct thread_attr {
     bool current_overdue = false;
     uint64_t overdue_tasks = 0;
 
+    // good situation measurements
+#ifdef MEASURE
+    std::array<uint64_t, SITUATIONS> gshit = {};
+    std::array<uint64_t, SITUATIONS> gsmiss = {};
+    uint64_t gsheurhit = 0;
+    uint64_t gsheurmiss = 0;
+#endif
+    
     int expansion_depth = 0;
 
     uint64_t explore_roothash = 0;
@@ -499,6 +543,14 @@ uint64_t total_bc_full_not_found = 0;
 uint64_t total_bc_hit = 0;
 uint64_t total_bc_miss = 0;
 
+
+#ifdef LF
+uint64_t lf_tot_full_nf = 0;
+uint64_t lf_tot_partial_nf = 0;
+uint64_t lf_tot_hit = 0;
+uint64_t lf_tot_insertions = 0;
+#endif
+
 uint64_t total_largest_queue = 0;
 
 uint64_t total_overdue_tasks = 0;
@@ -508,6 +560,13 @@ uint64_t total_good_move_miss = 0;
 uint64_t total_good_move_hit = 0;
 #endif
 
+#ifdef MEASURE
+    std::array<uint64_t, SITUATIONS> total_gshit = {};
+    std::array<uint64_t, SITUATIONS> total_gsmiss = {};
+    uint64_t total_gsheurhit = 0;
+    uint64_t total_gsheurmiss = 0;
+#endif
+ 
 pthread_mutex_t taskq_lock;
 pthread_rwlock_t running_and_removed_lock;
 // global hash-like map of completed tasks (and their parents up to
@@ -556,6 +615,7 @@ std::chrono::duration<long double> total_dynprog_time;
 // time measuring global variable
 timeval totaltime_start;
 #endif
+
 
 void duplicate(binconf *t, const binconf *s) {
     for(int i=1; i<=BINS; i++)
@@ -639,9 +699,11 @@ void print_binconf_stream(FILE* stream, const binconf* b)
 #ifdef MEASURE
 #define MEASURE_PRINT(...) fprintf(stderr,  __VA_ARGS__ )
 #define MEASURE_PRINT_BINCONF(x) print_binconf_stream(stderr, x)
+#define MEASURE_ONLY(x) x
 #else
 #define MEASURE_PRINT(format,...)
 #define MEASURE_PRINT_BINCONF(x)
+#define MEASURE_ONLY(x)
 #endif
 
 #ifdef VERBOSE
@@ -666,6 +728,14 @@ void print_binconf_stream(FILE* stream, const binconf* b)
 #else
 #define GOOD_MOVES_PRINT(format,...)
 #define GOOD_MOVES_PRINT_BINCONF(x)
+#endif
+
+#ifdef LF
+#define LFPRINT(...) fprintf(stderr,  __VA_ARGS__ )
+#define LFPRINT_BINCONF(x) print_binconf_stream(stderr, x)
+#else
+#define LFPRINT(format,...)
+#define LFPRINT_BINCONF(x)
 #endif
 
 
@@ -714,7 +784,7 @@ void sortloads(binconf *b)
 }
 
 // lower-level sortload (modifies array, counts from 0)
-int sortarray_one_increased(std::array<uint8_t, BINS>& array, int newly_increased)
+int sortarray_one_increased(std::array<bin_int, BINS>& array, int newly_increased)
 {
     int i = newly_increased;
     while (!((i == 0) || (array[i-1] >= array[i])))
@@ -804,7 +874,7 @@ int sortarray_one_decreased(int **array, int newly_decreased)
 }
 
 // lower-level sortload_one_decreased (modifies array, counts from 0)
-int sortarray_one_decreased(std::array<uint8_t, BINS>& array, int newly_decreased)
+int sortarray_one_decreased(std::array<bin_int, BINS>& array, int newly_decreased)
 {
     int i = newly_decreased;
     while (!((i == BINS-1) || (array[i+1] <= array[i])))

@@ -13,8 +13,9 @@
 
 int bestfitalg(const binconf *orig)
 {
-    binconf b;
-    
+    loadconf b;
+    // a quick trick: keep track of totalload and terminate when it is 0
+    int tl = orig->totalload(); 
     for(int size=S; size>0; size--)
     {
 	int k = orig->items[size];
@@ -30,6 +31,12 @@ int bestfitalg(const binconf *orig)
 		    packed = true;
 		    b.assign_multiple(size,i,items_to_pack);
 		    k -= items_to_pack;
+		    tl -= items_to_pack*size;
+
+		    if (tl == 0)
+		    {
+			return S - b.loads[BINS];
+		    }
 		    break;
 		}
 	    }
@@ -44,6 +51,72 @@ int bestfitalg(const binconf *orig)
     return S - b.loads[BINS];
 }
 
+// an experiment that doesn't work
+int bestfitalg_otherway(const binconf *orig)
+{
+    loadconf b;
+    std::array<uint8_t, S+1> items;
+    std::copy(orig->items.begin(), orig->items.end(), items.begin());
+    /*for (int i =1; i <= BINS; i++)
+    {
+	b.loads[i] = 0;
+    }
+    */
+    fprintf(stderr, "Trying the other way.\n");
+    print_binconf_stream(stderr, orig);
+    
+    // a quick trick: keep track of totalload and terminate when it is 0
+    int tl = orig->totalload();
+    int size, largest_unchecked = S;
+    //int k;
+    int maxspace = 0;
+    for(int i = 1; i <= BINS; i++)
+    {
+	fprintf(stderr, "Bin %d starts with item %d\n", i, largest_unchecked);
+	size = largest_unchecked;
+	while (size >= 1)
+	{
+	    // k = items[size];
+	    while (items[size] > 0)
+	    {
+		if (b.loads[i] + size <= S)
+		{
+		    b.loads[i] += size;
+		    tl -= size;
+		    items[size]--;
+		} else {
+		    size = S - b.loads[i];
+		    break;
+		} 
+	    }
+
+	    if (items[size] == 0)
+	    {
+		if (size == largest_unchecked)
+		{
+		    largest_unchecked--;
+		}
+		size--;
+	    }
+	    
+	    if (tl == 0)
+	    {
+		//return S - b.loads[BINS];
+		return std::max(maxspace, S - b.loads[BINS]);
+	    }
+	}
+	// we are done with bin i, update minload
+	maxspace = std::max(maxspace, S-b.loads[i]);
+    }
+
+    // return the largest item that would fit on the smallest bin
+    if (tl == 0)
+    {
+	return maxspace;
+    } else {
+	return 0;
+    }
+}
 
 // init the online loads (essentially BFD)
 void onlineloads_init(loadconf &ol, const binconf *bc)

@@ -24,7 +24,7 @@ inline uint64_t zero_last_bit(uint64_t n)
     return ((n >> 1) << 1);
 }
 
-inline int8_t get_last_bit(uint64_t n)
+inline bin_int get_last_bit(uint64_t n)
 {
     return ((n & 1) == 1);
 }
@@ -47,7 +47,7 @@ public:
 	{
 	    _data = (zero_last_bit(hash) | posvalue);
 	}
-    inline int8_t value() const
+    inline bin_int value() const
 	{
 	    return get_last_bit(_data);
 	}
@@ -74,7 +74,7 @@ public:
 	    _data = 0;
 	}
 
-    const uint8_t depth() const
+    const bin_int depth() const
 	{
 	    return 0;
 	}
@@ -88,7 +88,7 @@ class conf_el_extended
 {
 public:
     uint64_t _data;
-    int8_t _depth;
+    bin_int _depth;
 
     conf_el_extended()
 	{
@@ -98,12 +98,12 @@ public:
 	{
 	    _data = d;
 	}
-    conf_el_extended(uint64_t hash, uint64_t posvalue, uint8_t depth)
+    conf_el_extended(uint64_t hash, uint64_t posvalue, bin_int depth)
 	{
 	    _data = (zero_last_bit(hash) | posvalue);
 	    _depth = depth;
 	}
-    inline int8_t value() const
+    inline bin_int value() const
 	{
 	    return get_last_bit(_data);
 	}
@@ -130,21 +130,21 @@ public:
 	    _data = 0; _depth = 0;
 	}
 
-    uint8_t depth() const
+    bin_int depth() const
 	{
 	    return _depth;
 	}
 };
 
 // item for the largest feasible cache
-static_assert(S <= 127, "S is bigger than 127, fix int8_t in transposition tables.");
+static_assert(S <= 127, "S is bigger than 127, fix bin_int in transposition tables.");
 
 class lf_el
 {
 public:
     uint64_t _hash;
-    int8_t _lf;
-    uint8_t _depth;
+    bin_int _lf;
+    bin_int _depth;
     
     lf_el()
 	{
@@ -154,13 +154,13 @@ public:
 	{
 	    _hash = d;
 	}
-    lf_el(uint64_t hash, int8_t lf, uint8_t depth)
+    lf_el(uint64_t hash, bin_int lf, bin_int depth)
 	{
 	    _hash = hash;
 	    _lf = lf;
 	    _depth = depth;
 	}
-    inline int8_t value() const
+    inline bin_int value() const
 	{
 	    return _lf;
 	}
@@ -187,7 +187,7 @@ public:
 	    _hash = 0; _depth = 0; _lf = 0;
 	}
 
-    uint8_t depth() const
+    bin_int depth() const
 	{
 	    return _depth;
 	}
@@ -198,19 +198,19 @@ class best_move_el
 {
 public:
     uint64_t _hash;
-    int8_t _move;
+    bin_int _move;
 
     best_move_el()
 	{
 	}
     
-    best_move_el(uint64_t hash, int8_t move)
+    best_move_el(uint64_t hash, bin_int move)
 	{
 	    _hash = hash;
 	    _move = move;
 	}
    
-    inline int8_t value() const
+    inline bin_int value() const
 	{
 	    return _move;
 	}
@@ -239,7 +239,7 @@ public:
 	    _hash = 0; _move = 0;
 	}
 
-    const uint8_t depth() const
+    const bin_int depth() const
 	{
 	    return 0;
 	}
@@ -387,7 +387,7 @@ void clear_cache_of_ones()
     {
         if (ht[i]._data != 0 && ht[i]._data != REMOVED)
 	{
-	    int8_t last_bit = ht[i].value();
+	    bin_int last_bit = ht[i].value();
 	    if (last_bit != 0)
 	    {
 		ht[i]._data = REMOVED;
@@ -518,7 +518,7 @@ uint64_t lowerpart(llu x)
     return y;
 }
 
-inline uint64_t bmhash(const binconf* b, int8_t next_item)
+inline uint64_t bmhash(const binconf* b, bin_int next_item)
 {
     //assert(next_item >= 1 && next_item <= S);
     return b->loadhash ^ b->itemhash ^ Ai[next_item];

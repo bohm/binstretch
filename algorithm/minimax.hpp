@@ -290,7 +290,7 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
     }
  
     
-    if (gsheuristic(b,k) == 1)
+    if (gsheuristic(b,k, tat) == 1)
     {
 	return 1;
     }
@@ -366,7 +366,7 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 	    // editing binconf in place -- undoing changes later
 	    
 	    int from = b->assign_and_rehash(k,i);
-	    //int ol_from = onlineloads_assign(tat->ol, k);
+	    int ol_from = onlineloads_assign(tat->ol, k);
 	    //assert(tat->ol.loadsum() == b->totalload());
 	    // initialize the adversary's next vertex in the tree (corresponding to d)
 	    adversary_vertex *analyzed_vertex;
@@ -430,7 +430,7 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 
 	    // return b to original form
 	    b->unassign_and_rehash(k,from);
-	    //onlineloads_unassign(tat->ol, k, ol_from);
+	    onlineloads_unassign(tat->ol, k, ol_from);
 	    //assert(tat->ol.loadsum() == b->totalload());
 
 	    if (below == 1)
@@ -527,7 +527,7 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 int explore(binconf *b, thread_attr *tat)
 {
     hashinit(b);
-    //onlineloads_init(tat->ol, b);
+    onlineloads_init(tat->ol, b);
     //assert(tat->ol.loadsum() == b->totalload());
 
     tree_attr *outat = NULL;
@@ -547,7 +547,7 @@ int explore(binconf *b, thread_attr *tat)
 int generate(binconf *start, thread_attr *tat, adversary_vertex *start_vert)
 {
     hashinit(start);
-    //onlineloads_init(tat->ol, start);
+    onlineloads_init(tat->ol, start);
     //assert(tat->ol.loadsum() == start->totalload());
     
     tree_attr *outat = new tree_attr;

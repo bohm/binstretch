@@ -61,9 +61,7 @@ int main(void)
     fprintf(stderr, "Number of tasks: %" PRIu64 ", completed tasks: %" PRIu64 ", pruned tasks %" PRIu64 ", decreased tasks %" PRIu64 " \n",
 	    task_count, finished_task_count, removed_task_count, decreased_task_count );
 
-#ifdef MEASURE
-    long double ratio = (long double) total_dynprog_calls / (long double) total_inner_loop;
-#endif
+    MEASURE_ONLY(long double ratio = (long double) total_dynprog_calls / (long double) total_inner_loop);
     MEASURE_PRINT("Total time (all threads): %Lfs; total dynprog time: %Lfs.\n", time_spent.count(), total_dynprog_time.count());
     MEASURE_PRINT("Hash_and_test calls: %" PRIu64 ", max_feas calls: %" PRIu64 ", dynprog calls: %" PRIu64 ", DP/Inner loop: %Lf.\n", total_hash_and_tests, total_max_feasible, total_dynprog_calls, ratio);
     MEASURE_PRINT("Binconf table size: %llu, insertions: %" PRIu64 ", hash checks: %" PRIu64".\n", HASHSIZE, total_bc_insertions,
@@ -75,6 +73,9 @@ int main(void)
     MEASURE_PRINT("Overdue tasks: %" PRIu64 "\n", total_overdue_tasks);
 #endif
     GOOD_MOVES_PRINT("Total good move hit: %" PRIu64 ", miss: %" PRIu64 "\n", total_good_move_hit, total_good_move_miss);
+    LFPRINT("Larg. feas. cache size %llu, #insert: %" PRIu64 ", #hit: %" PRIu64 ", #partial miss: %" PRIu64 ", #full miss: %" PRIu64 "\n",
+	    LFEASSIZE, lf_tot_insertions, lf_tot_hit, lf_tot_partial_nf, lf_tot_full_nf);
+    MEASURE_ONLY(print_gsheur(stderr));
     global_hashtable_cleanup();
     local_hashtable_cleanup();
     bucketlock_cleanup();

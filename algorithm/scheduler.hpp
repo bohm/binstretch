@@ -109,11 +109,22 @@ void *evaluate_tasks(void * tid)
     total_largest_queue = std::max(total_largest_queue, tat.largest_queue_observed);
 
     total_overdue_tasks += tat.overdue_tasks;
+
+    collect_gsheur_from_thread(tat);
 #ifdef GOOD_MOVES
     total_good_move_hit += tat.good_move_hit;
     total_good_move_miss += tat.good_move_miss;
 #endif
-    //MEASURE_PRINT("Binarray size %d, oldqueue capacity %" PRIu64 ", newqueue capacity %" PRIu64 ".\n", BINARRAY_SIZE, tat.oldqueue->capacity(), tat.newqueue->capacity());
+
+#ifdef LF
+    lf_tot_full_nf += tat.lf_full_nf;
+    lf_tot_partial_nf += tat.lf_partial_nf;
+    lf_tot_hit += tat.lf_hit;
+    lf_tot_insertions += tat.lf_insertions;
+#endif
+
+
+//MEASURE_PRINT("Binarray size %d, oldqueue capacity %" PRIu64 ", newqueue capacity %" PRIu64 ".\n", BINARRAY_SIZE, tat.oldqueue->capacity(), tat.newqueue->capacity());
 #endif
     pthread_mutex_unlock(&thread_progress_lock);
     dynprog_attr_free(&tat);

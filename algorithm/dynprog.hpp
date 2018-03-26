@@ -14,7 +14,7 @@
 // which test procedure are we using
 #define TEST dynprog_test_loadhash
 
-void print_tuple(const std::array<uint8_t, BINS>& tuple)
+void print_tuple(const std::array<bin_int, BINS>& tuple)
 {
     fprintf(stderr, "(");
     bool first = true;
@@ -33,12 +33,12 @@ void print_tuple(const std::array<uint8_t, BINS>& tuple)
 void dynprog_attr_init(thread_attr *tat)
 {
     assert(tat != NULL);
-    tat->oldset = new std::unordered_set<std::array<uint8_t, BINS> >();
-    tat->newset = new std::unordered_set<std::array<uint8_t, BINS> >();
+    tat->oldset = new std::unordered_set<std::array<bin_int, BINS> >();
+    tat->newset = new std::unordered_set<std::array<bin_int, BINS> >();
 
-    tat->oldtqueue = new std::vector<std::array<uint8_t, BINS> >();
+    tat->oldtqueue = new std::vector<std::array<bin_int, BINS> >();
     tat->oldtqueue->reserve(DEFAULT_DP_SIZE);
-    tat->newtqueue = new std::vector<std::array<uint8_t, BINS> >();
+    tat->newtqueue = new std::vector<std::array<bin_int, BINS> >();
     tat->newtqueue->reserve(DEFAULT_DP_SIZE);
 
     tat->oldloadqueue = new std::vector<loadconf>();
@@ -65,8 +65,8 @@ dynprog_result dynprog_test_sorting(const binconf *conf, thread_attr *tat)
 {
     tat->newtqueue->clear();
     tat->oldtqueue->clear();
-    std::vector<std::array<uint8_t, BINS> > *poldq;
-    std::vector<std::array<uint8_t, BINS> > *pnewq;
+    std::vector<std::array<bin_int, BINS> > *poldq;
+    std::vector<std::array<bin_int, BINS> > *pnewq;
 
     poldq = tat->oldtqueue;
     pnewq = tat->newtqueue;
@@ -84,7 +84,7 @@ dynprog_result dynprog_test_sorting(const binconf *conf, thread_attr *tat)
 	    phase++;
 	    if (phase == 1) {
 
-		std::array<uint8_t, BINS> first;
+		std::array<bin_int, BINS> first;
 		for (int i = 0; i < BINS; i++)
 		{
 		    first[i] = 0;
@@ -94,7 +94,7 @@ dynprog_result dynprog_test_sorting(const binconf *conf, thread_attr *tat)
 	    } else {
 		for (unsigned int i=0; i < poldq->size(); i++)
 		{
-		    std::array<uint8_t, BINS> tuple = (*poldq)[i];
+		    std::array<bin_int, BINS> tuple = (*poldq)[i];
 
 		    // Instead of having a global array of feasibilities, we now sort the poldq array.
 		    if (i >= 1)
@@ -147,7 +147,7 @@ dynprog_result dynprog_test_sorting(const binconf *conf, thread_attr *tat)
    
     for (unsigned int i=0; i < poldq->size(); i++)
     {
-	std::array<uint8_t, BINS> tuple = (*poldq)[i];
+	std::array<bin_int, BINS> tuple = (*poldq)[i];
 	// Instead of having a global array of feasibilities, we now sort the poldq array.
 	if (i >= 1)
 	{
@@ -289,8 +289,8 @@ dynprog_result dynprog_test_loadhash(const binconf *conf, thread_attr *tat)
 // Sparse dynprog test which uses tuples directly (and does not encode/decode them)
 dynprog_result dynprog_test_set(const binconf *conf, thread_attr *tat)
 {
-    std::unordered_set<std::array<uint8_t, BINS> > *poldq = tat->oldset;
-    std::unordered_set<std::array<uint8_t, BINS> > *pnewq = tat->newset;
+    std::unordered_set<std::array<bin_int, BINS> > *poldq = tat->oldset;
+    std::unordered_set<std::array<bin_int, BINS> > *pnewq = tat->newset;
     poldq->clear();
     pnewq->clear();
 
@@ -307,7 +307,7 @@ dynprog_result dynprog_test_set(const binconf *conf, thread_attr *tat)
 	    phase++;
 	    if (phase == 1) {
 
-		std::array<uint8_t, BINS> first;
+		std::array<bin_int, BINS> first;
 		for (int i = 0; i < BINS; i++)
 		{
 		    first[i] = 0;
@@ -318,7 +318,7 @@ dynprog_result dynprog_test_set(const binconf *conf, thread_attr *tat)
 		for (const auto& tupleit: *poldq)
 		{
 		    
-		    std::array<uint8_t, BINS> tuple = tupleit;
+		    std::array<bin_int, BINS> tuple = tupleit;
 		    // try and place the item
 		    for (int i=0; i < BINS; i++)
 		    {
@@ -413,6 +413,44 @@ dynprog_result hash_and_test(binconf *h, int item, thread_attr *tat)
     return ret;
 }
 
+const int STEPS = 5;
+const int BESTFIT_THRESHOLD = (3*S)/10;
+
+std::pair<int8_t, int8_t> check_for_bounds(binconf *b, thread_attr *tat, int8_t upper_bound)
+{
+    std::pair<int8_t, int8_t> bounds(0,upper_bound);
+    
+    for (int item = upper_bound; item >= 0 && item >= upper_bound - STEPS; item--)
+    {
+	b->items[item]++;
+	dp_rehash(b,item);
+	std::pair<bool, dynprog_result> hash_check = dp_hashed(b, tat);
+	if (hash_check.first && hash_check.second.feasible)
+	{
+	    bounds.first = item;
+	} else if (hash_check.first && !hash_check.second.feasible)
+	{
+	    bounds.second = item-1;
+	}
+	b->items[item]--;
+	dp_unhash(b,item);
+    }
+
+    return bounds;
+}
+
+void insert_bounds_from_fit(binconf *b, thread_attr *tat, int8_t fit_lower_bound)
+{
+    for (int item = fit_lower_bound; item >= 0 && item >= fit_lower_bound - STEPS; item--)
+    {
+	dynprog_result r; r.feasible = true;
+	b->items[item]++;
+	dp_rehash(b,item);
+	dp_hashpush(b, r, tat);
+	b->items[item]--;
+	dp_unhash(b,item);
+    }
+}
 
 std::pair<int8_t, dynprog_result> maximum_feasible_dynprog(binconf *b, const int depth, thread_attr *tat)
 {
@@ -437,30 +475,47 @@ std::pair<int8_t, dynprog_result> maximum_feasible_dynprog(binconf *b, const int
 	return ret;
     }
 #endif
-    // calculate lower bound for the optimum using Best Fit Decreasing
-    int bestfitvalue = bestfitalg(b);
-
-    DEEP_DEBUG_PRINT("lower bound for dynprog: %d\n", bestfitvalue);
 
     // calculate upper bound for the optimum based on min(S,sum of remaining items)
-    int maxvalue = (S*BINS) - b->totalload();
-    if( maxvalue > S)
-	maxvalue = S;
+    int8_t maxvalue = std::min((S*BINS) - b->totalload(), S);
 
-    DEEP_DEBUG_PRINT("upper bound for dynprog: %d\n", maxvalue);
+    // check if there are any lower and upper bounds on feasibility
+    // already in the cache
+    //std::pair<int8_t, int8_t> bounds = check_for_bounds(b, tat, (int8_t) maxvalue);
+    std::pair<int8_t, int8_t> bounds(onlineloads_bestfit(tat->ol), maxvalue);
 
-    // use binary search to find the value
+
+    if (bounds.second - bounds.first > BESTFIT_THRESHOLD)
+    {
+	bounds.first = bestfitalg(b);
+    }
+    //assert(bounds.first <= bounds.second && bounds.second <= maxvalue);
+    // calculate lower bound for the optimum using Best Fit Decreasing
+
+    // If the lower bound (something we can guarantee being feasible)
+    // is too low, use best fit to get a better guess.
+    // if (bounds.first < BESTFIT_THRESHOLD)
+    // {
+    // bounds.first = bestfitalg(b);
+
+    /* if(bounds.first >= S/2)
+	{
+	    insert_bounds_from_fit(b, tat, bounds.first);
+	}
+    }
+    */
+    // use binary search to find the correct value
 
     //int last_tested = -1;
     
-    if (maxvalue == bestfitvalue)
+    if (bounds.first == bounds.second)
     {
-	maximum_feasible = bestfitvalue;
+	maximum_feasible = bounds.first;
     } else {
 #ifdef MEASURE
 	tat->inner_loop++;
 #endif
-	int lb = bestfitvalue; int ub = maxvalue;
+	int lb = bounds.first; int ub = bounds.second;
 	int mid = (lb+ub+1)/2;
 
 	while (lb < ub)
