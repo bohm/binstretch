@@ -40,14 +40,17 @@ int time_stats(thread_attr *tat)
 	}
     }
 #endif
-    
-    pthread_rwlock_rdlock(&running_and_removed_lock);
+
+    // I wonder if there is a penalty for repeatedly constructing the lock
+    std::shared_lock<std::shared_timed_mutex> l(running_and_removed_lock);
+    //l.lock();
     auto it = running_and_removed.find(tat->explore_roothash);
     if(it != running_and_removed.end())
     {
 	ret = TERMINATING;
     }
-    pthread_rwlock_unlock(&running_and_removed_lock);
+    l.unlock();
+    // pthread_rwlock_unlock(&running_and_removed_lock);
     return ret;
 }
 

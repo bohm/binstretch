@@ -18,9 +18,9 @@
 #define _SCHEDULER_H 1
 
 
-void *evaluate_tasks(void * tid)
+void evaluate_tasks(int threadid)
 {
-    unsigned int threadid =  * (unsigned int *) tid;
+    // unsigned int threadid =  * (unsigned int *) tid;
     uint64_t taskcounter = 0;
     thread_attr tat;
     dynprog_attr_init(&tat);
@@ -30,12 +30,17 @@ void *evaluate_tasks(void * tid)
     bool call_to_terminate = false;
     auto thread_start = std::chrono::system_clock::now();
     DEBUG_PRINT("Thread %u started.\n", threadid);
+    std::unique_lock<std::mutex> l(taskq_lock);
+    l.unlock();
+    std::unique_lock<std::mutex> coll(collection_lock[threadid]);
+    coll.unlock();
 
     call_to_terminate = global_terminate_flag;
     while(!call_to_terminate)
     {
 	taskmap_empty = false;
-	pthread_mutex_lock(&taskq_lock); // LOCK
+	//pthread_mutex_lock(&taskq_lock); // LOCK
+	l.lock(); // LOCK
 	if(tm.size() == 0)
 	{
 	    taskmap_empty = true;
@@ -43,7 +48,8 @@ void *evaluate_tasks(void * tid)
 	    current = tm.begin()->second;
 	    tm.erase(tm.begin());
 	}
-	pthread_mutex_unlock(&taskq_lock); // UNLOCK
+	l.unlock();
+	//pthread_mutex_unlock(&taskq_lock); // UNLOCK
 	// more things could appear, so just sleep and wait for the global terminate flag
 	if (taskmap_empty)
 	{
@@ -68,9 +74,10 @@ void *evaluate_tasks(void * tid)
 	if (ret != TERMINATING)
 	{
 	    // add task to the completed_tasks map (might be OVERDUE)
-	    pthread_mutex_lock(&collection_lock[threadid]);
+	    // pthread_mutex_lock(&collection_lock[threadid]);
+	    coll.lock();
 	    completed_tasks[threadid].insert(std::pair<uint64_t, int>(current.bc.loadhash ^ current.bc.itemhash, ret));
-	    pthread_mutex_unlock(&collection_lock[threadid]);
+	    coll.unlock();
 	    DEBUG_PRINT("THR%d: Finished task (value %d, last item %d) ", threadid, ret, current.last_item);
 	    DEBUG_PRINT_BINCONF(&(current.bc));
 	}
@@ -82,7 +89,8 @@ void *evaluate_tasks(void * tid)
     auto thread_end = std::chrono::system_clock::now();
 
     /* update global variables regarding this thread's performance */
-    pthread_mutex_lock(&thread_progress_lock);
+    std::unique_lock<std::mutex> threadl(thread_progress_lock); // LOCK
+    // pthread_mutex_lock(&thread_progress_lock);
     DEBUG_PRINT("Thread %d terminating.\n", threadid);
     thread_finished[threadid] = true;
     finished_task_count += taskcounter;
@@ -107,25 +115,26 @@ void *evaluate_tasks(void * tid)
 
 //MEASURE_PRINT("Binarray size %d, oldqueue capacity %" PRIu64 ", newqueue capacity %" PRIu64 ".\n", BINARRAY_SIZE, tat.oldqueue->capacity(), tat.newqueue->capacity());
 #endif
-    pthread_mutex_unlock(&thread_progress_lock);
+    // pthread_mutex_unlock(&thread_progress_lock);
+    threadl.unlock();
     dynprog_attr_free(&tat);
-    return NULL;
+    // return NULL;
 }
 
 
 int scheduler(adversary_vertex *sapling)
 {
 
-    pthread_t threads[THREADS];
+    //pthread_t threads[THREADS];
     // a rather useless array of ids, but we can use it to grant IDs to threads
-    unsigned int ids[THREADS];
-    int rc;
+    // unsigned int ids[THREADS];
     bool stop = false;
     unsigned int collected_no = 0;
     int ret = POSTPONED;
 // initialize dp tables for the main thread
     thread_attr tat;
     dynprog_attr_init(&tat);
+    std::unique_lock<std::mutex> threadl(thread_progress_lock); threadl.unlock();
 
     // We create a copy of the sapling's bin configuration
     // which will be used as in-place memory for the algorithm.
@@ -150,9 +159,7 @@ int scheduler(adversary_vertex *sapling)
 	auto iteration_start = std::chrono::system_clock::now();
 #endif
 
-	pthread_mutex_lock(&thread_progress_lock);
 	global_terminate_flag = false;
-	pthread_mutex_unlock(&thread_progress_lock);
 
 	tm.clear();
 	running_and_removed.clear();
@@ -177,24 +184,26 @@ int scheduler(adversary_vertex *sapling)
 #endif
 	
 	// Thread initialization.i
-	pthread_mutex_lock(&thread_progress_lock); //LOCK
+	//pthread_mutex_lock(&thread_progress_lock); //LOCK
+	threadl.lock();
 	for (unsigned int i=0; i < THREADS; i++)
 	{
 	    thread_finished[i] = false;
 	    completed_tasks[i].clear();
 	}
-	pthread_mutex_unlock(&thread_progress_lock); //UNLOCK
+	threadl.unlock();
+	//pthread_mutex_unlock(&thread_progress_lock); //UNLOCK
 	
-	pthread_attr_t thread_attributes; pthread_attr_init(&thread_attributes);
-	pthread_attr_setdetachstate(&thread_attributes, PTHREAD_CREATE_DETACHED);
+	// pthread_attr_t thread_attributes; pthread_attr_init(&thread_attributes);
+	// pthread_attr_setdetachstate(&thread_attributes, PTHREAD_CREATE_DETACHED);
 	
 	for (unsigned int i=0; i < THREADS; i++) {
-	    ids[i] = i;
-	    rc = pthread_create(&threads[i], &thread_attributes, evaluate_tasks, (void *) &(ids[i]));
-	    if(rc) {
-		fprintf(stderr, "Error with thread control. Return value %d\n", rc);
+	    //rc = pthread_create(&threads[i], &thread_attributes, evaluate_tasks, (void *) &(ids[i]));
+	    std::thread(evaluate_tasks, i);
+	    /* if(rc) {
+	       fprintf(stderr, "Error with thread control. Return value %d\n", rc); 
 	    exit(-1);
-	    }
+	    } */
 	}	
 
 	stop = false;
@@ -202,14 +211,15 @@ int scheduler(adversary_vertex *sapling)
 	while (!stop)
 	{
 	    stop = true;
-	    pthread_mutex_lock(&thread_progress_lock);
+	    threadl.lock();
 	    for (unsigned int i = 0; i < THREADS; i++) {
 		if (!thread_finished[i])
 		{
 		    stop = false;
 		}
 	    }
-	    pthread_mutex_unlock(&thread_progress_lock);
+	    threadl.unlock();
+	    //pthread_mutex_unlock(&thread_progress_lock);
 	   
     
 	    std::this_thread::sleep_for(std::chrono::milliseconds(TICK_SLEEP));
@@ -253,9 +263,7 @@ int scheduler(adversary_vertex *sapling)
 		// instead of breaking, signal a call to terminate to other threads
 		// and wait for them to finish up
                 // this lock can potentially be removed without a race condition
-		    pthread_mutex_lock(&thread_progress_lock);
-		    global_terminate_flag = true;
-		    pthread_mutex_unlock(&thread_progress_lock);
+		global_terminate_flag = true;
 		}
 	    }
 	}

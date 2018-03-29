@@ -6,7 +6,8 @@
 #include <cstdlib>
 #include <cassert>
 #include <cstdint>
-#include <pthread.h>
+#include <mutex>
+#include <shared_mutex>
 #include <map>
 #include <list>
 #include <atomic>
@@ -30,20 +31,20 @@ typedef signed char tiny;
 #define MEASURE 1
 //#define TICKER 1
 //#define GOOD_MOVES 1
-//#define ONLY_ONE_PASS 1
+#define ONLY_ONE_PASS 1
 //#define OVERDUES 1
 
 //#define LF 1
 
 // maximum load of a bin in the optimal offline setting
-const int S = 41;
+const int S = 14;
 // target goal of the online bin stretching problem
-const int R = 56;
+const int R = 19;
 
 #ifdef ONLY_ONE_PASS
 const int PASS = 0;
 #else
-const int FIRST_PASS = 40;
+const int FIRST_PASS = 0;
 #endif
 
 // constants used for good situations
@@ -51,7 +52,7 @@ const int RMOD = (R-1);
 const int ALPHA = (RMOD-S);
 
 // Change this number for the selected number of bins.
-const int BINS = 3;
+const int BINS = 8;
 
 // bitwise length of indices of hash tables and lock tables
 const unsigned int HASHLOG = 29;
@@ -585,8 +586,15 @@ uint64_t total_good_move_hit = 0;
     uint64_t total_gsheurmiss = 0;
 #endif
  
-pthread_mutex_t taskq_lock;
-pthread_rwlock_t running_and_removed_lock;
+//pthread_mutex_t taskq_lock;
+std::mutex taskq_lock;
+std::shared_timed_mutex running_and_removed_lock;
+std::mutex collection_lock[THREADS];
+std::atomic_bool global_terminate_flag(false);
+std::mutex thread_progress_lock;
+
+
+//std::shared_lock running_and_removed_lock;
 // global hash-like map of completed tasks (and their parents up to
 // the root)
 std::map<uint64_t, int> winning_tasks;
@@ -599,7 +607,6 @@ std::unordered_set<uint64_t> running_and_removed;
 // hash-like map of completed tasks, serving as output map for each
 // thread separately
 std::map<uint64_t, int> completed_tasks[THREADS];
-pthread_mutex_t collection_lock[THREADS];
 
 //pthread_mutex_t completed_tasks_lock;
 
@@ -617,9 +624,6 @@ uint64_t global_edge_counter = 0;
 // indexed by bin configurations
 //std::map<uint64_t, gametree> treemap;
 //pthread_mutex_t treemap_lock;
-
-std::atomic_bool global_terminate_flag(false);
-pthread_mutex_t thread_progress_lock;
 
 /* total time spent in all threads */
 std::chrono::duration<long double> time_spent;
@@ -759,14 +763,14 @@ void print_binconf_stream(FILE* stream, const binconf* b)
 
 void init_global_locks(void)
 {
-    pthread_mutex_init(&taskq_lock, NULL);
-    pthread_mutex_init(&thread_progress_lock, NULL);
-    for ( int i =0; i < THREADS; i++)
-    {
-	pthread_mutex_init(&collection_lock[i], NULL);
-    }
+    //pthread_mutex_init(&taskq_lock, NULL);
+    //pthread_mutex_init(&thread_progress_lock, NULL);
+    //for ( int i =0; i < THREADS; i++)
+    // {
+//	pthread_mutex_init(&collection_lock[i], NULL);
+//    }
 //    pthread_mutex_init(&treemap_lock, NULL);
-    pthread_rwlock_init(&running_and_removed_lock, NULL);
+//    pthread_rwlock_init(&running_and_removed_lock, NULL);
 
 }
 

@@ -299,18 +299,18 @@ conf_el_extended *ht;
 dpht_el *dpht;
 
 
-pthread_rwlock_t *bucketlock;
-pthread_rwlock_t *dpbucketlock;
+std::array<std::shared_timed_mutex, BUCKETSIZE> bucketlock;
+std::array<std::shared_timed_mutex, BUCKETSIZE> dpbucketlock;
 
 #ifdef GOOD_MOVES
 // a hash table for best moves for the algorithm (so far)
 best_move_el *bmc;
-pthread_rwlock_t *bestmovelock;
+std::array<std::shared_timed_mutex, BUCKETSIZE> bestmovelock;
 #endif
 
 #ifdef LF
 lf_el *lfht;
-pthread_rwlock_t *lflock;
+std::array<std::shared_timed_mutex, BUCKETSIZE> lflock;
 #endif
 
 // DEBUG: Mersenne twister
@@ -459,6 +459,7 @@ void bc_hashtable_clear()
 
 void bucketlock_init()
 {
+    /*
     bucketlock = new pthread_rwlock_t[BUCKETSIZE];
     dpbucketlock = new pthread_rwlock_t[BUCKETSIZE];
 #ifdef GOOD_MOVES
@@ -481,6 +482,7 @@ void bucketlock_init()
 
 	pthread_rwlock_init(&dpbucketlock[i], NULL);
     }
+    */
 }
 
 void hashtable_cleanup()
@@ -506,15 +508,6 @@ void hashtable_cleanup()
 
 void bucketlock_cleanup()
 {
-    delete bucketlock;
-    delete dpbucketlock;
-#ifdef GOOD_MOVES
-    delete bestmovelock;
-#endif
-
-#ifdef LF
-    delete lflock;
-#endif
 }
 
 void printBits32(unsigned int num)

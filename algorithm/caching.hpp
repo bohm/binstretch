@@ -14,7 +14,7 @@
 #define HASHPUSH hashpush_probe
 #define HASHREMOVE hashremove_probe
 
-template<class T, int PROBE_LIMIT> bin_int is_hashed_simple(T *hashtable, pthread_rwlock_t *locks, uint64_t hash, uint64_t logpart, thread_attr *tat)
+template<class T, int PROBE_LIMIT> bin_int is_hashed_simple(T *hashtable, std::array<std::shared_timed_mutex, BUCKETSIZE>& locks, uint64_t hash, uint64_t logpart, thread_attr *tat)
 {
     uint64_t blp = bucketlockpart(hash);
     bin_int posvalue = -1;
@@ -22,8 +22,8 @@ template<class T, int PROBE_LIMIT> bin_int is_hashed_simple(T *hashtable, pthrea
     // Use linear probing to check for the hashed value.
     // slight hack here: in theory, just looking a few indices ahead might look into the next bucket lock
     // TODO: Fix that.
-    
-    pthread_rwlock_rdlock(&locks[blp]); // LOCK
+    std::shared_lock<std::shared_timed_mutex> l(locks[blp]); // LOCK
+    //pthread_rwlock_rdlock(&locks[blp]); // LOCK
 
     const T& candidate = hashtable[logpart];
     if (candidate.hash() == hash)
@@ -31,43 +31,49 @@ template<class T, int PROBE_LIMIT> bin_int is_hashed_simple(T *hashtable, pthrea
 	posvalue = candidate.value();
     }
 
-    pthread_rwlock_unlock(&locks[blp]); // UNLOCK
+    l.unlock(); // UNLOCK
+    //pthread_rwlock_unlock(&locks[blp]); // UNLOCK
     return posvalue;
 }
 
-template <class T, int PROBE_LIMIT> void hashpush_simple(T* hashtable, pthread_rwlock_t *locks, const T& item, uint64_t logpart, thread_attr *tat)
+template <class T, int PROBE_LIMIT> void hashpush_simple(T* hashtable, std::array<std::shared_timed_mutex, BUCKETSIZE>& locks, const T& item, uint64_t logpart, thread_attr *tat)
 {
 #ifdef MEASURE
     tat->bc_insertions++;
 #endif
     uint64_t blp = bucketlockpart(item.hash());
 
-    pthread_rwlock_wrlock(&locks[blp]); //LOCK
+    std::unique_lock<std::shared_timed_mutex> l(locks[blp]); // LOCK
+    //pthread_rwlock_wrlock(&locks[blp]); //LOCK
+    
     if (item.depth() <= hashtable[logpart].depth())
     {
 	hashtable[logpart] = item;
     }
-    pthread_rwlock_unlock(&locks[blp]); // UNLOCK
+    l.unlock(); // UNLOCK
+    // pthread_rwlock_unlock(&locks[blp]); // UNLOCK
 }
 
-template <class T, int PROBE_LIMIT> void hashremove_simple(T* hashtable, pthread_rwlock_t *locks, uint64_t hash, uint64_t logpart, thread_attr *tat)
+template <class T, int PROBE_LIMIT> void hashremove_simple(T* hashtable, std::array<std::shared_timed_mutex, BUCKETSIZE> &locks, uint64_t hash, uint64_t logpart, thread_attr *tat)
 {
 
     uint64_t blp = bucketlockpart(hash);
-    pthread_rwlock_wrlock(&locks[blp]); // LOCK
+    std::unique_lock<std::shared_timed_mutex> l(locks[blp]); // lock
+    // pthread_rwlock_wrlock(&locks[blp]); // LOCK
 
     T& candidate = hashtable[logpart];
     if (candidate.hash() == hash)
     {
 	hashtable[logpart].erase();
     }
-    pthread_rwlock_unlock(&locks[blp]); // UNLOCK
+    l.unlock(); // UNLOCK
+    //pthread_rwlock_unlock(&locks[blp]); // UNLOCK
 }
 
 const int FULL_NOT_FOUND = -2;
 const int NOT_FOUND = -1;
 
-template<class T, int PROBE_LIMIT> bin_int is_hashed_probe(T *hashtable, pthread_rwlock_t *locks, uint64_t hash, uint64_t logpart, thread_attr *tat)
+template<class T, int PROBE_LIMIT> bin_int is_hashed_probe(T *hashtable, std::array<std::shared_timed_mutex, BUCKETSIZE> &locks, uint64_t hash, uint64_t logpart, thread_attr *tat)
 {
     //fprintf(stderr, "Bchash %" PRIu64 ", zero_last_bit %" PRIu64 " get_last_bit %" PRId8 " \n", bchash, zero_last_bit(bchash), get_last_bit(bchash));
 
@@ -77,8 +83,8 @@ template<class T, int PROBE_LIMIT> bin_int is_hashed_probe(T *hashtable, pthread
     // Use linear probing to check for the hashed value.
     // slight hack here: in theory, just looking a few indices ahead might look into the next bucket lock
     // TODO: Fix that.
-    
-    pthread_rwlock_rdlock(&locks[blp]); // LOCK
+    std::shared_lock<std::shared_timed_mutex> l(locks[blp]); // lock
+    // pthread_rwlock_rdlock(&locks[blp]); // LOCK
 
     for( int i=0; i< PROBE_LIMIT; i++)
     {
@@ -104,14 +110,15 @@ template<class T, int PROBE_LIMIT> bin_int is_hashed_probe(T *hashtable, pthread
 	    posvalue = FULL_NOT_FOUND;
 	}
     }
- 
-    pthread_rwlock_unlock(&locks[blp]); // UNLOCK
+
+    l.unlock();
+    //pthread_rwlock_unlock(&locks[blp]); // UNLOCK
 
     return posvalue;
 }
 
 
-template <class T, int PROBE_LIMIT> void hashpush_probe(T* hashtable, pthread_rwlock_t *locks, const T& item, uint64_t logpart, thread_attr *tat)
+template <class T, int PROBE_LIMIT> void hashpush_probe(T* hashtable, std::array<std::shared_timed_mutex, BUCKETSIZE> &locks, const T& item, uint64_t logpart, thread_attr *tat)
 {
     //assert(posvalue == 0 || posvalue == 1);
     //uint64_t bchash = d->itemhash ^ d->loadhash;
@@ -119,8 +126,9 @@ template <class T, int PROBE_LIMIT> void hashpush_probe(T* hashtable, pthread_rw
     uint64_t blp = bucketlockpart(item.hash());
     bin_int maxdepth = item.depth();
     uint64_t maxposition = logpart;
-    
-    pthread_rwlock_wrlock(&locks[blp]); //LOCK
+
+
+    std::unique_lock<std::shared_timed_mutex> l(locks[blp]); // LOCK
     bool found_a_spot = false;
     for (int i=0; i< PROBE_LIMIT; i++)
     {
@@ -147,8 +155,9 @@ template <class T, int PROBE_LIMIT> void hashpush_probe(T* hashtable, pthread_rw
     {
 	hashtable[maxposition] = item;
     }
-    
-    pthread_rwlock_unlock(&locks[blp]); // UNLOCK
+
+    l.unlock();
+    // pthread_rwlock_unlock(&locks[blp]); // UNLOCK
     
 #ifdef DEEP_DEBUG
     DEEP_DEBUG_PRINT("Hashing the following position with value %d:\n", posvalue);
@@ -159,7 +168,7 @@ template <class T, int PROBE_LIMIT> void hashpush_probe(T* hashtable, pthread_rw
 
 
 // remove an element from the hash (the lazy way)
-template <class T, int PROBE_LIMIT> void hashremove_probe(T* hashtable, pthread_rwlock_t *locks, uint64_t hash, uint64_t logpart, thread_attr *tat)
+template <class T, int PROBE_LIMIT> void hashremove_probe(T* hashtable, std::array<std::shared_timed_mutex, BUCKETSIZE> &locks, uint64_t hash, uint64_t logpart, thread_attr *tat)
 {
 
     uint64_t blp = bucketlockpart(hash);
@@ -168,8 +177,9 @@ template <class T, int PROBE_LIMIT> void hashremove_probe(T* hashtable, pthread_
     // slight hack here: in theory, just looking a few indices ahead might look into the next bucket lock
     // TODO: Fix that.
     
-    pthread_rwlock_wrlock(&locks[blp]); // LOCK
+    //pthread_rwlock_wrlock(&locks[blp]); // LOCK
 
+    std::unique_lock<std::shared_timed_mutex> l(locks[blp]);
     for( int i=0; i< PROBE_LIMIT; i++)
     {
 	T& candidate = hashtable[logpart+i];
@@ -190,8 +200,9 @@ template <class T, int PROBE_LIMIT> void hashremove_probe(T* hashtable, pthread_
 	}
 
     }
- 
-    pthread_rwlock_unlock(&locks[blp]); // UNLOCK
+
+    l.unlock();
+    //pthread_rwlock_unlock(&locks[blp]); // UNLOCK
 }
 
 /* Adds an element to a configuration hash.

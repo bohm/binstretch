@@ -52,9 +52,12 @@ void add_task(const binconf *x, thread_attr *tat) {
     duplicate(&(newtask.bc), x);
     newtask.last_item = tat->last_item;
     newtask.expansion_depth = tat->expansion_depth; 
-    pthread_mutex_lock(&taskq_lock); // LOCK
+    //pthread_mutex_lock(&taskq_lock); // LOCK
+    std::unique_lock<std::mutex> l(taskq_lock);
+    //taskq_lock.lock();
     tm.insert(std::pair<llu, task>((x->loadhash ^ x->itemhash), newtask));
-    pthread_mutex_unlock(&taskq_lock); // UNLOCK
+    taskq_lock.unlock();
+    //pthread_mutex_unlock(&taskq_lock); // UNLOCK
 }
 
 // Removes a task from the global task map. If the task is not
@@ -63,18 +66,24 @@ void remove_task(llu hash)
 {
     removed_task_count++; // no race condition here, variable only used in the UPDATING thread
 
-    pthread_mutex_lock(&taskq_lock); // LOCK
+    //pthread_mutex_lock(&taskq_lock); // LOCK
+    std::unique_lock<std::mutex> l(taskq_lock);
+    //taskq_lock.lock();
     auto it = tm.find(hash);
     if (it != tm.end()) {
 	DEBUG_PRINT("Erasing task: ");
 	DEBUG_PRINT_BINCONF(&(it->second.bc));
 	tm.erase(it);
     } else {
-	pthread_rwlock_wrlock(&running_and_removed_lock);
+	// pthread_rwlock_wrlock(&running_and_removed_lock);
+	std::unique_lock<std::shared_timed_mutex> rl(running_and_removed_lock);
+	//l.lock();
 	running_and_removed.insert(it->first);
-	pthread_rwlock_unlock(&running_and_removed_lock);
+	rl.unlock();
+	// pthread_rwlock_unlock(&running_and_removed_lock);
     }
-    pthread_mutex_unlock(&taskq_lock); // UNLOCK
+    l.unlock();
+    //pthread_mutex_unlock(&taskq_lock); // UNLOCK
 }
 
 /* Check if a given task is complete, return its value. 
@@ -118,7 +127,8 @@ unsigned int collect_tasks()
     unsigned int collected = 0;
     for (int i =0; i < THREADS; i++)
     {
-	pthread_mutex_lock(&collection_lock[i]);
+	std::unique_lock<std::mutex> l(collection_lock[i]);
+	//pthread_mutex_lock(&collection_lock[i]);
 
 	for (auto &kv: completed_tasks[i])
 	{
@@ -136,7 +146,8 @@ unsigned int collect_tasks()
 	}
 
 	completed_tasks[i].clear();
-	pthread_mutex_unlock(&collection_lock[i]);
+	l.unlock();
+	//pthread_mutex_unlock(&collection_lock[i]);
     }
     return collected;
 }
