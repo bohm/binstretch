@@ -5,7 +5,6 @@
 #include <cstdlib>
 #include <cassert>
 #include <cstdint>
-#include <pthread.h>
 #include <map>
 #include <list>
 #include <atomic>

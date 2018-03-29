@@ -1,5 +1,4 @@
 #include <cstdio>
-#include <pthread.h>
 
 #include "common.hpp"
 #include "tree.hpp"
