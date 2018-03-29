@@ -196,7 +196,9 @@ int scheduler(adversary_vertex *sapling)
 	
 	for (unsigned int i=0; i < THREADS; i++) {
 	    //rc = pthread_create(&threads[i], &thread_attributes, evaluate_tasks, (void *) &(ids[i]));
-	    std::thread(evaluate_tasks, i);
+	    auto x = std::thread(evaluate_tasks, i);
+		x.detach();
+
 	    /* if(rc) {
 	       fprintf(stderr, "Error with thread control. Return value %d\n", rc); 
 	    exit(-1);

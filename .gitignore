@@ -3,3 +3,10 @@
 ################################################################################
 
 /.vs
+/algorithm/.vs/binstretch/v15
+/algorithm/x64/Debug
+/algorithm/Debug
+/algorithm/binstretch.vcxproj.user
+/algorithm/binstretch.vcxproj.filters
+/algorithm/binstretch.vcxproj
+/algorithm/binstretch.sln

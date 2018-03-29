@@ -55,7 +55,7 @@ void add_task(const binconf *x, thread_attr *tat) {
     std::unique_lock<std::mutex> l(taskq_lock);
     //taskq_lock.lock();
     tm.insert(std::pair<llu, task>((x->loadhash ^ x->itemhash), newtask));
-    taskq_lock.unlock();
+    l.unlock();
     //pthread_mutex_unlock(&taskq_lock); // UNLOCK
 }
 
@@ -77,7 +77,7 @@ void remove_task(llu hash)
 	// pthread_rwlock_wrlock(&running_and_removed_lock);
 	std::unique_lock<std::shared_timed_mutex> rl(running_and_removed_lock);
 	//l.lock();
-	running_and_removed.insert(it->first);
+	running_and_removed.insert(hash);
 	rl.unlock();
 	// pthread_rwlock_unlock(&running_and_removed_lock);
     }
