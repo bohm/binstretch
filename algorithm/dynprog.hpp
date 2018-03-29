@@ -32,13 +32,13 @@ void print_tuple(const std::array<bin_int, BINS>& tuple)
 void dynprog_attr_init(thread_attr *tat)
 {
     assert(tat != NULL);
-    tat->oldset = new std::unordered_set<std::array<bin_int, BINS> >();
-    tat->newset = new std::unordered_set<std::array<bin_int, BINS> >();
+    //tat->oldset = new std::unordered_set<std::array<bin_int, BINS> >();
+    //tat->newset = new std::unordered_set<std::array<bin_int, BINS> >();
 
-    tat->oldtqueue = new std::vector<std::array<bin_int, BINS> >();
-    tat->oldtqueue->reserve(LOADSIZE);
-    tat->newtqueue = new std::vector<std::array<bin_int, BINS> >();
-    tat->newtqueue->reserve(LOADSIZE);
+    //tat->oldtqueue = new std::vector<std::array<bin_int, BINS> >();
+    //tat->oldtqueue->reserve(LOADSIZE);
+    //tat->newtqueue = new std::vector<std::array<bin_int, BINS> >();
+    //tat->newtqueue->reserve(LOADSIZE);
 
     tat->oldloadqueue = new std::vector<loadconf>();
     tat->oldloadqueue->reserve(LOADSIZE);
@@ -50,10 +50,10 @@ void dynprog_attr_init(thread_attr *tat)
 
 void dynprog_attr_free(thread_attr *tat)
 {
-    delete tat->oldset;
-    delete tat->newset;
-    delete tat->oldtqueue;
-    delete tat->newtqueue;
+    //delete tat->oldset;
+    //delete tat->newset;
+    // delete tat->oldtqueue;
+    // delete tat->newtqueue;
     delete tat->oldloadqueue;
     delete tat->newloadqueue;
     delete tat->loadht;
@@ -95,7 +95,7 @@ void print_dynprog_measurements()
 #endif
 
 // Sparse dynprog test which uses tuples directly (and does not encode/decode them)
-dynprog_result dynprog_test_sorting(const binconf *conf, thread_attr *tat)
+/* dynprog_result dynprog_test_sorting(const binconf *conf, thread_attr *tat)
 {
     tat->newtqueue->clear();
     tat->oldtqueue->clear();
@@ -175,8 +175,8 @@ dynprog_result dynprog_test_sorting(const binconf *conf, thread_attr *tat)
     //ret.feasible = true;
     //return ret;
     
-    /* Heuristic: solve the cases of sizes 2 and 1 without generating new
-       configurations. */
+    // Heuristic: solve the cases of sizes 2 and 1 without generating new
+    //   configurations.
 
    
     for (unsigned int i=0; i < poldq->size(); i++)
@@ -211,6 +211,7 @@ dynprog_result dynprog_test_sorting(const binconf *conf, thread_attr *tat)
     ret.feasible = false;
     return ret;
 }
+*/
 
 // Sparse dynprog test which uses tuples directly (and does not encode/decode them)
 dynprog_result dynprog_test_loadhash(const binconf *conf, thread_attr *tat)
@@ -419,7 +420,7 @@ int8_t dynprog_test_dangerous(const binconf *conf, thread_attr *tat)
     return 0;
 }
 // Sparse dynprog test which uses tuples directly (and does not encode/decode them)
-dynprog_result dynprog_test_set(const binconf *conf, thread_attr *tat)
+/* dynprog_result dynprog_test_set(const binconf *conf, thread_attr *tat)
 {
     std::unordered_set<std::array<bin_int, BINS> > *poldq = tat->oldset;
     std::unordered_set<std::array<bin_int, BINS> > *pnewq = tat->newset;
@@ -485,8 +486,8 @@ dynprog_result dynprog_test_set(const binconf *conf, thread_attr *tat)
 	}
     }
 
-    /* Heuristic: solve the cases of sizes 2 and 1 without generating new
-    configurations. */
+    // Heuristic: solve the cases of sizes 2 and 1 without generating new
+    // configurations.
 
     for (const auto &tuple : *poldq)
     {
@@ -511,6 +512,7 @@ dynprog_result dynprog_test_set(const binconf *conf, thread_attr *tat)
     // return false;
     return ret;
 }
+*/
 
 #define WEIGHT 6
 #define FRACTION (S/WEIGHT)

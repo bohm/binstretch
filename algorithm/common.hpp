@@ -57,7 +57,7 @@ const int BINS = 8;
 // bitwise length of indices of hash tables and lock tables
 const unsigned int HASHLOG = 27;
 const unsigned int BCLOG = 27;
-const unsigned int BUCKETLOG = 15;
+const unsigned int BUCKETLOG = 10;
 const unsigned int BESTMOVELOG = 25;
 const unsigned int LOADLOG = 9;
 
@@ -412,7 +412,7 @@ typedef struct algorithm_vertex algorithm_vertex;
 
 class adv_outedge;
 class alg_outedge;
-
+/*
 namespace std
 {
     template<>
@@ -442,6 +442,7 @@ namespace std
         }
     };
 }
+*/
 
 // aliases for measurements of good situations
 const int SITUATIONS = 10;
