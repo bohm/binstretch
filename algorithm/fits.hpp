@@ -55,7 +55,7 @@ int bestfitalg(const binconf *orig)
 int bestfitalg_otherway(const binconf *orig)
 {
     loadconf b;
-    std::array<uint8_t, S+1> items;
+    std::array<bin_int, S+1> items;
     std::copy(orig->items.begin(), orig->items.end(), items.begin());
     /*for (int i =1; i <= BINS; i++)
     {
