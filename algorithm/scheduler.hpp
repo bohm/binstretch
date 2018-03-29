@@ -90,38 +90,19 @@ void *evaluate_tasks(void * tid)
 #ifdef MEASURE
     total_dynprog_time += tat.dynprog_time;
     total_max_feasible += tat.maximum_feasible_counter;
-    total_hash_and_tests += tat.hash_and_test_counter;
-
-    total_dp_miss += tat.dp_miss;
-    total_dp_hit += tat.dp_hit;
-    total_dp_insertions += tat.dp_insertions;
-    total_dp_full_not_found += tat.dp_full_not_found;
-
-    total_bc_miss += tat.bc_miss;
-    total_bc_hit += tat.bc_hit;
-    total_bc_full_not_found += tat.bc_full_not_found;
-
+    total_largest_queue = std::max(total_largest_queue, tat.largest_queue_observed);
+    total_overdue_tasks += tat.overdue_tasks;
     total_dynprog_calls += tat.dynprog_calls;
     total_inner_loop += tat.inner_loop;
-    total_bc_insertions += tat.bc_insertions;
-    total_bc_hash_checks += tat.bc_hash_checks;
-
-    total_largest_queue = std::max(total_largest_queue, tat.largest_queue_observed);
-
-    total_overdue_tasks += tat.overdue_tasks;
-
+    collect_caching_from_thread(tat);
     collect_gsheur_from_thread(tat);
+    collect_dynprog_from_thread(tat);
+    //total_tub += tat.tub;
 #ifdef GOOD_MOVES
     total_good_move_hit += tat.good_move_hit;
     total_good_move_miss += tat.good_move_miss;
 #endif
 
-#ifdef LF
-    lf_tot_full_nf += tat.lf_full_nf;
-    lf_tot_partial_nf += tat.lf_partial_nf;
-    lf_tot_hit += tat.lf_hit;
-    lf_tot_insertions += tat.lf_insertions;
-#endif
 
 
 //MEASURE_PRINT("Binarray size %d, oldqueue capacity %" PRIu64 ", newqueue capacity %" PRIu64 ".\n", BINARRAY_SIZE, tat.oldqueue->capacity(), tat.newqueue->capacity());
@@ -153,7 +134,7 @@ int scheduler(adversary_vertex *sapling)
     duplicate(&sapling_bc, sapling->bc);
     tat.last_item = sapling->last_item;
     
-#ifdef MEASURE
+#ifdef PROGRESS
     auto scheduler_start = std::chrono::system_clock::now();
 #endif
 #ifdef ONLY_ONE_PASS
@@ -301,11 +282,11 @@ int scheduler(adversary_vertex *sapling)
     
     dynprog_attr_free(&tat);
 
-    PROGRESS_PRINT("End computation.\n");
-#ifdef MEASURE
+    //PROGRESS_PRINT("End computation.\n");
+#ifdef PROGRESS
     auto scheduler_end = std::chrono::system_clock::now();
     std::chrono::duration<long double> scheduler_time = scheduler_end - scheduler_start;
-    MEASURE_PRINT("Full evaluation time: %Lfs.\n", scheduler_time.count());
+    PROGRESS_PRINT("Full evaluation time: %Lfs.\n", scheduler_time.count());
     
 #endif
     return ret;

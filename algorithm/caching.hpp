@@ -31,21 +31,7 @@ template<class T, int PROBE_LIMIT> bin_int is_hashed_simple(T *hashtable, pthrea
 	posvalue = candidate.value();
     }
 
-#ifdef MEASURE
-    if (posvalue == -1)
-    {
-	tat->bc_full_not_found++;
-    }
-#endif
-
     pthread_rwlock_unlock(&locks[blp]); // UNLOCK
-#ifdef MEASURE
-    if (posvalue != -1)
-    {
-	tat->bc_hit++;
-    }
-#endif 
-
     return posvalue;
 }
 
@@ -226,24 +212,21 @@ void conf_hashpush(const binconf *d, int posvalue, bin_int depth, thread_attr *t
 
 bin_int is_conf_hashed(const binconf *d, thread_attr *tat)
 {
-#ifdef MEASURE
-    tat->bc_hash_checks++;
-#endif
     uint64_t bchash = zero_last_bit(d->itemhash ^ d->loadhash);
     bin_int ret = IS_HASHED<conf_el_extended, LINPROBE_LIMIT>(ht, bucketlock, bchash, hashlogpart(bchash), tat);
 
-#ifdef MEASURE
     if (ret >= 0)
     {
-	tat->bc_hit++;
-    } else if( ret == FULL_NOT_FOUND)
+	MEASURE_ONLY(tat->bc_hit++);
+    } else if (ret == NOT_FOUND)
     {
-	tat->bc_full_not_found++;
-	ret = NOT_FOUND; // TODO: make sure this works even with MEASURE turned off
+	MEASURE_ONLY(tat->bc_partial_nf++);
+    } else if (ret == FULL_NOT_FOUND)
+    {
+	MEASURE_ONLY(tat->bc_full_nf++);
+	ret = NOT_FOUND;
     }
-#endif 
     return ret;
-
 }
 
 #ifdef GOOD_MOVES
@@ -299,21 +282,173 @@ bin_int is_lf_hashed(const binconf *d, thread_attr *tat)
 {
     uint64_t bchash = d->itemhash ^ d->loadhash;
     bin_int ret = IS_HASHED<lf_el, LINPROBE_LIMIT>(lfht, lflock, bchash, lflogpart(bchash), tat);
-#ifdef MEASURE
     if (ret >= 0)
     {
-	tat->lf_hit++;
+	MEASURE_ONLY(tat->lf_hit++);
     } else if (ret ==  NOT_FOUND)
     {
-	tat->lf_partial_nf++;
+	MEASURE_ONLÝ(tat->lf_partial_nf++);
     } else if (ret == FULL_NOT_FOUND)
     {
-	tat->lf_full_nf++;
-	ret = NOT_FOUND; // TODO: make sure this works even with MEASURE turned off
+	MEASURE_ONLY(tat->lf_full_nf++);
+	ret = NOT_FOUND; 
     }
-#endif // MEASURE
     return ret;
 }
 #endif // LF
 
-#endif // define _CACHING_HPP
+
+/*
+// Checks if a number is in the dynamic programming hash.
+// Returns first bool (whether it is hashed) and the result (if it exists)
+int8_t dp_hashed(const binconf* d, thread_attr *tat)
+{
+    dynprog_result foundhash;
+    std::pair<bool,dynprog_result> ret;
+    ret.first = false;
+    
+    uint64_t lp = dplogpart(d->itemhash);
+    uint64_t blp = bucketlockpart(d->itemhash);
+
+    pthread_mutex_lock(&dpbucketlock[blp]); // LOCK
+
+    for( int i=0; i< LINPROBE_LIMIT; i++)
+    {
+	const int8_t candidate& = dpht[lp+i];
+
+	// check if it is empty space
+	if (candidate.hash == 0)
+	{
+	    break;
+	}
+
+	if (candidate.hash == d->itemhash)
+	{
+	    return dpht[lp+i];
+	}
+#ifdef MEASURE
+	if (i == LINPROBE_LIMIT-1)
+	{
+	    tat->dp_full_not_found++;
+	}
+#endif
+    } 
+    pthread_mutex_unlock(&dpbucketlock[blp]); // UNLOCK
+
+#ifdef MEASURE
+    // zero is found only in the case the slot is empty
+    if(ret.first)
+    {
+	tat->dp_hit++;
+    }
+#endif
+
+    return ret;
+}
+*/
+
+/*
+// Adds an number to a dynamic programming hash table
+void dp_hashpush(const binconf *d, dynprog_result data, thread_attr *tat)
+{
+
+#ifdef MEASURE
+    tat->dp_insertions++;
+#endif
+
+    uint64_t lp = dplogpart(d->itemhash);
+    uint64_t blp = bucketlockpart(d->itemhash);
+    uint64_t position = lp;
+
+    data.hash = d->itemhash;
+    
+    pthread_mutex_lock(&dpbucketlock[blp]); // LOCK
+    for (int i=0; i< LINPROBE_LIMIT; i++)
+    {
+	dynprog_result possible_entry = dpht[lp+i];
+	if (possible_entry.hash == 0)
+	{
+	    position = lp+i;
+	    break;
+	}
+
+	if (possible_entry.hash == data.hash)
+	{
+	    position = lp+i;
+	    break;
+	}
+    }
+    dpht[position] = data;
+    pthread_mutex_unlock(&dpbucketlock[blp]); // UNLOCK
+}
+*/
+
+void dp_hashpush(const binconf *d, int8_t feasibility, thread_attr *tat)
+{
+#ifdef MEASURE
+    tat->dp_insertions++;
+#endif
+
+    uint64_t hash = d->itemhash;
+    dpht_el el(hash, feasibility, - d->_itemcount); // depth is negative as we want to store more items, not less
+    HASHPUSH<dpht_el, LINPROBE_LIMIT>(dpht, dpbucketlock, el, dplogpart(hash), tat);
+}
+
+
+int8_t is_dp_hashed(const binconf *d, thread_attr *tat)
+{
+    uint64_t hash = d->itemhash;
+    bin_int ret = IS_HASHED<dpht_el, LINPROBE_LIMIT>(dpht, dpbucketlock, hash, dplogpart(hash), tat);
+
+    if (ret >= 0)
+    {
+	MEASURE_ONLY(tat->dp_hit++);
+    } else if (ret == NOT_FOUND)
+    {
+	MEASURE_ONLY(tat->dp_partial_nf++);
+    } else if (ret == FULL_NOT_FOUND)
+    {
+	MEASURE_ONLY(tat->dp_full_nf++);
+	ret = NOT_FOUND;
+    }
+    return (int8_t) ret;
+
+}
+
+#ifdef MEASURE
+
+void collect_caching_from_thread(const thread_attr &tat)
+{
+    total_dp_insertions += tat.dp_insertions;
+    total_dp_hit += tat.dp_hit;
+    total_dp_partial_nf += tat.dp_partial_nf;
+    total_dp_full_nf += tat.dp_full_nf;
+
+    total_bc_insertions += tat.bc_insertions;
+    total_bc_hit += tat.bc_hit;
+    total_bc_partial_nf += tat.bc_partial_nf;
+    total_bc_full_nf += tat.bc_full_nf;
+
+#ifdef LF
+    lf_tot_full_nf += tat.lf_full_nf;
+    lf_tot_partial_nf += tat.lf_partial_nf;
+    lf_tot_hit += tat.lf_hit;
+    lf_tot_insertions += tat.lf_insertions;
+#endif // LF
+}
+
+void print_caching()
+{
+    MEASURE_PRINT("Main cache size: %llu, #insert: %" PRIu64 ", #search: %" PRIu64 "(#hit: %" PRIu64 ",  #part. miss: %" PRIu64 ",#full miss: %" PRIu64 ").\n",
+		  HASHSIZE, total_bc_insertions, (total_bc_hit+total_bc_partial_nf+total_bc_full_nf), total_bc_hit,
+		  total_bc_partial_nf, total_bc_full_nf);
+    MEASURE_PRINT("DP cache size: %llu, #insert: %" PRIu64 ", #search: %" PRIu64 "(#hit: %" PRIu64 ",  #part. miss: %" PRIu64 ",#full miss: %" PRIu64 ").\n",
+		  BC_HASHSIZE, total_dp_insertions, (total_dp_hit+total_dp_partial_nf+total_dp_full_nf), total_dp_hit,
+		  total_dp_partial_nf, total_dp_full_nf);
+
+    LFPRINT("Larg. feas. cache size %llu, #insert: %" PRIu64 ", #hit: %" PRIu64 ", #part. miss: %" PRIu64 ", #full miss: %" PRIu64 "\n",
+	    LFEASSIZE, lf_tot_insertions, lf_tot_hit, lf_tot_partial_nf, lf_tot_full_nf);
+
+}
+#endif // MEASURE
+#endif // _CACHING_HPP

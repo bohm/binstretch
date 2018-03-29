@@ -242,12 +242,65 @@ public:
 	}
 };
 
+class dpht_el
+{
+public:
+    uint64_t _hash;
+    int8_t _feas;
+    bin_int _depth;
+    
+    dpht_el()
+	{
+	}
+    
+    dpht_el(uint64_t hash, int8_t feasible, bin_int depth)
+	{
+	    _hash = hash;
+	    _feas = feasible;
+	    _depth = depth;
+	}
+    inline bin_int value() const
+	{
+	    return _feas;
+	}
+    inline uint64_t hash() const
+	{
+	    return _hash;
+	}
+    inline bool empty() const
+	{
+	    return _hash == 0;
+	}
+    inline bool removed() const
+	{
+	    return _hash == REMOVED;
+	}
+
+    inline void remove()
+	{
+	    _hash = REMOVED; _depth = 0; _feas = 0;
+	}
+
+    inline void erase()
+	{
+	    _hash = 0; _depth = 0; _feas = 0;
+	}
+
+    bin_int depth() const
+	{
+	    return _depth;
+	}
+};
+
 
 // generic hash table (for configurations)
 conf_el_extended *ht;
+// hash table for dynamic programming calls / feasibility checks
+dpht_el *dpht;
+
 
 pthread_rwlock_t *bucketlock;
-pthread_mutex_t *dpbucketlock;
+pthread_rwlock_t *dpbucketlock;
 
 #ifdef GOOD_MOVES
 // a hash table for best moves for the algorithm (so far)
@@ -260,16 +313,13 @@ lf_el *lfht;
 pthread_rwlock_t *lflock;
 #endif
 
-// hash table for dynamic programming calls / feasibility checks
-dynprog_result *dpht;
-
 // DEBUG: Mersenne twister
 
 std::mt19937_64 gen(12345);
 
-llu rand_64bit()
+uint64_t rand_64bit()
 {
-    llu r = gen();
+    uint64_t r = gen();
     return r;
 }
 
@@ -281,52 +331,39 @@ void zobrist_init()
 {
     // seeded, non-random
     srand(182371293);
-    Zi = (llu **) malloc((S+1)*sizeof(llu *));
-    Zl = (llu **) malloc((BINS+1)*sizeof(llu *));
+    Zi = new uint64_t[(S+1)*(R+1)];
+    Zl = new uint64_t[(BINS+1)*(R+1)];
 
-    Ai = new llu[S+1];
-    
-    for(int i=1; i<=BINS; i++)
-    {
-	Zl[i] = (llu *) malloc((R+1)* sizeof(llu));
-	for(int j=0; j<=R; j++)
-	{
-	    Zl[i][j] = rand_64bit();
-	}	
-    }
-    
-    
-    for (int i=1; i<=S; i++) // different sizes of items
-    {
-	Zi[i] = (llu *) malloc((R+1)*BINS*sizeof(llu));
-	for (int j=0; j<=R*BINS; j++) // number of items of this size
-	{
-	    Zi[i][j] = rand_64bit(); 
+    Ai = new uint64_t[S+1];
+
+    for (int i=0; i<=S; i++) {
+	for (int j=0; j<=R; j++) {
+	    Zi[i*(R+1)+j] = rand_64bit();
 	}
-
 	Ai[i] = rand_64bit();
     }
+
+    for (int i=0; i<=BINS; i++)
+    {
+	for( int j=0; j<=R; j++)
+	{
+	    Zl[i*(R+1)+j] = rand_64bit();
+	}
+    }
 }
 
-void global_hashtable_init()
-{
-
-    dpht = new dynprog_result[BC_HASHSIZE];
-    assert(dpht != NULL);
-
-    zobrist_init();
-#ifdef MEASURE
-    measure_init();
-#endif
-}
-
-void local_hashtable_init()
+void hashtable_init()
 {
     ht = new conf_el_extended[HASHSIZE];
-    
     for (uint64_t i =0; i < HASHSIZE; i++)
     {
 	ht[i]._data = 0;
+    }
+
+    dpht = new dpht_el[BC_HASHSIZE];
+    for (uint64_t i =0; i < BC_HASHSIZE; i++)
+    {
+	dpht[i]._hash = 0; dpht[i]._depth = 0; dpht[i]._feas = 0;
     }
 
 #ifdef GOOD_MOVES
@@ -346,6 +383,11 @@ void local_hashtable_init()
 	lfht[i]._depth = 0;
 	lfht[i]._lf = -1;
     }
+#endif
+
+    zobrist_init();
+#ifdef MEASURE
+    measure_init();
 #endif
 }
 
@@ -402,7 +444,7 @@ void dynprog_hashtable_clear()
 {
     for (uint64_t i =0; i < BC_HASHSIZE; i++)
     {
-	dpht[i].hash = 0;
+	dpht[i]._hash = 0; dpht[i]._feas = 0; dpht[i]._depth = 0;
     }
 
 }
@@ -418,7 +460,7 @@ void bc_hashtable_clear()
 void bucketlock_init()
 {
     bucketlock = new pthread_rwlock_t[BUCKETSIZE];
-    dpbucketlock = new pthread_mutex_t[BUCKETSIZE];
+    dpbucketlock = new pthread_rwlock_t[BUCKETSIZE];
 #ifdef GOOD_MOVES
     bestmovelock = new pthread_rwlock_t[BUCKETSIZE];
 #endif
@@ -437,32 +479,19 @@ void bucketlock_init()
         pthread_rwlock_init(&lflock[i], NULL);
 #endif
 
-	pthread_mutex_init(&dpbucketlock[i], NULL);
+	pthread_rwlock_init(&dpbucketlock[i], NULL);
     }
 }
 
-void global_hashtable_cleanup()
+void hashtable_cleanup()
 {
-    // zobrist cleanup
-    for(int i=1; i<=BINS; i++)
-    {
-	free(Zl[i]);
-    }
 
-    for(int j=1; j<=S; j++)
-    {
-	free(Zi[j]);
-    }
-    free(Zl);
-    free(Zi);
-
+    delete Zl;
+    delete Zi;
+    
     delete dpht;
     delete Ai;
-}
 
-// cleanup function -- technically not necessary but useful for memory leak checking
-void local_hashtable_cleanup()
-{
     //hashtable cleanup
     delete ht;
 #ifdef GOOD_MOVES
@@ -472,6 +501,7 @@ void local_hashtable_cleanup()
 #ifdef LF
     delete lfht;
 #endif
+
 }
 
 void bucketlock_cleanup()
@@ -548,7 +578,7 @@ template<unsigned int LOG> inline uint64_t logpart(uint64_t x)
 }
 
 const auto bucketlockpart = logpart<BUCKETLOG>;
-const auto bclogpart = logpart<BCLOG>;
+const auto dplogpart = logpart<BCLOG>;
 const auto hashlogpart = logpart<HASHLOG>;
 
 const auto loadlogpart = logpart<LOADLOG>;
@@ -562,11 +592,11 @@ void hashinit(binconf *d)
     
     for(int i=1; i<=BINS; i++)
     {
-	d->loadhash ^= Zl[i][d->loads[i]];
+	d->loadhash ^= Zl[i*(R+1) + d->loads[i]];
     }
     for(int j=1; j<=S; j++)
     {
-	d->itemhash ^= Zi[j][d->items[j]];
+	d->itemhash ^= Zi[j*(R+1) + d->items[j]];
     }
 }
 
@@ -586,118 +616,34 @@ void rehash(binconf *d, const binconf *prev, int item)
     // rehash loads
     for(int bin=1; bin<= BINS; bin++)
     {
-	d->loadhash ^= Zl[bin][prev->loads[bin]];
-	d->loadhash ^= Zl[bin][d->loads[bin]];
+	d->loadhash ^= Zl[bin*(R+1) + prev->loads[bin]];
+	d->loadhash ^= Zl[bin*(R+1) + d->loads[bin]];
     }
 
     // rehash item lists
-    d->itemhash ^= Zi[item][prev->items[item]];
-    d->itemhash ^= Zi[item][d->items[item]];
+    d->itemhash ^= Zi[item*(R+1) + prev->items[item]];
+    d->itemhash ^= Zi[item*(R+1) + d->items[item]];
 }
 
 void dp_changehash(binconf *d, int dynitem, int old_count, int new_count)
 {
-    d->itemhash ^= Zi[dynitem][old_count];
-    d->itemhash ^= Zi[dynitem][new_count];
+    d->itemhash ^= Zi[dynitem*(R+1) + old_count];
+    d->itemhash ^= Zi[dynitem*(R+1) + new_count];
 }
 // rehash for dynamic programming purposes, assuming we have added
 // one item of size "dynitem"
 void dp_rehash(binconf *d, int dynitem)
 {
-    d->itemhash ^= Zi[dynitem][d->items[dynitem] -1];
-    d->itemhash ^= Zi[dynitem][d->items[dynitem]];
+    d->itemhash ^= Zi[dynitem*(R+1) + d->items[dynitem] -1];
+    d->itemhash ^= Zi[dynitem*(R+1) + d->items[dynitem]];
 
 }
 
 // opposite of dp_rehash -- rehashes after removing one item "dynitem"
 void dp_unhash(binconf *d, int dynitem)
 {
-    d->itemhash ^= Zi[dynitem][d->items[dynitem] + 1];
-    d->itemhash ^= Zi[dynitem][d->items[dynitem]];
-}
-
-// Checks if a number is in the dynamic programming hash.
-// Returns first bool (whether it is hashed) and the result (if it exists)
-std::pair<bool, dynprog_result> dp_hashed(const binconf* d, thread_attr *tat)
-{
-    dynprog_result foundhash;
-    std::pair<bool,dynprog_result> ret;
-    ret.first = false;
-    
-    uint64_t lp = bclogpart(d->itemhash);
-    uint64_t blp = bucketlockpart(d->itemhash);
-
-    pthread_mutex_lock(&dpbucketlock[blp]); // LOCK
-
-    for( int i=0; i< LINPROBE_LIMIT; i++)
-    {
-	dynprog_result candidate = dpht[lp+i];
-
-	// check if it is empty space
-	if (candidate.hash == 0)
-	{
-	    break;
-	}
-
-	if (candidate.hash == d->itemhash)
-	{
-	    ret.first = true;
-	    ret.second = candidate;
-	    break;
-	}
-#ifdef MEASURE
-	if (i == LINPROBE_LIMIT-1)
-	{
-	    tat->dp_full_not_found++;
-	}
-#endif
-    } 
-    pthread_mutex_unlock(&dpbucketlock[blp]); // UNLOCK
-
-#ifdef MEASURE
-    // zero is found only in the case the slot is empty
-    if(ret.first)
-    {
-	tat->dp_hit++;
-    }
-#endif
-
-    return ret;
-}
-
-
-// Adds an number to a dynamic programming hash table
-void dp_hashpush(const binconf *d, dynprog_result data, thread_attr *tat)
-{
-
-#ifdef MEASURE
-    tat->dp_insertions++;
-#endif
-
-    uint64_t lp = bclogpart(d->itemhash);
-    uint64_t blp = bucketlockpart(d->itemhash);
-    uint64_t position = lp;
-
-    data.hash = d->itemhash;
-    
-    pthread_mutex_lock(&dpbucketlock[blp]); // LOCK
-    for (int i=0; i< LINPROBE_LIMIT; i++)
-    {
-	dynprog_result possible_entry = dpht[lp+i];
-	if (possible_entry.hash == 0)
-	{
-	    position = lp+i;
-	    break;
-	}
-
-	if (possible_entry.hash == data.hash)
-	{
-	    position = lp+i;
-	    break;
-	}
-    }
-    dpht[position] = data;
-    pthread_mutex_unlock(&dpbucketlock[blp]); // UNLOCK
+    d->itemhash ^= Zi[dynitem*(R+1) + d->items[dynitem] + 1];
+    d->itemhash ^= Zi[dynitem*(R+1) + d->items[dynitem]];
 }
 
 #endif

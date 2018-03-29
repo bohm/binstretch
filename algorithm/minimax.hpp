@@ -172,7 +172,16 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
     int lower_bound = std::max(1, tat->last_item - monotonicity);
     
     for (int item_size = maximum_feasible; item_size>=lower_bound; item_size--)
-    { 
+    {
+	// quick hacktest
+	/*if (MODE == EXPLORING)
+	{
+	    if (item_size % 2 == 1 && item_size > 7 && item_size < S-7)
+	    {
+		continue;
+	    }
+	    }*/
+	
         DEEP_DEBUG_PRINT("Sending item %d to algorithm.\n", item_size);
 	// algorithm's vertex for the next step
 	algorithm_vertex *analyzed_vertex; // used only in the GENERATING mode

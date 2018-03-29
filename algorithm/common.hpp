@@ -26,7 +26,7 @@ typedef signed char tiny;
 //#define THOROUGH_HASH_CHECKING 1
 #define PROGRESS 1
 //#define REGROW 1
-//#define OUTPUT 1
+#define OUTPUT 1
 #define MEASURE 1
 //#define TICKER 1
 //#define GOOD_MOVES 1
@@ -36,14 +36,14 @@ typedef signed char tiny;
 //#define LF 1
 
 // maximum load of a bin in the optimal offline setting
-const int S = 101;
+const int S = 41;
 // target goal of the online bin stretching problem
-const int R = 138;
+const int R = 56;
 
 #ifdef ONLY_ONE_PASS
 const int PASS = 0;
 #else
-const int FIRST_PASS = 0;
+const int FIRST_PASS = 40;
 #endif
 
 // constants used for good situations
@@ -54,7 +54,7 @@ const int ALPHA = (RMOD-S);
 const int BINS = 3;
 
 // bitwise length of indices of hash tables and lock tables
-const unsigned int HASHLOG = 28;
+const unsigned int HASHLOG = 29;
 const unsigned int BCLOG = 28;
 const unsigned int BUCKETLOG = 15;
 const unsigned int BESTMOVELOG = 25;
@@ -91,7 +91,7 @@ const int TICK_SLEEP = 200;
 // how many tasks are sufficient for the updater to run the main updater routine
 const int TICK_TASKS = 100;
 // the number of completed tasks after which the exploring thread reports progress
-const int PROGRESS_AFTER = 1000;
+const int PROGRESS_AFTER = 50;
 
 // a threshold for a task becoming overdue
 const std::chrono::seconds THRESHOLD = std::chrono::seconds(10);
@@ -114,9 +114,9 @@ const int MAX_EXPANSION = 1;
 
 bool generating_tasks;
 
-llu **Zi; // Zobrist table for items
-llu **Zl; // Zobrist table for loads
-llu *Ai; // Zobrist table for next item to pack (used for the algorithm's best move table)
+uint64_t *Zi; // Zobrist table for items
+uint64_t *Zl; // Zobrist table for loads
+uint64_t *Ai; // Zobrist table for next item to pack (used for the algorithm's best move table)
 
 // use this type for values of loads and items
 // reasonable settings are either int8_t or int16_t, depending on whether a bin can contain more
@@ -145,7 +145,7 @@ public:
 	    
 	    for(int i=1; i<=BINS; i++)
 	    {
-		loadhash ^= Zl[i][loads[i]];
+		loadhash ^= Zl[i*(R+1) + loads[i]];
 	    }
 	}
 
@@ -191,8 +191,8 @@ public:
 	    
 	    if (from == to)
 	    {
-		loadhash ^= Zl[from][loads[from] - item]; // old load
-		loadhash ^= Zl[from][loads[from]]; // new load
+		loadhash ^= Zl[from*(R+1) + loads[from] - item]; // old load
+		loadhash ^= Zl[from*(R+1) + loads[from]]; // new load
 	    } else {
 		
 		// rehash loads in [from, to).
@@ -200,14 +200,14 @@ public:
 		// loads[i+1] to loads[i]
 		for (int i = from; i < to; i++)
 		{
-		    loadhash ^= Zl[i][loads[i+1]]; // the old load on i
-		    loadhash ^= Zl[i][loads[i]]; // the new load on i
+		    loadhash ^= Zl[i*(R+1) + loads[i+1]]; // the old load on i
+		    loadhash ^= Zl[i*(R+1) + loads[i]]; // the new load on i
 		}
 		
 		// the last load is tricky, because it is the increased load
 		
-		loadhash ^= Zl[to][loads[from] - item]; // the old load
-		loadhash ^= Zl[to][loads[to]]; // the new load
+		loadhash ^= Zl[to*(R+1) + loads[from] - item]; // the old load
+		loadhash ^= Zl[to*(R+1) + loads[to]]; // the new load
 	    }
 	}
 
@@ -217,8 +217,8 @@ public:
 	    assert(item >= 1); assert(from <= to); assert(from >= 1); assert(to <= BINS);
 	    if (from == to)
 	    {
-		loadhash ^= Zl[from][loads[from] + item]; // old load
-		loadhash ^= Zl[from][loads[from]]; // new load
+		loadhash ^= Zl[from*(R+1) + loads[from] + item]; // old load
+		loadhash ^= Zl[from*(R+1) + loads[from]]; // new load
 	    } else {
 		
 		// rehash loads in (from, to].
@@ -226,14 +226,14 @@ public:
 		// d->loads[i] to d->loads[i-1]
 		for (int i = from+1; i <= to; i++)
 		{
-		    loadhash ^= Zl[i][loads[i-1]]; // the old load on i
-		    loadhash ^= Zl[i][loads[i]]; // the new load on i
+		    loadhash ^= Zl[i*(R+1) + loads[i-1]]; // the old load on i
+		    loadhash ^= Zl[i*(R+1) + loads[i]]; // the new load on i
 		}
 		
 		// the first load is tricky
 		
-		loadhash ^= Zl[from][loads[to] + item]; // the old load
-		loadhash ^= Zl[from][loads[from]]; // the new load
+		loadhash ^= Zl[from*(R+1) + loads[to] + item]; // the old load
+		loadhash ^= Zl[from*(R+1) + loads[from]]; // the new load
 	    }
 	}
 
@@ -310,6 +310,7 @@ public:
     int _totalload = 0;
     // hash related properties
     uint64_t itemhash = 0;
+    int _itemcount = 0;
 
     int totalload() const
     {
@@ -333,7 +334,7 @@ public:
 	    
 	    for (int j=1; j<=S; j++)
 	    {
-		itemhash ^= Zi[j][items[j]];
+		itemhash ^= Zi[j*(R+1) + items[j]];
 	    }
 	}
 
@@ -346,27 +347,32 @@ public:
 
     int itemcount() const
     {
-	int total = 0;
-	for(int i=1; i <= S; i++)
-	{
-	    total += items[i];
-	}
-	return total;
+	return _itemcount;
     }
+
+    int itemcount_explicit() const
+	{
+	    int total = 0;
+	    for (int i=1; i<=S; i++)
+	    {
+		total += items[i];
+	    }
+	    return total;
+	}
 
     void rehash_increased_range(int item, int from, int to)
 	{
 	    // rehash loads, then items
 	    rehash_loads_increased_range(item, from, to);
-	    itemhash ^= Zi[item][items[item]-1];
-	    itemhash ^= Zi[item][items[item]];
+	    itemhash ^= Zi[item*(R+1) + items[item]-1];
+	    itemhash ^= Zi[item*(R+1) + items[item]];
 	}
 
     void rehash_decreased_range(int item, int from, int to)
 	{
 	    rehash_loads_decreased_range(item, from, to);
-	    itemhash ^= Zi[item][items[item]+1];
-	    itemhash ^= Zi[item][items[item]];
+	    itemhash ^= Zi[item*(R+1) + items[item]+1];
+	    itemhash ^= Zi[item*(R+1) + items[item]];
 	}
 
 
@@ -473,21 +479,24 @@ struct thread_attr {
     
     uint64_t iterations = 0;
     uint64_t maximum_feasible_counter = 0;
-    uint64_t hash_and_test_counter = 0;
-    uint64_t dp_full_not_found = 0;
+#ifdef MEASURE
     uint64_t dp_hit = 0;
-    uint64_t dp_miss = 0;
+    uint64_t dp_partial_nf = 0;
+    uint64_t dp_full_nf = 0;
     uint64_t dp_insertions = 0;
 
-    uint64_t bc_full_not_found = 0;
     uint64_t bc_hit = 0;
-    uint64_t bc_miss = 0;
+    uint64_t bc_partial_nf = 0;
+    uint64_t bc_full_nf = 0;
+    uint64_t bc_insertions = 0;
     uint64_t inner_loop = 0;
     uint64_t dynprog_calls = 0;
-    uint64_t bc_insertions = 0;
-    uint64_t bc_hash_checks = 0;
     uint64_t largest_queue_observed = 0;
-
+    uint64_t bestfit_calls = 0;
+    uint64_t onlinefit_sufficient = 0;
+    std::array<uint64_t, BINS*S+1> dynprog_itemcount = {};
+#endif
+    
 #ifdef LF
     uint64_t lf_full_nf = 0;
     uint64_t lf_partial_nf = 0;
@@ -509,6 +518,7 @@ struct thread_attr {
     std::array<uint64_t, SITUATIONS> gsmiss = {};
     uint64_t gsheurhit = 0;
     uint64_t gsheurmiss = 0;
+    uint64_t tub = 0;
 #endif
     
     int expansion_depth = 0;
@@ -527,22 +537,30 @@ uint64_t finished_task_count = 0;
 uint64_t removed_task_count = 0; // number of tasks which are removed due to minimax pruning
 uint64_t decreased_task_count = 0;
 uint64_t total_max_feasible = 0;
-uint64_t total_hash_and_tests = 0;
 uint64_t total_dynprog_calls = 0;
 uint64_t total_inner_loop = 0;
 
+#ifdef MEASURE
+
+uint64_t total_bc_hit = 0;
+uint64_t total_bc_partial_nf = 0;
+uint64_t total_bc_full_nf = 0;
+uint64_t total_bc_insertions = 0;
+
 
 uint64_t total_dp_hit = 0;
-uint64_t total_dp_miss = 0;
+uint64_t total_dp_partial_nf = 0;
+uint64_t total_dp_full_nf = 0;
 uint64_t total_dp_insertions = 0;
-uint64_t total_dp_full_not_found = 0;
 
-uint64_t total_bc_hash_checks = 0;
-uint64_t total_bc_insertions = 0;
-uint64_t total_bc_full_not_found = 0;
-uint64_t total_bc_hit = 0;
-uint64_t total_bc_miss = 0;
+std::array<uint64_t, BINS*S+1> total_dynprog_itemcount = {};
 
+uint64_t total_bestfit_calls = 0;
+uint64_t total_onlinefit_sufficient = 0;
+
+uint64_t total_tub = 0;
+
+#endif
 
 #ifdef LF
 uint64_t lf_tot_full_nf = 0;
@@ -818,6 +836,7 @@ int binconf::assign_item(int item, int bin)
     loads[bin] += item;
     _totalload += item;
     items[item]++;
+    _itemcount++;
     return sortloads_one_increased(bin);
 }
 
@@ -826,6 +845,7 @@ int binconf::assign_multiple(int item, int bin, int count)
     loads[bin] += count*item;
     _totalload += count*item;
     items[item] += count;
+    _itemcount += count;
     return sortloads_one_increased(bin);
 }
 
@@ -835,6 +855,7 @@ void binconf::unassign_item(int item, int bin)
     loads[bin] -= item;
     _totalload -= item;
     items[item]--;
+    _itemcount--;
     sortloads_one_decreased(bin);
 }
 
@@ -843,6 +864,7 @@ int binconf::assign_and_rehash(int item, int bin)
      loads[bin] += item;
     _totalload += item;
     items[item]++;
+    _itemcount++;
     int from = sortloads_one_increased(bin);
     rehash_increased_range(item,from,bin);
     return from;
@@ -853,6 +875,7 @@ void binconf::unassign_and_rehash(int item, int bin)
     loads[bin] -= item;
     _totalload -= item;
     items[item]--;
+    _itemcount--;
     int from = sortloads_one_decreased(bin);
     rehash_decreased_range(item, bin, from);
 }

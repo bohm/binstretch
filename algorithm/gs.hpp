@@ -201,13 +201,15 @@ int gs3variant(const binconf *b, thread_attr *tat)
 	 return -1;
      }
 
-     assert(last_bin_load_req <= S+ALPHA);
+     // overflow = minimum size of an item that would trigger GS1BOUND but does not fit into a bin
      int overflow = S + ALPHA - last_bin_load_req + 1;
      if (b->loads[BINS-1] <= ALPHA && sum_but_two + overflow + b->loads[BINS-1] >= GS1BOUND)
      {
 	 MEASURE_ONLY(tat->gshit[GS3VARIANT]++);
 	 return 1;
      }
+     // this might look worse (after all, b->loads[BINS] < b->loads[BINS-1]), but it can trigger
+     // when the second to last bin is over ALPHA.
      else if (b->loads[BINS] <= ALPHA && sum_but_two + overflow + b->loads[BINS] >= GS1BOUND)
      {
 	 MEASURE_ONLY(tat->gshit[GS3VARIANT]++);
@@ -267,7 +269,6 @@ int gs4variant(const binconf *b, thread_attr *tat)
 
     // passed all cases, is a good situation
     MEASURE_ONLY(tat->gshit[GS4VARIANT]++);
-
     return 1;
 }
 
@@ -276,12 +277,11 @@ int gs3(const binconf *b, thread_attr *tat)
     int alowerbound = (int) ceil(1.5 * (double) (1*S-ALPHA));
     if ( (b->loads[1] >= alowerbound) && ((b->loads[BINS] <= ALPHA) || (b->loads[2] + b->loads[3] >= 1*S+ALPHA)) )
     {
-	return 1;
 	MEASURE_ONLY(tat->gshit[GS3]++);
+	return 1;
     }
     
     MEASURE_ONLY(tat->gsmiss[GS3]++);
-
     return -1;
 }
 
@@ -292,8 +292,8 @@ int gs4(const binconf *b, thread_attr *tat)
    // b->loads[3] <= ALPHA is implicit
    if ( (b->loads[1] + b->loads[2] >= ablowerbound) && (b->loads[2] <= ALPHA))
    {
-       return 1;
        MEASURE_ONLY(tat->gshit[GS4]++);
+       return 1;
    }
 
    MEASURE_ONLY(tat->gsmiss[GS4]++);
@@ -354,6 +354,7 @@ int testgs(const binconf *b, thread_attr *tat) {
 	return 1;
     }
 
+    // temporarily disabling
     if (gs1mod(b, tat) == 1)
     {
 	return 1;
@@ -366,41 +367,29 @@ int testgs(const binconf *b, thread_attr *tat) {
     }
 
     // temporarily disabling to see if performance improves
-    /*if( gs4variant(b, tat) == 1)
+    if( gs4variant(b, tat) == 1)
     {
 	return 1;
-	}*/
+    }
     
 // Apply the rest of the heuristics only with 3 bins and ALPHA >= 1/3
     if ((BINS == 3) && ((3*ALPHA) >= S))
     {
 
-	//assert(gs2(b) == gs2variant(b));
-
-	/*if(gs2(b) == 1)
-	  {
-	  DEEP_DEBUG_PRINT(stderr, "The following binconf hits GS2:\n");
-	  DEEP_DEBUG_PRINT_BINCONF(b);
-	  return 1;
-	  }*/
-	
-	/*
-	  if( gs1mod(b) == 1 && gs1(b) == -1 && gs3(b) == -1)
-	  {
-	  fprintf(stderr, "Problematic binconf:\n");
-	  print_binconf_stream(stderr, b);
-	  //return 1;
-	  }*/
-	
-
-	// GS3, GS4 and GS5 are never hit for BINS == 3 now, it seems.
+	// GS2, GS3 and GS5 are never hit for BINS == 3 now, it seems.
+	/*if(gs2(b, tat) == 1)
+	{
+	    DEEP_DEBUG_PRINT(stderr, "The following binconf hits GS2:\n");
+	    DEEP_DEBUG_PRINT_BINCONF(b);
+	    return 1;
+	}*/
 
 	/*if(gs3(b, tat) == 1)
 	{
 	    DEEP_DEBUG_PRINT("The following binconf hits GS3:\n");
 	    DEEP_DEBUG_PRINT_BINCONF(b);
 	    return 1;
-	}
+	}*/
 	
 	if(gs4(b, tat) == 1)
 	{
@@ -409,7 +398,7 @@ int testgs(const binconf *b, thread_attr *tat) {
 	    return 1;
 	}
 	
-	if(gs5(b, tat) == 1)
+	/* if(gs5(b, tat) == 1)
 	{
 	    DEEP_DEBUG_PRINT("The following binconf hits GS5:\n");
 	    DEEP_DEBUG_PRINT_BINCONF(b);
@@ -436,24 +425,17 @@ int gsheuristic(binconf *b, int k, thread_attr *tat)
     {
 	if ((b->loads[i] + k)< R)
 	{
-	    // debug code (disabled, seems to work)
-	    //binconf *d = new binconf;
-	    //duplicate(d,b);
-	    //binconf *e = new binconf;
-	    //duplicate(e,b);
-	    //e->loads[i] += k;
-	    //e->items[k]++;
-	    //sortloads(e);
-	    
 	    moved_load = b->assign_item(k,i);
 	    int value = testgs(b, tat);
-	    //assert(binconf_equal(b,e));
 	    b->unassign_item(k,moved_load);
-	    if(value == 1)
+	    if (value == 1)
 	    {
 		MEASURE_ONLY(tat->gsheurhit++);
 		return 1;
 	    } else {
+		// to reduce the number of calls to testgs, we only test the "best fit" packing
+		// MEASURE_ONLY(tat->gsheurmiss++);
+		//return -1;
 	    }
          }
     }
