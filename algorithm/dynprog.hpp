@@ -8,7 +8,6 @@
 
 #include "common.hpp"
 #include "fits.hpp"
-#include "measure.hpp"
 #include "hash.hpp"
 
 // which test procedure are we using

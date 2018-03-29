@@ -633,12 +633,6 @@ std::chrono::duration<long double> total_dynprog_time;
 // root of the tree (deprecated)
 // binconf *root;
 
-#ifdef MEASURE
-// time measuring global variable
-timeval totaltime_start;
-#endif
-
-
 void duplicate(binconf *t, const binconf *s) {
     for(int i=1; i<=BINS; i++)
 	t->loads[i] = s->loads[i];

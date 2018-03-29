@@ -5,7 +5,6 @@
 #include "common.hpp"
 #include "hash.hpp"
 #include "minimax.hpp"
-#include "measure.hpp"
 #include "scheduler.hpp"
 
 int main(void)

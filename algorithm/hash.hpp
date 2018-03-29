@@ -2,7 +2,6 @@
 #include <cstdlib>
 #include <cassert>
 #include "common.hpp"
-#include "measure.hpp"
 #include <random>
 #include <limits>
 
@@ -386,9 +385,6 @@ void hashtable_init()
 #endif
 
     zobrist_init();
-#ifdef MEASURE
-    measure_init();
-#endif
 }
 
 void cache_measurements()

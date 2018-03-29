@@ -12,7 +12,6 @@
 #include "hash.hpp"
 #include "caching.hpp"
 #include "updater.hpp"
-#include "measure.hpp"
 
 #ifndef _SCHEDULER_H
 #define _SCHEDULER_H 1
@@ -230,11 +229,11 @@ int scheduler(adversary_vertex *sapling)
 	    if (should_do_update)
 	    {
 		collected_no = 0;
-#ifdef TICKER
+/*#ifdef TICKER
 		timeval update_start, update_end, time_difference;
 		gettimeofday(&update_start, NULL);
 		uint64_t previously_removed = removed_task_count;
-#endif
+endif*/
 		clear_visited_bits();
 		//MEASURE_PRINT("Begin update, win: %lu, lose: %lu, overdue: %lu.\n",
 		//	      winning_tasks.size(), losing_tasks.size(), overdue_tasks.size());
