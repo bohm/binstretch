@@ -57,7 +57,7 @@ const int BINS = 8;
 // bitwise length of indices of hash tables and lock tables
 const unsigned int HASHLOG = 27;
 const unsigned int BCLOG = 27;
-const unsigned int BUCKETLOG = 10;
+const unsigned int BUCKETLOG = 4;
 const unsigned int BESTMOVELOG = 25;
 const unsigned int LOADLOG = 9;
 
@@ -474,7 +474,6 @@ struct thread_attr {
     std::vector<loadconf> *newloadqueue;
 
     uint64_t *loadht;
-    std::chrono::duration<long double> dynprog_time;
 
     loadconf ol = {};
     int last_item = 1;
@@ -628,8 +627,7 @@ uint64_t global_edge_counter = 0;
 
 /* total time spent in all threads */
 std::chrono::duration<long double> time_spent;
-/* total time spent on dynamic programming */
-std::chrono::duration<long double> total_dynprog_time;
+
 
 // root of the tree (deprecated)
 // binconf *root;

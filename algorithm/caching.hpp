@@ -14,64 +14,124 @@
 #define HASHPUSH hashpush_probe
 #define HASHREMOVE hashremove_probe
 
-template<class T, int PROBE_LIMIT> bin_int is_hashed_simple(T *hashtable, std::array<std::shared_timed_mutex, BUCKETSIZE>& locks, uint64_t hash, uint64_t logpart, thread_attr *tat)
-{
-    uint64_t blp = bucketlockpart(hash);
-    bin_int posvalue = -1;
-
-    // Use linear probing to check for the hashed value.
-    // slight hack here: in theory, just looking a few indices ahead might look into the next bucket lock
-    // TODO: Fix that.
-    std::shared_lock<std::shared_timed_mutex> l(locks[blp]); // LOCK
-    //pthread_rwlock_rdlock(&locks[blp]); // LOCK
-
-    const T& candidate = hashtable[logpart];
-    if (candidate.hash() == hash)
-    {
-	posvalue = candidate.value();
-    }
-
-    l.unlock(); // UNLOCK
-    //pthread_rwlock_unlock(&locks[blp]); // UNLOCK
-    return posvalue;
-}
-
-template <class T, int PROBE_LIMIT> void hashpush_simple(T* hashtable, std::array<std::shared_timed_mutex, BUCKETSIZE>& locks, const T& item, uint64_t logpart, thread_attr *tat)
-{
-#ifdef MEASURE
-    tat->bc_insertions++;
-#endif
-    uint64_t blp = bucketlockpart(item.hash());
-
-    std::unique_lock<std::shared_timed_mutex> l(locks[blp]); // LOCK
-    //pthread_rwlock_wrlock(&locks[blp]); //LOCK
-    
-    if (item.depth() <= hashtable[logpart].depth())
-    {
-	hashtable[logpart] = item;
-    }
-    l.unlock(); // UNLOCK
-    // pthread_rwlock_unlock(&locks[blp]); // UNLOCK
-}
-
-template <class T, int PROBE_LIMIT> void hashremove_simple(T* hashtable, std::array<std::shared_timed_mutex, BUCKETSIZE> &locks, uint64_t hash, uint64_t logpart, thread_attr *tat)
-{
-
-    uint64_t blp = bucketlockpart(hash);
-    std::unique_lock<std::shared_timed_mutex> l(locks[blp]); // lock
-    // pthread_rwlock_wrlock(&locks[blp]); // LOCK
-
-    T& candidate = hashtable[logpart];
-    if (candidate.hash() == hash)
-    {
-	hashtable[logpart].erase();
-    }
-    l.unlock(); // UNLOCK
-    //pthread_rwlock_unlock(&locks[blp]); // UNLOCK
-}
 
 const int FULL_NOT_FOUND = -2;
 const int NOT_FOUND = -1;
+
+bin_int is_hashed_lockless(uint64_t hash, uint64_t logpart, thread_attr *tat)
+{
+	//fprintf(stderr, "Bchash %" PRIu64 ", zero_last_bit %" PRIu64 " get_last_bit %" PRId8 " \n", bchash, zero_last_bit(bchash), get_last_bit(bchash));
+
+	uint64_t blp = bucketlockpart(hash);
+	bin_int posvalue = NOT_FOUND;
+
+	// Use linear probing to check for the hashed value.
+
+	for (int i = 0; i < LINPROBE_LIMIT; i++)
+	{
+		uint64_t cand_data = ht[logpart + i]._data;
+		if (cand_data == 0)
+		{
+			break;
+		}
+
+		// we have to continue in this case, because it might be stored after this element
+		if (cand_data == REMOVED)
+		{
+			continue;
+		}
+		if (zero_last_bit(cand_data) == hash)
+		{
+			posvalue = get_last_bit(cand_data);
+			break;
+		}
+
+		if (i == LINPROBE_LIMIT - 1)
+		{
+			posvalue = FULL_NOT_FOUND;
+		}
+	}
+	return posvalue;
+}
+
+ void hashpush_lockless(uint64_t hash, uint64_t data, bin_int depth, uint64_t logpart, thread_attr *tat)
+{
+	uint64_t blp = bucketlockpart(hash);
+	bin_int maxdepth = depth;
+	uint64_t maxposition = logpart;
+
+	bool found_a_spot = false;
+	for (int i = 0; i< LINPROBE_LIMIT; i++)
+	{
+		uint64_t candidate = ht[logpart + i]._data;
+		bin_int cand_depth = ht[logpart + i]._depth;
+		if (candidate == 0 || candidate == REMOVED)
+		{
+			// since we are doing two sequential atomic edits, a collision may occur,
+			// but this should just give an item a wrong information about depth
+			ht[logpart + i]._data = data;
+			ht[logpart + i]._depth = depth;
+			found_a_spot = true;
+			break;
+		}
+		else if (zero_last_bit(candidate) == hash)
+		{
+			ht[logpart + i]._data = data;
+			ht[logpart + i]._depth = depth;
+			found_a_spot = true;
+			break;
+		}
+		else if (cand_depth > maxdepth)
+		{
+			maxdepth = cand_depth;
+			maxposition = logpart + i;
+		}
+	}
+
+	// if the cache is full, choose a random position
+	if (!found_a_spot && maxdepth > depth)
+	{
+		ht[maxposition]._data = data;
+		ht[maxposition]._depth = depth;
+	}
+}
+
+
+// remove an element from the hash (the lazy way)
+// lockless -- tries to avoid locks using atomic (but might delete things which it should not, if a collision occurs)
+ void hashremove_lockless(uint64_t data, uint64_t logpart, thread_attr *tat)
+ {
+	 uint64_t hash = zero_last_bit(data);
+	 uint64_t blp = bucketlockpart(hash);
+
+	 //pthread_rwlock_wrlock(&locks[blp]); // LOCK
+
+	 for (int i = 0; i < LINPROBE_LIMIT; i++)
+	 {
+		 uint64_t cand = ht[logpart + i]._data;
+		 uint64_t cand_hash = zero_last_bit(cand);
+		if (cand_hash == 0)
+		{
+			break;
+		}
+
+		// we have to continue in this case, because it might be stored after this element
+		if (cand_hash == REMOVED)
+		{
+			continue;
+		}
+
+		// again, this might remove another element, when a collision occurs
+		if (cand_hash == hash)
+		{
+			ht[logpart + i]._data = REMOVED;
+			break;
+		}
+
+	}
+}
+
+
 
 template<class T, int PROBE_LIMIT> bin_int is_hashed_probe(T *hashtable, std::array<std::shared_timed_mutex, BUCKETSIZE> &locks, uint64_t hash, uint64_t logpart, thread_attr *tat)
 {
@@ -205,10 +265,6 @@ template <class T, int PROBE_LIMIT> void hashremove_probe(T* hashtable, std::arr
     //pthread_rwlock_unlock(&locks[blp]); // UNLOCK
 }
 
-/* Adds an element to a configuration hash.
-   Because the table is flat, this is easier.
-   Also uses flat rewriting yet.
- */
 void conf_hashpush(const binconf *d, int posvalue, bin_int depth, thread_attr *tat)
 {
 #ifdef MEASURE
@@ -216,11 +272,45 @@ void conf_hashpush(const binconf *d, int posvalue, bin_int depth, thread_attr *t
 #endif
 
     uint64_t bchash = d->itemhash ^ d->loadhash;
-    conf_el_extended el(bchash, (uint64_t) posvalue, depth);
-    HASHPUSH<conf_el_extended, LINPROBE_LIMIT>(ht, bucketlock, el, hashlogpart(bchash), tat);
+	uint64_t data = zero_last_bit(bchash) | posvalue;
+    hashpush_lockless(bchash, data, depth, hashlogpart(bchash), tat);
 }
 
+/*
+void conf_hashpush(const binconf *d, int posvalue, bin_int depth, thread_attr *tat)
+{
+#ifdef MEASURE
+	tat->bc_insertions++;
+#endif
 
+	uint64_t bchash = d->itemhash ^ d->loadhash;
+	conf_el_extended el(bchash, (uint64_t)posvalue, depth);
+	HASHPUSH<conf_el_extended, LINPROBE_LIMIT>(ht, bucketlock, el, hashlogpart(bchash), tat);
+}
+*/
+
+bin_int is_conf_hashed(const binconf *d, thread_attr *tat)
+{
+	uint64_t bchash = zero_last_bit(d->itemhash ^ d->loadhash);
+	bin_int ret = is_hashed_lockless(bchash, hashlogpart(bchash), tat);
+
+	if (ret >= 0)
+	{
+		MEASURE_ONLY(tat->bc_hit++);
+	}
+	else if (ret == NOT_FOUND)
+	{
+		MEASURE_ONLY(tat->bc_partial_nf++);
+	}
+	else if (ret == FULL_NOT_FOUND)
+	{
+		MEASURE_ONLY(tat->bc_full_nf++);
+		ret = NOT_FOUND;
+	}
+	return ret;
+}
+
+/*
 bin_int is_conf_hashed(const binconf *d, thread_attr *tat)
 {
     uint64_t bchash = zero_last_bit(d->itemhash ^ d->loadhash);
@@ -239,6 +329,7 @@ bin_int is_conf_hashed(const binconf *d, thread_attr *tat)
     }
     return ret;
 }
+*/
 
 #ifdef GOOD_MOVES
 // Adds an element to an algorithm's best move cache.

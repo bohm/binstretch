@@ -10,3 +10,6 @@
 /algorithm/binstretch.vcxproj.filters
 /algorithm/binstretch.vcxproj
 /algorithm/binstretch.sln
+/algorithm/x64/Release
+*.psess
+*.vspx

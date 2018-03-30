@@ -86,8 +86,8 @@ public:
 class conf_el_extended
 {
 public:
-    uint64_t _data;
-    bin_int _depth;
+    std::atomic<uint64_t> _data;
+    std::atomic<bin_int> _depth;
 
     conf_el_extended()
 	{
@@ -102,6 +102,7 @@ public:
 	    _data = (zero_last_bit(hash) | posvalue);
 	    _depth = depth;
 	}
+
     inline bin_int value() const
 	{
 	    return get_last_bit(_data);

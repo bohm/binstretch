@@ -57,7 +57,7 @@ int main(void)
 	    task_count, finished_task_count, removed_task_count);
 
     //MEASURE_ONLY(long double ratio = (long double) total_dynprog_calls / (long double) total_inner_loop);
-    MEASURE_PRINT("Total time (all threads): %Lfs; total dynprog time: %Lfs.\n", time_spent.count(), total_dynprog_time.count());
+    MEASURE_PRINT("Total time (all threads): %Lfs.\n", time_spent.count());
 #ifdef OVERDUES
     MEASURE_PRINT("Overdue tasks: %" PRIu64 "\n", total_overdue_tasks);
 #endif

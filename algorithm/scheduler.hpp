@@ -63,7 +63,7 @@ void evaluate_tasks(int threadid)
 	{
 	    taskcounter++;
 	    if(taskcounter % PROGRESS_AFTER == 0) {
-		PROGRESS_PRINT("Thread %u completes task number %" PRIu64 ", %lu remain: ", threadid, taskcounter, tm.size());
+		PROGRESS_PRINT("Thread %u completes task number %" PRIu64 ", %zu remain: ", threadid, taskcounter, tm.size());
 		PROGRESS_PRINT_BINCONF(&current.bc);
 	    }
 	}
@@ -93,7 +93,6 @@ void evaluate_tasks(int threadid)
     finished_task_count += taskcounter;
     time_spent += thread_end - thread_start;
 #ifdef MEASURE
-    total_dynprog_time += tat.dynprog_time;
     total_max_feasible += tat.maximum_feasible_counter;
     total_largest_queue = std::max(total_largest_queue, tat.largest_queue_observed);
     total_overdue_tasks += tat.overdue_tasks;
@@ -166,7 +165,7 @@ int scheduler(adversary_vertex *sapling)
 	monotonicity = m;
 	ret = generate(&sapling_bc, &tat, sapling);
 	sapling->value = ret;
-	PROGRESS_PRINT("Generated %lu tasks.\n", tm.size());
+	PROGRESS_PRINT("Generated %zu tasks.\n", tm.size());
 	
 #ifdef DEEP_DEBUG
 	DEEP_DEBUG_PRINT("Creating a dump of tasks into tasklist.txt.\n");
@@ -283,7 +282,7 @@ endif*/
 	    // we continue with higher generality
 
 	    clear_cache_of_ones();
-	    PROGRESS_PRINT("We remember %lu winning tasks.\n", winning_tasks.size());
+	    PROGRESS_PRINT("We remember %zu winning tasks.\n", winning_tasks.size());
 	}
     }
     
@@ -309,7 +308,7 @@ int solve(adversary_vertex *initial_vertex)
     while (!sapling_queue.empty())
     {
 	adversary_vertex* sapling = sapling_queue.front();
-	fprintf(stderr, "Sapling queue size: %lu, current sapling of depth %d:\n", sapling_queue.size(), sapling->depth);
+	fprintf(stderr, "Sapling queue size: %zu, current sapling of depth %d:\n", sapling_queue.size(), sapling->depth);
 	print_binconf_stream(stderr, sapling->bc);
 	sapling_queue.pop();
 

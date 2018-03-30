@@ -593,7 +593,6 @@ std::pair<int8_t, dynprog_result> maximum_feasible_dynprog(binconf *b, const int
 {
 #ifdef MEASURE
     tat->maximum_feasible_counter++;
-    auto start = std::chrono::system_clock::now(); 
 #endif
     DEEP_DEBUG_PRINT("Starting dynprog maximization of configuration:\n");
     DEEP_DEBUG_PRINT_BINCONF(b);
@@ -693,12 +692,7 @@ std::pair<int8_t, dynprog_result> maximum_feasible_dynprog(binconf *b, const int
     //}
 
     // DEBUG: compare it with ordinary for cycle
-
-#ifdef MEASURE
-    auto end = std::chrono::system_clock::now();
-    tat->dynprog_time += end - start;
-#endif
-    
+   
     return ret;
 }
 
