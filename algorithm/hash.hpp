@@ -245,56 +245,7 @@ public:
 	}
 };
 
-class dpht_el
-{
-public:
-    uint64_t _hash;
-    int8_t _feas;
-    bin_int _depth;
-    
-    dpht_el()
-	{
-	}
-    
-    dpht_el(uint64_t hash, int8_t feasible, bin_int depth)
-	{
-	    _hash = hash;
-	    _feas = feasible;
-	    _depth = depth;
-	}
-    inline bin_int value() const
-	{
-	    return _feas;
-	}
-    inline uint64_t hash() const
-	{
-	    return _hash;
-	}
-    inline bool empty() const
-	{
-	    return _hash == 0;
-	}
-    inline bool removed() const
-	{
-	    return _hash == REMOVED;
-	}
-
-    inline void remove()
-	{
-	    _hash = REMOVED; _depth = 0; _feas = 0;
-	}
-
-    inline void erase()
-	{
-	    _hash = 0; _depth = 0; _feas = 0;
-	}
-
-    bin_int depth() const
-	{
-	    return _depth;
-	}
-};
-
+typedef conf_el_extended dpht_el;
 
 // generic hash table (for configurations)
 conf_el_extended *ht;
@@ -366,7 +317,7 @@ void hashtable_init()
     dpht = new dpht_el[BC_HASHSIZE];
     for (uint64_t i =0; i < BC_HASHSIZE; i++)
     {
-	dpht[i]._hash = 0; dpht[i]._depth = 0; dpht[i]._feas = 0;
+	dpht[i]._data = 0;
     }
 
 #ifdef GOOD_MOVES
@@ -444,7 +395,7 @@ void dynprog_hashtable_clear()
 {
     for (uint64_t i =0; i < BC_HASHSIZE; i++)
     {
-	dpht[i]._hash = 0; dpht[i]._feas = 0; dpht[i]._depth = 0;
+	dpht[i]._data = 0;
     }
 
 }

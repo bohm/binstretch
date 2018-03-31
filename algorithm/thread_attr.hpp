@@ -19,8 +19,9 @@ struct thread_attr {
 
     uint64_t *loadht;
     optconf oc;
+    loadconf ol; 
     int last_item = 1;
-    
+    bin_int prev_max_feasible = S;
     uint64_t iterations = 0;
     uint64_t maximum_feasible_counter = 0;
     int expansion_depth = 0;

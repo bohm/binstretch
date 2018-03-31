@@ -21,8 +21,8 @@ int main(void)
     }
 
     binconf root;
-    //root.assign_item(5,1);
-    //root.assign_item(2,2);
+    root.assign_item(5,1);
+    root.assign_item(2,2);
     //root.assign_item(2,3);
     //root.assign_item(2,4);
 

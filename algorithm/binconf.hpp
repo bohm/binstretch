@@ -181,19 +181,19 @@ class binconf: public loadconf {
 public:
     
     std::array<bin_int,S+1> items = {};
-    int _totalload = 0;
+    bin_int _totalload = 0;
     // hash related properties
     uint64_t itemhash = 0;
     int _itemcount = 0;
 
-    int totalload() const
+    bin_int totalload() const
     {
 	return _totalload;
     } 
 
-    int totalload_explicit() const
+    bin_int totalload_explicit() const
     {
-   	int total = 0;
+   	bin_int total = 0;
 	for (int i=1; i<=BINS;i++)
 	{
 	    total += loads[i];

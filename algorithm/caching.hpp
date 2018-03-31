@@ -18,7 +18,7 @@
 const int FULL_NOT_FOUND = -2;
 const int NOT_FOUND = -1;
 
-bin_int is_hashed_lockless(uint64_t hash, uint64_t logpart, thread_attr *tat)
+bin_int is_hashed_lockless(conf_el_extended *hashtable, uint64_t hash, uint64_t logpart, thread_attr *tat)
 {
 	//fprintf(stderr, "Bchash %" PRIu64 ", zero_last_bit %" PRIu64 " get_last_bit %" PRId8 " \n", bchash, zero_last_bit(bchash), get_last_bit(bchash));
 
@@ -28,7 +28,7 @@ bin_int is_hashed_lockless(uint64_t hash, uint64_t logpart, thread_attr *tat)
 
 	for (int i = 0; i < LINPROBE_LIMIT; i++)
 	{
-		uint64_t cand_data = ht[logpart + i]._data;
+		uint64_t cand_data = hashtable[logpart + i]._data;
 		if (cand_data == 0)
 		{
 			break;
@@ -53,7 +53,7 @@ bin_int is_hashed_lockless(uint64_t hash, uint64_t logpart, thread_attr *tat)
 	return posvalue;
 }
 
- void hashpush_lockless(uint64_t hash, uint64_t data, bin_int depth, uint64_t logpart, thread_attr *tat)
+void hashpush_lockless(conf_el_extended *hashtable, uint64_t hash, uint64_t data, bin_int depth, uint64_t logpart, thread_attr *tat)
 {
 	bin_int maxdepth = depth;
 	uint64_t maxposition = logpart;
@@ -61,21 +61,21 @@ bin_int is_hashed_lockless(uint64_t hash, uint64_t logpart, thread_attr *tat)
 	bool found_a_spot = false;
 	for (int i = 0; i< LINPROBE_LIMIT; i++)
 	{
-		uint64_t candidate = ht[logpart + i]._data;
-		bin_int cand_depth = ht[logpart + i]._depth;
+		uint64_t candidate = hashtable[logpart + i]._data;
+		bin_int cand_depth = hashtable[logpart + i]._depth;
 		if (candidate == 0 || candidate == REMOVED)
 		{
 			// since we are doing two sequential atomic edits, a collision may occur,
 			// but this should just give an item a wrong information about depth
-			ht[logpart + i]._data = data;
-			ht[logpart + i]._depth = depth;
+			hashtable[logpart + i]._data = data;
+			hashtable[logpart + i]._depth = depth;
 			found_a_spot = true;
 			break;
 		}
 		else if (zero_last_bit(candidate) == hash)
 		{
-			ht[logpart + i]._data = data;
-			ht[logpart + i]._depth = depth;
+			hashtable[logpart + i]._data = data;
+			hashtable[logpart + i]._depth = depth;
 			found_a_spot = true;
 			break;
 		}
@@ -89,8 +89,8 @@ bin_int is_hashed_lockless(uint64_t hash, uint64_t logpart, thread_attr *tat)
 	// if the cache is full, choose a random position
 	if (!found_a_spot && maxdepth > depth)
 	{
-		ht[maxposition]._data = data;
-		ht[maxposition]._depth = depth;
+		hashtable[maxposition]._data = data;
+		hashtable[maxposition]._depth = depth;
 	}
 }
 
@@ -267,9 +267,9 @@ void conf_hashpush(const binconf *d, int posvalue, bin_int depth, thread_attr *t
     tat->bc_insertions++;
 #endif
 
-    uint64_t bchash = d->itemhash ^ d->loadhash;
-	uint64_t data = zero_last_bit(bchash) | posvalue;
-    hashpush_lockless(bchash, data, depth, hashlogpart(bchash), tat);
+    uint64_t bchash = zero_last_bit(d->itemhash ^ d->loadhash);
+    uint64_t data = bchash | (uint64_t) posvalue;
+    hashpush_lockless(ht, bchash, data, depth, hashlogpart(bchash), tat);
 }
 
 /*
@@ -288,7 +288,7 @@ void conf_hashpush(const binconf *d, int posvalue, bin_int depth, thread_attr *t
 bin_int is_conf_hashed(const binconf *d, thread_attr *tat)
 {
 	uint64_t bchash = zero_last_bit(d->itemhash ^ d->loadhash);
-	bin_int ret = is_hashed_lockless(bchash, hashlogpart(bchash), tat);
+	bin_int ret = is_hashed_lockless(ht, bchash, hashlogpart(bchash), tat);
 
 	if (ret >= 0)
 	{
@@ -385,7 +385,7 @@ bin_int is_lf_hashed(const binconf *d, thread_attr *tat)
 	MEASURE_ONLY(tat->lf_hit++);
     } else if (ret ==  NOT_FOUND)
     {
-	MEASURE_ONLÝ(tat->lf_partial_nf++);
+	MEASURE_ONLY(tat->lf_partial_nf++);
     } else if (ret == FULL_NOT_FOUND)
     {
 	MEASURE_ONLY(tat->lf_full_nf++);
@@ -395,109 +395,23 @@ bin_int is_lf_hashed(const binconf *d, thread_attr *tat)
 }
 #endif // LF
 
-
-/*
-// Checks if a number is in the dynamic programming hash.
-// Returns first bool (whether it is hashed) and the result (if it exists)
-int8_t dp_hashed(const binconf* d, thread_attr *tat)
-{
-    dynprog_result foundhash;
-    std::pair<bool,dynprog_result> ret;
-    ret.first = false;
-    
-    uint64_t lp = dplogpart(d->itemhash);
-    uint64_t blp = bucketlockpart(d->itemhash);
-
-    pthread_mutex_lock(&dpbucketlock[blp]); // LOCK
-
-    for( int i=0; i< LINPROBE_LIMIT; i++)
-    {
-	const int8_t candidate& = dpht[lp+i];
-
-	// check if it is empty space
-	if (candidate.hash == 0)
-	{
-	    break;
-	}
-
-	if (candidate.hash == d->itemhash)
-	{
-	    return dpht[lp+i];
-	}
-#ifdef MEASURE
-	if (i == LINPROBE_LIMIT-1)
-	{
-	    tat->dp_full_not_found++;
-	}
-#endif
-    } 
-    pthread_mutex_unlock(&dpbucketlock[blp]); // UNLOCK
-
-#ifdef MEASURE
-    // zero is found only in the case the slot is empty
-    if(ret.first)
-    {
-	tat->dp_hit++;
-    }
-#endif
-
-    return ret;
-}
-*/
-
-/*
-// Adds an number to a dynamic programming hash table
-void dp_hashpush(const binconf *d, dynprog_result data, thread_attr *tat)
-{
-
-#ifdef MEASURE
-    tat->dp_insertions++;
-#endif
-
-    uint64_t lp = dplogpart(d->itemhash);
-    uint64_t blp = bucketlockpart(d->itemhash);
-    uint64_t position = lp;
-
-    data.hash = d->itemhash;
-    
-    pthread_mutex_lock(&dpbucketlock[blp]); // LOCK
-    for (int i=0; i< LINPROBE_LIMIT; i++)
-    {
-	dynprog_result possible_entry = dpht[lp+i];
-	if (possible_entry.hash == 0)
-	{
-	    position = lp+i;
-	    break;
-	}
-
-	if (possible_entry.hash == data.hash)
-	{
-	    position = lp+i;
-	    break;
-	}
-    }
-    dpht[position] = data;
-    pthread_mutex_unlock(&dpbucketlock[blp]); // UNLOCK
-}
-*/
-
 void dp_hashpush(const binconf *d, int8_t feasibility, thread_attr *tat)
 {
 #ifdef MEASURE
     tat->dp_insertions++;
 #endif
 
-    uint64_t hash = d->itemhash;
-    dpht_el el(hash, feasibility, - d->_itemcount); // depth is negative as we want to store more items, not less
-    HASHPUSH<dpht_el, LINPROBE_LIMIT>(dpht, dpbucketlock, el, dplogpart(hash), tat);
+    uint64_t hash = zero_last_bit(d->itemhash);
+    uint64_t data = hash | (uint64_t) feasibility;
+    bin_int depth = -d->_itemcount; // depth is negative as we want to store more items, not less
+    hashpush_lockless(dpht, hash, data, depth, dplogpart(hash), tat);
 }
 
 
 int8_t is_dp_hashed(const binconf *d, thread_attr *tat)
 {
-    uint64_t hash = d->itemhash;
-    bin_int ret = IS_HASHED<dpht_el, LINPROBE_LIMIT>(dpht, dpbucketlock, hash, dplogpart(hash), tat);
-
+    uint64_t hash = zero_last_bit(d->itemhash);
+    bin_int ret = is_hashed_lockless(dpht, hash, dplogpart(hash), tat);
     if (ret >= 0)
     {
 	MEASURE_ONLY(tat->dp_hit++);

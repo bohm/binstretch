@@ -174,8 +174,10 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
     }
     
     // finds the maximum feasible item that can be added using dyn. prog.
-    std::pair<int, dynprog_result> dp = maximum_feasible_dynprog(b, depth, tat);
-    int maximum_feasible = dp.first;
+    bin_int old_max_feasible = tat->prev_max_feasible;
+    bin_int dp = maximum_feasible_dynprog(b, depth, tat);
+    tat->prev_max_feasible = dp;
+    int maximum_feasible = dp;
     int below = 1;
     int r = 1;
     DEEP_DEBUG_PRINT("Trying player zero choices, with maxload starting at %d\n", maximum_feasible);
@@ -267,6 +269,7 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
 	assert(current_adversary->out.empty());
     }
     
+    tat->prev_max_feasible = old_max_feasible;
     return r;
 }
 
@@ -387,8 +390,8 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 	    // editing binconf in place -- undoing changes later
 	    
 	    int from = b->assign_and_rehash(k,i);
-	    //int ol_from = onlineloads_assign(tat->ol, k);
-	    tat->oc.onlinefit_assign(k);
+	    int ol_from = onlineloads_assign(tat->ol, k);
+	    //tat->oc.onlinefit_assign(k);
 	    // tat->oc.consistency_check();
 	    //assert(tat->ol.loadsum() == b->totalload());
 	    // initialize the adversary's next vertex in the tree (corresponding to d)
@@ -453,8 +456,8 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 
 	    // return b to original form
 	    b->unassign_and_rehash(k,from);
-	    //onlineloads_unassign(tat->ol, k, ol_from);
-	    tat->oc.unassign_item(k);
+	    onlineloads_unassign(tat->ol, k, ol_from);
+	    //tat->oc.unassign_item(k);
 	    // tat->oc.consistency_check();
 	    //assert(tat->ol.loadsum() == b->totalload());
 
@@ -554,8 +557,8 @@ int explore(binconf *b, thread_attr *tat)
     hashinit(b);
     binconf root_copy = *b;
     
-    //onlineloads_init(tat->ol, b);
-    tat->oc.init(*b);
+    onlineloads_init(tat->ol, b);
+    //tat->oc.init(*b);
     //assert(tat->ol.loadsum() == b->totalload());
 
     tree_attr *outat = NULL;
@@ -576,8 +579,8 @@ int explore(binconf *b, thread_attr *tat)
 int generate(binconf *start, thread_attr *tat, adversary_vertex *start_vert)
 {
     hashinit(start);
-    //onlineloads_init(tat->ol, start);
-    tat->oc.init(*start);
+    onlineloads_init(tat->ol, start);
+    //tat->oc.init(*start);
 
     //assert(tat->ol.loadsum() == start->totalload());
     

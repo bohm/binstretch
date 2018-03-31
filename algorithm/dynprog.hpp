@@ -293,6 +293,134 @@ bin_int dynprog_test_dangerous(const binconf *conf, thread_attr *tat)
     return 0;
 }
 
+// maximize while doing dynamic programming
+bin_int dynprog_max_dangerous(const binconf *conf, thread_attr *tat)
+{
+    tat->newloadqueue->clear();
+    tat->oldloadqueue->clear();
+    std::vector<loadconf> *poldq = tat->oldloadqueue;
+    std::vector<loadconf> *pnewq = tat->newloadqueue;
+
+    int phase = 0;
+    bin_int max_overall = 0;
+    bin_int smallest_item = S;
+    for (int i = 1; i < S; i++)
+    {
+	if (conf->items[i] > 0)
+	{
+	    smallest_item = i;
+	    break;
+	}
+    }
+    
+    // do not empty the loadht, instead XOR in the itemhash
+
+    for (int size=S; size>=3; size--)
+    {
+	int k = conf->items[size];
+	while (k > 0)
+	{
+	    phase++;
+	    if (phase == 1) {
+
+		loadconf first;
+		for (int i = 1; i <= BINS; i++)
+		{
+		    first.loads[i] = 0;
+		}	
+		first.hashinit();
+		first.assign_and_rehash(size, 1);
+		first.loadhash ^= conf->itemhash;
+		pnewq->push_back(first);
+	    } else {
+#ifdef MEASURE
+		tat->largest_queue_observed = std::max(tat->largest_queue_observed, poldq->size());
+#endif
+		for (loadconf& tuple: *poldq)
+		{
+		    //loadconf tuple = tupleit;
+
+		    // try and place the item
+		    for (int i=1; i <= BINS; i++)
+		    {
+			// same as with Algorithm, we can skip when sequential bins have the same load
+			if (i > 1 && tuple.loads[i] == tuple.loads[i-1])
+			{
+			    continue;
+			}
+			
+			if (tuple.loads[i] + size > S) {
+			    continue;
+			}
+
+			int newpos = tuple.assign_and_rehash(size, i);
+			
+			if(! loadconf_hashfind(tuple.loadhash, tat))
+			{
+			    if(size == smallest_item && k == 1)
+			    {
+				// this can be improved by sorting
+				if (S - tuple.loads[BINS] > max_overall)
+				{
+				    max_overall = S - tuple.loads[BINS];
+				}
+			    }
+
+			    pnewq->push_back(tuple);
+			    loadconf_hashpush(tuple.loadhash, tat);
+			}
+
+		        tuple.unassign_and_rehash(size, newpos);
+		    }
+		}
+		if (pnewq->size() == 0)
+		{
+		    return 0;
+		}
+	    }
+
+	    std::swap(poldq, pnewq);
+	    pnewq->clear();
+	    k--;
+	}
+    }
+
+    /* Heuristic: solve the cases of sizes 2 and 1 without generating new
+       configurations. */
+    for (const loadconf& tuple: *poldq)
+    {
+	int free_size_except_last = 0, free_for_twos_except_last = 0;
+	int free_size_last = 0, free_for_twos_last = 0;
+	for (int i=1; i<=BINS-1; i++)
+	{
+	    free_size_except_last += (S - tuple.loads[i]);
+	    free_for_twos_except_last += (S - tuple.loads[i])/2;
+	}
+
+	free_size_last = (S - tuple.loads[BINS]);
+	free_for_twos_last = (S - tuple.loads[BINS])/2;
+	if (free_size_last + free_size_except_last < conf->items[1] + 2*conf->items[2])
+	{
+	    continue;
+	}
+	if (free_for_twos_except_last + free_for_twos_last >= conf->items[2])
+	{
+	    // it fits, compute the max_overall contribution
+	    int twos_on_last = std::max(0,conf->items[2] - free_for_twos_except_last);
+	    int ones_on_last = std::max(0,conf->items[1] - (free_size_except_last - 2*(conf->items[2] - twos_on_last)));
+	    int free_space_on_last = S - tuple.loads[BINS] - 2*twos_on_last - ones_on_last;
+	    if (free_space_on_last > max_overall)
+	    {
+		max_overall = free_space_on_last;
+	    }
+	}
+    }
+    
+    return max_overall;
+}
+
+
+
 #define WEIGHT 6
 #define FRACTION (S/WEIGHT)
 typedef std::array<int, WEIGHT> weights;
@@ -332,9 +460,33 @@ int types_upper_bound(const weights& ts)
     return std::min(S, ((total_weight+1)*S) / WEIGHT);
 }
 
+bin_int pack_and_query(binconf *h, int item, thread_attr *tat)
+{
+    h->items[item]++; // in some sense, it is an inconsistent state, since "item" is not packed in "h"
+    h->_itemcount++;
+    dp_rehash(h,item);
+    bin_int ret = is_dp_hashed(h, tat);
+    h->_itemcount--;
+    h->items[item]--;
+    dp_unhash(h,item);
+    return ret;
+}
+
+// packs item into h and pushes it into the dynprog cache
+void pack_and_hash(binconf *h, bin_int item, bin_int feasibility, thread_attr *tat)
+{
+    h->items[item]++; // in some sense, it is an inconsistent state, since "item" is not packed in "h"
+    h->_itemcount++;
+    dp_rehash(h,item);
+    dp_hashpush(h,feasibility,tat);
+    h->_itemcount--;
+    h->items[item]--;
+    dp_unhash(h,item);
+}
+
 // a wrapper that hashes the new configuration and if it is not in cache, runs TEST
 // it edits h but should return it to original state (due to Zobrist hashing)
-bin_int hash_and_test(binconf *h, int item, thread_attr *tat)
+bin_int hash_and_test(binconf *h, bin_int item, thread_attr *tat)
 {
     h->items[item]++; // in some sense, it is an inconsistent state, since "item" is not packed in "h"
     h->_itemcount++;
@@ -367,7 +519,7 @@ bin_int hash_and_test(binconf *h, int item, thread_attr *tat)
 }
 
 
-std::pair<bin_int, dynprog_result> maximum_feasible_dynprog(binconf *b, const int depth, thread_attr *tat)
+bin_int maximum_feasible_dynprog(binconf *b, const int depth, thread_attr *tat)
 {
 #ifdef MEASURE
     tat->maximum_feasible_counter++;
@@ -376,113 +528,70 @@ std::pair<bin_int, dynprog_result> maximum_feasible_dynprog(binconf *b, const in
     DEEP_DEBUG_PRINT_BINCONF(b);
     DEEP_DEBUG_PRINT("\n"); 
 
-    std::pair<bin_int, dynprog_result> ret;
-    ret.first = 0;
     bin_int data;
-    int maximum_feasible = 0;
+    bin_int maximum_feasible = 0;
 
-#ifdef LF
-    bin_int check = is_lf_hashed(b, tat);
-    if(check != -1)
-    {
-	ret.first = check;
-	return ret;
-    }
-#endif
-
-    // calculate upper bound for the optimum based on min(S,sum of remaining items)
-    /*int tub = types_upper_bound(compute_weights(b));
-    if (tub < std::min(S, (S*BINS) - b->totalload()))
-    {
-	tat->tub++;
-	}*/
-    
-    //bin_int maxvalue = std::min((S*BINS) - b->totalload(), tub);
-    bin_int maxvalue = std::min((S*BINS) - b->totalload(), S);
-    std::pair<bin_int, bin_int> bounds(tat->oc.largest_upcoming_item(), maxvalue);
+    bin_int maxvalue = std::min((bin_int) ((S*BINS) - b->totalload()), tat->prev_max_feasible);
+    std::pair<bin_int, bin_int> bounds(onlineloads_bestfit(tat->ol), maxvalue);
     //std::pair<bin_int, bin_int> bounds(0, maxvalue);
     assert(bounds.first <= bounds.second);
 
     if (bounds.second - bounds.first > BESTFIT_THRESHOLD)
     {
-	// bin_int check = bestfitalg(b);
-	tat->oc.bestfit_recompute();
-	//tat->oc.consistency_check();
-	bounds.first = tat->oc.largest_upcoming_item();
-	// if (check != bounds.first)
-	// {
-	//    fprintf(stderr, "Bestfit gives two different answers %" PRIi16 " and %" PRIi16 "for:\n", check, bounds.first);
-	//    print_binconf_stream(stderr, b);
-	//    tat->oc.print();
-	//    assert(check == bounds.first);
-	//}
+	bounds.first = bestfitalg(b);
 	MEASURE_ONLY(tat->bestfit_calls++);
     } else {
 	MEASURE_ONLY(tat->onlinefit_sufficient++);
     }
-
-    
 // use binary search to find the correct value
     if (bounds.first == bounds.second)
     {
 	maximum_feasible = bounds.first;
-    } else {
-#ifdef MEASURE
-	tat->inner_loop++;
-#endif
+    }
+    else
+    {
 	int lb = bounds.first; int ub = bounds.second;
 	int mid = (lb+ub+1)/2;
-
+	bool dynprog_needed = false;
 	while (lb < ub)
 	{
-	    data = hash_and_test(b,mid,tat);
+	    data = pack_and_query(b,mid,tat);
 	    if (data == 1)
 	    {
 		lb = mid;
-	    } else {
+	    } else if (data == 0) {
 		ub = mid-1;
+	    } else {
+		dynprog_needed = true;
+		break;
 	    }
 	    
 	    mid = (lb+ub+1)/2;
 	}
-	maximum_feasible = lb;
-/*	
-	// compare it with normal for loop
-	int dynitem = bestfitvalue;
-	for (dynitem=bestfitvalue+1; dynitem<=maxvalue; dynitem++)
+	if (!dynprog_needed)
 	{
-	    data = hash_and_test(b,dynitem, tat);
-
+	    maximum_feasible = lb;
+	}
+	else
+	{
 #ifdef MEASURE
 	    tat->dynprog_calls++;
 #endif
-    
-	    if(!data.feasible)
+	    maximum_feasible = dynprog_max_dangerous(b,tat);
+	    for (bin_int i = maximum_feasible; i >= lb; i--)
 	    {
-		break;
+		// pack as feasible
+		pack_and_hash(b,i,1,tat);
+	    }
+	    for (bin_int i = maximum_feasible+1; i <= ub; i++)
+	    {
+		// pack as infeasible
+		pack_and_hash(b,i,0,tat);
 	    }
 	}
-	maximum_feasible = dynitem-1;
-*/
     }
-    // one more pass is needed sometimes
-    // assert(maximum_feasible < 128);
-    ret.first = (bin_int) maximum_feasible;
 
-#ifdef LF
-    lf_hashpush(b, maximum_feasible, depth, tat);
-#endif 
-    
-    //if (maximum_feasible == last_tested)
-    //{
-	
-	//} else {
-	//ret.second = hash_and_test(b,maximum_feasible,tat);
-    //}
-
-    // DEBUG: compare it with ordinary for cycle
-   
-    return ret;
+    return maximum_feasible;
 }
 
 bin_int try_and_send(binconf *b, int number_of_items, int minimum_size, thread_attr *tat)

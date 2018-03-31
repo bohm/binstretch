@@ -34,8 +34,6 @@ typedef signed char tiny;
 #define ONLY_ONE_PASS 1
 //#define OVERDUES 1
 
-//#define LF 1
-
 // maximum load of a bin in the optimal offline setting
 const int S = 14;
 // target goal of the online bin stretching problem
@@ -56,13 +54,13 @@ const int BINS = 8;
 
 // bitwise length of indices of hash tables and lock tables
 const unsigned int HASHLOG = 28;
-const unsigned int BCLOG = 27;
-const unsigned int BUCKETLOG = 4;
+const unsigned int BCLOG = 28;
+const unsigned int BUCKETLOG = 7;
 const unsigned int BESTMOVELOG = 25;
 const unsigned int LOADLOG = 13;
 
 // experimental: caching of largest feasible item that can be sent
-const unsigned int LFEASLOG = 25;
+const unsigned int LFEASLOG = 10;
 // size of the hash table
 
 const llu HASHSIZE = (1ULL<<HASHLOG);
@@ -86,10 +84,10 @@ const int BESTFIT_THRESHOLD = (1*S)/10;
 // the number of threads
 const int THREADS = 8;
 // a bound on total load of a configuration before we split it into a task
-const int TASK_LOAD = 20;
+const int TASK_LOAD = 7;
 const int TASK_DEPTH = 3;
 const int EXPANSION_DEPTH = 3;
-const int TASK_LARGEST_ITEM = 7;
+const int TASK_LARGEST_ITEM = 3;
 // how much the updater thread sleeps (in milliseconds)
 const int TICK_SLEEP = 200;
 // how many tasks are sufficient for the updater to run the main updater routine
