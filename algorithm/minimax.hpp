@@ -9,6 +9,7 @@
 
 #include "common.hpp"
 #include "binconf.hpp"
+#include "optconf.hpp"
 #include "thread_attr.hpp"
 #include "tree.hpp"
 #include "hash.hpp"
@@ -386,7 +387,9 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 	    // editing binconf in place -- undoing changes later
 	    
 	    int from = b->assign_and_rehash(k,i);
-	    int ol_from = onlineloads_assign(tat->ol, k);
+	    //int ol_from = onlineloads_assign(tat->ol, k);
+	    tat->oc.onlinefit_assign(k);
+	    // tat->oc.consistency_check();
 	    //assert(tat->ol.loadsum() == b->totalload());
 	    // initialize the adversary's next vertex in the tree (corresponding to d)
 	    adversary_vertex *analyzed_vertex;
@@ -450,7 +453,9 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 
 	    // return b to original form
 	    b->unassign_and_rehash(k,from);
-	    onlineloads_unassign(tat->ol, k, ol_from);
+	    //onlineloads_unassign(tat->ol, k, ol_from);
+	    tat->oc.unassign_item(k);
+	    // tat->oc.consistency_check();
 	    //assert(tat->ol.loadsum() == b->totalload());
 
 	    if (below == 1)
@@ -549,7 +554,8 @@ int explore(binconf *b, thread_attr *tat)
     hashinit(b);
     binconf root_copy = *b;
     
-    onlineloads_init(tat->ol, b);
+    //onlineloads_init(tat->ol, b);
+    tat->oc.init(*b);
     //assert(tat->ol.loadsum() == b->totalload());
 
     tree_attr *outat = NULL;
@@ -570,7 +576,9 @@ int explore(binconf *b, thread_attr *tat)
 int generate(binconf *start, thread_attr *tat, adversary_vertex *start_vert)
 {
     hashinit(start);
-    onlineloads_init(tat->ol, start);
+    //onlineloads_init(tat->ol, start);
+    tat->oc.init(*start);
+
     //assert(tat->ol.loadsum() == start->totalload());
     
     tree_attr *outat = new tree_attr;

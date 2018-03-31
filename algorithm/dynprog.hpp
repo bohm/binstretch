@@ -8,6 +8,7 @@
 
 #include "common.hpp"
 #include "binconf.hpp"
+#include "optconf.hpp"
 #include "thread_attr.hpp"
 #include "fits.hpp"
 #include "hash.hpp"
@@ -196,7 +197,7 @@ dynprog_result dynprog_test_loadhash(const binconf *conf, thread_attr *tat)
 
 // loadhash() test which avoids zeroing by using the itemhash as a "seed" that guarantees uniqueness
 // therefore it may answer incorrectly since we assume uint64_t hashes are perfect
-int8_t dynprog_test_dangerous(const binconf *conf, thread_attr *tat)
+bin_int dynprog_test_dangerous(const binconf *conf, thread_attr *tat)
 {
     tat->newloadqueue->clear();
     tat->oldloadqueue->clear();
@@ -333,13 +334,13 @@ int types_upper_bound(const weights& ts)
 
 // a wrapper that hashes the new configuration and if it is not in cache, runs TEST
 // it edits h but should return it to original state (due to Zobrist hashing)
-int8_t hash_and_test(binconf *h, int item, thread_attr *tat)
+bin_int hash_and_test(binconf *h, int item, thread_attr *tat)
 {
     h->items[item]++; // in some sense, it is an inconsistent state, since "item" is not packed in "h"
     h->_itemcount++;
     dp_rehash(h,item);
     
-    int8_t ret = is_dp_hashed(h, tat);
+    bin_int ret = is_dp_hashed(h, tat);
     if (ret != -1)
     {
 	h->_itemcount--;
@@ -366,7 +367,7 @@ int8_t hash_and_test(binconf *h, int item, thread_attr *tat)
 }
 
 
-std::pair<int8_t, dynprog_result> maximum_feasible_dynprog(binconf *b, const int depth, thread_attr *tat)
+std::pair<bin_int, dynprog_result> maximum_feasible_dynprog(binconf *b, const int depth, thread_attr *tat)
 {
 #ifdef MEASURE
     tat->maximum_feasible_counter++;
@@ -375,13 +376,13 @@ std::pair<int8_t, dynprog_result> maximum_feasible_dynprog(binconf *b, const int
     DEEP_DEBUG_PRINT_BINCONF(b);
     DEEP_DEBUG_PRINT("\n"); 
 
-    std::pair<int8_t, dynprog_result> ret;
+    std::pair<bin_int, dynprog_result> ret;
     ret.first = 0;
-    int8_t data;
+    bin_int data;
     int maximum_feasible = 0;
 
 #ifdef LF
-    int8_t check = is_lf_hashed(b, tat);
+    bin_int check = is_lf_hashed(b, tat);
     if(check != -1)
     {
 	ret.first = check;
@@ -396,15 +397,25 @@ std::pair<int8_t, dynprog_result> maximum_feasible_dynprog(binconf *b, const int
 	tat->tub++;
 	}*/
     
-    //int8_t maxvalue = std::min((S*BINS) - b->totalload(), tub);
-    int8_t maxvalue = std::min((S*BINS) - b->totalload(), S);
-    std::pair<int8_t, int8_t> bounds(onlineloads_bestfit(tat->ol), maxvalue);
-    //std::pair<int8_t, int8_t> bounds(0, maxvalue);
+    //bin_int maxvalue = std::min((S*BINS) - b->totalload(), tub);
+    bin_int maxvalue = std::min((S*BINS) - b->totalload(), S);
+    std::pair<bin_int, bin_int> bounds(tat->oc.largest_upcoming_item(), maxvalue);
+    //std::pair<bin_int, bin_int> bounds(0, maxvalue);
     assert(bounds.first <= bounds.second);
 
     if (bounds.second - bounds.first > BESTFIT_THRESHOLD)
     {
-	bounds.first = bestfitalg(b);
+	// bin_int check = bestfitalg(b);
+	tat->oc.bestfit_recompute();
+	//tat->oc.consistency_check();
+	bounds.first = tat->oc.largest_upcoming_item();
+	// if (check != bounds.first)
+	// {
+	//    fprintf(stderr, "Bestfit gives two different answers %" PRIi16 " and %" PRIi16 "for:\n", check, bounds.first);
+	//    print_binconf_stream(stderr, b);
+	//    tat->oc.print();
+	//    assert(check == bounds.first);
+	//}
 	MEASURE_ONLY(tat->bestfit_calls++);
     } else {
 	MEASURE_ONLY(tat->onlinefit_sufficient++);
@@ -456,7 +467,7 @@ std::pair<int8_t, dynprog_result> maximum_feasible_dynprog(binconf *b, const int
     }
     // one more pass is needed sometimes
     // assert(maximum_feasible < 128);
-    ret.first = (int8_t) maximum_feasible;
+    ret.first = (bin_int) maximum_feasible;
 
 #ifdef LF
     lf_hashpush(b, maximum_feasible, depth, tat);
@@ -474,10 +485,10 @@ std::pair<int8_t, dynprog_result> maximum_feasible_dynprog(binconf *b, const int
     return ret;
 }
 
-int8_t try_and_send(binconf *b, int number_of_items, int minimum_size, thread_attr *tat)
+bin_int try_and_send(binconf *b, int number_of_items, int minimum_size, thread_attr *tat)
 {
     b->items[minimum_size] += number_of_items;
-    int8_t ret = TEST(b,tat);
+    bin_int ret = TEST(b,tat);
     b->items[minimum_size] -= number_of_items;
     return ret;
 }

@@ -42,7 +42,7 @@ const int S = 14;
 const int R = 19;
 
 #ifdef ONLY_ONE_PASS
-const int PASS = 1;
+const int PASS = 0;
 #else
 const int FIRST_PASS = 0;
 #endif

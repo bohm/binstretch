@@ -11,7 +11,7 @@ queue update code. */
 
 // a strictly size-based tasker
 
-#define POSSIBLE_TASK possible_task_mixed
+#define POSSIBLE_TASK possible_task_depth
 
 class task
 {

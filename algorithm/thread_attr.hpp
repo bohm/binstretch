@@ -2,6 +2,9 @@
 #define _THREAD_ATTR_HPP 1
 
 #include "common.hpp"
+#include "binconf.hpp"
+#include "optconf.hpp"
+
 /* dynprog global variables and other attributes separate for each thread */
 struct thread_attr {
     std::unordered_set<std::array<bin_int, BINS> >* oldset;
@@ -13,13 +16,21 @@ struct thread_attr {
     std::vector<loadconf> *oldloadqueue;
     std::vector<loadconf> *newloadqueue;
 
-    uint64_t *loadht;
 
-    loadconf ol = {};
+    uint64_t *loadht;
+    optconf oc;
     int last_item = 1;
     
     uint64_t iterations = 0;
     uint64_t maximum_feasible_counter = 0;
+    int expansion_depth = 0;
+    binconf* explore_root;
+    uint64_t explore_roothash = 0;
+
+    std::chrono::time_point<std::chrono::system_clock> eval_start;
+    bool current_overdue = false;
+    uint64_t overdue_tasks = 0;
+
 #ifdef MEASURE
     uint64_t dp_hit = 0;
     uint64_t dp_partial_nf = 0;
@@ -37,6 +48,11 @@ struct thread_attr {
     uint64_t onlinefit_sufficient = 0;
     std::array<uint64_t, BINS*S+1> dynprog_itemcount = {};
     bool overdue_printed = false;
+    std::array<uint64_t, SITUATIONS> gshit = {};
+    std::array<uint64_t, SITUATIONS> gsmiss = {};
+    uint64_t gsheurhit = 0;
+    uint64_t gsheurmiss = 0;
+    uint64_t tub = 0;
 #endif
     
 #ifdef LF
@@ -50,22 +66,6 @@ struct thread_attr {
     uint64_t good_move_hit = 0;
     uint64_t good_move_miss = 0;
 #endif
-    std::chrono::time_point<std::chrono::system_clock> eval_start;
-    bool current_overdue = false;
-    uint64_t overdue_tasks = 0;
-
-    // good situation measurements
-#ifdef MEASURE
-    std::array<uint64_t, SITUATIONS> gshit = {};
-    std::array<uint64_t, SITUATIONS> gsmiss = {};
-    uint64_t gsheurhit = 0;
-    uint64_t gsheurmiss = 0;
-    uint64_t tub = 0;
-#endif
-    
-    int expansion_depth = 0;
-    binconf* explore_root;
-    uint64_t explore_roothash = 0;
 };
 
 typedef struct thread_attr thread_attr;
