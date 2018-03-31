@@ -6,14 +6,36 @@
 /* This header file contains the task generation code and the task
 queue update code. */
 
-#ifndef _TASKS_H
-#define _TASKS_H 1
+#ifndef _TASKS_HPP
+#define _TASKS_HPP 1
+
+// a strictly size-based tasker
+
+#define POSSIBLE_TASK possible_task_mixed
+
+class task
+{
+public:
+    binconf bc;
+    int last_item = 1;
+    int expansion_depth = 0;
+};
+
+
+template<int MODE> bool possible_task_size(adversary_vertex *v)
+{
+    if (v->bc->totalload() >= TASK_LOAD)
+    {
+	return true;
+    }
+    return false;
+}
 
 // Return true if a vertex might be a task for the parallel
 // computation. Now works in two modes: GENERATING (starting generation) and EXPANDING
 // (expanding an overdue task).
 
-template<int MODE> bool possible_task(adversary_vertex *v)
+template<int MODE> bool possible_task_depth(adversary_vertex *v)
 {
 
     int target_depth;
@@ -30,19 +52,37 @@ template<int MODE> bool possible_task(adversary_vertex *v)
 	target_depth = expansion_root->depth + EXPANSION_DEPTH;
     }
     
-    assert(v->depth <= target_depth);
-    if (target_depth - v->depth == 0)
+    //assert(v->depth <= target_depth);
+    if (target_depth - v->depth <= 0)
     {
 	return true;
     }
 
-    /*if (totalload(b) >= TASK_LOAD)
-    {
-	return true;
-    }*/
-    
     return false;
 }
+
+template<int MODE> bool possible_task_mixed(adversary_vertex *v)
+{
+
+    // compute the largest item seen so far
+    bin_int largest_item = 0;
+    for (int i =1; i <= S; i++)
+    {
+	if (v->bc->items[i] > 0)
+	{
+	    largest_item = i;
+	}
+    }
+
+    if (largest_item >= TASK_LARGEST_ITEM)
+    {
+	return possible_task_depth<MODE>(v);
+    } else {
+	return possible_task_size<MODE>(v);
+    }
+    
+}
+
 
 // Adds a task to the global task queue.
 void add_task(const binconf *x, thread_attr *tat) {

@@ -1,5 +1,5 @@
-#ifndef _DYNPROG_H
-#define _DYNPROG_H 1
+#ifndef _DYNPROG_HPP
+#define _DYNPROG_HPP 1
 
 #include <chrono>
 #include <algorithm>
@@ -7,6 +7,8 @@
 #include <cstring>
 
 #include "common.hpp"
+#include "binconf.hpp"
+#include "thread_attr.hpp"
 #include "fits.hpp"
 #include "hash.hpp"
 
@@ -32,13 +34,6 @@ void print_tuple(const std::array<bin_int, BINS>& tuple)
 void dynprog_attr_init(thread_attr *tat)
 {
     assert(tat != NULL);
-    //tat->oldset = new std::unordered_set<std::array<bin_int, BINS> >();
-    //tat->newset = new std::unordered_set<std::array<bin_int, BINS> >();
-
-    //tat->oldtqueue = new std::vector<std::array<bin_int, BINS> >();
-    //tat->oldtqueue->reserve(LOADSIZE);
-    //tat->newtqueue = new std::vector<std::array<bin_int, BINS> >();
-    //tat->newtqueue->reserve(LOADSIZE);
 
     tat->oldloadqueue = new std::vector<loadconf>();
     tat->oldloadqueue->reserve(LOADSIZE);
@@ -50,10 +45,6 @@ void dynprog_attr_init(thread_attr *tat)
 
 void dynprog_attr_free(thread_attr *tat)
 {
-    //delete tat->oldset;
-    //delete tat->newset;
-    // delete tat->oldtqueue;
-    // delete tat->newtqueue;
     delete tat->oldloadqueue;
     delete tat->newloadqueue;
     delete tat->loadht;
@@ -84,134 +75,15 @@ void print_dynprog_measurements()
     MEASURE_PRINT("Onlinefit sufficient in: %" PRIu64 ", bestfit calls: %" PRIu64 ".\n",
 	    total_onlinefit_sufficient, total_bestfit_calls);
     MEASURE_PRINT("Sizes of binconfs which enter dyn. prog.:\n");
-    for (int i =0; i <= BINS*S; i++)
+    /* for (int i =0; i <= BINS*S; i++)
     {
 	if (total_dynprog_itemcount[i] > 0)
 	{
 	    MEASURE_PRINT("Size %d: %" PRIu64 ".\n", i, total_dynprog_itemcount[i]);
 	}
-    }
+	} */
 }
 #endif
-
-// Sparse dynprog test which uses tuples directly (and does not encode/decode them)
-/* dynprog_result dynprog_test_sorting(const binconf *conf, thread_attr *tat)
-{
-    tat->newtqueue->clear();
-    tat->oldtqueue->clear();
-    std::vector<std::array<bin_int, BINS> > *poldq;
-    std::vector<std::array<bin_int, BINS> > *pnewq;
-
-    poldq = tat->oldtqueue;
-    pnewq = tat->newtqueue;
-
-    dynprog_result ret;
-    //ret.feasible = false;
- 
-    int phase = 0;
-
-    for (int size=S; size>=3; size--)
-    {
-	int k = conf->items[size];
-	while (k > 0)
-	{
-	    phase++;
-	    if (phase == 1) {
-
-		std::array<bin_int, BINS> first;
-		for (int i = 0; i < BINS; i++)
-		{
-		    first[i] = 0;
-		}
-		first[0] = size;
-		pnewq->push_back(first);
-	    } else {
-		for (unsigned int i=0; i < poldq->size(); i++)
-		{
-		    std::array<bin_int, BINS> tuple = (*poldq)[i];
-
-		    // Instead of having a global array of feasibilities, we now sort the poldq array.
-		    if (i >= 1)
-		    {
-			if (tuple == (*poldq)[i-1])
-			{
-			    continue;
-			}
-		    }
-		    
-		    // try and place the item
-		    for(int i=0; i < BINS; i++)
-		    {
-			// same as with Algorithm, we can skip when sequential bins have the same load
-			if (i > 0 && tuple[i] == tuple[i-1])
-			{
-			    continue;
-			}
-			
-			if(tuple[i] + size > S) {
-			    continue;
-			}
-			
-			tuple[i] += size;
-			int newpos = sortarray_one_increased(tuple, i);
-			pnewq->push_back(tuple);
-			tuple[newpos] -= size;
-			sortarray_one_decreased(tuple, newpos);
-		    }
-		}
-		if (pnewq->size() == 0) {
-		    ret.feasible = false;
-		    return ret;
-		}
-	    }
-
-	    std::swap(poldq, pnewq);
-	    std::sort(poldq->begin(), poldq->end()); 
-	    pnewq->clear();
-	    k--;
-	}
-    }
-
-    //ret.feasible = true;
-    //return ret;
-    
-    // Heuristic: solve the cases of sizes 2 and 1 without generating new
-    //   configurations.
-
-   
-    for (unsigned int i=0; i < poldq->size(); i++)
-    {
-	std::array<bin_int, BINS> tuple = (*poldq)[i];
-	// Instead of having a global array of feasibilities, we now sort the poldq array.
-	if (i >= 1)
-	{
-	    if (tuple == (*poldq)[i-1])
-	    {
-		continue;
-	    }
-	}
-	int free_size = 0, free_for_twos = 0;
-	for (int i=0; i<BINS; i++)
-	{
-	    free_size += (S - tuple[i]);
-	    free_for_twos += (S - tuple[i])/2;
-	}
-	
-	if ( free_size < conf->items[1] + 2*conf->items[2])
-	{
-	    continue;
-	}
-	if (free_for_twos >= conf->items[2])
-	{
-	    ret.feasible = true;
-	    return ret;
-	}
-    }
-
-    ret.feasible = false;
-    return ret;
-}
-*/
 
 // Sparse dynprog test which uses tuples directly (and does not encode/decode them)
 dynprog_result dynprog_test_loadhash(const binconf *conf, thread_attr *tat)
@@ -419,100 +291,6 @@ int8_t dynprog_test_dangerous(const binconf *conf, thread_attr *tat)
     
     return 0;
 }
-// Sparse dynprog test which uses tuples directly (and does not encode/decode them)
-/* dynprog_result dynprog_test_set(const binconf *conf, thread_attr *tat)
-{
-    std::unordered_set<std::array<bin_int, BINS> > *poldq = tat->oldset;
-    std::unordered_set<std::array<bin_int, BINS> > *pnewq = tat->newset;
-    poldq->clear();
-    pnewq->clear();
-
-    int phase = 0;
-
-    dynprog_result ret;
-    ret.feasible = false;
-    
-    for (int size=S; size>=3; size--)
-    {
-	int k = conf->items[size];
-	while (k > 0)
-	{
-	    phase++;
-	    if (phase == 1) {
-
-		std::array<bin_int, BINS> first;
-		for (int i = 0; i < BINS; i++)
-		{
-		    first[i] = 0;
-		}
-		first[0] = size;
-		pnewq->insert(first);
-	    } else {
-		for (const auto& tupleit: *poldq)
-		{
-		    
-		    std::array<bin_int, BINS> tuple = tupleit;
-		    // try and place the item
-		    for (int i=0; i < BINS; i++)
-		    {
-			if (tuple[i] + size > S) {
-			    continue;
-			}
-
-			if (i > 0 && tuple[i] == tuple[i-1])
-			{
-			    continue;
-			} else {
-
-			    tuple[i] += size;
-			    int newpos = sortarray_one_increased(tuple, i);
-			    pnewq->insert(tuple);
-			    tuple[newpos] -= size;
-			    sortarray_one_decreased(tuple, newpos);
-			}
-		    }
-		}
-
-		if (pnewq->empty()) {
-		    ret.feasible = false;
-		    return ret;
-		}
-	    }
-
-	    // swap queues
-	    std::swap(poldq, pnewq);
-	    pnewq->clear();
-	    k--;
-	}
-    }
-
-    // Heuristic: solve the cases of sizes 2 and 1 without generating new
-    // configurations.
-
-    for (const auto &tuple : *poldq)
-    {
-	int free_size = 0, free_for_twos = 0;
-	for (int i=0; i<BINS; i++)
-	{
-	    free_size += (S - tuple[i]);
-	    free_for_twos += (S - tuple[i])/2;
-	}
-	
-	if ( free_size < conf->items[1] + 2*conf->items[2])
-	{
-	    continue;
-	}
-	if (free_for_twos >= conf->items[2])
-	{
-	    ret.feasible = true;
-	    return ret;
-	}
-    }
-
-    // return false;
-    return ret;
-}
-*/
 
 #define WEIGHT 6
 #define FRACTION (S/WEIGHT)
@@ -572,7 +350,7 @@ int8_t hash_and_test(binconf *h, int item, thread_attr *tat)
 	DEEP_DEBUG_PRINT("Nothing found in dynprog cache for hash %llu.\n", h->itemhash);
 	ret = TEST(h, tat);
 	MEASURE_ONLY(tat->dynprog_calls++);
-	MEASURE_ONLY(dynprog_extra_measurements(h,tat));
+	// MEASURE_ONLY(dynprog_extra_measurements(h,tat));
 	// consistency check
 	//bool loadhash = dynprog_test_loadhash(h,tat).feasible;
 	//bool set = dynprog_test_set(h,tat).feasible;
@@ -587,7 +365,6 @@ int8_t hash_and_test(binconf *h, int item, thread_attr *tat)
     }
 }
 
-const int BESTFIT_THRESHOLD = (3*S)/10;
 
 std::pair<int8_t, dynprog_result> maximum_feasible_dynprog(binconf *b, const int depth, thread_attr *tat)
 {
@@ -622,6 +399,7 @@ std::pair<int8_t, dynprog_result> maximum_feasible_dynprog(binconf *b, const int
     //int8_t maxvalue = std::min((S*BINS) - b->totalload(), tub);
     int8_t maxvalue = std::min((S*BINS) - b->totalload(), S);
     std::pair<int8_t, int8_t> bounds(onlineloads_bestfit(tat->ol), maxvalue);
+    //std::pair<int8_t, int8_t> bounds(0, maxvalue);
     assert(bounds.first <= bounds.second);
 
     if (bounds.second - bounds.first > BESTFIT_THRESHOLD)
@@ -732,4 +510,4 @@ std::pair<bool,int> large_item_heuristic(binconf *b, thread_attr *tat)
     return ret;
 }
 
-#endif
+#endif // _DYNPROG_HPP

@@ -17,12 +17,10 @@
 
 void evaluate_tasks(int threadid)
 {
-    // unsigned int threadid =  * (unsigned int *) tid;
     uint64_t taskcounter = 0;
     thread_attr tat;
     dynprog_attr_init(&tat);
     task current;
-    //std::map<llu, task>::reverse_iterator task_it;
     bool taskmap_empty;
     bool call_to_terminate = false;
     auto thread_start = std::chrono::system_clock::now();
@@ -36,7 +34,6 @@ void evaluate_tasks(int threadid)
     while(!call_to_terminate)
     {
 	taskmap_empty = false;
-	//pthread_mutex_lock(&taskq_lock); // LOCK
 	l.lock(); // LOCK
 	if(tm.size() == 0)
 	{
@@ -46,7 +43,6 @@ void evaluate_tasks(int threadid)
 	    tm.erase(tm.begin());
 	}
 	l.unlock();
-	//pthread_mutex_unlock(&taskq_lock); // UNLOCK
 	// more things could appear, so just sleep and wait for the global terminate flag
 	if (taskmap_empty)
 	{
@@ -71,7 +67,6 @@ void evaluate_tasks(int threadid)
 	if (ret != TERMINATING)
 	{
 	    // add task to the completed_tasks map (might be OVERDUE)
-	    // pthread_mutex_lock(&collection_lock[threadid]);
 	    coll.lock();
 	    completed_tasks[threadid].insert(std::pair<uint64_t, int>(current.bc.loadhash ^ current.bc.itemhash, ret));
 	    coll.unlock();
@@ -87,7 +82,6 @@ void evaluate_tasks(int threadid)
 
     /* update global variables regarding this thread's performance */
     std::unique_lock<std::mutex> threadl(thread_progress_lock); // LOCK
-    // pthread_mutex_lock(&thread_progress_lock);
     DEBUG_PRINT("Thread %d terminating.\n", threadid);
     thread_finished[threadid] = true;
     finished_task_count += taskcounter;
@@ -106,24 +100,15 @@ void evaluate_tasks(int threadid)
     total_good_move_hit += tat.good_move_hit;
     total_good_move_miss += tat.good_move_miss;
 #endif
-
-
-
-//MEASURE_PRINT("Binarray size %d, oldqueue capacity %" PRIu64 ", newqueue capacity %" PRIu64 ".\n", BINARRAY_SIZE, tat.oldqueue->capacity(), tat.newqueue->capacity());
-#endif
-    // pthread_mutex_unlock(&thread_progress_lock);
+#endif // MEASURE
     threadl.unlock();
     dynprog_attr_free(&tat);
-    // return NULL;
 }
 
 
 int scheduler(adversary_vertex *sapling)
 {
 
-    //pthread_t threads[THREADS];
-    // a rather useless array of ids, but we can use it to grant IDs to threads
-    // unsigned int ids[THREADS];
     bool stop = false;
     unsigned int collected_no = 0;
     int ret = POSTPONED;
@@ -179,8 +164,7 @@ int scheduler(adversary_vertex *sapling)
 	fclose(tasklistfile);
 #endif
 	
-	// Thread initialization.i
-	//pthread_mutex_lock(&thread_progress_lock); //LOCK
+	// Thread initialization.
 	threadl.lock();
 	for (unsigned int i=0; i < THREADS; i++)
 	{
@@ -188,20 +172,11 @@ int scheduler(adversary_vertex *sapling)
 	    completed_tasks[i].clear();
 	}
 	threadl.unlock();
-	//pthread_mutex_unlock(&thread_progress_lock); //UNLOCK
 	
-	// pthread_attr_t thread_attributes; pthread_attr_init(&thread_attributes);
-	// pthread_attr_setdetachstate(&thread_attributes, PTHREAD_CREATE_DETACHED);
-	
-	for (unsigned int i=0; i < THREADS; i++) {
-	    //rc = pthread_create(&threads[i], &thread_attributes, evaluate_tasks, (void *) &(ids[i]));
+	for (unsigned int i=0; i < THREADS; i++)
+	{
 	    auto x = std::thread(evaluate_tasks, i);
-		x.detach();
-
-	    /* if(rc) {
-	       fprintf(stderr, "Error with thread control. Return value %d\n", rc); 
-	    exit(-1);
-	    } */
+	    x.detach();
 	}	
 
 	stop = false;
@@ -210,15 +185,14 @@ int scheduler(adversary_vertex *sapling)
 	{
 	    stop = true;
 	    threadl.lock();
-	    for (unsigned int i = 0; i < THREADS; i++) {
+	    for (unsigned int i = 0; i < THREADS; i++)
+	    {
 		if (!thread_finished[i])
 		{
 		    stop = false;
 		}
 	    }
 	    threadl.unlock();
-	    //pthread_mutex_unlock(&thread_progress_lock);
-	   
     
 	    std::this_thread::sleep_for(std::chrono::milliseconds(TICK_SLEEP));
 	    // collect tasks from worker threads
@@ -228,17 +202,9 @@ int scheduler(adversary_vertex *sapling)
 	    if (should_do_update)
 	    {
 		collected_no = 0;
-/*#ifdef TICKER
-		timeval update_start, update_end, time_difference;
-		gettimeofday(&update_start, NULL);
-		uint64_t previously_removed = removed_task_count;
-endif*/
+
 		clear_visited_bits();
-		//MEASURE_PRINT("Begin update, win: %lu, lose: %lu, overdue: %lu.\n",
-		//	      winning_tasks.size(), losing_tasks.size(), overdue_tasks.size());
-		
 		ret = update(sapling);
-		//MEASURE_PRINT("Update complete, result is %d\n", ret);
 		// clear losing tasks (all already collected tasks should be inside the tree)
 		// and overdue tasks (they should be made into tasks by now)
 		// we do not clear winning tasks because they will be useful for later iterations.
@@ -288,13 +254,12 @@ endif*/
     
     dynprog_attr_free(&tat);
 
-    //PROGRESS_PRINT("End computation.\n");
 #ifdef PROGRESS
     auto scheduler_end = std::chrono::system_clock::now();
     std::chrono::duration<long double> scheduler_time = scheduler_end - scheduler_start;
     PROGRESS_PRINT("Full evaluation time: %Lfs.\n", scheduler_time.count());
-    
 #endif
+    
     return ret;
 }
 
@@ -319,15 +284,11 @@ int solve(adversary_vertex *initial_vertex)
 	tm.clear();
 	// temporarily isolate sapling (detach it from its parent, set depth to 0)
         int orig_value = sapling->value;
-	//int orig_depth = sapling->depth;
 	sapling->task = false;
-	//sapling->depth = 0;
 	sapling->value = POSTPONED;
 	computation_root = sapling;
 	// compute the sapling using the parallel minimax algorithm
 	int val = scheduler(sapling);
-	//fprintf(stderr, "Value from scheduler: %d\n", val);
-	//print_compact(stdout, sapling);
  	assert(orig_value == POSTPONED || orig_value == val);
 	
 	if (val == 1)

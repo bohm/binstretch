@@ -3,6 +3,7 @@
 #include <inttypes.h>
 
 #include "common.hpp"
+#include "binconf.hpp"
 #include "hash.hpp"
 #include "minimax.hpp"
 #include "scheduler.hpp"
@@ -11,12 +12,10 @@ int main(void)
 {
 
     hashtable_init();
-    init_global_locks();
-    bucketlock_init();
-    
-    if (3*ALPHA >= S)
+
+    if (BINS == 3 && 3*ALPHA >= S)
     {
-	fprintf(stderr, "Good situation heuristics will be applied.\n");
+	fprintf(stderr, "All good situation heuristics will be applied.\n");
     } else {
 	fprintf(stderr, "Only some good situations will be applied.\n");
     }
@@ -24,8 +23,9 @@ int main(void)
     binconf root;
     root.assign_item(5,1);
     root.assign_item(2,2);
-    //root.assign_item(1,1);
-    //root.assign_item(1,2);
+    root.assign_item(2,3);
+    root.assign_item(2,4);
+
     hashinit(&root);
 
     adversary_vertex* root_vertex = new adversary_vertex(&root, 0, 1);
@@ -67,7 +67,6 @@ int main(void)
     MEASURE_ONLY(print_dynprog_measurements());
     //MEASURE_PRINT("Type upper bound successfully decreased the interval: %" PRIu64 "\n", total_tub);
     hashtable_cleanup();
-    bucketlock_cleanup();
     DEBUG_PRINT("Graph cleanup started.\n");
     graph_cleanup(root_vertex);
     delete root_vertex;

@@ -22,7 +22,6 @@ bin_int is_hashed_lockless(uint64_t hash, uint64_t logpart, thread_attr *tat)
 {
 	//fprintf(stderr, "Bchash %" PRIu64 ", zero_last_bit %" PRIu64 " get_last_bit %" PRId8 " \n", bchash, zero_last_bit(bchash), get_last_bit(bchash));
 
-	uint64_t blp = bucketlockpart(hash);
 	bin_int posvalue = NOT_FOUND;
 
 	// Use linear probing to check for the hashed value.
@@ -56,7 +55,6 @@ bin_int is_hashed_lockless(uint64_t hash, uint64_t logpart, thread_attr *tat)
 
  void hashpush_lockless(uint64_t hash, uint64_t data, bin_int depth, uint64_t logpart, thread_attr *tat)
 {
-	uint64_t blp = bucketlockpart(hash);
 	bin_int maxdepth = depth;
 	uint64_t maxposition = logpart;
 
@@ -102,8 +100,6 @@ bin_int is_hashed_lockless(uint64_t hash, uint64_t logpart, thread_attr *tat)
  void hashremove_lockless(uint64_t data, uint64_t logpart, thread_attr *tat)
  {
 	 uint64_t hash = zero_last_bit(data);
-	 uint64_t blp = bucketlockpart(hash);
-
 	 //pthread_rwlock_wrlock(&locks[blp]); // LOCK
 
 	 for (int i = 0; i < LINPROBE_LIMIT; i++)

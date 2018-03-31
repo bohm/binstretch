@@ -3,7 +3,13 @@
 #include <cassert>
 #include <map>
 
+// Minimax routines.
+#ifndef _MINIMAX_HPP
+#define _MINIMAX_HPP 1
+
 #include "common.hpp"
+#include "binconf.hpp"
+#include "thread_attr.hpp"
 #include "tree.hpp"
 #include "hash.hpp"
 #include "caching.hpp"
@@ -11,10 +17,6 @@
 #include "dynprog.hpp"
 #include "gs.hpp"
 #include "tasks.hpp"
-
-// Minimax routines.
-#ifndef _MINIMAX_H
-#define _MINIMAX_H 1
 
 /* declarations */
 template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_attr *outat);
@@ -24,13 +26,20 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 int time_stats(thread_attr *tat)
 {
     int ret = 0;
-    
+
+    std::chrono::time_point<std::chrono::system_clock> cur = std::chrono::system_clock::now();
+    auto iter_time = cur - tat->eval_start;
+    if (!tat->overdue_printed && iter_time >= THRESHOLD)
+    {
+	MEASURE_PRINT("Task is at least %ld s overdue: ", THRESHOLD.count());
+	MEASURE_PRINT_BINCONF(tat->explore_root);
+	tat->overdue_printed = true;
+    }
+   
 #ifdef OVERDUES
     if (!tat->current_overdue)
     {
-	std::chrono::time_point<std::chrono::system_clock> cur = std::chrono::system_clock::now();
 
-	auto iter_time = cur - tat->eval_start;
 	if (iter_time >= THRESHOLD && tat->expansion_depth <= (MAX_EXPANSION-1))
 	{
 	    //fprintf(stderr, "Setting overdue to true with depth %d\n", tat->expansion_depth);
@@ -119,7 +128,7 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
 	current_adversary = outat->last_adv_v;
 	previous_algorithm = outat->last_alg_v;
 
-	if (possible_task<MODE>(current_adversary))
+	if (POSSIBLE_TASK<MODE>(current_adversary))
 	{
 	    add_task(b, tat);
 	    // mark current adversary vertex (created by algorithm() in previous step) as a task
@@ -538,6 +547,8 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 int explore(binconf *b, thread_attr *tat)
 {
     hashinit(b);
+    binconf root_copy = *b;
+    
     onlineloads_init(tat->ol, b);
     //assert(tat->ol.loadsum() == b->totalload());
 
@@ -548,6 +559,7 @@ int explore(binconf *b, thread_attr *tat)
     tat->eval_start = std::chrono::system_clock::now();
     tat->current_overdue = false;
     tat->explore_roothash = b->loadhash ^ b->itemhash;
+    tat->explore_root = &root_copy;
     int ret = adversary<EXPLORING>(b, 0, tat, outat);
     assert(ret != POSTPONED);
     
@@ -600,4 +612,4 @@ int expand(adversary_vertex *overdue_task)
     dynprog_attr_free(&tat);
     return ret;
 }
-#endif
+#endif // _MINIMAX_HPP

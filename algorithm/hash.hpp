@@ -1,12 +1,15 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cassert>
-#include "common.hpp"
 #include <random>
 #include <limits>
 
-#ifndef _HASH_H
-#define _HASH_H 1
+#ifndef _HASH_HPP
+#define _HASH_HPP 1
+
+#include "common.hpp"
+#include "binconf.hpp"
+#include "thread_attr.hpp"
 
 /* As an experiment to save space, we will make the caching table
 values only 64-bit long, where the first 63 bits correspond to the 
@@ -454,34 +457,6 @@ void bc_hashtable_clear()
     }
 }
 
-void bucketlock_init()
-{
-    /*
-    bucketlock = new pthread_rwlock_t[BUCKETSIZE];
-    dpbucketlock = new pthread_rwlock_t[BUCKETSIZE];
-#ifdef GOOD_MOVES
-    bestmovelock = new pthread_rwlock_t[BUCKETSIZE];
-#endif
-
-#ifdef LF
-    lflock = new pthread_rwlock_t[BUCKETSIZE];
-#endif
-    
-    for (llu i =0; i < BUCKETSIZE; i++)
-    {
-        pthread_rwlock_init(&bucketlock[i], NULL);
-#ifdef GOOD_MOVES
-        pthread_rwlock_init(&bestmovelock[i], NULL);
-#endif
-#ifdef LF
-        pthread_rwlock_init(&lflock[i], NULL);
-#endif
-
-	pthread_rwlock_init(&dpbucketlock[i], NULL);
-    }
-    */
-}
-
 void hashtable_cleanup()
 {
 
@@ -501,10 +476,6 @@ void hashtable_cleanup()
     delete lfht;
 #endif
 
-}
-
-void bucketlock_cleanup()
-{
 }
 
 void printBits32(unsigned int num)
@@ -636,4 +607,4 @@ void dp_unhash(binconf *d, int dynitem)
     d->itemhash ^= Zi[dynitem*(R+1) + d->items[dynitem]];
 }
 
-#endif
+#endif // _HASH_HPP
