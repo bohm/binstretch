@@ -53,7 +53,7 @@ const int ALPHA = (RMOD-S);
 const int BINS = 8;
 
 // bitwise length of indices of hash tables and lock tables
-const unsigned int HASHLOG = 28;
+const unsigned int HASHLOG = 29;
 const unsigned int BCLOG = 28;
 const unsigned int BUCKETLOG = 7;
 const unsigned int BESTMOVELOG = 25;
@@ -74,7 +74,7 @@ const llu LFEASSIZE = (1ULL<<LFEASLOG);
 const llu BUCKETSIZE = (1ULL<<BUCKETLOG);
 
 // linear probing limit
-const int LINPROBE_LIMIT = 4;
+const int LINPROBE_LIMIT = 8;
 const int BMC_LIMIT = 2;
 
 const int DEFAULT_DP_SIZE = 100000;

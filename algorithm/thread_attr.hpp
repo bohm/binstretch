@@ -47,6 +47,7 @@ struct thread_attr {
     uint64_t largest_queue_observed = 0;
     uint64_t bestfit_calls = 0;
     uint64_t onlinefit_sufficient = 0;
+    uint64_t bestfit_sufficient = 0;
     std::array<uint64_t, BINS*S+1> dynprog_itemcount = {};
     bool overdue_printed = false;
     std::array<uint64_t, SITUATIONS> gshit = {};
@@ -99,6 +100,7 @@ std::array<uint64_t, BINS*S+1> total_dynprog_itemcount = {};
 
 uint64_t total_bestfit_calls = 0;
 uint64_t total_onlinefit_sufficient = 0;
+uint64_t total_bestfit_sufficient = 0;
 
 uint64_t total_tub = 0;
 

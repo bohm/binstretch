@@ -65,6 +65,7 @@ void collect_dynprog_from_thread(const thread_attr &tat)
     }
 
     total_onlinefit_sufficient += tat.onlinefit_sufficient;
+    total_bestfit_sufficient += tat.bestfit_sufficient;
     total_bestfit_calls += tat.bestfit_calls;
 }
 
@@ -73,8 +74,8 @@ void print_dynprog_measurements()
     MEASURE_PRINT("Max_feas calls: %" PRIu64 ", Dynprog calls: %" PRIu64 ".\n", total_max_feasible, total_dynprog_calls);
     MEASURE_PRINT("Largest queue observed: %" PRIu64 "\n", total_largest_queue);
 
-    MEASURE_PRINT("Onlinefit sufficient in: %" PRIu64 ", bestfit calls: %" PRIu64 ".\n",
-	    total_onlinefit_sufficient, total_bestfit_calls);
+    MEASURE_PRINT("Onlinefit sufficient in: %" PRIu64 ", bestfit calls: %" PRIu64 ", bestfit sufficient: %" PRIu64 ".\n",
+		  total_onlinefit_sufficient, total_bestfit_calls, total_bestfit_sufficient);
     MEASURE_PRINT("Sizes of binconfs which enter dyn. prog.:\n");
     /* for (int i =0; i <= BINS*S; i++)
     {
@@ -531,27 +532,64 @@ bin_int maximum_feasible_dynprog(binconf *b, const int depth, thread_attr *tat)
     bin_int data;
     bin_int maximum_feasible = 0;
 
-    bin_int maxvalue = std::min((bin_int) ((S*BINS) - b->totalload()), tat->prev_max_feasible);
-    std::pair<bin_int, bin_int> bounds(onlineloads_bestfit(tat->ol), maxvalue);
-    //std::pair<bin_int, bin_int> bounds(0, maxvalue);
-    assert(bounds.first <= bounds.second);
+    bin_int lb = onlineloads_bestfit(tat->ol);
+    bin_int ub = std::min((bin_int) ((S*BINS) - b->totalload()), tat->prev_max_feasible);
+    bin_int mid;
 
-    if (bounds.second - bounds.first > BESTFIT_THRESHOLD)
+    assert(lb <= ub);
+    if (lb == ub)
     {
-	bounds.first = bestfitalg(b);
-	MEASURE_ONLY(tat->bestfit_calls++);
-    } else {
+	maximum_feasible = lb;
 	MEASURE_ONLY(tat->onlinefit_sufficient++);
     }
-// use binary search to find the correct value
-    if (bounds.first == bounds.second)
-    {
-	maximum_feasible = bounds.first;
-    }
+    //else if (bounds.second - bounds.first > BESTFIT_THRESHOLD)
     else
     {
-	int lb = bounds.first; int ub = bounds.second;
 	int mid = (lb+ub+1)/2;
+	bool bestfit_needed = false;
+	while (lb < ub)
+	{
+	    data = pack_and_query(b,mid,tat);
+	    if (data == 1)
+	    {
+		lb = mid;
+	    } else if (data == 0) {
+		ub = mid-1;
+	    } else {
+		bestfit_needed = true;
+		break;
+	    }
+	    
+	    mid = (lb+ub+1)/2;
+	}
+	if (!bestfit_needed)
+	{
+	    maximum_feasible = lb;
+	} else {
+	    //bounds.second = ub;
+	    int bestfit = bestfitalg(b);
+	    MEASURE_ONLY(tat->bestfit_calls++);
+	    if (bestfit > lb)
+	    {
+		//bounds.first = std::max(bestfit, lb);
+		for (int i = lb+1; i <= bestfit; i++)
+		{
+		    pack_and_hash(b,i,1,tat);	    
+		}
+		lb = bestfit;
+	    }
+
+	    if (lb == ub)
+	    {
+		maximum_feasible = lb;
+		MEASURE_ONLY(tat->bestfit_sufficient++);
+	    }
+	}
+    }
+    
+    if (maximum_feasible == 0)
+    {
+	mid = (lb+ub+1)/2;
 	bool dynprog_needed = false;
 	while (lb < ub)
 	{
