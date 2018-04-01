@@ -82,7 +82,7 @@ const int DEFAULT_DP_SIZE = 100000;
 const int BESTFIT_THRESHOLD = (1*S)/10;
 
 // the number of threads
-const int THREADS = 8;
+const int THREADS = 32;
 // a bound on total load of a configuration before we split it into a task
 const int TASK_LOAD = 7;
 const int TASK_DEPTH = 3;
@@ -178,6 +178,9 @@ const int GS6 = 9;
 const std::array<std::string, SITUATIONS> gsnames = {"GS1", "GS1MOD", "GS2", "GS2VARIANT", "GS3",
 				"GS3VARIANT", "GS4", "GS4VARIANT", "GS5", "GS6"};
 
+
+const bin_int IN_PROGRESS = 2;
+
 // global task map indexed by binconf hashes
 std::map<llu, task> tm;
 
@@ -189,6 +192,8 @@ std::mutex collection_lock[THREADS];
 std::atomic_bool global_terminate_flag(false);
 std::mutex thread_progress_lock;
 
+std::mutex in_progress_mutex;
+std::condition_variable cv;
 
 //std::shared_lock running_and_removed_lock;
 // global hash-like map of completed tasks (and their parents up to

@@ -167,10 +167,23 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
     if (MODE == EXPLORING)
     {
 	int conf_in_hashtable = is_conf_hashed(b, tat);
+	if (conf_in_hashtable == IN_PROGRESS)
+	{
+	    //MEASURE_PRINT("Thread %d waits for binconf.\n", tat->id);
+	    std::unique_lock<std::mutex> lk(in_progress_mutex);
+	    cv.wait(lk, [&]{ return (is_conf_hashed(b, tat) != IN_PROGRESS); });
+	    conf_in_hashtable = is_conf_hashed(b, tat);
+	    //MEASURE_PRINT("Thread %d continues.\n", tat->id);
+	}
+
+
+	assert(conf_in_hashtable != IN_PROGRESS);
 	
 	if (conf_in_hashtable != -1)
 	{
 	    return conf_in_hashtable;
+	} else {
+	    conf_hashpush(b, IN_PROGRESS, tat);
 	}
     }
  
@@ -251,8 +264,11 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
 	}
     }
 
-    if (MODE == EXPLORING) {
-	conf_hashpush(b, r, depth, tat);
+    if (MODE == EXPLORING)
+    {
+	std::lock_guard<std::mutex> lg(in_progress_mutex);
+	conf_hashpush(b, r, tat);
+	cv.notify_all();
     }
 
     /* Sanity check. */

@@ -19,7 +19,8 @@ struct thread_attr {
 
     uint64_t *loadht;
     optconf oc;
-    loadconf ol; 
+    loadconf ol;
+    int id;
     int last_item = 1;
     bin_int prev_max_feasible = S;
     uint64_t iterations = 0;

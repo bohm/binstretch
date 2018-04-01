@@ -50,6 +50,7 @@ void evaluate_tasks(int threadid)
 	    call_to_terminate = global_terminate_flag;
 	    continue;
 	}
+	tat.id = threadid;
 	tat.last_item = current.last_item;
 	tat.expansion_depth = current.expansion_depth;
 	int ret;

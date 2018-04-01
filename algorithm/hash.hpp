@@ -26,6 +26,16 @@ inline uint64_t zero_last_bit(uint64_t n)
     return ((n >> 1) << 1);
 }
 
+uint64_t zero_last_two_bits(const uint64_t& n)
+{
+    return ((n >> 2) << 2);
+}
+
+bin_int get_last_two_bits(const uint64_t& n)
+{
+    return ((n & 3));
+}
+
 inline bin_int get_last_bit(uint64_t n)
 {
     return ((n & 1) == 1);
