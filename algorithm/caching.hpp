@@ -56,7 +56,7 @@ bin_int is_hashed_lockless(conf_el *hashtable, uint64_t hash, uint64_t logpart, 
 const int INSERTED = 0;
 const int INSERTED_RANDOMLY = -1;
 const int ALREADY_INSERTED = -2;
-
+const int OVERWRITE_OF_PROGRESS = -3;
 int hashpush_lockless(conf_el *hashtable, uint64_t hash, uint64_t data, uint64_t logpart, thread_attr *tat)
 {
     //uint64_t maxposition = logpart;
@@ -75,9 +75,19 @@ int hashpush_lockless(conf_el *hashtable, uint64_t hash, uint64_t data, uint64_t
 		}
 		else if (zero_last_two_bits(candidate) == hash)
 		{
+		    int ret;
+		    if (get_last_two_bits(candidate) == 2)
+		    {
+			ret = OVERWRITE_OF_PROGRESS;
+		    }
+		    else
+		    {
+			ret = ALREADY_INSERTED;
+		    }
+			
 		    hashtable[logpart + i]._data = data;
 		    found_a_spot = true;
-		    return ALREADY_INSERTED;
+		    return ret;
 		}
 	}
 
@@ -123,140 +133,6 @@ int hashpush_lockless(conf_el *hashtable, uint64_t hash, uint64_t data, uint64_t
 	}
 }
 
-
-
-template<class T, int PROBE_LIMIT> bin_int is_hashed_probe(T *hashtable, std::array<std::shared_timed_mutex, BUCKETSIZE> &locks, uint64_t hash, uint64_t logpart, thread_attr *tat)
-{
-    //fprintf(stderr, "Bchash %" PRIu64 ", zero_last_bit %" PRIu64 " get_last_bit %" PRId8 " \n", bchash, zero_last_bit(bchash), get_last_bit(bchash));
-
-    uint64_t blp = bucketlockpart(hash);
-    bin_int posvalue = -1;
-
-    // Use linear probing to check for the hashed value.
-    // slight hack here: in theory, just looking a few indices ahead might look into the next bucket lock
-    // TODO: Fix that.
-    std::shared_lock<std::shared_timed_mutex> l(locks[blp]); // lock
-    // pthread_rwlock_rdlock(&locks[blp]); // LOCK
-
-    for( int i=0; i< PROBE_LIMIT; i++)
-    {
-	const T& candidate = hashtable[logpart+i];
-	if (candidate.empty())
-	{
-	    break;
-	}
-
-	// we have to continue in this case, because it might be stored after this element
-	if (candidate.removed())
-	{
-	    continue;
-	}
-	if (candidate.hash() == hash)
-	{
-	    posvalue = candidate.value();
-	    break;
-	}
-
-	if (i == PROBE_LIMIT-1)
-	{
-	    posvalue = FULL_NOT_FOUND;
-	}
-    }
-
-    l.unlock();
-    //pthread_rwlock_unlock(&locks[blp]); // UNLOCK
-
-    return posvalue;
-}
-
-
-template <class T, int PROBE_LIMIT> void hashpush_probe(T* hashtable, std::array<std::shared_timed_mutex, BUCKETSIZE> &locks, const T& item, uint64_t logpart, thread_attr *tat)
-{
-    //assert(posvalue == 0 || posvalue == 1);
-    //uint64_t bchash = d->itemhash ^ d->loadhash;
-
-    uint64_t blp = bucketlockpart(item.hash());
-    bin_int maxdepth = item.depth();
-    uint64_t maxposition = logpart;
-
-
-    std::unique_lock<std::shared_timed_mutex> l(locks[blp]); // LOCK
-    bool found_a_spot = false;
-    for (int i=0; i< PROBE_LIMIT; i++)
-    {
-	T& candidate = hashtable[logpart+i];
-	if (candidate.empty() || candidate.removed())
-	{
-	    hashtable[logpart+i] = item;
-	    found_a_spot = true;
-	    break;
-	} else if (item.hash() == candidate.hash())
-	{
-	    hashtable[logpart+i] = item;
-	    found_a_spot = true;
-	    break;
-	} else if (candidate.depth() > maxdepth)
-	{
-	    maxdepth = candidate.depth();
-	    maxposition = logpart+i;
-	}
-    }
-
-    // if the cache is full, choose a random position
-    if(!found_a_spot && maxdepth > item.depth())
-    {
-	hashtable[maxposition] = item;
-    }
-
-    l.unlock();
-    // pthread_rwlock_unlock(&locks[blp]); // UNLOCK
-    
-#ifdef DEEP_DEBUG
-    DEEP_DEBUG_PRINT("Hashing the following position with value %d:\n", posvalue);
-    DEEP_DEBUG_PRINT_BINCONF(d);
-    printBits32(lp);
-#endif
-}
-
-
-// remove an element from the hash (the lazy way)
-template <class T, int PROBE_LIMIT> void hashremove_probe(T* hashtable, std::array<std::shared_timed_mutex, BUCKETSIZE> &locks, uint64_t hash, uint64_t logpart, thread_attr *tat)
-{
-
-    uint64_t blp = bucketlockpart(hash);
-
-    // Use linear probing to check for the hashed value.
-    // slight hack here: in theory, just looking a few indices ahead might look into the next bucket lock
-    // TODO: Fix that.
-    
-    //pthread_rwlock_wrlock(&locks[blp]); // LOCK
-
-    std::unique_lock<std::shared_timed_mutex> l(locks[blp]);
-    for( int i=0; i< PROBE_LIMIT; i++)
-    {
-	T& candidate = hashtable[logpart+i];
-	if (candidate.empty())
-	{
-	    break;
-	}
-
-	// we have to continue in this case, because it might be stored after this element
-	if (candidate.removed())
-	{
-	    continue;
-	}
-	if (candidate.hash() == hash)
-	{
-	    candidate.remove();
-	    break;
-	}
-
-    }
-
-    l.unlock();
-    //pthread_rwlock_unlock(&locks[blp]); // UNLOCK
-}
-
 void conf_hashpush(const binconf *d, uint64_t posvalue, thread_attr *tat)
 {
 #ifdef MEASURE
@@ -270,13 +146,27 @@ void conf_hashpush(const binconf *d, uint64_t posvalue, thread_attr *tat)
 #ifdef MEASURE
     if (ret == INSERTED)
     {
-	tat->bc_normal_insert++;
+	if (posvalue == IN_PROGRESS)
+	{
+	    tat->bc_in_progress_insert++;
+	} else {
+	    tat->bc_normal_insert++;
+	}
     } else if (ret == INSERTED_RANDOMLY)
     {
-	tat->bc_random_insert++;
+	if (posvalue == IN_PROGRESS)
+	{
+	    tat->bc_in_progress_insert++;
+	} else {
+	    tat->bc_random_insert++;
+	}
+
     } else if (ret == ALREADY_INSERTED)
     {
 	tat->bc_already_inserted++;
+    } else if (ret == OVERWRITE_OF_PROGRESS)
+    {
+	tat->bc_overwrite++;
     }
 #endif
 }
@@ -453,7 +343,9 @@ void collect_caching_from_thread(const thread_attr &tat)
 
     total_bc_normal_insert += tat.bc_normal_insert;
     total_bc_random_insert += tat.bc_random_insert;
+    total_bc_in_progress_insert += tat.bc_in_progress_insert;
     total_bc_already_inserted += tat.bc_already_inserted;
+    total_bc_overwrite += tat.bc_overwrite;
 
 #ifdef LF
     lf_tot_full_nf += tat.lf_full_nf;
@@ -468,9 +360,9 @@ void print_caching()
     MEASURE_PRINT("Main cache size: %llu, #search: %" PRIu64 "(#hit: %" PRIu64 ",  #miss: %" PRIu64 ") #full miss: %" PRIu64 ".\n",
 		  HASHSIZE, (total_bc_hit+total_bc_partial_nf+total_bc_full_nf), total_bc_hit,
 		  total_bc_partial_nf + total_bc_full_nf, total_bc_full_nf);
-    MEASURE_PRINT("Insertions: %" PRIu64 ", minus already inserted: %" PRIu64 ", (normal: %" PRIu64 ", random inserts: %" PRIu64 ", already inserted: %" PRIu64 ").\n",
-		  total_bc_insertions, total_bc_insertions - total_bc_already_inserted, total_bc_normal_insert, total_bc_random_insert,
-		  total_bc_already_inserted);
+    MEASURE_PRINT("Insertions: %" PRIu64 ", new data insertions: %" PRIu64 ", (normal: %" PRIu64 ", random inserts: %" PRIu64 ", already inserted: %" PRIu64 ", in progress: %" PRIu64 ", overwrite of in progress: %" PRIu64 ").\n",
+		  total_bc_insertions, total_bc_insertions - total_bc_already_inserted - total_bc_in_progress_insert, total_bc_normal_insert, total_bc_random_insert,
+		  total_bc_already_inserted, total_bc_in_progress_insert, total_bc_overwrite);
     MEASURE_PRINT("DP cache size: %llu, #insert: %" PRIu64 ", #search: %" PRIu64 "(#hit: %" PRIu64 ",  #part. miss: %" PRIu64 ",#full miss: %" PRIu64 ").\n",
 		  BC_HASHSIZE, total_dp_insertions, (total_dp_hit+total_dp_partial_nf+total_dp_full_nf), total_dp_hit,
 		  total_dp_partial_nf, total_dp_full_nf);
