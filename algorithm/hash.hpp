@@ -35,7 +35,7 @@ inline bin_int get_last_bit(uint64_t n)
 class conf_el
 {
 public:
-    uint64_t _data;
+    std::atomic<uint64_t> _data;
 
     conf_el()
 	{
@@ -245,10 +245,10 @@ public:
 	}
 };
 
-typedef conf_el_extended dpht_el;
+typedef conf_el dpht_el;
 
 // generic hash table (for configurations)
-conf_el_extended *ht;
+conf_el *ht;
 // hash table for dynamic programming calls / feasibility checks
 dpht_el *dpht;
 
@@ -308,7 +308,7 @@ void zobrist_init()
 
 void hashtable_init()
 {
-    ht = new conf_el_extended[HASHSIZE];
+    ht = new conf_el[HASHSIZE];
     for (uint64_t i =0; i < HASHSIZE; i++)
     {
 	ht[i]._data = 0;
@@ -344,29 +344,52 @@ void hashtable_init()
 
 void cache_measurements()
 {
-    uint64_t empty = 0, winning = 0, losing = 0, removed = 0;
 
+    const int BLOCKS = 16;
+    const int partition = HASHSIZE / BLOCKS;
+    std::array<uint64_t,BLOCKS> empty = {};
+    std::array<uint64_t,BLOCKS> winning = {};
+    std::array<uint64_t,BLOCKS> losing = {};
+    std::array<uint64_t,BLOCKS> removed = {};
+ 
+    int block = 0; 
     for (uint64_t i = 0; i < HASHSIZE; i++)
     {
 	if (ht[i].empty())
 	{
-	    empty++;
+	    empty[block]++;
 	} else if (ht[i].removed())
 	{
-	    removed++;
+	    removed[block]++;
 	} else if (ht[i].value() == 0)
 	{
-	    winning++;
+	    winning[block]++;
 	} else if (ht[i].value() == 1)
 	{
-	    losing++;
+	    losing[block]++;
+	}
+
+	if(i !=0 && i % partition == 0)
+	{
+	    block++;
 	}
     }
 
-    uint64_t total = empty+winning+losing+removed;
+    uint64_t e = std::accumulate(empty.begin(), empty.end(), (uint64_t) 0);
+    uint64_t w = std::accumulate(winning.begin(), winning.end(), (uint64_t) 0);
+    uint64_t l = std::accumulate(losing.begin(), losing.end(), (uint64_t) 0);
+    uint64_t r = std::accumulate(removed.begin(), removed.end(), (uint64_t) 0);
+
+    uint64_t total = e+w+l+r;
     assert(total == HASHSIZE);
-    fprintf(stderr, "Cache all: %" PRIu64 ", empty: %" PRIu64 ", removed: %" PRIu64 ", winning: %" PRIu64 ", losing: %" PRIu64 ".\n",
-	    total, empty, removed, winning, losing);
+    for (int i = 0; i < BLOCKS; i++)
+    {
+	fprintf(stderr, "Block %d: empty: %" PRIu64 ", removed: %" PRIu64 ", winning: %" PRIu64 ", losing: %" PRIu64 ".\n",
+		i, empty[i], removed[i], winning[i], losing[i]);
+    }
+    
+    fprintf(stderr, "Cache all: %" PRIu64 ", empty: %" PRIu64 ", removed: %" PRIu64 ", winning: %" PRIu64 ", losing: %" PRIu64 ".\n\n",
+	    total, e, r, w, l);
 }
 
 void clear_cache_of_ones()

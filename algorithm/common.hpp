@@ -54,7 +54,7 @@ const int BINS = 8;
 
 // bitwise length of indices of hash tables and lock tables
 const unsigned int HASHLOG = 29;
-const unsigned int BCLOG = 28;
+const unsigned int BCLOG = 29;
 const unsigned int BUCKETLOG = 7;
 const unsigned int BESTMOVELOG = 25;
 const unsigned int LOADLOG = 13;

@@ -91,6 +91,12 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
 	return 1;
     }
 
+    // a much weaker variant of large item heuristic, but takes O(1) time
+    if (b->totalload() <= S && b->loads[2] >= R-S)
+    {
+	return 0;
+    }
+
     /* Large items heuristic: if 2nd or later bin is at least R-S, check if enough large items
        can be sent so that this bin (or some other) hits R. */
 
@@ -110,20 +116,7 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
 	}
     } 
 
-    // Check cache here (after we have solved trivial cases).
-    // We only do this in exploration mode; while this could be also done
-    // when generating we want the whole lower bound tree to be generated.
-    
-    if (MODE == EXPLORING)
-    {
-	int conf_in_hashtable = is_conf_hashed(b, tat);
-	
-	if (conf_in_hashtable != -1)
-	{
-	    return conf_in_hashtable;
-	}
-    }
-    
+   
     if (MODE == GENERATING || MODE == EXPANDING)
     {
 	current_adversary = outat->last_adv_v;
@@ -165,14 +158,22 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
 		return TERMINATING;
 	    }
 	}
+    }
 
-	// a much weaker variant of large item heuristic, but takes O(1) time
-	if (b->totalload() <= S && b->loads[2] >= R-S)
+    // Check cache here (after we have solved trivial cases).
+    // We only do this in exploration mode; while this could be also done
+    // when generating we want the whole lower bound tree to be generated.
+    
+    if (MODE == EXPLORING)
+    {
+	int conf_in_hashtable = is_conf_hashed(b, tat);
+	
+	if (conf_in_hashtable != -1)
 	{
-	    return 0;
+	    return conf_in_hashtable;
 	}
     }
-    
+ 
     // finds the maximum feasible item that can be added using dyn. prog.
     bin_int old_max_feasible = tat->prev_max_feasible;
     bin_int dp = maximum_feasible_dynprog(b, depth, tat);
@@ -187,15 +188,6 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
     
     for (int item_size = maximum_feasible; item_size>=lower_bound; item_size--)
     {
-	// quick hacktest
-	/*if (MODE == EXPLORING)
-	{
-	    if (item_size % 2 == 1 && item_size > 7 && item_size < S-7)
-	    {
-		continue;
-	    }
-	    }*/
-	
         DEEP_DEBUG_PRINT("Sending item %d to algorithm.\n", item_size);
 	// algorithm's vertex for the next step
 	algorithm_vertex *analyzed_vertex; // used only in the GENERATING mode

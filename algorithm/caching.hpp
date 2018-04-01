@@ -18,7 +18,7 @@
 const int FULL_NOT_FOUND = -2;
 const int NOT_FOUND = -1;
 
-bin_int is_hashed_lockless(conf_el_extended *hashtable, uint64_t hash, uint64_t logpart, thread_attr *tat)
+bin_int is_hashed_lockless(conf_el *hashtable, uint64_t hash, uint64_t logpart, thread_attr *tat)
 {
 	//fprintf(stderr, "Bchash %" PRIu64 ", zero_last_bit %" PRIu64 " get_last_bit %" PRId8 " \n", bchash, zero_last_bit(bchash), get_last_bit(bchash));
 
@@ -53,45 +53,51 @@ bin_int is_hashed_lockless(conf_el_extended *hashtable, uint64_t hash, uint64_t 
 	return posvalue;
 }
 
-void hashpush_lockless(conf_el_extended *hashtable, uint64_t hash, uint64_t data, bin_int depth, uint64_t logpart, thread_attr *tat)
+const int INSERTED = 0;
+const int INSERTED_RANDOMLY = -1;
+const int ALREADY_INSERTED = -2;
+
+int hashpush_lockless(conf_el *hashtable, uint64_t hash, uint64_t data, bin_int depth, uint64_t logpart, thread_attr *tat)
 {
-	bin_int maxdepth = depth;
-	uint64_t maxposition = logpart;
+    //bin_int maxdepth = depth;
+    //uint64_t maxposition = logpart;
 
 	bool found_a_spot = false;
 	for (int i = 0; i< LINPROBE_LIMIT; i++)
 	{
 		uint64_t candidate = hashtable[logpart + i]._data;
-		bin_int cand_depth = hashtable[logpart + i]._depth;
+		//bin_int cand_depth = hashtable[logpart + i]._depth;
 		if (candidate == 0 || candidate == REMOVED)
 		{
 			// since we are doing two sequential atomic edits, a collision may occur,
 			// but this should just give an item a wrong information about depth
 			hashtable[logpart + i]._data = data;
-			hashtable[logpart + i]._depth = depth;
+			//hashtable[logpart + i]._depth = depth;
 			found_a_spot = true;
-			break;
+			return INSERTED;
 		}
 		else if (zero_last_bit(candidate) == hash)
 		{
-			hashtable[logpart + i]._data = data;
-			hashtable[logpart + i]._depth = depth;
+		    // hashtable[logpart + i]._data = data;
+			//hashtable[logpart + i]._depth = depth;
 			found_a_spot = true;
-			break;
+			return ALREADY_INSERTED;
 		}
+		/*
 		else if (cand_depth > maxdepth)
 		{
 			maxdepth = cand_depth;
 			maxposition = logpart + i;
-		}
+			}*/
 	}
 
 	// if the cache is full, choose a random position
-	if (!found_a_spot && maxdepth > depth)
+	if(!found_a_spot)
 	{
-		hashtable[maxposition]._data = data;
-		hashtable[maxposition]._depth = depth;
+	    hashtable[rand() % LINPROBE_LIMIT]._data = data;
 	}
+	
+	return INSERTED_RANDOMLY;
 }
 
 
@@ -269,7 +275,19 @@ void conf_hashpush(const binconf *d, int posvalue, bin_int depth, thread_attr *t
 
     uint64_t bchash = zero_last_bit(d->itemhash ^ d->loadhash);
     uint64_t data = bchash | (uint64_t) posvalue;
-    hashpush_lockless(ht, bchash, data, depth, hashlogpart(bchash), tat);
+    int ret = hashpush_lockless(ht, bchash, data, depth, hashlogpart(bchash), tat);
+#ifdef MEASURE
+    if (ret == INSERTED)
+    {
+	tat->bc_normal_insert++;
+    } else if (ret == INSERTED_RANDOMLY)
+    {
+	tat->bc_random_insert++;
+    } else if (ret == ALREADY_INSERTED)
+    {
+	tat->bc_already_inserted++;
+    }
+#endif
 }
 
 /*
@@ -441,6 +459,10 @@ void collect_caching_from_thread(const thread_attr &tat)
     total_bc_partial_nf += tat.bc_partial_nf;
     total_bc_full_nf += tat.bc_full_nf;
 
+    total_bc_normal_insert += tat.bc_normal_insert;
+    total_bc_random_insert += tat.bc_random_insert;
+    total_bc_already_inserted += tat.bc_already_inserted;
+
 #ifdef LF
     lf_tot_full_nf += tat.lf_full_nf;
     lf_tot_partial_nf += tat.lf_partial_nf;
@@ -451,9 +473,12 @@ void collect_caching_from_thread(const thread_attr &tat)
 
 void print_caching()
 {
-    MEASURE_PRINT("Main cache size: %llu, #insert: %" PRIu64 ", #search: %" PRIu64 "(#hit: %" PRIu64 ",  #part. miss: %" PRIu64 ",#full miss: %" PRIu64 ").\n",
-		  HASHSIZE, total_bc_insertions, (total_bc_hit+total_bc_partial_nf+total_bc_full_nf), total_bc_hit,
-		  total_bc_partial_nf, total_bc_full_nf);
+    MEASURE_PRINT("Main cache size: %llu, #search: %" PRIu64 "(#hit: %" PRIu64 ",  #miss: %" PRIu64 ") #full miss: %" PRIu64 ".\n",
+		  HASHSIZE, (total_bc_hit+total_bc_partial_nf+total_bc_full_nf), total_bc_hit,
+		  total_bc_partial_nf + total_bc_full_nf, total_bc_full_nf);
+    MEASURE_PRINT("Insertions: %" PRIu64 ", minus already inserted: %" PRIu64 ", (normal: %" PRIu64 ", random inserts: %" PRIu64 ", already inserted: %" PRIu64 ").\n",
+		  total_bc_insertions, total_bc_insertions - total_bc_already_inserted, total_bc_normal_insert, total_bc_random_insert,
+		  total_bc_already_inserted);
     MEASURE_PRINT("DP cache size: %llu, #insert: %" PRIu64 ", #search: %" PRIu64 "(#hit: %" PRIu64 ",  #part. miss: %" PRIu64 ",#full miss: %" PRIu64 ").\n",
 		  BC_HASHSIZE, total_dp_insertions, (total_dp_hit+total_dp_partial_nf+total_dp_full_nf), total_dp_hit,
 		  total_dp_partial_nf, total_dp_full_nf);

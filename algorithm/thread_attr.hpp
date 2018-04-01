@@ -42,6 +42,9 @@ struct thread_attr {
     uint64_t bc_partial_nf = 0;
     uint64_t bc_full_nf = 0;
     uint64_t bc_insertions = 0;
+    uint64_t bc_normal_insert = 0;
+    uint64_t bc_random_insert = 0;
+    uint64_t bc_already_inserted = 0;
     uint64_t inner_loop = 0;
     uint64_t dynprog_calls = 0;
     uint64_t largest_queue_observed = 0;
@@ -89,7 +92,9 @@ uint64_t total_bc_hit = 0;
 uint64_t total_bc_partial_nf = 0;
 uint64_t total_bc_full_nf = 0;
 uint64_t total_bc_insertions = 0;
-
+uint64_t total_bc_normal_insert = 0;
+uint64_t total_bc_random_insert = 0;
+uint64_t total_bc_already_inserted = 0;
 
 uint64_t total_dp_hit = 0;
 uint64_t total_dp_partial_nf = 0;
