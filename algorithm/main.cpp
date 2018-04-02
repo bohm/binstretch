@@ -7,7 +7,16 @@
 #include "hash.hpp"
 #include "minimax.hpp"
 #include "scheduler.hpp"
+#include "sequencing.hpp"
 
+void print_sequence(FILE *stream, const std::vector<bin_int>& seq)
+{
+    for (const bin_int& i: seq)
+    {
+	fprintf(stream, "%" PRIi16 " ", i); 
+    }
+    fprintf(stream, "\n");
+}
 int main(void)
 {
 
@@ -20,21 +29,13 @@ int main(void)
 	fprintf(stderr, "Only some good situations will be applied.\n");
     }
 
-    binconf root;
-    root.assign_item(5,1);
-    root.assign_item(2,2);
-    //root.assign_item(2,3);
-    //root.assign_item(2,4);
-
-    hashinit(&root);
-
-    adversary_vertex* root_vertex = new adversary_vertex(&root, 0, 1);
-    int ret = solve(root_vertex);
+    sequencing(initial_items);
+    int ret = solve();
     assert(ret == 0 || ret == 1);
     if(ret == 0)
     {
-	fprintf(stdout, "Lower bound for %d/%d Bin Stretching on %d bins with monotonicity %d: \n", R,S,BINS, monotonicity);
-	print_binconf_stream(stdout, &root);
+	fprintf(stdout, "Lower bound for %d/%d Bin Stretching on %d bins with monotonicity %d and starting seq: ", R,S,BINS, monotonicity);
+	print_sequence(stdout, initial_items);
 #ifdef OUTPUT
 	char buffer[50];
 	sprintf(buffer, "%d_%d_%dbins.dot", R,S,BINS);
@@ -49,8 +50,8 @@ int main(void)
 	fclose(out);
 #endif
     } else {
-	fprintf(stdout, "Algorithm wins %d/%d Bin Stretching on %d bins with root:\n", R,S,BINS);
-	print_binconf_stream(stdout, &root);
+	fprintf(stdout, "Algorithm wins %d/%d Bin Stretching on %d bins with sequence:\n", R,S,BINS);
+	print_sequence(stdout, initial_items);
     }
 
     fprintf(stderr, "Number of tasks: %" PRIu64 ", completed tasks: %" PRIu64 ", pruned tasks %" PRIu64 ".\n,",
@@ -68,7 +69,6 @@ int main(void)
     //MEASURE_PRINT("Type upper bound successfully decreased the interval: %" PRIu64 "\n", total_tub);
     hashtable_cleanup();
     DEBUG_PRINT("Graph cleanup started.\n");
-    graph_cleanup(root_vertex);
-    delete root_vertex;
+    //graph_cleanup(root_vertex); // TODO: fix this
     return 0;
 }

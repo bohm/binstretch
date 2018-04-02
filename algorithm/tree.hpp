@@ -15,7 +15,9 @@
 // a game tree (actually a DAG) used for outputting the resulting
 // strategy if the result is positive.
 
-struct algorithm_vertex {
+class algorithm_vertex
+{
+public:
     std::list<alg_outedge*> out; // next adversarial states
     std::list<adv_outedge*> in; // previous adversarial states
     uint64_t id;
@@ -37,7 +39,9 @@ struct algorithm_vertex {
     }
 };
 
-struct adversary_vertex {
+class adversary_vertex
+{
+public:
     binconf *bc; /* Bin configuration of the current node. */
     std::list<adv_outedge*> out; // next algorithmic states
     std::list<alg_outedge*> in; // previous algorithmic states

@@ -423,7 +423,6 @@ void clear_cache_of_ones()
 
     MEASURE_PRINT("Hashtable size: %llu, kept: %" PRIu64 ", erased: %" PRIu64 "\n", HASHSIZE, kept, erased);
 }
-
 void dynprog_hashtable_clear()
 {
     for (uint64_t i =0; i < BC_HASHSIZE; i++)

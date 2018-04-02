@@ -264,20 +264,14 @@ int scheduler(adversary_vertex *sapling)
     return ret;
 }
 
-int solve(adversary_vertex *initial_vertex)
+int solve()
 {
-
-    generated_graph.clear();
-    generated_graph[initial_vertex->bc->loadhash ^ initial_vertex->bc->itemhash] = initial_vertex;
-    
-    sapling_queue.push(initial_vertex);
-    while (!sapling_queue.empty())
-    {
+   while (!sapling_queue.empty())
+   {
 	adversary_vertex* sapling = sapling_queue.front();
 	fprintf(stderr, "Sapling queue size: %zu, current sapling of depth %d:\n", sapling_queue.size(), sapling->depth);
 	print_binconf_stream(stderr, sapling->bc);
 	sapling_queue.pop();
-
 	bc_hashtable_clear();
 	dynprog_hashtable_clear();
 	losing_tasks.clear();

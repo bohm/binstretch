@@ -23,7 +23,6 @@
 template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_attr *outat);
 template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat, tree_attr *outat);
 
-
 int time_stats(thread_attr *tat)
 {
     int ret = 0;

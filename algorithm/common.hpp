@@ -38,9 +38,14 @@ typedef signed char tiny;
 const int S = 14;
 // target goal of the online bin stretching problem
 const int R = 19;
+// Change this number for the selected number of bins.
+const int BINS = 8;
+
+// If you want to generate a specific lower bound, insert an initial sequence here.
+const std::vector<int16_t> initial_items = {5,1,1,1};
 
 #ifdef ONLY_ONE_PASS
-const int PASS = 0;
+const int PASS = 1;
 #else
 const int FIRST_PASS = 0;
 #endif
@@ -49,12 +54,9 @@ const int FIRST_PASS = 0;
 const int RMOD = (R-1);
 const int ALPHA = (RMOD-S);
 
-// Change this number for the selected number of bins.
-const int BINS = 8;
-
 // bitwise length of indices of hash tables and lock tables
-const unsigned int HASHLOG = 28;
-const unsigned int BCLOG = 28;
+const unsigned int HASHLOG = 27;
+const unsigned int BCLOG = 26;
 const unsigned int BUCKETLOG = 7;
 const unsigned int BESTMOVELOG = 25;
 const unsigned int LOADLOG = 13;
@@ -82,7 +84,7 @@ const int DEFAULT_DP_SIZE = 100000;
 const int BESTFIT_THRESHOLD = (1*S)/10;
 
 // the number of threads
-const int THREADS = 10;
+const int THREADS = 4;
 // a bound on total load of a configuration before we split it into a task
 const int TASK_LOAD = 7;
 const int TASK_DEPTH = 3;
@@ -102,9 +104,9 @@ const int MAX_EXPANSION = 1;
 // end of configuration constants
 // ------------------------------------------------
 
-#define POSTPONED 2
-#define TERMINATING 3
-#define OVERDUE 4
+const int POSTPONED = 2;
+const int TERMINATING = 3;
+const int OVERDUE = 4;
 
 #define GENERATING 1
 #define EXPLORING 2

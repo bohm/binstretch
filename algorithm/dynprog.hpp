@@ -76,8 +76,8 @@ void print_dynprog_measurements()
 
     MEASURE_PRINT("Onlinefit sufficient in: %" PRIu64 ", bestfit calls: %" PRIu64 ", bestfit sufficient: %" PRIu64 ".\n",
 		  total_onlinefit_sufficient, total_bestfit_calls, total_bestfit_sufficient);
-    MEASURE_PRINT("Sizes of binconfs which enter dyn. prog.:\n");
-    /* for (int i =0; i <= BINS*S; i++)
+    /* MEASURE_PRINT("Sizes of binconfs which enter dyn. prog.:\n");
+     for (int i =0; i <= BINS*S; i++)
     {
 	if (total_dynprog_itemcount[i] > 0)
 	{
