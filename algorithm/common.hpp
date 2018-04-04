@@ -55,8 +55,8 @@ const int RMOD = (R-1);
 const int ALPHA = (RMOD-S);
 
 // bitwise length of indices of hash tables and lock tables
-const unsigned int HASHLOG = 27;
-const unsigned int BCLOG = 26;
+const unsigned int HASHLOG = 29;
+const unsigned int BCLOG = 28;
 const unsigned int BUCKETLOG = 7;
 const unsigned int BESTMOVELOG = 25;
 const unsigned int LOADLOG = 13;
@@ -84,7 +84,7 @@ const int DEFAULT_DP_SIZE = 100000;
 const int BESTFIT_THRESHOLD = (1*S)/10;
 
 // the number of threads
-const int THREADS = 4;
+const int THREADS = 8;
 // a bound on total load of a configuration before we split it into a task
 const int TASK_LOAD = 7;
 const int TASK_DEPTH = 3;

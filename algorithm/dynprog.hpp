@@ -76,7 +76,7 @@ void print_dynprog_measurements()
 
     MEASURE_PRINT("Onlinefit sufficient in: %" PRIu64 ", bestfit calls: %" PRIu64 ", bestfit sufficient: %" PRIu64 ".\n",
 		  total_onlinefit_sufficient, total_bestfit_calls, total_bestfit_sufficient);
-    /* MEASURE_PRINT("Sizes of binconfs which enter dyn. prog.:\n");
+    /*MEASURE_PRINT("Sizes of binconfs which enter dyn. prog.:\n");
      for (int i =0; i <= BINS*S; i++)
     {
 	if (total_dynprog_itemcount[i] > 0)
@@ -536,7 +536,12 @@ bin_int maximum_feasible_dynprog(binconf *b, const int depth, thread_attr *tat)
     bin_int ub = std::min((bin_int) ((S*BINS) - b->totalload()), tat->prev_max_feasible);
     bin_int mid;
 
-    assert(lb <= ub);
+    if(lb > ub)
+    {
+	print_binconf_stream(stderr, b);
+	fprintf(stderr, "lb %" PRIi16 ", ub %" PRIi16 ".\n", lb, ub);
+	assert(lb <= ub);
+    }
     if (lb == ub)
     {
 	maximum_feasible = lb;

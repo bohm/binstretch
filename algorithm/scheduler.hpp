@@ -53,6 +53,7 @@ void evaluate_tasks(int threadid)
 	tat.id = threadid;
 	tat.last_item = current.last_item;
 	tat.expansion_depth = current.expansion_depth;
+	tat.prev_max_feasible = S;
 	int ret;
 	ret = explore(&(current.bc), &tat);
 
