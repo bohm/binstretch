@@ -29,9 +29,8 @@ void add_sapling(adversary_vertex* v)
 
 
 // Generates a tree with saplings (not tasks) from a sequence of items
-int sequencing(const std::vector<bin_int>& seq)
+int sequencing(const std::vector<bin_int>& seq, binconf& root)
 {
-    binconf root;
     hashinit(&root);
     adversary_vertex* root_vertex = new adversary_vertex(&root, 0, 1);
     generated_graph.clear();

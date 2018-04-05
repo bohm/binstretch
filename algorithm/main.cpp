@@ -19,7 +19,7 @@ void print_sequence(FILE *stream, const std::vector<bin_int>& seq)
 }
 int main(void)
 {
-
+    binconf root = {INITIAL_LOADS, INITIAL_ITEMS};
     hashtable_init();
 
     if (BINS == 3 && 3*ALPHA >= S)
@@ -29,7 +29,7 @@ int main(void)
 	fprintf(stderr, "Only some good situations will be applied.\n");
     }
 
-    sequencing(initial_items);
+    sequencing(initial_items, root);
     int ret = solve();
     assert(ret == 0 || ret == 1);
     if(ret == 0)

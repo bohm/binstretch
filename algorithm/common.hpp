@@ -41,8 +41,13 @@ const int R = 19;
 // Change this number for the selected number of bins.
 const int BINS = 8;
 
-// If you want to generate a specific lower bound, insert an initial sequence here.
+
+// If you want to generate a specific lower bound, you can create an initial bin configuration here.
+#define INITIAL_LOADS {0}
+#define INITIAL_ITEMS {0}
+// You can also insert an initial sequence here.
 const std::vector<int16_t> initial_items = {5,1,1,1};
+
 
 #ifdef ONLY_ONE_PASS
 const int PASS = 1;

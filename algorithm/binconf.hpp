@@ -186,6 +186,15 @@ public:
     uint64_t itemhash = 0;
     int _itemcount = 0;
 
+    binconf() {}
+    binconf(const std::initializer_list<std::initializer_list<bin_int> >& initial)
+	{
+	    assert(initial.size() == 2);
+	    std::copy(initial.begin()->begin(), initial.begin()->end(), loads.begin());
+	    std::copy((initial.begin()+1)->begin(), (initial.begin()+1)->end(), items.begin());
+    
+	}
+
     bin_int totalload() const
     {
 	return _totalload;
