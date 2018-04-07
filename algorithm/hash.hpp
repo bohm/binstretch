@@ -255,7 +255,47 @@ public:
 	}
 };
 
+
+class dpextended
+{
+public:
+    uint64_t _hash = 0;
+    bool _feasible = false;
+    // all tuples that are feasible for this sequence
+    vector<loadconf> *configs = NULL;
+    // largest sequence sendable 1,2...BINS times
+    std::array<bin_int, BINS+1> *largest_seq = NULL;
+
+    dpextended()
+	{
+	}
+    
+    dpextended(uint64_t hash, uint64_t posvalue, bin_int depth)
+	{
+	    _data = (zero_last_bit(hash) | posvalue);
+	    _depth = depth;
+	}
+
+    inline bool value() const
+	{
+	    return _feasible;
+	}
+    inline uint64_t hash() const
+	{
+	    return _hash;
+	}
+    inline bool empty() const
+	{
+	    return _hash == 0;
+	}
+    inline void erase()
+	{
+	    _data = 0; _depth = 0;
+	}
+};
+
 typedef conf_el dpht_el;
+
 
 // generic hash table (for configurations)
 conf_el *ht;

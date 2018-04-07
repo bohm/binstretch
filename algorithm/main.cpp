@@ -19,9 +19,13 @@ void print_sequence(FILE *stream, const std::vector<bin_int>& seq)
 }
 int main(void)
 {
-    binconf root = {INITIAL_LOADS, INITIAL_ITEMS};
-    hashtable_init();
 
+    hashtable_init();
+    binconf root = {INITIAL_LOADS, INITIAL_ITEMS};
+    adversary_vertex* root_vertex = new adversary_vertex(&root, 0, 1);
+    generated_graph.clear();
+    generated_graph[root_vertex->bc->loadhash ^ root_vertex->bc->itemhash] = root_vertex;
+ 
     if (BINS == 3 && 3*ALPHA >= S)
     {
 	fprintf(stderr, "All good situation heuristics will be applied.\n");
@@ -29,13 +33,13 @@ int main(void)
 	fprintf(stderr, "Only some good situations will be applied.\n");
     }
 
-    sequencing(initial_items, root);
+    sequencing(INITIAL_SEQUENCE, root, root_vertex);
     int ret = solve();
     assert(ret == 0 || ret == 1);
     if(ret == 0)
     {
 	fprintf(stdout, "Lower bound for %d/%d Bin Stretching on %d bins with monotonicity %d and starting seq: ", R,S,BINS, monotonicity);
-	print_sequence(stdout, initial_items);
+	print_sequence(stdout, INITIAL_SEQUENCE);
 #ifdef OUTPUT
 	char buffer[50];
 	sprintf(buffer, "%d_%d_%dbins.dot", R,S,BINS);
@@ -51,7 +55,7 @@ int main(void)
 #endif
     } else {
 	fprintf(stdout, "Algorithm wins %d/%d Bin Stretching on %d bins with sequence:\n", R,S,BINS);
-	print_sequence(stdout, initial_items);
+	print_sequence(stdout, INITIAL_SEQUENCE);
     }
 
     fprintf(stderr, "Number of tasks: %" PRIu64 ", completed tasks: %" PRIu64 ", pruned tasks %" PRIu64 ".\n,",
@@ -66,6 +70,7 @@ int main(void)
     MEASURE_ONLY(print_caching());
     MEASURE_ONLY(print_gsheur(stderr));
     MEASURE_ONLY(print_dynprog_measurements());
+    MEASURE_PRINT("Large item hit %" PRIu64 ", miss: %" PRIu64 "\n", total_large_item_hit, total_large_item_miss);
     //MEASURE_PRINT("Type upper bound successfully decreased the interval: %" PRIu64 "\n", total_tub);
     hashtable_cleanup();
     DEBUG_PRINT("Graph cleanup started.\n");

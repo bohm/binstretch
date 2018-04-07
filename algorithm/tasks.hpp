@@ -43,10 +43,10 @@ template<int MODE> bool possible_task_depth(adversary_vertex *v)
     {
 	target_depth = computation_root->depth + TASK_DEPTH;
 	
-	if (computation_root->depth >= 5)
+	/*if (computation_root->depth >= 5)
 	{
 	    target_depth--;
-	}
+	}*/
     } else //if (MODE == EXPANDING)
     {
 	target_depth = expansion_root->depth + EXPANSION_DEPTH;

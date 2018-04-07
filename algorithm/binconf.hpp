@@ -135,6 +135,11 @@ public:
 	    return from;
 	}
 
+    // returns hash as if the item was assigned and rehashed.
+    uint64_t virtual_assign_and_rehash(int item, int bin) const
+	{
+	}
+
     int assign_multiple(int item, int bin, int count)
 	{
 	    loads[bin] += count*item;
@@ -169,12 +174,24 @@ public:
 	    return std::accumulate(loads.begin(), loads.end(), 0);
 	}
 
+    loadconf()
+	{
+	}
+    
+    loadconf(const loadconf& old, bin_int new_item, int bin)
+	{
+	    loadhash = old.loadhash;
+	    loads = old.loads;
+	    assign_and_rehash(new_item, bin);
+	}
+
     void print(FILE *stream) const
 	{
 	    for (int i=1; i<=BINS; i++) {
 		fprintf(stream, "%d-", loads[i]);
 	    }
 	}
+
 };
 
 class binconf: public loadconf {
@@ -187,11 +204,23 @@ public:
     int _itemcount = 0;
 
     binconf() {}
-    binconf(const std::initializer_list<std::initializer_list<bin_int> >& initial)
+    binconf(const std::vector<bin_int>& initial_loads, const std::vector<bin_int>& initial_items)
 	{
-	    assert(initial.size() == 2);
-	    std::copy(initial.begin()->begin(), initial.begin()->end(), loads.begin());
-	    std::copy((initial.begin()+1)->begin(), (initial.begin()+1)->end(), items.begin());
+	    assert(initial_loads.size() <= BINS);
+	    assert(initial_items.size() <= S);
+	    std::copy(initial_loads.begin(), initial_loads.end(), loads.begin()+1);
+	    std::copy(initial_items.begin(), initial_items.end(), items.begin()+1);
+	    _itemcount = itemcount_explicit();
+	    _totalload = totalload_explicit();
+	    bin_int totalload_items = 0;
+	    for (int i =1; i <= S; i++)
+	    {
+		totalload_items += i*items[i];
+	    }
+	    assert(totalload_items == _totalload);
+
+	    hashinit();
+	    
     
 	}
 
