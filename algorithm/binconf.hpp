@@ -136,8 +136,27 @@ public:
 	}
 
     // returns hash as if the item was assigned and rehashed.
-    uint64_t virtual_assign_and_rehash(int item, int bin) const
+    uint64_t virtual_assign_and_rehash(bin_int item, int i) const
 	{
+        bin_int imaginary_load = loads[i] + item;
+        uint64_t ret = loadhash;
+        // virtually insert into loads[bin]
+        ret ^= Zl[i*(R + 1) + loads[i]];
+        ret ^= Zl[i*(R + 1) + imaginary_load];
+
+        while (!((i == 1) || (loads[i - 1] >= imaginary_load)))
+        {
+            // instead of std::swap(loads[i], loads[i - 1]), just
+            // unhash
+            ret ^= Zl[i*(R + 1) + imaginary_load];
+            ret ^= Zl[(i - 1)*(R + 1) + loads[i - 1]];
+            // and rehash
+            ret ^= Zl[(i-1)*(R + 1) + imaginary_load];
+            ret ^= Zl[i*(R + 1) + loads[i - 1]];
+            i--;
+        }
+
+        return ret;
 	}
 
     int assign_multiple(int item, int bin, int count)

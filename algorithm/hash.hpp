@@ -256,13 +256,13 @@ public:
 };
 
 
-class dpextended
+/* class dpextended
 {
 public:
     uint64_t _hash = 0;
     bool _feasible = false;
     // all tuples that are feasible for this sequence
-    vector<loadconf> *configs = NULL;
+    std::vector<loadconf> *configs = NULL;
     // largest sequence sendable 1,2...BINS times
     std::array<bin_int, BINS+1> *largest_seq = NULL;
 
@@ -293,6 +293,7 @@ public:
 	    _data = 0; _depth = 0;
 	}
 };
+*/
 
 typedef conf_el dpht_el;
 

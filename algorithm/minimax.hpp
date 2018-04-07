@@ -25,7 +25,7 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
 template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat, tree_attr *outat);
 
 #ifdef ONEPASS
-void reset_confs(thread_attr *tat, std::array<bin_int, BINS+1> *pold_confs)
+void reset_confs(thread_attr *tat, std::vector<loadconf> *pold_confs)
 {
     delete tat->confs;
     tat->confs = pold_confs;
@@ -226,12 +226,14 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
     } else {
 	MEASURE_ONLY(tat->large_item_miss++);
     }
+    bin_int old_max_feasible = tat->prev_max_feasible;
     int maximum_feasible = std::get<0>(x);
+    tat->prev_max_feasible = maximum_feasible;
 #else
     bin_int old_max_feasible = tat->prev_max_feasible;
     bin_int dp = MAXIMUM_FEASIBLE(b, depth, tat);
-    tat->prev_max_feasible = dp;
     int maximum_feasible = dp;
+    tat->prev_max_feasible = maximum_feasible;
 #endif // ONEPASS
     int below = 1;
     int r = 1;

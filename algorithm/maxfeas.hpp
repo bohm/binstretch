@@ -258,11 +258,13 @@ bin_int maximum_feasible_single(binconf *b, const int depth, thread_attr *tat)
     return maximum_feasible;
 }
 
+#ifdef ONEPASS
 // currently just a wrapper around dynprog_max_onepass
 // hopefully later with cache querying
-data_triple maximum_feasible_onepass(binconf *b, bin_int new_item, const std::vector<bin_int>& old_tuples, thread_attr *tat)
+data_triple maximum_feasible_onepass(binconf *b, bin_int new_item, const std::vector<loadconf>& old_tuples, thread_attr *tat)
 {
     return dynprog_max_onepass(b,new_item, old_tuples, tat);
 }
+#endif // ONEPASS
 
 #endif // _MAXFEAS_HPP

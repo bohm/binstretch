@@ -32,6 +32,9 @@ struct thread_attr {
     std::chrono::time_point<std::chrono::system_clock> eval_start;
     bool current_overdue = false;
     uint64_t overdue_tasks = 0;
+#ifdef ONEPASS
+	std::vector<loadconf> *confs;
+#endif
 
 #ifdef MEASURE
     uint64_t dp_hit = 0;

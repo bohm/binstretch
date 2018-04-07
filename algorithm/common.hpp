@@ -34,13 +34,14 @@ typedef int16_t bin_int;
 //#define GOOD_MOVES 1
 #define ONLY_ONE_PASS 1
 //#define OVERDUES 1
+#define ONEPASS 1
 
 // maximum load of a bin in the optimal offline setting
-const int S = 14;
+const bin_int S = 14;
 // target goal of the online bin stretching problem
-const int R = 19;
+const bin_int R = 19;
 // Change this number for the selected number of bins.
-const int BINS = 8;
+const int BINS = 6;
 
 
 // If you want to generate a specific lower bound, you can create an initial bin configuration here.
@@ -64,8 +65,8 @@ const int RMOD = (R-1);
 const int ALPHA = (RMOD-S);
 
 // bitwise length of indices of hash tables and lock tables
-const unsigned int HASHLOG = 29;
-const unsigned int BCLOG = 28;
+const unsigned int HASHLOG = 25;
+const unsigned int BCLOG = 25;
 const unsigned int BUCKETLOG = 7;
 const unsigned int BESTMOVELOG = 25;
 const unsigned int LOADLOG = 13;
@@ -93,7 +94,7 @@ const int DEFAULT_DP_SIZE = 100000;
 const int BESTFIT_THRESHOLD = (1*S)/10;
 
 // the number of threads
-const int THREADS = 8;
+const int THREADS = 4;
 // a bound on total load of a configuration before we split it into a task
 const int TASK_LOAD = 18;
 const int TASK_DEPTH = 3;
@@ -259,6 +260,16 @@ std::chrono::duration<long double> time_spent;
 #define MEASURE_PRINT(format,...)
 #define MEASURE_PRINT_BINCONF(x)
 #define MEASURE_ONLY(x)
+#endif
+
+#ifdef ONEPASS
+#define ONEPASS_PRINT(...) fprintf(stderr,  __VA_ARGS__ )
+#define ONEPASS_PRINT_BINCONF(x) print_binconf_stream(stderr, x)
+#define ONEPASS_ONLY(x) x
+#else
+#define ONEPASS_PRINT(format,...)
+#define ONEPASS_PRINT_BINCONF(x)
+#define ONEPASS_ONLY(x)
 #endif
 
 #ifdef VERBOSE
