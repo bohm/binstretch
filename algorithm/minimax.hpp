@@ -16,7 +16,6 @@
 #include "caching.hpp"
 #include "fits.hpp"
 #include "dynprog.hpp"
-#include "maxfeas.hpp"
 #include "gs.hpp"
 #include "tasks.hpp"
 
