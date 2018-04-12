@@ -2,6 +2,7 @@
 
 #include "common.hpp"
 #include "hash.hpp"
+#include "binconf.hpp"
 
 // Functions for caching results (transposition tables in chess).
 
@@ -187,7 +188,6 @@ void conf_hashpush(const binconf *d, uint64_t posvalue, thread_attr *tat)
 #endif
 
     uint64_t bchash = zero_last_two_bits(d->itemhash ^ d->loadhash);
-    assert(posvalue >= 0 && posvalue <= 2);
     uint64_t data = bchash | posvalue;
     int ret = hashpush_atomic(ht, bchash, data, hashlogpart(bchash), tat);
 #ifdef MEASURE
@@ -254,35 +254,95 @@ void loadconf_hashpush(uint64_t loadhash, thread_attr *tat)
     tat->loadht[loadlogpart(loadhash)] = loadhash;
 }
 
-void dp_hashpush(const binconf *d, int8_t feasibility, thread_attr *tat)
+bool loadconf_hashfind(const std::array<uint64_t,LOADSIZE> &loadht, uint64_t loadhash)
+{
+    return (loadht[loadlogpart(loadhash)] == loadhash);
+}
+
+
+void loadconf_hashpush(std::array<uint64_t,LOADSIZE> &loadht, uint64_t loadhash)
+{
+    loadht[loadlogpart(loadhash)] = loadhash;
+}
+
+
+// --- dynamic programming ---
+int dp_hashpush(uint64_t hash, data_triple* data, thread_attr *tat)
 {
 #ifdef MEASURE
     tat->dp_insertions++;
 #endif
 
-    uint64_t hash = zero_last_two_bits(d->itemhash);
-    uint64_t data = hash | (uint64_t) feasibility;
-    hashpush_atomic(dpht, hash, data, dplogpart(hash), tat);
+    assert(data != NULL); assert(data->confs != NULL); assert(data->heur != NULL);
+    
+    uint64_t logpart = dplogpart(hash);
+    triple_el item;
+    item._hash = hash;
+    item._dt = new data_triple;
+    item._dt->heur = nullptr;
+    item._dt->confs = nullptr;
+    item._dt->duplicate(data);
+    
+    for (int i = 0; i< LINPROBE_LIMIT; i++)
+    {
+	triple_el candidate = dpht[logpart + i];
+	if (candidate.empty() || candidate.removed())
+	{
+	    dpht[logpart+i].exchange(item);
+	    item.clear();
+	    return INSERTED;
+	}
+	else if (candidate.hash() == hash)
+	{
+	    item.clear();
+	    return ALREADY_INSERTED;
+	}
+    }
+
+    // if the cache is full, choose a random position
+    dpht[rand() % LINPROBE_LIMIT].exchange(item);
+    item.clear();
+    return INSERTED_RANDOMLY;
 }
 
-
-int8_t is_dp_hashed(const binconf *d, thread_attr *tat)
+data_triple* is_dp_hashed(uint64_t hash, thread_attr *tat)
 {
-    uint64_t hash = zero_last_two_bits(d->itemhash);
-    bin_int ret = is_hashed_atomic(dpht, hash, dplogpart(hash), tat);
-    if (ret >= 0)
+    triple_el placeholder;
+    placeholder._hash = REMOVED;
+    placeholder._dt = NULL;
+    
+    uint64_t logpart = dplogpart(hash);
+    // Use linear probing to check for the hashed value.
+    for (int i = 0; i < LINPROBE_LIMIT; i++)
     {
-	MEASURE_ONLY(tat->dp_hit++);
-    } else if (ret == NOT_FOUND)
-    {
-	MEASURE_ONLY(tat->dp_partial_nf++);
-    } else if (ret == FULL_NOT_FOUND)
-    {
-	MEASURE_ONLY(tat->dp_full_nf++);
-	ret = NOT_FOUND;
-    }
-    return (int8_t) ret;
+	uint64_t cand_hash = dpht[logpart + i].load().hash();
+	if (cand_hash == 0)
+	{
+	    return NULL;
+	}
 
+	if (cand_hash == hash)
+	{
+	    dpht[logpart+i].exchange(placeholder);
+	    if(placeholder.hash() == hash)
+	    {
+		// copies the whole data triple and returns it back
+		// TODO: likely slow, find a better solution
+		data_triple* ret = new data_triple;
+		ret->duplicate(placeholder._dt);
+		dpht[logpart+i].exchange(placeholder);
+		placeholder.clear();
+		return ret;
+	    } else
+	    {
+		placeholder.clear();
+		return NULL;
+	    }
+	} 
+	
+    }
+    // not found
+    return NULL;
 }
 
 #ifdef MEASURE

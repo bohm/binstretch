@@ -35,20 +35,21 @@ typedef int16_t bin_int;
 #define ONLY_ONE_PASS 1
 //#define OVERDUES 1
 #define ONEPASS 1
+//#define THOROUGH_CHECKS 1
 
 // maximum load of a bin in the optimal offline setting
 const bin_int S = 14;
 // target goal of the online bin stretching problem
 const bin_int R = 19;
 // Change this number for the selected number of bins.
-const int BINS = 6;
+const int BINS = 7;
 
 
 // If you want to generate a specific lower bound, you can create an initial bin configuration here.
 const std::vector<bin_int> INITIAL_LOADS = {5,1,1};
 const std::vector<bin_int> INITIAL_ITEMS = {2,0,0,0,1};
-//const std::vector<bin_int> INITIAL_LOADS = {5};
-//const std::vector<bin_int> INITIAL_ITEMS = {0,0,0,0,1};
+//const std::vector<bin_int> INITIAL_LOADS = {};
+//const std::vector<bin_int> INITIAL_ITEMS = {};
 // You can also insert an initial sequence here, and the adversary will use it as a predefined start.
 const std::vector<bin_int> INITIAL_SEQUENCE = {};
 //const std::vector<bin_int> INITIAL_SEQUENCE = {};
@@ -57,7 +58,7 @@ const std::vector<bin_int> INITIAL_SEQUENCE = {};
 #ifdef ONLY_ONE_PASS
 const int PASS = 0;
 #else
-const int FIRST_PASS = 0;
+const int FIRST_PASS = 9;
 #endif
 
 // constants used for good situations
@@ -66,7 +67,7 @@ const int ALPHA = (RMOD-S);
 
 // bitwise length of indices of hash tables and lock tables
 const unsigned int HASHLOG = 25;
-const unsigned int BCLOG = 25;
+const unsigned int BCLOG = 20;
 const unsigned int BUCKETLOG = 7;
 const unsigned int BESTMOVELOG = 25;
 const unsigned int LOADLOG = 13;
@@ -161,6 +162,51 @@ struct dp_hash_item {
 };
 
 typedef struct dp_hash_item dp_hash_item;
+// used in one-pass dynamic programming iterations
+
+class data_triple
+{
+public:
+    bin_int maxfeas = 0; // maximum feasible
+    std::vector<loadconf> * confs = nullptr; // all optimal configurations of the items
+    std::array<bin_int, BINS+1> * heur = nullptr; // heuristic information
+
+    void clear()
+	{
+	    if(confs != nullptr)
+	    {
+		delete confs;
+		confs = nullptr;
+	    }
+	    if(heur != nullptr)
+	    {
+		delete heur;
+		heur = nullptr;
+	    }
+
+	}
+
+    void duplicate(const data_triple* other)
+	{
+	    assert(other->confs != NULL); // sanity checks
+	    assert(other->heur != NULL);
+	    if (confs != nullptr)
+	    {
+		confs->clear();
+	    } else {
+		confs = new std::vector<loadconf>();
+	    }
+
+	    if (heur == nullptr)
+	    {
+		heur = new std::array<bin_int, BINS+1>();
+	    }
+
+	    maxfeas = other->maxfeas;
+	    std::copy(other->confs->begin(), other->confs->end(), confs->begin());
+	    std::copy(other->heur->begin(), other->heur->end(), heur->begin());
+	}
+};
 
 // dynprog_result is data point about a particular configuration
 class dynprog_result

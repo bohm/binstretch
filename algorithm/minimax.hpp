@@ -24,13 +24,11 @@
 template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_attr *outat);
 template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat, tree_attr *outat);
 
-#ifdef ONEPASS
 void reset_confs(thread_attr *tat, std::vector<loadconf> *pold_confs)
 {
     delete tat->confs;
     tat->confs = pold_confs;
 }
-#endif
 
 int time_stats(thread_attr *tat)
 {
@@ -111,30 +109,6 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
 	return 0;
     }
 
-    /* Large items heuristic: if 2nd or later bin is at least R-S, check if enough large items
-       can be sent so that this bin (or some other) hits R. */
-#ifndef ONEPASS
-   if (MODE == GENERATING || MODE == EXPANDING)
-   {
-	std::pair<bool, int> p;
-	p = large_item_heuristic(b, tat);
-	if (p.first)
-	{
-	    if (MODE == GENERATING || MODE == EXPANDING)
-	    {
-		outat->last_adv_v->value = 0;
-		outat->last_adv_v->heuristic = true;
-		outat->last_adv_v->heuristic_item = p.second;
-	    }
-	    MEASURE_ONLY(tat->large_item_hit++);
-	    return 0;
-	} else {
-	    MEASURE_ONLY(tat->large_item_miss++);
-
-	}
-    } 
-#endif // ifndef ONEPASS
-   
     if (MODE == GENERATING || MODE == EXPANDING)
     {
 	current_adversary = outat->last_adv_v;
@@ -203,16 +177,55 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
     }
  
     // finds the maximum feasible item that can be added using dyn. prog.
-#ifdef ONEPASS
-    data_triple x = maximum_feasible_onepass(b, tat->last_item, *(tat->confs), tat);
+    data_triple* x = nullptr;
+
+    // if this is the first call, skip max_feas_onepass
+    if(tat->initial_maxfeas != 0)
+    {
+	x = new data_triple;
+	x->maxfeas = tat->initial_maxfeas; x->confs = tat->confs; x->heur = tat->initial_heur;
+	tat->initial_maxfeas = 0;
+	tat->initial_heur = NULL;
+	tat->confs = NULL;
+    } else {
+	x = maximum_feasible_onepass<MODE>(b, tat->last_item, tat->confs, tat);
+    }
+    //print_data_triple(b, tat->last_item, &x);
+    if (x->confs == NULL || x->heur == NULL)
+    {
+	fprintf(stderr, "assert failed for depth %d:\n", depth);
+	if (MODE == EXPLORING)
+	{
+	    fprintf(stderr, "Explore root:\n");
+	    print_binconf_stream(stderr, tat->explore_root);
+	}
+	fprintf(stderr, "Old confs:\n");
+	print_confs(b, tat->confs, false);
+	print_data_triple(b, tat->last_item, x);
+
+	assert(x->confs != NULL && x->heur != NULL);
+    }
+
     // set new confs
     std::vector<loadconf> *pold_confs = tat->confs;
-    tat->confs = std::get<1>(x);
-    std::pair<bool, int> p;
-    p = large_item_precomputed(b, std::get<2>(x));
-    delete std::get<2>(x);
+    tat->confs = x->confs;
+
+    std::pair<bool, bin_int> p;
+    p = large_item_precomputed(b, x->heur);
+    delete x->heur;
+#ifdef THOROUGH_CHECKS
+    std::pair<bool, bin_int> q = large_item_explicit(b,tat);
+    if (p.first != q.first || p.second != p.second)
+    {
+	fprintf(stderr, "Explicit and one-pass heuristics disagree on binconf: ");
+	print_binconf_stream(stderr, b);
+	fprintf(stderr, "one-pass: (%d,% " PRIi16 "), explicit: (%d,% " PRIi16 ")\n", p.first, p.second, q.first, q.second);
+	assert(p.first == q.first && p.second == q.second);
+    }
+#endif
     if (p.first)
     {
+       
 	if (MODE == GENERATING || MODE == EXPANDING)
 	{
 	    outat->last_adv_v->value = 0;
@@ -227,14 +240,8 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
 	MEASURE_ONLY(tat->large_item_miss++);
     }
     bin_int old_max_feasible = tat->prev_max_feasible;
-    int maximum_feasible = std::get<0>(x);
+    int maximum_feasible = x->maxfeas;
     tat->prev_max_feasible = maximum_feasible;
-#else
-    bin_int old_max_feasible = tat->prev_max_feasible;
-    bin_int dp = MAXIMUM_FEASIBLE(b, depth, tat);
-    int maximum_feasible = dp;
-    tat->prev_max_feasible = maximum_feasible;
-#endif // ONEPASS
     int below = 1;
     int r = 1;
     DEEP_DEBUG_PRINT("Trying player zero choices, with maxload starting at %d\n", maximum_feasible);
@@ -323,7 +330,7 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
     }
     
     tat->prev_max_feasible = old_max_feasible;
-    ONEPASS_ONLY( reset_confs(tat, pold_confs) );
+    reset_confs(tat, pold_confs);
     return r;
 }
 
@@ -444,9 +451,6 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 	    // editing binconf in place -- undoing changes later
 	    
 	    int from = b->assign_and_rehash(k,i);
-#ifndef ONEPASS
-	    int ol_from = onlineloads_assign(tat->ol, k);
-#endif
 	    // initialize the adversary's next vertex in the tree (corresponding to d)
 	    adversary_vertex *analyzed_vertex;
 	    bool already_generated = false;
@@ -509,9 +513,6 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 
 	    // return b to original form
 	    b->unassign_and_rehash(k,from);
-#ifndef ONEPASS
-	    onlineloads_unassign(tat->ol, k, ol_from);
-#endif
 	    if (below == 1)
 	    {
 		r = below;
@@ -608,25 +609,22 @@ int explore(binconf *b, thread_attr *tat)
     hashinit(b);
     binconf root_copy = *b;
     
-#ifdef ONEPASS
-    tat->confs = dynprog_init_confs(b, tat);
-#else
-    onlineloads_init(tat->ol, b);
-#endif
-    //tat->oc.init(*b);
-    //assert(tat->ol.loadsum() == b->totalload());
-
+    data_triple* initial = dynprog_init_triple(b, tat);
+    tat->initial_maxfeas = initial->maxfeas;
+    tat->confs = initial->confs;
+    tat->initial_heur = initial->heur;
+    delete initial;
     tree_attr *outat = NULL;
-    //std::vector<uint64_t> first_pass;
-    //dynprog_one_pass_init(b, &first_pass);
-    //tat->previous_pass = &first_pass;
     tat->eval_start = std::chrono::system_clock::now();
     tat->current_overdue = false;
     tat->explore_roothash = b->loadhash ^ b->itemhash;
     tat->explore_root = &root_copy;
     int ret = adversary<EXPLORING>(b, 0, tat, outat);
     assert(ret != POSTPONED);
-    ONEPASS_ONLY(delete tat->confs);
+    if (tat->confs != NULL)
+    {
+	delete tat->confs;
+    }
     
     return ret;
 }
@@ -635,25 +633,23 @@ int explore(binconf *b, thread_attr *tat)
 int generate(binconf *start, thread_attr *tat, adversary_vertex *start_vert)
 {
     hashinit(start);
-#ifdef ONEPASS
-    tat->confs = dynprog_init_confs(start, tat);
-#else
-    onlineloads_init(tat->ol, start);
-#endif
-    //tat->oc.init(*start);
-
-    //assert(tat->ol.loadsum() == start->totalload());
+    data_triple* initial = dynprog_init_triple(start, tat);
+    tat->initial_maxfeas = initial->maxfeas;
+    tat->confs = initial->confs;
+    tat->initial_heur = initial->heur;
+    delete initial;
     
     tree_attr *outat = new tree_attr;
     outat->last_adv_v = start_vert;
     outat->last_alg_v = NULL;
 
-    //std::vector<uint64_t> first_pass;
-    //dynprog_one_pass_init(start, &first_pass);
-    //tat->previous_pass = &first_pass;
     int ret = adversary<GENERATING>(start, start_vert->depth, tat, outat);
+
+    if(tat->confs != NULL)
+    {	
+	delete tat->confs;
+    }
     delete outat;
-    ONEPASS_ONLY(delete tat->confs);
     return ret;
 }
 

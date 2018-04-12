@@ -256,29 +256,19 @@ public:
 };
 
 
-/* class dpextended
+class triple_el
 {
 public:
-    uint64_t _hash = 0;
-    bool _feasible = false;
-    // all tuples that are feasible for this sequence
-    std::vector<loadconf> *configs = NULL;
-    // largest sequence sendable 1,2...BINS times
-    std::array<bin_int, BINS+1> *largest_seq = NULL;
+    uint64_t _hash;
+    data_triple *_dt;
 
-    dpextended()
+    inline data_triple* value() const
 	{
+	    return _dt;
 	}
-    
-    dpextended(uint64_t hash, uint64_t posvalue, bin_int depth)
+    inline data_triple* data() const
 	{
-	    _data = (zero_last_bit(hash) | posvalue);
-	    _depth = depth;
-	}
-
-    inline bool value() const
-	{
-	    return _feasible;
+	    return _dt;
 	}
     inline uint64_t hash() const
 	{
@@ -288,12 +278,21 @@ public:
 	{
 	    return _hash == 0;
 	}
-    inline void erase()
+    inline bool removed() const
 	{
-	    _data = 0; _depth = 0;
+	    return _hash == REMOVED;
+	}
+    // also disposes of the contents;
+    inline void clear()
+	{
+	    if (_dt != NULL)
+	    {
+		_dt->clear();
+		delete _dt;
+		_dt = nullptr;
+	    }
 	}
 };
-*/
 
 typedef conf_el dpht_el;
 
@@ -301,8 +300,11 @@ typedef conf_el dpht_el;
 // generic hash table (for configurations)
 conf_el *ht;
 // hash table for dynamic programming calls / feasibility checks
-dpht_el *dpht;
+//dpht_el *dpht;
 
+std::atomic<triple_el> *dpht = new std::atomic<triple_el>[BC_HASHSIZE];
+
+//std::array< std::atomic<triple_el>, BC_HASHSIZE > dpht;
 
 std::array<std::shared_timed_mutex, BUCKETSIZE> bucketlock;
 std::array<std::shared_timed_mutex, BUCKETSIZE> dpbucketlock;
@@ -365,30 +367,11 @@ void hashtable_init()
 	ht[i]._data = 0;
     }
 
-    dpht = new dpht_el[BC_HASHSIZE];
+    triple_el el; el._hash = 0; el._dt = NULL;
     for (uint64_t i =0; i < BC_HASHSIZE; i++)
     {
-	dpht[i]._data = 0;
+	dpht[i].store(el);
     }
-
-#ifdef GOOD_MOVES
-    bmc = new best_move_el[BESTMOVESIZE];
-    for (uint64_t i =0; i < BESTMOVESIZE; i++)
-    {
-	bmc[i]._hash = 0;
-	bmc[i]._move = 0;
-    }
-#endif
-
-#ifdef LF
-    lfht = new lf_el[LFEASSIZE];
-    for (uint64_t i =0; i < LFEASSIZE; i++)
-    {
-	lfht[i]._hash = 0;
-	lfht[i]._depth = 0;
-	lfht[i]._lf = -1;
-    }
-#endif
 
     zobrist_init();
 }
@@ -466,11 +449,11 @@ void clear_cache_of_ones()
 }
 void dynprog_hashtable_clear()
 {
-    for (uint64_t i =0; i < BC_HASHSIZE; i++)
+    /*for (uint64_t i =0; i < BC_HASHSIZE; i++)
     {
 	dpht[i]._data = 0;
     }
-
+    */
 }
 
 void bc_hashtable_clear()

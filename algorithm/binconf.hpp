@@ -100,6 +100,8 @@ public:
 		// d->loads[i] to d->loads[i-1]
 		for (int i = from+1; i <= to; i++)
 		{
+		    //assert(i <= BINS && i >= 1);
+		    //assert(loads[i] <= R && loads[i] >= 0);
 		    loadhash ^= Zl[i*(R+1) + loads[i-1]]; // the old load on i
 		    loadhash ^= Zl[i*(R+1) + loads[i]]; // the new load on i
 		}
@@ -195,6 +197,7 @@ public:
 
     loadconf()
 	{
+	    hashinit();
 	}
     
     loadconf(const loadconf& old, bin_int new_item, int bin)
@@ -222,7 +225,7 @@ public:
     uint64_t itemhash = 0;
     int _itemcount = 0;
 
-    binconf() {}
+    binconf() : loadconf() { hashinit();}
     binconf(const std::vector<bin_int>& initial_loads, const std::vector<bin_int>& initial_items)
 	{
 	    assert(initial_loads.size() <= BINS);
@@ -304,6 +307,11 @@ public:
 	    rehash_loads_decreased_range(item, from, to);
 	    itemhash ^= Zi[item*(R+1) + items[item]+1];
 	    itemhash ^= Zi[item*(R+1) + items[item]];
+	}
+
+    uint64_t itemhash_if_added(bin_int item)
+	{
+	    return itemhash ^ Zi[item*(R+1) + items[item]+1] ^ Zi[item*(R+1) + items[item]];
 	}
 
 
@@ -406,5 +414,7 @@ void binconf::unassign_and_rehash(int item, int bin)
     int from = sortloads_one_decreased(bin);
     rehash_decreased_range(item, bin, from);
 }
+
+
 
 #endif

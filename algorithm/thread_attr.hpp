@@ -33,7 +33,10 @@ struct thread_attr {
     bool current_overdue = false;
     uint64_t overdue_tasks = 0;
 #ifdef ONEPASS
-	std::vector<loadconf> *confs;
+    std::vector<loadconf> *confs = NULL;
+    bin_int initial_maxfeas = 0;
+    std::array<bin_int, BINS+1> *initial_heur = NULL;
+    
 #endif
 
 #ifdef MEASURE
