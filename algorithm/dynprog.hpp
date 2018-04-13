@@ -342,16 +342,16 @@ bin_int dynprog_max_dangerous(const binconf *conf, thread_attr *tat)
 		    //loadconf tuple = tupleit;
 
 		    // try and place the item
-		    for (int i=1; i <= BINS; i++)
+		    for (int i=BINS; i >= 1; i--)
 		    {
 			// same as with Algorithm, we can skip when sequential bins have the same load
-			if (i > 1 && tuple.loads[i] == tuple.loads[i-1])
+			if (i < BINS && tuple.loads[i] == tuple.loads[i + 1])
 			{
 			    continue;
 			}
 			
 			if (tuple.loads[i] + size > S) {
-			    continue;
+			    break;
 			}
 
 			int newpos = tuple.assign_and_rehash(size, i);
