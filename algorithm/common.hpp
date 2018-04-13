@@ -19,6 +19,7 @@
 
 typedef unsigned long long int llu;
 typedef signed char tiny;
+typedef int16_t bin_int;
 
 // verbosity of the program
 //#define VERBOSE 1
@@ -41,12 +42,15 @@ const int R = 19;
 // Change this number for the selected number of bins.
 const int BINS = 8;
 
-
 // If you want to generate a specific lower bound, you can create an initial bin configuration here.
-#define INITIAL_LOADS {0}
-#define INITIAL_ITEMS {0}
 // You can also insert an initial sequence here.
-const std::vector<int16_t> initial_items = {5,1,1,1};
+const std::vector<bin_int> INITIAL_LOADS = {5,1,1};
+const std::vector<bin_int> INITIAL_ITEMS = {2,0,0,0,1};
+//const std::vector<bin_int> INITIAL_LOADS = {5};
+//const std::vector<bin_int> INITIAL_ITEMS = {0,0,0,0,1};
+// You can also insert an initial sequence here, and the adversary will use it as a predefined start.
+const std::vector<bin_int> INITIAL_SEQUENCE = {};
+//const std::vector<bin_int> INITIAL_SEQUENCE = {};
 
 
 #ifdef ONLY_ONE_PASS
@@ -91,7 +95,7 @@ const int BESTFIT_THRESHOLD = (1*S)/10;
 // the number of threads
 const int THREADS = 8;
 // a bound on total load of a configuration before we split it into a task
-const int TASK_LOAD = 7;
+const int TASK_LOAD = 18;
 const int TASK_DEPTH = 3;
 const int EXPANSION_DEPTH = 3;
 const int TASK_LARGEST_ITEM = 3;
@@ -132,7 +136,6 @@ uint64_t *Ai; // Zobrist table for next item to pack (used for the algorithm's b
 // than 127 items or not.
 // we allow it to go negative for signalling -1/-2.
 
-typedef int16_t bin_int;
 //static_assert(BINS*S <= 127, "S is bigger than 127, fix bin_int in transposition tables.");
 // A bin configuration consisting of three loads and a list of items that have arrived so far.
 // The same DS is also used in the hash as an element.

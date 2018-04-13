@@ -97,6 +97,9 @@ void evaluate_tasks(int threadid)
     collect_caching_from_thread(tat);
     collect_gsheur_from_thread(tat);
     collect_dynprog_from_thread(tat);
+    total_large_item_hit += tat.large_item_hit;
+    total_large_item_miss += tat.large_item_miss;
+   
     //total_tub += tat.tub;
 #ifdef GOOD_MOVES
     total_good_move_hit += tat.good_move_hit;
@@ -152,6 +155,19 @@ int scheduler(adversary_vertex *sapling)
 	monotonicity = m;
 	ret = generate(&sapling_bc, &tat, sapling);
 	sapling->value = ret;
+	if(ret != POSTPONED)
+	{
+	    fprintf(stderr, "We have evaluated the tree: %d\n", ret);
+	    if (ret == 0)
+	    {
+		break;
+	    } else if (ret == 1)
+	    {
+		continue;
+	    }
+	}
+
+
 	PROGRESS_PRINT("Generated %zu tasks.\n", tm.size());
 	
 #ifdef DEEP_DEBUG

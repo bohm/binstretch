@@ -257,6 +257,7 @@ public:
 
 typedef conf_el dpht_el;
 
+
 // generic hash table (for configurations)
 conf_el *ht;
 // hash table for dynamic programming calls / feasibility checks

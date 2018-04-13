@@ -63,6 +63,9 @@ struct thread_attr {
     uint64_t gsheurhit = 0;
     uint64_t gsheurmiss = 0;
     uint64_t tub = 0;
+
+    uint64_t large_item_hit = 0;
+    uint64_t large_item_miss = 0;
 #endif
     
 #ifdef LF
@@ -92,6 +95,9 @@ uint64_t total_dynprog_calls = 0;
 uint64_t total_inner_loop = 0;
 
 #ifdef MEASURE
+
+uint64_t total_large_item_hit = 0;
+uint64_t total_large_item_miss = 0;
 
 uint64_t total_bc_hit = 0;
 uint64_t total_bc_partial_nf = 0;

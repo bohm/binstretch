@@ -16,6 +16,7 @@
 #include "caching.hpp"
 #include "fits.hpp"
 #include "dynprog.hpp"
+#include "maxfeas.hpp"
 #include "gs.hpp"
 #include "tasks.hpp"
 
@@ -93,27 +94,14 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
     // a much weaker variant of large item heuristic, but takes O(1) time
     if (b->totalload() <= S && b->loads[2] >= R-S)
     {
+	if(MODE == GENERATING || MODE == EXPANDING)
+	{
+	    outat->last_adv_v->value = 0;
+	    outat->last_adv_v->heuristic = true;
+	    outat->last_adv_v->heuristic_item = S;
+	}
 	return 0;
     }
-
-    /* Large items heuristic: if 2nd or later bin is at least R-S, check if enough large items
-       can be sent so that this bin (or some other) hits R. */
-
-    if (MODE == GENERATING || MODE == EXPANDING)
-    {
-	std::pair<bool, int> p;
-	p = large_item_heuristic(b, tat);
-	if (p.first)
-	{
-	    if (MODE == GENERATING || MODE == EXPANDING)
-	    {
-		outat->last_adv_v->value = 0;
-		outat->last_adv_v->heuristic = true;
-		outat->last_adv_v->heuristic_item = p.second;
-	    }
-	    return 0;
-	}
-    } 
 
    
     if (MODE == GENERATING || MODE == EXPANDING)
@@ -185,7 +173,7 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
  
     // finds the maximum feasible item that can be added using dyn. prog.
     bin_int old_max_feasible = tat->prev_max_feasible;
-    bin_int dp = maximum_feasible_dynprog(b, depth, tat);
+    bin_int dp = MAXIMUM_FEASIBLE(b, depth, tat);
     tat->prev_max_feasible = dp;
     int maximum_feasible = dp;
     int below = 1;
@@ -396,9 +384,6 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 	    
 	    int from = b->assign_and_rehash(k,i);
 	    int ol_from = onlineloads_assign(tat->ol, k);
-	    //tat->oc.onlinefit_assign(k);
-	    // tat->oc.consistency_check();
-	    //assert(tat->ol.loadsum() == b->totalload());
 	    // initialize the adversary's next vertex in the tree (corresponding to d)
 	    adversary_vertex *analyzed_vertex;
 	    bool already_generated = false;
@@ -462,10 +447,6 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 	    // return b to original form
 	    b->unassign_and_rehash(k,from);
 	    onlineloads_unassign(tat->ol, k, ol_from);
-	    //tat->oc.unassign_item(k);
-	    // tat->oc.consistency_check();
-	    //assert(tat->ol.loadsum() == b->totalload());
-
 	    if (below == 1)
 	    {
 		r = below;
