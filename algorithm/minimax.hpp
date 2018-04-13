@@ -187,7 +187,8 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
 	tat->initial_heur = NULL;
 	tat->confs = NULL;
     } else {
-	x = maximum_feasible_onepass<MODE>(b, tat->last_item, tat->confs, tat);
+	//x = maximum_feasible_onepass<MODE>(b, tat->last_item, tat->confs, tat);
+	x = mf_onepass_nocache(b,tat->last_item, tat->confs, tat);
     }
     //print_data_triple(b, tat->last_item, &x);
     if (x->confs == NULL || x->heur == NULL)
@@ -209,7 +210,7 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
     std::vector<loadconf> *pold_confs = tat->confs;
     tat->confs = x->confs;
 
-    std::pair<bool, bin_int> p;
+    std::pair<bool, bin_int> p(false,0);
     p = large_item_precomputed(b, x->heur);
     delete x->heur;
 #ifdef THOROUGH_CHECKS

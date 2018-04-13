@@ -25,7 +25,6 @@ typedef int16_t bin_int;
 //#define VERBOSE 1
 //#define DEBUG 1
 //#define DEEP_DEBUG 1
-//#define THOROUGH_HASH_CHECKING 1
 #define PROGRESS 1
 //#define REGROW 1
 //#define OUTPUT 1
@@ -46,8 +45,8 @@ const int BINS = 7;
 
 
 // If you want to generate a specific lower bound, you can create an initial bin configuration here.
-const std::vector<bin_int> INITIAL_LOADS = {5,1,1};
-const std::vector<bin_int> INITIAL_ITEMS = {2,0,0,0,1};
+const std::vector<bin_int> INITIAL_LOADS = {5,1,1,1,1,1,0};
+const std::vector<bin_int> INITIAL_ITEMS = {5,0,0,0,1};
 //const std::vector<bin_int> INITIAL_LOADS = {};
 //const std::vector<bin_int> INITIAL_ITEMS = {};
 // You can also insert an initial sequence here, and the adversary will use it as a predefined start.
@@ -67,7 +66,7 @@ const int ALPHA = (RMOD-S);
 
 // bitwise length of indices of hash tables and lock tables
 const unsigned int HASHLOG = 29;
-const unsigned int BCLOG = 26;
+const unsigned int BCLOG = 27;
 const unsigned int BUCKETLOG = 7;
 const unsigned int BESTMOVELOG = 25;
 const unsigned int LOADLOG = 13;

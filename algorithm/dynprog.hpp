@@ -326,28 +326,62 @@ std::pair<bool, bin_int> dynprog_max_vector(const binconf *conf, const std::vect
     
     return ret;
 }
+
+
+// fills in items which don't need to be stored in vectors
+// doesn't touch ret unless the tuple is feasible for OPT
+// returns false if the tuple is not feasible
+bool fill_in(const binconf *conf, const loadconf& tuple, data_triple *ret)
+{
+    // sizes S
+    bin_int complete_bins = conf->items[S];
+    bin_int bins = BINS-complete_bins;
+    if (complete_bins != 0)
+    {
+	if (complete_bins > BINS || tuple[bins+1] > 0)
+	{
+	    return false;
+	}
+    }
+    // sizes 1,2 (use "bins" instead of "BINS" from now on)
+    
+    int free_size_except_last = 0, free_for_twos_except_last = 0;
+    int free_size_last = 0, free_for_twos_last = 0;
+    for (int i=1; i<=bins-1; i++)
+    {
+	free_size_except_last += (S - tuple.loads[i]);
+	free_for_twos_except_last += (S - tuple.loads[i])/2;
+    }
+    
+    free_size_last = (S - tuple.loads[bins]);
+    free_for_twos_last = (S - tuple.loads[bins])/2;
+    if (free_size_last + free_size_except_last < conf->items[1] + 2*conf->items[2])
+    {
+	return false;
+    }
+    
+    if (free_for_twos_except_last + free_for_twos_last >= conf->items[2])
+    {
+	// it fits, compute the max_overall contribution
+	int twos_on_last = std::max(0,conf->items[2] - free_for_twos_except_last);
+	int ones_on_last = std::max(0,conf->items[1] - (free_size_except_last - 2*(conf->items[2] - twos_on_last)));
+	int free_space_on_last = S - tuple.loads[bins] - 2*twos_on_last - ones_on_last;
+	ret->maxfeas = std::max(ret->maxfeas, free_space_on_last);
+    }
+    
+}
 // packs new_item into old_tuples and reports the largest upcoming item, plus new tuples, plus a vector for heuristics
+// now with 1,2 and S special cases dealt with differently
 data_triple* dynprog_max_onepass(const binconf* b, const bin_int last_item, const std::vector<loadconf>* old_tuples, thread_attr *tat)
 {
     data_triple* ret = new data_triple;
     ret->confs = new std::vector<loadconf>();
     ret->heur = new std::array<bin_int, BINS + 1>();
-    for( int i =1; i <= BINS; i++)
+    for( int i = 1; i <= BINS; i++)
     {
 	(*(ret->heur))[i] = 0;
     }
     ret->maxfeas = 0;
-
-    // debug
-    /*for( const loadconf &l : old_tuples)
-    {
-	assert(b->totalload() == l.loadsum() + last_item);
-	}*/
-
-    /*fprintf(stderr, "Computing onepass for item %" PRIi16 " and binconf:", last_item);
-    print_binconf_stream(stderr, b);
-    fprintf(stderr, "old confs: ");
-    print_confs(b, &old_tuples, false);*/
 
     // getting randomness for the hash table
     uint64_t salt = rand_64bit();
@@ -356,31 +390,30 @@ data_triple* dynprog_max_onepass(const binconf* b, const bin_int last_item, cons
     {
         loadconf first;
         first.hashinit();
-        first.assign_and_rehash(last_item, 1);
-
-	ret->maxfeas = S;
-        ret->confs->push_back(first);
-        for (int i = 1; i <= BINS; i++)
-        {
-            (*(ret->heur))[BINS - i + 1] = S - first.loads[i];
-        }
-
+	if(last_item >= 3 && < S)
+	{
+	    first.assign_and_rehash(last_item, 1);
+	    ret->confs->push_back(first);
+	}
+	// fills in ret->maxfeas and ret->heur
+	fill_in(b, ret);
         return ret;
     }
 
     for (const loadconf& tuple : *old_tuples)
     {
         // try and place the item
-        for (int i = 1; i <= BINS; i++)
+        for (int i = BINS; i >= 1; i--)
         {
             // same as with Algorithm, we can skip when sequential bins have the same load
-            if (i > 1 && tuple.loads[i] == tuple.loads[i - 1])
+            if (i < BINS && tuple.loads[i] == tuple.loads[i + 1])
             {
                 continue;
             }
 
+	    // since bins are sorted, this is the last check that needs to be done
             if (tuple.loads[i] + last_item > S) {
-                continue;
+                break;
             }
 
             uint64_t virthash = (tuple.virtual_assign_and_rehash(last_item, i) ^ salt);
@@ -494,8 +527,25 @@ bin_int maximum_feasible_explicit(binconf *b, thread_attr *tat)
     return dynprog_max_loadhash(b,tat);
 }
 
-// currently just a wrapper around dynprog_max_onepass
-// hopefully later with cache querying
+data_triple* mf_onepass_nocache(binconf *b, bin_int new_item, const std::vector<loadconf>* old_tuples, thread_attr *tat)
+{
+    data_triple *query = dynprog_max_onepass(b, new_item, old_tuples, tat);
+    assert(query != NULL && query->heur != NULL && query->confs != NULL);
+    
+#ifdef THOROUGH_CHECKS
+    bin_int sanity_check = maximum_feasible_explicit(b,tat);
+    if(query->maxfeas != sanity_check)
+    {
+	fprintf(stderr, "Consistency error (new item %" PRIi16 "): onepass maximum feasible %" PRIi16 ", explicit %" PRIi16 " for binconf:", new_item, query->maxfeas, sanity_check);
+	print_binconf_stream(stderr, b);
+	assert(query->maxfeas == sanity_check); // explicit check
+
+    }
+#endif 
+    return query;
+}
+
+
 template<int MODE> data_triple* maximum_feasible_onepass(binconf *b, bin_int new_item, const std::vector<loadconf>* old_tuples, thread_attr *tat)
 {
     data_triple* query = NULL;

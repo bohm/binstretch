@@ -318,6 +318,7 @@ data_triple* is_dp_hashed(uint64_t hash, thread_attr *tat)
 	uint64_t cand_hash = dpht[logpart + i].load().hash();
 	if (cand_hash == 0)
 	{
+	    MEASURE_ONLY(tat->dp_partial_nf++);
 	    return NULL;
 	}
 
@@ -332,9 +333,11 @@ data_triple* is_dp_hashed(uint64_t hash, thread_attr *tat)
 		ret->duplicate(placeholder._dt);
 		dpht[logpart+i].exchange(placeholder);
 		placeholder.clear();
+		MEASURE_ONLY(tat->dp_hit++);
 		return ret;
 	    } else
 	    {
+		MEASURE_ONLY(tat->dp_partial_nf++);
 		placeholder.clear();
 		return NULL;
 	    }
@@ -342,6 +345,7 @@ data_triple* is_dp_hashed(uint64_t hash, thread_attr *tat)
 	
     }
     // not found
+    MEASURE_ONLY(tat->dp_full_nf++);
     return NULL;
 }
 
