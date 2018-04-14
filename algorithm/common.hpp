@@ -113,6 +113,9 @@ const int MAX_EXPANSION = 1;
 // end of configuration constants
 // ------------------------------------------------
 
+// maximum number of items
+const bin_int MAX_ITEMS = S*BINS;
+
 const int POSTPONED = 2;
 const int TERMINATING = 3;
 const int OVERDUE = 4;

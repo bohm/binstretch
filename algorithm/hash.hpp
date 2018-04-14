@@ -296,14 +296,14 @@ void zobrist_init()
 {
     // seeded, non-random
     srand(182371293);
-    Zi = new uint64_t[(S+1)*(R+1)];
+    Zi = new uint64_t[(S+1)*(MAX_ITEMS+1)];
     Zl = new uint64_t[(BINS+1)*(R+1)];
 
     Ai = new uint64_t[S+1];
 
     for (int i=0; i<=S; i++) {
-	for (int j=0; j<=R; j++) {
-	    Zi[i*(R+1)+j] = rand_64bit();
+	for (int j=0; j<=MAX_ITEMS; j++) {
+	    Zi[i*(MAX_ITEMS+1)+j] = rand_64bit();
 	}
 	Ai[i] = rand_64bit();
     }
@@ -541,7 +541,7 @@ void hashinit(binconf *d)
     }
     for(int j=1; j<=S; j++)
     {
-	d->itemhash ^= Zi[j*(R+1) + d->items[j]];
+	d->itemhash ^= Zi[j*(MAX_ITEMS+1) + d->items[j]];
     }
 }
 
@@ -566,29 +566,29 @@ void rehash(binconf *d, const binconf *prev, int item)
     }
 
     // rehash item lists
-    d->itemhash ^= Zi[item*(R+1) + prev->items[item]];
-    d->itemhash ^= Zi[item*(R+1) + d->items[item]];
+    d->itemhash ^= Zi[item*(MAX_ITEMS+1) + prev->items[item]];
+    d->itemhash ^= Zi[item*(MAX_ITEMS+1) + d->items[item]];
 }
 
 void dp_changehash(binconf *d, int dynitem, int old_count, int new_count)
 {
-    d->itemhash ^= Zi[dynitem*(R+1) + old_count];
-    d->itemhash ^= Zi[dynitem*(R+1) + new_count];
+    d->itemhash ^= Zi[dynitem*(MAX_ITEMS+1) + old_count];
+    d->itemhash ^= Zi[dynitem*(MAX_ITEMS+1) + new_count];
 }
 // rehash for dynamic programming purposes, assuming we have added
 // one item of size "dynitem"
 void dp_rehash(binconf *d, int dynitem)
 {
-    d->itemhash ^= Zi[dynitem*(R+1) + d->items[dynitem] -1];
-    d->itemhash ^= Zi[dynitem*(R+1) + d->items[dynitem]];
+    d->itemhash ^= Zi[dynitem*(MAX_ITEMS+1) + d->items[dynitem] -1];
+    d->itemhash ^= Zi[dynitem*(MAX_ITEMS+1) + d->items[dynitem]];
 
 }
 
 // opposite of dp_rehash -- rehashes after removing one item "dynitem"
 void dp_unhash(binconf *d, int dynitem)
 {
-    d->itemhash ^= Zi[dynitem*(R+1) + d->items[dynitem] + 1];
-    d->itemhash ^= Zi[dynitem*(R+1) + d->items[dynitem]];
+    d->itemhash ^= Zi[dynitem*(MAX_ITEMS+1) + d->items[dynitem] + 1];
+    d->itemhash ^= Zi[dynitem*(MAX_ITEMS+1) + d->items[dynitem]];
 }
 
 #endif // _HASH_HPP

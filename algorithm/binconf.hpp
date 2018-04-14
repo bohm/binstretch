@@ -241,7 +241,7 @@ public:
 	    
 	    for (int j=1; j<=S; j++)
 	    {
-		itemhash ^= Zi[j*(R+1) + items[j]];
+		itemhash ^= Zi[j*(MAX_ITEMS+1) + items[j]];
 	    }
 	}
 
@@ -271,15 +271,15 @@ public:
 	{
 	    // rehash loads, then items
 	    rehash_loads_increased_range(item, from, to);
-	    itemhash ^= Zi[item*(R+1) + items[item]-1];
-	    itemhash ^= Zi[item*(R+1) + items[item]];
+	    itemhash ^= Zi[item*(MAX_ITEMS+1) + items[item]-1];
+	    itemhash ^= Zi[item*(MAX_ITEMS+1) + items[item]];
 	}
 
     void rehash_decreased_range(int item, int from, int to)
 	{
 	    rehash_loads_decreased_range(item, from, to);
-	    itemhash ^= Zi[item*(R+1) + items[item]+1];
-	    itemhash ^= Zi[item*(R+1) + items[item]];
+	    itemhash ^= Zi[item*(MAX_ITEMS+1) + items[item]+1];
+	    itemhash ^= Zi[item*(MAX_ITEMS+1) + items[item]];
 	}
 
 
