@@ -93,86 +93,18 @@ public:
 };
 
 
-// An extended variant of conf_el which stores the depth of the configuration
-// being stored. This allows for more complicated cache replacement algorithms.
-
-class conf_el_extended
-{
-public:
-    std::atomic<uint64_t> _data;
-    std::atomic<bin_int> _depth;
-
-    conf_el_extended()
-	{
-	}
-    
-    conf_el_extended(uint64_t d)
-	{
-	    _data = d;
-	}
-    conf_el_extended(uint64_t hash, uint64_t posvalue, bin_int depth)
-	{
-	    _data = (zero_last_bit(hash) | posvalue);
-	    _depth = depth;
-	}
-
-    inline bin_int value() const
-	{
-	    return get_last_bit(_data);
-	}
-    inline uint64_t hash() const
-	{
-	    return zero_last_bit(_data);
-	}
-    inline bool empty() const
-	{
-	    return _data == 0;
-	}
-    inline bool removed() const
-	{
-	    return _data == REMOVED;
-	}
-
-    inline void remove()
-	{
-	    _data = REMOVED; _depth = 0;
-	}
-
-    inline void erase()
-	{
-	    _data = 0; _depth = 0;
-	}
-
-    bin_int depth() const
-	{
-	    return _depth;
-	}
-};
-
-class lf_el
+// An extended variant of dpht_el
+class dpht_el_extended
 {
 public:
     uint64_t _hash;
-    bin_int _lf;
-    bin_int _depth;
-    
-    lf_el()
-	{
-	}
-    
-    lf_el(uint64_t d)
-	{
-	    _hash = d;
-	}
-    lf_el(uint64_t hash, bin_int lf, bin_int depth)
-	{
-	    _hash = hash;
-	    _lf = lf;
-	    _depth = depth;
-	}
+    int16_t _feasible;
+    int16_t _empty_bins;
+    int32_t _unused; //align to 128 bit.
+
     inline bin_int value() const
 	{
-	    return _lf;
+	    return _feasible;
 	}
     inline uint64_t hash() const
 	{
@@ -189,94 +121,25 @@ public:
 
     inline void remove()
 	{
-	    _hash = REMOVED; _depth = 0; _lf = 0;
+	    _data = REMOVED;
 	}
 
     inline void erase()
 	{
-	    _hash = 0; _depth = 0; _lf = 0;
-	}
-
-    bin_int depth() const
-	{
-	    return _depth;
-	}
-};
-
-// item for the best move cache
-class best_move_el
-{
-public:
-    uint64_t _hash;
-    bin_int _move;
-
-    best_move_el()
-	{
-	}
-    
-    best_move_el(uint64_t hash, bin_int move)
-	{
-	    _hash = hash;
-	    _move = move;
-	}
-   
-    inline bin_int value() const
-	{
-	    return _move;
-	}
-
-    inline uint64_t hash() const
-	{
-	    return _hash;
-	}
-
-     inline bool empty() const
-	{
-	    return _hash == 0;
-	}
-    inline bool removed() const
-	{
-	    return _hash == REMOVED;
-	}
-
-    inline void remove()
-	{
-	    _hash = REMOVED;
-	}
-
-    inline void erase()
-	{
-	    _hash = 0; _move = 0;
+	    _data = 0;
 	}
 
     const bin_int depth() const
 	{
-	    return 0;
+	    return _depth;
 	}
 };
 
-typedef conf_el dpht_el;
-
-
 // generic hash table (for configurations)
 conf_el *ht;
+
 // hash table for dynamic programming calls / feasibility checks
-dpht_el *dpht;
-
-
-std::array<std::shared_timed_mutex, BUCKETSIZE> bucketlock;
-std::array<std::shared_timed_mutex, BUCKETSIZE> dpbucketlock;
-
-#ifdef GOOD_MOVES
-// a hash table for best moves for the algorithm (so far)
-best_move_el *bmc;
-std::array<std::shared_timed_mutex, BUCKETSIZE> bestmovelock;
-#endif
-
-#ifdef LF
-lf_el *lfht;
-std::array<std::shared_timed_mutex, BUCKETSIZE> lflock;
-#endif
+std::atomic<dpht_el_extended> *dpht = new std::atomic<dpht_el_extended>[BC_HASHSIZE];
 
 // DEBUG: Mersenne twister
 

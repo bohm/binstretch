@@ -69,6 +69,19 @@ void collect_dynprog_from_thread(const thread_attr &tat)
     total_bestfit_calls += tat.bestfit_calls;
 }
 
+// packs item into h (which is guaranteed to be feasible) and pushes it into dynprog cache
+void pack_and_hash(binconf *h, bin_int item, bin_int empty_bins, thread_attr *tat)
+{
+    h->items[item]++; // in some sense, it is an inconsistent state, since "item" is not packed in "h"
+    h->_itemcount++;
+    dp_rehash(h,item);
+    dp_hashpush(h,feasibility, empty_bins, tat);
+    h->_itemcount--;
+    h->items[item]--;
+    dp_unhash(h,item);
+}
+
+
 void print_dynprog_measurements()
 {
     MEASURE_PRINT("Max_feas calls: %" PRIu64 ", Dynprog calls: %" PRIu64 ".\n", total_max_feasible, total_dynprog_calls);
@@ -293,7 +306,11 @@ bin_int dynprog_test_dangerous(const binconf *conf, thread_attr *tat)
     
     return 0;
 }
+
+const bin_int INFEASIBLE = -1;
+
 // maximize while doing dynamic programming
+// now also pushes into cache straight away
 bin_int dynprog_max_dangerous(const binconf *conf, thread_attr *tat)
 {
     tat->newloadqueue->clear();
@@ -301,10 +318,17 @@ bin_int dynprog_max_dangerous(const binconf *conf, thread_attr *tat)
     std::vector<loadconf> *poldq = tat->oldloadqueue;
     std::vector<loadconf> *pnewq = tat->newloadqueue;
 
+
+    std::array<bin_int, BINS+1> max_with_empties;
+    for(int i = 0; i <= BINS; i++)
+    {
+	max_with_empties[i] = -1;
+	
+    }
+    
     int phase = 0;
-    bin_int max_overall = 0;
-    bin_int smallest_item = S;
-    for (int i = 1; i < S; i++)
+    bin_int smallest_item_except = S-1; // smallest item in the range [2,S-1].
+    for (int i = 2; i <= S-1; i++)
     {
 	if (conf->items[i] > 0)
 	{
@@ -314,8 +338,7 @@ bin_int dynprog_max_dangerous(const binconf *conf, thread_attr *tat)
     }
     
     // do not empty the loadht, instead XOR in the itemhash
-
-    for (int size=S; size>=3; size--)
+    for (int size=S; size>=2; size--)
     {
 	int k = conf->items[size];
 	while (k > 0)
@@ -357,17 +380,19 @@ bin_int dynprog_max_dangerous(const binconf *conf, thread_attr *tat)
 			
 			if(! loadconf_hashfind(tuple.loadhash, tat))
 			{
-			    if(size == smallest_item && k == 1)
+			    if(size == smallest_item_except && k == 1)
 			    {
-				// this can be improved by sorting
-				if (S - tuple.loads[BINS] > max_overall)
+				j = BINS;
+				do
 				{
-				    max_overall = S - tuple.loads[BINS];
+				    max_with_empties[BINS-j] = std::max(max_with_empties[BINS-j], S - tuple.loads[j]); 
+				    j--;
 				}
+				while(tuple.loads[j] == 0 && j >= 0);
+			    } else {
+				pnewq->push_back(tuple);
+				loadconf_hashpush(tuple.loadhash, tat);
 			    }
-
-			    pnewq->push_back(tuple);
-			    loadconf_hashpush(tuple.loadhash, tat);
 			}
 
 		        tuple.unassign_and_rehash(size, newpos);
@@ -375,7 +400,9 @@ bin_int dynprog_max_dangerous(const binconf *conf, thread_attr *tat)
 		}
 		if (pnewq->size() == 0)
 		{
-		    return 0;
+		    // Push information that the adversarial setting is infeasible
+		    dp_hashpush_infeasible(b, tat);
+		    return INFEASIBLE;
 		}
 	    }
 
@@ -385,38 +412,26 @@ bin_int dynprog_max_dangerous(const binconf *conf, thread_attr *tat)
 	}
     }
 
-    /* Heuristic: solve the cases of sizes 2 and 1 without generating new
-       configurations. */
-    for (const loadconf& tuple: *poldq)
+    // Push information into the cache.
+    int c = 0;
+    while (max_with_empties[c] != -1)
     {
-	int free_size_except_last = 0, free_for_twos_except_last = 0;
-	int free_size_last = 0, free_for_twos_last = 0;
-	for (int i=1; i<=BINS-1; i++)
+	// looks quite aggressive
+	for (int i = 2; i <= max_with_empties[c]; i++)
 	{
-	    free_size_except_last += (S - tuple.loads[i]);
-	    free_for_twos_except_last += (S - tuple.loads[i])/2;
+	    pack_and_hash(b, i, c, tat);
 	}
-
-	free_size_last = (S - tuple.loads[BINS]);
-	free_for_twos_last = (S - tuple.loads[BINS])/2;
-	if (free_size_last + free_size_except_last < conf->items[1] + 2*conf->items[2])
-	{
-	    continue;
-	}
-	if (free_for_twos_except_last + free_for_twos_last >= conf->items[2])
-	{
-	    // it fits, compute the max_overall contribution
-	    int twos_on_last = std::max(0,conf->items[2] - free_for_twos_except_last);
-	    int ones_on_last = std::max(0,conf->items[1] - (free_size_except_last - 2*(conf->items[2] - twos_on_last)));
-	    int free_space_on_last = S - tuple.loads[BINS] - 2*twos_on_last - ones_on_last;
-	    if (free_space_on_last > max_overall)
-	    {
-		max_overall = free_space_on_last;
-	    }
-	}
+	c++;
     }
     
-    return max_overall;
+    // Solve the case of sizes 1 and S and actually report maximum feasible item.
+    bin_int free_load = S*BINS - conf->totalload();
+    if (S > BINS || max_with_empties[conf->items[S]] == -1)
+    {
+	return INFEASIBLE;
+    }
+
+    return std::min(free_load, max_with_empties[conf->items[S]]);
 }
 
 
@@ -576,17 +591,37 @@ bin_int pack_and_query(binconf *h, int item, thread_attr *tat)
     return ret;
 }
 
-// packs item into h and pushes it into the dynprog cache
-void pack_and_hash(binconf *h, bin_int item, bin_int feasibility, thread_attr *tat)
+const int FEASIBLE = 1;
+const int INFEASIBLE = 0;
+
+// pack, query and fill in
+bin_int pqf(binconf *h, int item, thread_attr *tat)
 {
+    bin_int ret = INFEASIBLE;
+
     h->items[item]++; // in some sense, it is an inconsistent state, since "item" is not packed in "h"
     h->_itemcount++;
     dp_rehash(h,item);
-    dp_hashpush(h,feasibility,tat);
+
+    dpht_el_extended query = is_dp_hashed(h, tat);
+
+    if(query._feasible)
+    {
+	// Solve the case of sizes 1 and S and actually report maximum feasible item.
+	bin_int free_load = S*BINS - h->totalload();
+	if (h->items[S] <= BINS && query._empty_bins >= h->items[S] && free_load >= 0)
+	{
+	    ret = FEASIBLE;
+	}
+    }
+
     h->_itemcount--;
     h->items[item]--;
     dp_unhash(h,item);
+
+    return ret;
 }
+
 
 // a wrapper that hashes the new configuration and if it is not in cache, runs TEST
 // it edits h but should return it to original state (due to Zobrist hashing)

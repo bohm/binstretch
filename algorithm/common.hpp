@@ -32,20 +32,20 @@ typedef int16_t bin_int;
 #define MEASURE 1
 //#define TICKER 1
 //#define GOOD_MOVES 1
-#define ONLY_ONE_PASS 1
+//#define ONLY_ONE_PASS 1
 //#define OVERDUES 1
 
 // maximum load of a bin in the optimal offline setting
-const int S = 14;
+const int S = 82;
 // target goal of the online bin stretching problem
-const int R = 19;
+const int R = 112;
 // Change this number for the selected number of bins.
-const int BINS = 8;
+const int BINS = 3;
 
 // If you want to generate a specific lower bound, you can create an initial bin configuration here.
 // You can also insert an initial sequence here.
-const std::vector<bin_int> INITIAL_LOADS = {5,1,1};
-const std::vector<bin_int> INITIAL_ITEMS = {2,0,0,0,1};
+const std::vector<bin_int> INITIAL_LOADS = {};
+const std::vector<bin_int> INITIAL_ITEMS = {};
 //const std::vector<bin_int> INITIAL_LOADS = {5};
 //const std::vector<bin_int> INITIAL_ITEMS = {0,0,0,0,1};
 // You can also insert an initial sequence here, and the adversary will use it as a predefined start.

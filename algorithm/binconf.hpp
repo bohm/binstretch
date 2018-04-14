@@ -271,18 +271,24 @@ public:
 	{
 	    // rehash loads, then items
 	    rehash_loads_increased_range(item, from, to);
-	    itemhash ^= Zi[item*(R+1) + items[item]-1];
-	    itemhash ^= Zi[item*(R+1) + items[item]];
+	    itemhash ^= Zi[item*(MAX_ITEMS+1) + items[item]-1];
+	    itemhash ^= Zi[item*(MAX_ITEMS+1) + items[item]];
 	}
 
     void rehash_decreased_range(int item, int from, int to)
 	{
 	    rehash_loads_decreased_range(item, from, to);
-	    itemhash ^= Zi[item*(R+1) + items[item]+1];
-	    itemhash ^= Zi[item*(R+1) + items[item]];
+	    itemhash ^= Zi[item*(MAX_ITEMS+1) + items[item]+1];
+	    itemhash ^= Zi[item*(MAX_ITEMS+1) + items[item]];
 	}
 
 
+    // computes the dynamic programming hash, which is
+    // itemhash range [2,S-1]
+    uint64_t dphash() const
+	{
+	    return (itemhash ^ Zi[1*(S+1) + items[1]] ^ Zi[S*(S+1) + items[S]]);
+	}
 
 };
 

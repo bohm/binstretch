@@ -57,41 +57,6 @@ bin_int is_hashed_atomic(conf_el *hashtable, uint64_t hash, uint64_t logpart, th
 	return posvalue;
 }
 
-bin_int is_hashed_atomic_depths(conf_el *hashtable, uint64_t hash, bin_int depth, uint64_t logpart, thread_attr *tat)
-{
-	//fprintf(stderr, "Bchash %" PRIu64 ", zero_last_bit %" PRIu64 " get_last_bit %" PRId8 " \n", bchash, zero_last_bit(bchash), get_last_bit(bchash));
-
-	bin_int posvalue = NOT_FOUND;
-
-	// Use linear probing to check for the hashed value.
-
-	for (int i = 0; i < LINPROBE_LIMIT; i++)
-	{
-		uint64_t cand_data = hashtable[logpart + i]._data;
-		if (cand_data == 0)
-		{
-			break;
-		}
-
-		// we have to continue in this case, because it might be stored after this element
-		if (cand_data == REMOVED)
-		{
-			continue;
-		}
-		if (zero_last_two_bits(cand_data) == hash)
-		{
-			posvalue = get_last_two_bits(cand_data);
-			break;
-		}
-
-		if (i == LINPROBE_LIMIT - 1)
-		{
-			posvalue = FULL_NOT_FOUND;
-		}
-	}
-	return posvalue;
-}
-
 
 int hashpush_atomic(conf_el *hashtable, uint64_t hash, uint64_t data, uint64_t logpart, thread_attr *tat)
 {
@@ -136,49 +101,66 @@ int hashpush_atomic(conf_el *hashtable, uint64_t hash, uint64_t data, uint64_t l
 	return INSERTED_RANDOMLY;
 }
 
-int hashpush_atomic_depths(conf_el *hashtable, uint64_t hash, uint64_t data, bin_int depth, uint64_t logpart, thread_attr *tat)
+dpht_el_extended is_hashed_atomic(uint64_t hash, uint64_t logpart, thread_attr *tat)
 {
-    //uint64_t maxposition = logpart;
+	//fprintf(stderr, "Bchash %" PRIu64 ", zero_last_bit %" PRIu64 " get_last_bit %" PRId8 " \n", bchash, zero_last_bit(bchash), get_last_bit(bchash));
 
-	bool found_a_spot = false;
+    dpht_el_extended candidate = {0};
+
+    // Use linear probing to check for the hashed value.
+    
+    for (int i = 0; i < LINPROBE_LIMIT; i++)
+    {
+	candidate = dpht[logpart + i].load();
+	if (candidate.hash() == 0)
+	{
+	    MEASURE_ONLY(tat->dp_partial_nf++);
+	    return candidate;
+	}
+	
+	// we have to continue in this case, because it might be stored after this element
+	if (candidate.hash() == REMOVED)
+	{
+	    continue;
+	}
+	if (candidate.hash() == hash)
+	{
+	    MEASURE_ONLY(tat->dp_hit++);
+	    return candidate;
+	}
+	
+	if (i == LINPROBE_LIMIT - 1)
+	{
+	    MEASURE_ONLY(tat->dp_full_nf++);
+	}
+    }
+    
+    return candidate;
+}
+
+int hashpush_atomic(uint64_t hash, const dpht_el_extended& data, uint64_t logpart, thread_attr *tat)
+{
+	dpht_el_extended candidate;
 	for (int i = 0; i< LINPROBE_LIMIT; i++)
 	{
-		uint64_t candidate = hashtable[logpart + i]._data;
-		if (candidate == 0 || candidate == REMOVED)
-		{
-			// since we are doing two sequential atomic edits, a collision may occur,
-			// but this should just give an item a wrong information about depth
-			hashtable[logpart + i]._data = data;
-			found_a_spot = true;
-			return INSERTED;
-		}
-		else if (zero_last_two_bits(candidate) == hash)
-		{
-		    int ret;
-		    if (get_last_two_bits(candidate) == 2)
-		    {
-			ret = OVERWRITE_OF_PROGRESS;
-		    }
-		    else
-		    {
-			ret = ALREADY_INSERTED;
-		    }
-			
-		    hashtable[logpart + i]._data = data;
-		    found_a_spot = true;
-		    return ret;
-		}
+	    uint64_t candidate = dpht[logpart + i].load();
+	    if (candidate.hash() == 0 || candidate.hash() == REMOVED)
+	    {
+		// since we are doing two sequential atomic edits, a collision may occur,
+		// but this should just give an item a wrong information about depth
+		hashtable[logpart + i].store(data);
+		return INSERTED;
+	    }
+	    else if (candidate.hash() == hash)
+	    {
+		return INSERTED;
+	    }
 	}
 
 	// if the cache is full, choose a random position
-	if(!found_a_spot)
-	{
-	    hashtable[rand() % LINPROBE_LIMIT]._data = data;
-	}
-	
+	hashtable[rand() % LINPROBE_LIMIT].store(data);
 	return INSERTED_RANDOMLY;
 }
-
 
 void conf_hashpush(const binconf *d, uint64_t posvalue, thread_attr *tat)
 {
@@ -254,35 +236,38 @@ void loadconf_hashpush(uint64_t loadhash, thread_attr *tat)
     tat->loadht[loadlogpart(loadhash)] = loadhash;
 }
 
-void dp_hashpush(const binconf *d, int8_t feasibility, thread_attr *tat)
+void dp_hashpush(const binconf *d, int16_t feasibility, int16_t empty_bins, thread_attr *tat)
 {
 #ifdef MEASURE
     tat->dp_insertions++;
 #endif
 
-    uint64_t hash = zero_last_two_bits(d->itemhash);
-    uint64_t data = hash | (uint64_t) feasibility;
-    hashpush_atomic(dpht, hash, data, dplogpart(hash), tat);
+    uint64_t hash = d->dphash();
+    dpht_el_extended ins;
+    ins._hash = hash;
+    ins._feasibility = feasibility;
+    ins._space_for_twos = space_for_twos;
+    ins._empty_bins = empty_bins;
+    hashpush_atomic(hash, ins, dplogpart(hash), tat);
 }
 
-
-int8_t is_dp_hashed(const binconf *d, thread_attr *tat)
+void dp_hashpush_infeasible(const binconf *d, thread_attr *tat)
 {
-    uint64_t hash = zero_last_two_bits(d->itemhash);
-    bin_int ret = is_hashed_atomic(dpht, hash, dplogpart(hash), tat);
-    if (ret >= 0)
-    {
-	MEASURE_ONLY(tat->dp_hit++);
-    } else if (ret == NOT_FOUND)
-    {
-	MEASURE_ONLY(tat->dp_partial_nf++);
-    } else if (ret == FULL_NOT_FOUND)
-    {
-	MEASURE_ONLY(tat->dp_full_nf++);
-	ret = NOT_FOUND;
-    }
-    return (int8_t) ret;
+    MEASURE_ONLY(tat->dp_insertions++);
 
+    // we currently do not use 1's and S'es in the feasibility queries
+    uint64_t hash = d->dphash();
+    dpht_el_extended ins;
+    ins._hash = hash;
+    ins._feasibility = INFEASIBLE;
+    hashpush_atomic(hash, ins, dplogpart(hash), tat);
+}
+
+dpht_el_extended is_dp_hashed(const binconf *d, thread_attr *tat)
+{
+    uint64_t hash = d->dphash();
+    dpht_el_extended query = is_hashed_atomic(hash, dplogpart(hash), tat);
+    return query;
 }
 
 #ifdef MEASURE
