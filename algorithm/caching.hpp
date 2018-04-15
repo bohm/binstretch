@@ -101,7 +101,7 @@ int hashpush_atomic(conf_el *hashtable, uint64_t hash, uint64_t data, uint64_t l
 	return INSERTED_RANDOMLY;
 }
 
-dpht_el_extended is_hashed_atomic(uint64_t hash, uint64_t logpart, thread_attr *tat)
+dpht_el_extended is_dp_hashed_atomic(uint64_t hash, uint64_t logpart, thread_attr *tat)
 {
 	//fprintf(stderr, "Bchash %" PRIu64 ", zero_last_bit %" PRIu64 " get_last_bit %" PRId8 " \n", bchash, zero_last_bit(bchash), get_last_bit(bchash));
 
@@ -115,6 +115,7 @@ dpht_el_extended is_hashed_atomic(uint64_t hash, uint64_t logpart, thread_attr *
 	if (candidate.hash() == 0)
 	{
 	    MEASURE_ONLY(tat->dp_partial_nf++);
+	    candidate._feasible = UNKNOWN;
 	    return candidate;
 	}
 	
@@ -134,31 +135,43 @@ dpht_el_extended is_hashed_atomic(uint64_t hash, uint64_t logpart, thread_attr *
 	    MEASURE_ONLY(tat->dp_full_nf++);
 	}
     }
-    
+
+    candidate._feasible = UNKNOWN;
     return candidate;
 }
 
-int hashpush_atomic(uint64_t hash, const dpht_el_extended& data, uint64_t logpart, thread_attr *tat)
+template <int MODE> int hashpush_dp_atomic(uint64_t hash, const dpht_el_extended& data, uint64_t logpart, thread_attr *tat)
 {
 	dpht_el_extended candidate;
 	for (int i = 0; i< LINPROBE_LIMIT; i++)
 	{
-	    uint64_t candidate = dpht[logpart + i].load();
+	    candidate = dpht[logpart + i].load();
 	    if (candidate.hash() == 0 || candidate.hash() == REMOVED)
 	    {
 		// since we are doing two sequential atomic edits, a collision may occur,
 		// but this should just give an item a wrong information about depth
-		hashtable[logpart + i].store(data);
+		dpht[logpart + i].store(data);
 		return INSERTED;
 	    }
 	    else if (candidate.hash() == hash)
 	    {
+		// store the new hash entry if you either improve the heuristic or
+		// insert a permanent entry
+		if (MODE == PERMANENT && candidate._permanence == HEURISTIC)
+		{
+		    dpht[logpart + i].store(data);
+		}
+
+		if (MODE == HEURISTIC && candidate._permanence != PERMANENT && candidate._empty_bins < data._empty_bins)
+		{
+		    dpht[logpart + i].store(data);
+		}
 		return INSERTED;
 	    }
 	}
 
 	// if the cache is full, choose a random position
-	hashtable[rand() % LINPROBE_LIMIT].store(data);
+	dpht[rand() % LINPROBE_LIMIT].store(data);
 	return INSERTED_RANDOMLY;
 }
 
@@ -236,19 +249,17 @@ void loadconf_hashpush(uint64_t loadhash, thread_attr *tat)
     tat->loadht[loadlogpart(loadhash)] = loadhash;
 }
 
-void dp_hashpush(const binconf *d, int16_t feasibility, int16_t empty_bins, thread_attr *tat)
+template <int MODE> void dp_hashpush_feasible(const binconf *d, int16_t empty_bins, thread_attr *tat)
 {
-#ifdef MEASURE
-    tat->dp_insertions++;
-#endif
+    MEASURE_ONLY(tat->dp_insertions++);
 
     uint64_t hash = d->dphash();
     dpht_el_extended ins;
     ins._hash = hash;
-    ins._feasibility = feasibility;
-    ins._space_for_twos = space_for_twos;
+    ins._feasible = FEASIBLE;
+    ins._permanence = MODE;
     ins._empty_bins = empty_bins;
-    hashpush_atomic(hash, ins, dplogpart(hash), tat);
+    hashpush_dp_atomic<MODE>(hash, ins, dplogpart(hash), tat);
 }
 
 void dp_hashpush_infeasible(const binconf *d, thread_attr *tat)
@@ -259,14 +270,14 @@ void dp_hashpush_infeasible(const binconf *d, thread_attr *tat)
     uint64_t hash = d->dphash();
     dpht_el_extended ins;
     ins._hash = hash;
-    ins._feasibility = INFEASIBLE;
-    hashpush_atomic(hash, ins, dplogpart(hash), tat);
+    ins._feasible = INFEASIBLE;
+    hashpush_dp_atomic<PERMANENT>(hash, ins, dplogpart(hash), tat);
 }
 
 dpht_el_extended is_dp_hashed(const binconf *d, thread_attr *tat)
 {
     uint64_t hash = d->dphash();
-    dpht_el_extended query = is_hashed_atomic(hash, dplogpart(hash), tat);
+    dpht_el_extended query = is_dp_hashed_atomic(hash, dplogpart(hash), tat);
     return query;
 }
 

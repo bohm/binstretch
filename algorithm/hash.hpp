@@ -100,7 +100,8 @@ public:
     uint64_t _hash;
     int16_t _feasible;
     int16_t _empty_bins;
-    int32_t _unused; //align to 128 bit.
+    int16_t _permanence;
+    int16_t _unused; //align to 128 bit.
 
     inline bin_int value() const
 	{
@@ -121,17 +122,12 @@ public:
 
     inline void remove()
 	{
-	    _data = REMOVED;
+	    _hash = REMOVED;
 	}
 
     inline void erase()
 	{
-	    _data = 0;
-	}
-
-    const bin_int depth() const
-	{
-	    return _depth;
+	    _hash = 0;
 	}
 };
 
@@ -159,14 +155,14 @@ void zobrist_init()
 {
     // seeded, non-random
     srand(182371293);
-    Zi = new uint64_t[(S+1)*(R+1)];
+    Zi = new uint64_t[(S+1)*(MAX_ITEMS+1)];
     Zl = new uint64_t[(BINS+1)*(R+1)];
 
     Ai = new uint64_t[S+1];
 
     for (int i=0; i<=S; i++) {
-	for (int j=0; j<=R; j++) {
-	    Zi[i*(R+1)+j] = rand_64bit();
+	for (int j=0; j<=MAX_ITEMS; j++) {
+	    Zi[i*(MAX_ITEMS+1)+j] = rand_64bit();
 	}
 	Ai[i] = rand_64bit();
     }
@@ -188,10 +184,10 @@ void hashtable_init()
 	ht[i]._data = 0;
     }
 
-    dpht = new dpht_el[BC_HASHSIZE];
+    dpht_el_extended x = {0};
     for (uint64_t i =0; i < BC_HASHSIZE; i++)
     {
-	dpht[i]._data = 0;
+	dpht[i].store(x);
     }
 
 #ifdef GOOD_MOVES
@@ -200,16 +196,6 @@ void hashtable_init()
     {
 	bmc[i]._hash = 0;
 	bmc[i]._move = 0;
-    }
-#endif
-
-#ifdef LF
-    lfht = new lf_el[LFEASSIZE];
-    for (uint64_t i =0; i < LFEASSIZE; i++)
-    {
-	lfht[i]._hash = 0;
-	lfht[i]._depth = 0;
-	lfht[i]._lf = -1;
     }
 #endif
 
@@ -289,9 +275,10 @@ void clear_cache_of_ones()
 }
 void dynprog_hashtable_clear()
 {
+    dpht_el_extended x = {0};
     for (uint64_t i =0; i < BC_HASHSIZE; i++)
     {
-	dpht[i]._data = 0;
+	dpht[i].store(x);
     }
 
 }
@@ -317,10 +304,6 @@ void hashtable_cleanup()
     delete ht;
 #ifdef GOOD_MOVES
     delete bmc;
-#endif
-
-#ifdef LF
-    delete lfht;
 #endif
 
 }
@@ -391,9 +374,9 @@ const auto hashlogpart = logpart<HASHLOG>;
 
 const auto loadlogpart = logpart<LOADLOG>;
 
-const auto lflogpart = logpart<LFEASLOG>;
 // (re)calculates the hash of b completely.
-void hashinit(binconf *d)
+
+/*void hashinit(binconf *d)
 {
     d->loadhash=0;
     d->itemhash=0;
@@ -406,7 +389,7 @@ void hashinit(binconf *d)
     {
 	d->itemhash ^= Zi[j*(R+1) + d->items[j]];
     }
-}
+    }*/
 
 /* Assuming binconf d is created by adding an element item to an
    arbitrary bin, we update the hash. Since we are sorting the
@@ -415,6 +398,8 @@ void hashinit(binconf *d)
    Assume that both *prev and *d have sorted loads in decreasing
    order.
 */
+
+/*
 void rehash(binconf *d, const binconf *prev, int item)
 {
     
@@ -432,26 +417,6 @@ void rehash(binconf *d, const binconf *prev, int item)
     d->itemhash ^= Zi[item*(R+1) + prev->items[item]];
     d->itemhash ^= Zi[item*(R+1) + d->items[item]];
 }
-
-void dp_changehash(binconf *d, int dynitem, int old_count, int new_count)
-{
-    d->itemhash ^= Zi[dynitem*(R+1) + old_count];
-    d->itemhash ^= Zi[dynitem*(R+1) + new_count];
-}
-// rehash for dynamic programming purposes, assuming we have added
-// one item of size "dynitem"
-void dp_rehash(binconf *d, int dynitem)
-{
-    d->itemhash ^= Zi[dynitem*(R+1) + d->items[dynitem] -1];
-    d->itemhash ^= Zi[dynitem*(R+1) + d->items[dynitem]];
-
-}
-
-// opposite of dp_rehash -- rehashes after removing one item "dynitem"
-void dp_unhash(binconf *d, int dynitem)
-{
-    d->itemhash ^= Zi[dynitem*(R+1) + d->items[dynitem] + 1];
-    d->itemhash ^= Zi[dynitem*(R+1) + d->items[dynitem]];
-}
+*/
 
 #endif // _HASH_HPP

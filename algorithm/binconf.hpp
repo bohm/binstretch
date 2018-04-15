@@ -241,7 +241,7 @@ public:
 	    
 	    for (int j=1; j<=S; j++)
 	    {
-		itemhash ^= Zi[j*(R+1) + items[j]];
+		itemhash ^= Zi[j*(MAX_ITEMS+1) + items[j]];
 	    }
 	}
 
@@ -282,12 +282,34 @@ public:
 	    itemhash ^= Zi[item*(MAX_ITEMS+1) + items[item]];
 	}
 
+    void dp_changehash(int dynitem, int old_count, int new_count)
+	{
+	    itemhash ^= Zi[dynitem*(MAX_ITEMS+1) + old_count];
+	    itemhash ^= Zi[dynitem*(MAX_ITEMS+1) + new_count];
+	}
+    
+// rehash for dynamic programming purposes, assuming we have added
+// one item of size "dynitem"
+    void dp_rehash(int dynitem)
+	{
+	    itemhash ^= Zi[dynitem*(MAX_ITEMS+1) + items[dynitem] -1];
+	    itemhash ^= Zi[dynitem*(MAX_ITEMS+1) + items[dynitem]];
+	    
+	}
+    
+// opposite of dp_rehash -- rehashes after removing one item "dynitem"
+    void dp_unhash(int dynitem)
+	{
+	    itemhash ^= Zi[dynitem*(MAX_ITEMS+1) + items[dynitem] + 1];
+	    itemhash ^= Zi[dynitem*(MAX_ITEMS+1) + items[dynitem]];
+	}
+    
 
     // computes the dynamic programming hash, which is
-    // itemhash range [2,S-1]
+    // as if items[1] == 0 and items[S] == 0.
     uint64_t dphash() const
 	{
-	    return (itemhash ^ Zi[1*(S+1) + items[1]] ^ Zi[S*(S+1) + items[S]]);
+	    return (itemhash ^ Zi[1*(MAX_ITEMS+1) + items[1]] ^ Zi[S*(MAX_ITEMS+1) + items[S]]);
 	}
 
 };

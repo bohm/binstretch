@@ -36,27 +36,27 @@ typedef int16_t bin_int;
 //#define OVERDUES 1
 
 // maximum load of a bin in the optimal offline setting
-const int S = 82;
+const bin_int S = 63;
 // target goal of the online bin stretching problem
-const int R = 112;
+const bin_int R = 86;
 // Change this number for the selected number of bins.
-const int BINS = 3;
+const bin_int BINS = 3;
 
 // If you want to generate a specific lower bound, you can create an initial bin configuration here.
 // You can also insert an initial sequence here.
+//const std::vector<bin_int> INITIAL_LOADS = {};
+//const std::vector<bin_int> INITIAL_ITEMS = {};
 const std::vector<bin_int> INITIAL_LOADS = {};
 const std::vector<bin_int> INITIAL_ITEMS = {};
-//const std::vector<bin_int> INITIAL_LOADS = {5};
-//const std::vector<bin_int> INITIAL_ITEMS = {0,0,0,0,1};
 // You can also insert an initial sequence here, and the adversary will use it as a predefined start.
-const std::vector<bin_int> INITIAL_SEQUENCE = {};
 //const std::vector<bin_int> INITIAL_SEQUENCE = {};
+const std::vector<bin_int> INITIAL_SEQUENCE = {};
 
 
 #ifdef ONLY_ONE_PASS
-const int PASS = 1;
+const int PASS = 7;
 #else
-const int FIRST_PASS = 0;
+const int FIRST_PASS = 7;
 #endif
 
 // constants used for good situations
@@ -112,10 +112,15 @@ const int MAX_EXPANSION = 1;
 
 // end of configuration constants
 // ------------------------------------------------
+const bin_int MAX_ITEMS = S*BINS;
 
 const int POSTPONED = 2;
 const int TERMINATING = 3;
 const int OVERDUE = 4;
+
+const bin_int FEASIBLE = 1;
+const bin_int UNKNOWN = 0;
+const bin_int INFEASIBLE = -1; // this is -1 so it can be returned with dynprog_max()
 
 #define GENERATING 1
 #define EXPLORING 2
@@ -190,6 +195,11 @@ const std::array<std::string, SITUATIONS> gsnames = {"GS1", "GS1MOD", "GS2", "GS
 
 
 const bin_int IN_PROGRESS = 2;
+
+// modes for pushing into dynprog cache
+const int HEURISTIC = 0;
+const int PERMANENT = 1;
+
 
 // global task map indexed by binconf hashes
 std::map<llu, task> tm;

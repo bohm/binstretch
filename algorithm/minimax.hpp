@@ -103,7 +103,22 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
 	return 0;
     }
 
-   
+    if (MODE == GENERATING || MODE == EXPANDING)
+    {
+	std::pair<bool, int> p;
+	p = large_item_heuristic(b, tat);
+	if (p.first)
+	{
+	    {
+		outat->last_adv_v->value = 0;
+		outat->last_adv_v->heuristic = true;
+		outat->last_adv_v->heuristic_item = p.second;
+	    }
+	    return 0;
+
+	}
+    }
+    
     if (MODE == GENERATING || MODE == EXPANDING)
     {
 	current_adversary = outat->last_adv_v;
@@ -540,11 +555,10 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 
 int explore(binconf *b, thread_attr *tat)
 {
-    hashinit(b);
+    b->hashinit();
     binconf root_copy = *b;
     
     onlineloads_init(tat->ol, b);
-    //tat->oc.init(*b);
     //assert(tat->ol.loadsum() == b->totalload());
 
     tree_attr *outat = NULL;
@@ -564,9 +578,8 @@ int explore(binconf *b, thread_attr *tat)
 // wrapper for generation
 int generate(binconf *start, thread_attr *tat, adversary_vertex *start_vert)
 {
-    hashinit(start);
+    start->hashinit();
     onlineloads_init(tat->ol, start);
-    //tat->oc.init(*start);
 
     //assert(tat->ol.loadsum() == start->totalload());
     
