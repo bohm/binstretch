@@ -15,6 +15,11 @@
 // a game tree (actually a DAG) used for outputting the resulting
 // strategy if the result is positive.
 
+// Full declaration below.
+class adv_outedge;
+class alg_outedge;
+
+
 class algorithm_vertex
 {
 public:

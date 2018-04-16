@@ -144,7 +144,7 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
 	    int recommendation = time_stats(tat);
 	    if (recommendation == TERMINATING)
 	    {
-		fprintf(stderr, "We got advice to terminate.\n");
+		//fprintf(stderr, "We got advice to terminate.\n");
 		return TERMINATING;
 	    }
 	    
@@ -302,7 +302,7 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 	    int recommendation = time_stats(tat);
 	    if (recommendation == TERMINATING)
 	    {
-		fprintf(stderr, "We got advice to terminate.\n");
+		//fprintf(stderr, "We got advice to terminate.\n");
 		return TERMINATING;
 	    }
 	    

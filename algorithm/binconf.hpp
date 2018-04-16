@@ -234,6 +234,21 @@ public:
 	return total;
     }
 
+    void blank()
+	{
+	    for (int i = 0; i <= BINS; i++)
+	    {
+		loads[i] = 0;
+	    }
+	    for (int i = 0; i <= S; i++)
+	    {
+		items[i] = 0;
+	    }
+	    _totalload = 0;
+	    _itemcount = 0;
+	    hashinit();
+	}
+    
     void hashinit()
 	{
 	    loadconf::hashinit();
@@ -245,6 +260,13 @@ public:
 	    }
 	}
 
+    
+    void hash_loads_init()
+	{
+	    _totalload = totalload_explicit();
+	    _itemcount = itemcount_explicit();
+	    hashinit();
+	}
     int assign_item(int item, int bin);
     void unassign_item(int item, int bin);
     int assign_multiple(int item, int bin, int count);
@@ -312,6 +334,12 @@ public:
 	    return (itemhash ^ Zi[1*(MAX_ITEMS+1) + items[1]] ^ Zi[S*(MAX_ITEMS+1) + items[S]]);
 	}
 
+    // Returns (main cache) binconf hash, assuming hash is consistent,
+    // which it should be, if we are assigning properly.
+    uint64_t hash() const
+	{
+	    return (loadhash ^ itemhash);
+	}
 };
 
 void duplicate(binconf *t, const binconf *s) {
@@ -323,6 +351,7 @@ void duplicate(binconf *t, const binconf *s) {
     t->loadhash = s->loadhash;
     t->itemhash = s->itemhash;
     t->_totalload = s->_totalload;
+    t->_itemcount = s->_itemcount;
 }
 
 

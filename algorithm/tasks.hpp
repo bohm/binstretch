@@ -21,6 +21,10 @@ public:
     int expansion_depth = 0;
 };
 
+// global task map indexed by binconf hashes
+std::map<llu, task> tm;
+
+
 
 template<int MODE> bool possible_task_size(adversary_vertex *v)
 {

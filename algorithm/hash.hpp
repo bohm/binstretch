@@ -199,7 +199,6 @@ void hashtable_init()
     }
 #endif
 
-    zobrist_init();
 }
 
 void cache_measurements()
@@ -271,7 +270,7 @@ void clear_cache_of_ones()
 	}
     }
 
-    MEASURE_PRINT("Hashtable size: %llu, kept: %" PRIu64 ", erased: %" PRIu64 "\n", HASHSIZE, kept, erased);
+    //MEASURE_PRINT("Hashtable size: %llu, kept: %" PRIu64 ", erased: %" PRIu64 "\n", HASHSIZE, kept, erased);
 }
 void dynprog_hashtable_clear()
 {

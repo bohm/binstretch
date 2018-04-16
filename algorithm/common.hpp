@@ -36,9 +36,9 @@ typedef int16_t bin_int;
 //#define OVERDUES 1
 
 // maximum load of a bin in the optimal offline setting
-const bin_int S = 63;
+const bin_int S = 41;
 // target goal of the online bin stretching problem
-const bin_int R = 86;
+const bin_int R = 56;
 // Change this number for the selected number of bins.
 const bin_int BINS = 3;
 
@@ -52,19 +52,14 @@ const std::vector<bin_int> INITIAL_ITEMS = {};
 //const std::vector<bin_int> INITIAL_SEQUENCE = {};
 const std::vector<bin_int> INITIAL_SEQUENCE = {};
 
-
-#ifdef ONLY_ONE_PASS
-const int PASS = 7;
-#else
-const int FIRST_PASS = 7;
-#endif
+const int FIRST_PASS = 40;
 
 // constants used for good situations
 const int RMOD = (R-1);
 const int ALPHA = (RMOD-S);
 
 // bitwise length of indices of hash tables and lock tables
-const unsigned int HASHLOG = 29;
+const unsigned int HASHLOG = 28;
 const unsigned int BCLOG = 28;
 const unsigned int BUCKETLOG = 7;
 const unsigned int BESTMOVELOG = 25;
@@ -92,8 +87,8 @@ const int DEFAULT_DP_SIZE = 100000;
 
 const int BESTFIT_THRESHOLD = (1*S)/10;
 
-// the number of threads
-const int THREADS = 8;
+// the number of local worker threads
+const int THREADS = 4;
 // a bound on total load of a configuration before we split it into a task
 const int TASK_LOAD = 18;
 const int TASK_DEPTH = 3;
@@ -102,9 +97,9 @@ const int TASK_LARGEST_ITEM = 3;
 // how much the updater thread sleeps (in milliseconds)
 const int TICK_SLEEP = 200;
 // how many tasks are sufficient for the updater to run the main updater routine
-const int TICK_TASKS = 100;
+const int TICK_TASKS = 50;
 // the number of completed tasks after which the exploring thread reports progress
-const int PROGRESS_AFTER = 100;
+const int PROGRESS_AFTER = 50;
 
 // a threshold for a task becoming overdue
 const std::chrono::seconds THRESHOLD = std::chrono::seconds(90);
@@ -149,15 +144,12 @@ uint64_t *Ai; // Zobrist table for next item to pack (used for the algorithm's b
 class binconf;
 class loadconf; 
 
-// defined in task.hpp
-class task;
-
 // defined in tree.hpp
-typedef struct adversary_vertex adversary_vertex;
+/* typedef struct adversary_vertex adversary_vertex;
 typedef struct algorithm_vertex algorithm_vertex;
 class adv_outedge;
 class alg_outedge;
-
+*/
 
 struct dp_hash_item {
     int8_t feasible;
@@ -201,10 +193,6 @@ const int HEURISTIC = 0;
 const int PERMANENT = 1;
 
 
-// global task map indexed by binconf hashes
-std::map<llu, task> tm;
-
-
 //pthread_mutex_t taskq_lock;
 std::mutex taskq_lock;
 std::shared_timed_mutex running_and_removed_lock;
@@ -243,7 +231,16 @@ uint64_t global_edge_counter = 0;
 std::chrono::duration<long double> time_spent;
 
 
-/* helper macros for debug, verbose, and measure output */
+void print_sequence(FILE *stream, const std::vector<bin_int>& seq)
+{
+    for (const bin_int& i: seq)
+    {
+	fprintf(stream, "%" PRIi16 " ", i); 
+    }
+    fprintf(stream, "\n");
+}
+
+// Helper macros for debug, verbose, and measure output.
 
 #ifdef DEBUG
 #define DEBUG_PRINT(...) fprintf(stderr, __VA_ARGS__ )
@@ -282,17 +279,22 @@ std::chrono::duration<long double> time_spent;
 #ifdef PROGRESS
 #define PROGRESS_PRINT(...) fprintf(stderr, __VA_ARGS__ )
 #define PROGRESS_PRINT_BINCONF(x) print_binconf_stream(stderr, x)
+#define PROGRESS_ONLY(x) x
 #else
 #define PROGRESS_PRINT(format,...)
 #define PROGRESS_PRINT_BINCONF(x)
+#define PROGRESS_ONLY(x)
 #endif
 
 #ifdef GOOD_MOVES
 #define GOOD_MOVES_PRINT(...) fprintf(stderr,  __VA_ARGS__ )
 #define GOOD_MOVES_PRINT_BINCONF(x) print_binconf_stream(stderr, x)
+#define GOOD_MOVES_ONLY(x) x
+
 #else
 #define GOOD_MOVES_PRINT(format,...)
 #define GOOD_MOVES_PRINT_BINCONF(x)
+#define GOOD_MOVES_ONLY(x)
 #endif
 
 #ifdef LF
@@ -302,5 +304,11 @@ std::chrono::duration<long double> time_spent;
 #define LFPRINT(format,...)
 #define LFPRINT_BINCONF(x)
 #endif
+
+#ifdef REGROW
+#define REGROW_ONLY(x) x
+#else
+#define REGROW_ONLY(x)
+#endif // REGROW
 
 #endif // _COMMON_HPP

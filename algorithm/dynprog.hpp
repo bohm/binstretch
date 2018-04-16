@@ -164,11 +164,9 @@ dynprog_result dynprog_test_loadhash(const binconf *conf, thread_attr *tat)
 
 			int newpos = tuple.assign_and_rehash(size, i);
 			if(! loadconf_hashfind(tuple.loadhash, tat))
-			//if(hashset.find(tuple.loadhash) == hashset.end())
 			{
 			    pnewq->push_back(tuple);
 			    loadconf_hashpush(tuple.loadhash, tat);
-			    //hashset.insert(tuple.loadhash);
 			}
 
 		        tuple.unassign_and_rehash(size, newpos);
@@ -215,6 +213,8 @@ dynprog_result dynprog_test_loadhash(const binconf *conf, thread_attr *tat)
     return ret;
 }
 
+
+
 // maximize while doing dynamic programming
 // now also pushes into cache straight away
 bin_int dynprog_max_dangerous(binconf *conf, bin_int lb, bin_int ub, thread_attr *tat)
@@ -223,6 +223,9 @@ bin_int dynprog_max_dangerous(binconf *conf, bin_int lb, bin_int ub, thread_attr
     tat->oldloadqueue->clear();
     std::vector<loadconf> *poldq = tat->oldloadqueue;
     std::vector<loadconf> *pnewq = tat->newloadqueue;
+
+    // change from unsafe to safe
+    memset(tat->loadht, 0, LOADSIZE*8);
 
 
     std::array<bin_int, BINS+1> max_with_empties;
@@ -325,7 +328,7 @@ bin_int dynprog_max_dangerous(binconf *conf, bin_int lb, bin_int ub, thread_attr
 		    if ( !(size == smallest_item_except && k == 1) && pnewq->size() == 0)
 		    {
 			// Push information that the adversarial setting is infeasible
-			dp_hashpush_infeasible(conf, tat);
+			//dp_hashpush_infeasible(conf, tat);
 			//fprintf(stderr, "infeasible conf\n");
 			return INFEASIBLE;
 		    }
@@ -348,7 +351,8 @@ bin_int dynprog_max_dangerous(binconf *conf, bin_int lb, bin_int ub, thread_attr
     // except performance.
     bin_int push_lb = std::max((bin_int)2, lb);
     bin_int push_ub = std::min((bin_int)(S-1), ub);
-    
+
+    /*
     while (max_with_empties[c] != -1)
     {
 	// looks quite aggressive
@@ -358,9 +362,11 @@ bin_int dynprog_max_dangerous(binconf *conf, bin_int lb, bin_int ub, thread_attr
 	}
 	c++;
     }
+    */
 
 
     // ub is essentially a heuristic;
+    /*
     if (max_with_empties[0] != -1)
     {
 	// also maybe too aggressive
@@ -369,7 +375,7 @@ bin_int dynprog_max_dangerous(binconf *conf, bin_int lb, bin_int ub, thread_attr
 	    // pack as infeasible
 	    pack_and_hash<PERMANENT>(conf, i, 0, INFEASIBLE, tat);
 	}
-    }
+    }*/
 
     // Solve the case of sizes 1 and S and actually report maximum feasible item.
     bin_int free_load = S*BINS - conf->totalload();
@@ -406,7 +412,10 @@ std::pair<bool, bin_int> dynprog_max_vector(const binconf *conf, const std::vect
 	    break;
 	}
     }
-    
+
+    // change from unsafe to safe
+    memset(tat->loadht, 0, LOADSIZE*8);
+   
     // do not empty the loadht, instead XOR in the itemhash
 
     for (int size=S; size>=1; size--)

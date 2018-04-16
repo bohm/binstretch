@@ -271,6 +271,7 @@ void dp_hashpush_infeasible(const binconf *d, thread_attr *tat)
     dpht_el_extended ins;
     ins._hash = hash;
     ins._feasible = INFEASIBLE;
+    ins._permanence = PERMANENT;
     hashpush_dp_atomic<PERMANENT>(hash, ins, dplogpart(hash), tat);
 }
 
