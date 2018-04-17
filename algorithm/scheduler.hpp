@@ -209,7 +209,23 @@ void evaluate_local_tasks(int threadid)
     finished_task_count += taskcounter;
     time_spent += thread_end - thread_start;
 
-    // measurements now don't make much sense, fix them
+    
+    // TODO: Make measurements work in non-local mode, too.
+#ifdef MEASURE
+    if (QUEEN_ONLY)
+    {
+	total_max_feasible += tat.maximum_feasible_counter;
+	total_largest_queue = std::max(total_largest_queue, tat.largest_queue_observed);
+	total_overdue_tasks += tat.overdue_tasks;
+	total_dynprog_calls += tat.dynprog_calls;
+	total_inner_loop += tat.inner_loop;
+	collect_caching_from_thread(tat);
+	collect_gsheur_from_thread(tat);
+	collect_dynprog_from_thread(tat);
+	total_large_item_hit += tat.large_item_hit;
+	total_large_item_miss += tat.large_item_miss;
+    }
+#endif // MEASURE
     threadl.unlock();
     dynprog_attr_free(&tat);
 }
@@ -218,6 +234,8 @@ int worker_solve(adversary_vertex* start_vertex)
 {
     bool stop = false;
     unsigned int collected_no = 0;
+    unsigned int collected_cumulative = 0;
+    unsigned int last_printed = 0;
     int ret = POSTPONED;
 
     thread_attr tat;
@@ -243,9 +261,11 @@ int worker_solve(adversary_vertex* start_vertex)
     
     // Worker generates its own local tasks.
     ret = generate(&task_copy, &tat, start_vertex);
+    QUEEN_PROGRESS_PRINT("Lonely worker: Generated %zu tasks.\n", tm.size());
+    
     if(ret != POSTPONED)
     {
-	//fprintf(stderr, "We have evaluated the tree: %d\n", ret);
+	QUEEN_PROGRESS_PRINT("We have evaluated the tree: %d\n", ret);
 	dynprog_attr_free(&tat);
 	return ret;
     }
@@ -282,7 +302,19 @@ int worker_solve(adversary_vertex* start_vertex)
 	
 	std::this_thread::sleep_for(std::chrono::milliseconds(TICK_SLEEP));
 	// collect tasks from worker threads
-	collected_no += collect_tasks();
+	unsigned int currently_collected = collect_tasks();
+	collected_no += currently_collected;
+	if(QUEEN_ONLY)
+	{
+	    collected_cumulative += currently_collected;
+	    if (collected_cumulative / PROGRESS_AFTER > last_printed)
+	    {
+		last_printed = collected_cumulative / PROGRESS_AFTER;
+		PROGRESS_PRINT("Queen collects task number %u, %zu remain. \n", collected_cumulative, tm.size());
+	    }
+	}
+		
+
 	// update main tree and task map
 	bool should_do_update = ((collected_no >= TICK_TASKS) || (tm.size() <= TICK_TASKS)) && (ret == POSTPONED);
 	if (should_do_update)
@@ -299,7 +331,7 @@ int worker_solve(adversary_vertex* start_vertex)
 	    
 	    if(ret != POSTPONED)
 	    {
-		// fprintf(stderr, "We have evaluated the tree: %d\n", ret);
+		QUEEN_PROGRESS_PRINT("We have evaluated the tree: %d\n", ret);
 		// instead of breaking, signal a call to terminate to other threads
 		// and wait for them to finish up
 		global_terminate_flag = true;
@@ -389,12 +421,12 @@ void worker()
 
 
 // evaluation that avoids MPI
-int local_queen()
+int lonely_queen()
 {
     char processor_name[MPI_MAX_PROCESSOR_NAME];
     int name_len;
     MPI_Get_processor_name(processor_name, &name_len);
-    printf("Local queen reporting for duty: %s, rank %d out of %d instances\n",
+    printf("Lonely queen reporting for duty: %s, rank %d out of %d instances\n",
 	   processor_name, world_rank, world_size);
 
     int flag = 0;
@@ -429,10 +461,17 @@ int local_queen()
     {
 	adversary_vertex* sapling = sapling_queue.front();
 	sapling_queue.pop();
+	clear_all_caches();
+
+	PROGRESS_PRINT("Queen: sapling queue size: %zu, current sapling of depth %d:\n", sapling_queue.size(), sapling->depth);
+	print_binconf_stream(stderr, sapling->bc);
+
  	monotonicity = FIRST_PASS;
-	
+       
+
 	for (; monotonicity <= S-1; monotonicity++)
 	{
+	    clear_cache_of_ones();
  	    purge_sapling(sapling);
 	    ret = worker_solve(sapling);
 	    if (ret == 0)

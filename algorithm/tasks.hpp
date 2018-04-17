@@ -25,6 +25,32 @@ public:
 std::map<llu, task> tm;
 
 
+template<int MODE> bool possible_task_advanced(adversary_vertex *v, int largest_item)
+{
+    int target_depth = 0;
+    if (BEING_WORKER)
+    {
+	target_depth = computation_root->depth + WORKER_DEPTH;
+    } else {
+	// queen's function is more complicated
+	if (largest_item >= S/4)
+	{
+	    target_depth = computation_root->depth + QUEEN_DEPTH;
+	} else if (largest_item >= 3)
+	{
+	    target_depth = computation_root->depth + QUEEN_DEPTH + 1;
+	} else {
+	    target_depth = computation_root->depth + QUEEN_DEPTH + 3;
+	}
+    }
+
+    if (target_depth - v->depth <= 0)
+    {
+	return true;
+    } else {
+	return false;
+    }
+}
 
 template<int MODE> bool possible_task_size(adversary_vertex *v)
 {

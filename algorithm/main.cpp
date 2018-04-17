@@ -11,7 +11,6 @@
 #include "scheduler.hpp"
 
 
-#define QUEEN_ONLY world_size == 1
 int main(void)
 {
     int provided = 0;
@@ -23,7 +22,7 @@ int main(void)
     int ret = -1;
     if (QUEEN_ONLY)
     {
-	ret = local_queen();
+	ret = lonely_queen();
     } else {
 	if(world_rank != 0)
 	{

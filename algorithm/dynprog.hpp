@@ -219,8 +219,9 @@ bin_int dynprog_max_safe(const binconf *conf, thread_attr *tat)
     tat->oldloadqueue->clear();
     std::vector<loadconf> *poldq = tat->oldloadqueue;
     std::vector<loadconf> *pnewq = tat->newloadqueue;
-    memset(tat->loadht, 0, LOADSIZE*8);
+    //memset(tat->loadht, 0, LOADSIZE*8);
 
+    uint64_t salt = rand_64bit();
     int phase = 0;
     bin_int max_overall = 0;
     bin_int smallest_item = S;
@@ -267,7 +268,7 @@ bin_int dynprog_max_safe(const binconf *conf, thread_attr *tat)
 
 			int newpos = tuple.assign_and_rehash(size, i);
 			
-			if(! loadconf_hashfind(tuple.loadhash, tat))
+			if(! loadconf_hashfind(tuple.loadhash ^ salt, tat))
 			{
 			    if(size == smallest_item && k == 1)
 			    {
@@ -279,7 +280,7 @@ bin_int dynprog_max_safe(const binconf *conf, thread_attr *tat)
 			    }
 
 			    pnewq->push_back(tuple);
-			    loadconf_hashpush(tuple.loadhash, tat);
+			    loadconf_hashpush(tuple.loadhash ^ salt, tat);
 			}
 
 		        tuple.unassign_and_rehash(size, newpos);

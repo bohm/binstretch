@@ -341,81 +341,13 @@ inline uint64_t bmhash(const binconf* b, bin_int next_item)
     return b->loadhash ^ b->itemhash ^ Ai[next_item];
 }
 
-/*
-// returns upper HASHLOG bits of a 64-bit number
-uint64_t hashlogpart(uint64_t x)
-{
-    return x >> (64 - HASHLOG);
-}
-
-// returns upper BCLOG bits of a 64-bit number
-uint64_t bclogpart(uint64_t x)
-{
-    return x >> (64 - BCLOG);
-}
-
-
-// returns upper BUCKETLOG bits of a 64-bit number
-uint64_t bucketlockpart(uint64_t x)
-{
-    return x >> (64 - BUCKETLOG);
-}
-*/
-
 template<unsigned int LOG> inline uint64_t logpart(uint64_t x)
 {
     return x >> (64 - LOG); 
 }
 
-const auto bucketlockpart = logpart<BUCKETLOG>;
 const auto dplogpart = logpart<BCLOG>;
 const auto hashlogpart = logpart<HASHLOG>;
-
 const auto loadlogpart = logpart<LOADLOG>;
-
-// (re)calculates the hash of b completely.
-
-/*void hashinit(binconf *d)
-{
-    d->loadhash=0;
-    d->itemhash=0;
-    
-    for(int i=1; i<=BINS; i++)
-    {
-	d->loadhash ^= Zl[i*(R+1) + d->loads[i]];
-    }
-    for(int j=1; j<=S; j++)
-    {
-	d->itemhash ^= Zi[j*(R+1) + d->items[j]];
-    }
-    }*/
-
-/* Assuming binconf d is created by adding an element item to an
-   arbitrary bin, we update the hash. Since we are sorting the
-   bins, the hashes of all loads may change.
-
-   Assume that both *prev and *d have sorted loads in decreasing
-   order.
-*/
-
-/*
-void rehash(binconf *d, const binconf *prev, int item)
-{
-    
-    //assert(d->loads[bin] <= R);
-    //assert(formerload <= R);
-
-    // rehash loads
-    for(int bin=1; bin<= BINS; bin++)
-    {
-	d->loadhash ^= Zl[bin*(R+1) + prev->loads[bin]];
-	d->loadhash ^= Zl[bin*(R+1) + d->loads[bin]];
-    }
-
-    // rehash item lists
-    d->itemhash ^= Zi[item*(R+1) + prev->items[item]];
-    d->itemhash ^= Zi[item*(R+1) + d->items[item]];
-}
-*/
 
 #endif // _HASH_HPP

@@ -427,6 +427,7 @@ void graph_cleanup(adversary_vertex *root)
 void purge_sapling(adversary_vertex *sapling)
 {
     sapling->value = POSTPONED;
+    sapling->last_item = 1; // TODO: it doesn't clearly state that last item should be ignored.
     remove_outedges(sapling);
 }
 #endif

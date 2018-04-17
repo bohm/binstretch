@@ -112,8 +112,8 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
 	current_adversary = outat->last_adv_v;
 	previous_algorithm = outat->last_alg_v;
 
-	//if (possible_task_mixed<MODE>(current_adversary, tat->largest_since_computation_root))
-	if(possible_task_depth<MODE>(current_adversary))
+	// if(possible_task_depth<MODE>(current_adversary))
+	if (possible_task_advanced<MODE>(current_adversary, tat->largest_since_computation_root))
 	{
 	    add_task(b, tat);
 	    // mark current adversary vertex (created by algorithm() in previous step) as a task
@@ -138,12 +138,6 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
 	    }
 	    
 #endif
-#ifdef OVERDUES
-	    if (tat->current_overdue)
-	    {
-		return OVERDUE;
-	    }
-#endif
 	    if (global_terminate_flag)
 	    {
 		return TERMINATING;
@@ -155,26 +149,15 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
     // We only do this in exploration mode; while this could be also done
     // when generating we want the whole lower bound tree to be generated.
     
-    if (MODE == EXPLORING)
+    if (MODE == EXPLORING && !DISABLE_CACHE)
     {
 	int conf_in_hashtable = is_conf_hashed(b, tat);
-	/* if (conf_in_hashtable == IN_PROGRESS)
-	{
-	    //MEASURE_PRINT("Thread %d waits for binconf.\n", tat->id);
-	    std::unique_lock<std::mutex> lk(in_progress_mutex);
-	    cv.wait(lk, [&]{ return (is_conf_hashed(b, tat) != IN_PROGRESS) && (global_terminate_flag == false); });
-	    conf_in_hashtable = is_conf_hashed(b, tat);
-	    //MEASURE_PRINT("Thread %d continues.\n", tat->id);
-	}*/
-
+	
 	if (conf_in_hashtable != -1)
 	{
 	    return conf_in_hashtable;
-	}/* else {
-	    conf_hashpush(b, IN_PROGRESS, tat);
-	    }*/
+	}
     }
- 
     // finds the maximum feasible item that can be added using dyn. prog.
     bin_int old_max_feasible = tat->prev_max_feasible;
     bin_int dp = MAXIMUM_FEASIBLE(b, depth, tat);
@@ -254,8 +237,8 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
 	}
     }
 
-    
-    if (MODE == EXPLORING)
+
+    if (MODE == EXPLORING && !DISABLE_CACHE)
     {
 	//std::lock_guard<std::mutex> lg(in_progress_mutex);
 	conf_hashpush(b, r, tat);
@@ -318,48 +301,12 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 	return 1;
     }
 
-#ifdef GOOD_MOVES
-    // check best move cache
-    int8_t previously_good_move = -1;
-    bool good_move_first = false;
-    bool good_move_eliminated = false;
-
-    if (MODE == EXPLORING)
-    {
-	previously_good_move = is_move_hashed(b,k,tat);
-	if (previously_good_move != -1)
-	{
-	    //fprintf(stderr, "Previously good move is %" PRIi8 ".\n", previously_good_move);
-	    assert(previously_good_move != 1);
-	    good_move_first = true;
-	}
-    }
-#endif
-
-#ifdef GOOD_MOVES
-    int8_t first_feasible = 0;
-#endif
-   
     int r = 0;
     int below = 0;
     int8_t i = 1;
     
     while(i <= BINS)
     {
-
-#ifdef GOOD_MOVES
-	// we do previously_good_move first, so we skip it on any subsequent run
-	if ((MODE == EXPLORING) && (i == previously_good_move))
-	{
-
-	    if( i == 1)
-	    {
-		fprintf(stderr, "%d %d", previously_good_move, i);
-	    }
-	    assert(i != 1);
-	    i++; continue;
-	}
-#endif	
 	// simply skip a step where two bins have the same load
 	// any such bins are sequential if we assume loads are sorted (and they should be)
 	if (i > 1 && b->loads[i] == b->loads[i-1])
@@ -367,25 +314,8 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 	    i++; continue;
 	}
 
-#ifdef GOOD_MOVES
-	// set i to be the good move for the first run of the while cycle
-	if (MODE == EXPLORING && good_move_first)
-	{
-	    assert(i == 1);
-	    i = previously_good_move;
-	}
-
-#endif	
-
 	if ((b->loads[i] + k < R))
 	{
-#ifdef GOOD_MOVES
-	    if (first_feasible == 0)
-	    {
-		first_feasible = i;
-	    }
-#endif
-
 	    // editing binconf in place -- undoing changes later
 	    
 	    int from = b->assign_and_rehash(k,i);
@@ -465,37 +395,11 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 		    // assert(current_algorithm == NULL); // sanity check
 		}
 
-#ifdef GOOD_MOVES
-		if (MODE == EXPLORING)
-		{
-
-		    if (good_move_first)
-		    {
-			tat->good_move_hit++;
-		    }
-		    
-                    // do not cache if the winning move is the first one -- we will try it first anyway
-		    if (i != 1 && i != first_feasible && !good_move_first)
-		    {
-			bmc_hashpush(b, k, i, tat);
-		    }
-		}
-#endif
 		
 		return r;
 		
 	    } else if (below == 0)
 	    {
-
-#ifdef GOOD_MOVES
-		// good move turned out to be bad
-		if (MODE == EXPLORING && good_move_first)
-		{
-		    bmc_remove(b,k,tat);
-		    good_move_eliminated = true;
-		    tat->good_move_miss++;
-		}
-#endif		
 		// nothing needs to be currently done, the edge is already created
 	    } else if (below == POSTPONED)
 	    {
@@ -517,25 +421,7 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
     // nothing to be done in exploration mode
 	    // currently nothing done in generating mode either
 	}
-
-#ifdef GOOD_MOVES
-        // if we ran the good_move_first, we come back and try from the start
-	if (MODE == EXPLORING && good_move_first)
-	{
-	    if(!good_move_eliminated)
-	    {
-		tat->good_move_miss++;
-		bmc_remove(b,k,tat);
-		good_move_eliminated = true;
-	    }
-	    good_move_first = false;
-	    i = 1;
-	} else {
-	    i++;
-	}
-#else
 	i++;
-#endif
     }
 
     return r;

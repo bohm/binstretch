@@ -21,36 +21,28 @@ typedef unsigned long long int llu;
 typedef signed char tiny;
 typedef int16_t bin_int;
 
-// verbosity of the program
-//#define VERBOSE 1
-//#define DEBUG 1
-//#define DEEP_DEBUG 1
-//#define THOROUGH_HASH_CHECKING 1
 #define PROGRESS 1
 //#define REGROW 1
 //#define OUTPUT 1
 #define MEASURE 1
-//#define TICKER 1
-//#define GOOD_MOVES 1
 //#define ONLY_ONE_PASS 1
-//#define OVERDUES 1
 
 // maximum load of a bin in the optimal offline setting
 const bin_int S = 14;
 // target goal of the online bin stretching problem
 const bin_int R = 19;
 // Change this number for the selected number of bins.
-const bin_int BINS = 10;
+const bin_int BINS = 8;
 
 // If you want to generate a specific lower bound, you can create an initial bin configuration here.
 // You can also insert an initial sequence here.
-const std::vector<bin_int> INITIAL_LOADS = {};
-const std::vector<bin_int> INITIAL_ITEMS = {};
-//const std::vector<bin_int> INITIAL_LOADS = {8,1,1,1,1,1};
-//const std::vector<bin_int> INITIAL_ITEMS = {8,0,0,0,1};
+//const std::vector<bin_int> INITIAL_LOADS = {};
+//const std::vector<bin_int> INITIAL_ITEMS = {};
+const std::vector<bin_int> INITIAL_LOADS = {8,1,1,1,1,};
+const std::vector<bin_int> INITIAL_ITEMS = {7,0,0,0,1};
 // You can also insert an initial sequence here, and the adversary will use it as a predefined start.
-//const std::vector<bin_int> INITIAL_SEQUENCE = {};
-const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1,1,1,1,1};
+const std::vector<bin_int> INITIAL_SEQUENCE = {};
+//const std::vector<bin_int> INITIAL_SEQUENCE = {5};
 
 const int FIRST_PASS = 1;
 
@@ -59,10 +51,8 @@ const int RMOD = (R-1);
 const int ALPHA = (RMOD-S);
 
 // bitwise length of indices of hash tables and lock tables
-const unsigned int HASHLOG = 27;
-const unsigned int BCLOG = 27;
-const unsigned int BUCKETLOG = 7;
-const unsigned int BESTMOVELOG = 25;
+const unsigned int HASHLOG = 26;
+const unsigned int BCLOG = 26;
 const unsigned int LOADLOG = 13;
 
 // experimental: caching of largest feasible item that can be sent
@@ -71,13 +61,8 @@ const unsigned int LFEASLOG = 10;
 
 const llu HASHSIZE = (1ULL<<HASHLOG);
 const llu BC_HASHSIZE = (1ULL<<BCLOG);
-const llu BESTMOVESIZE = (1ULL<<BESTMOVELOG);
 const llu LOADSIZE = (1ULL<<LOADLOG);
 
-const llu LFEASSIZE = (1ULL<<LFEASLOG);
-
-// size of buckets -- how many locks there are (each lock serves a group of hashes)
-const llu BUCKETSIZE = (1ULL<<BUCKETLOG);
 
 // linear probing limit
 const int LINPROBE_LIMIT = 8;
@@ -88,10 +73,14 @@ const int DEFAULT_DP_SIZE = 100000;
 const int BESTFIT_THRESHOLD = (1*S)/10;
 
 // the number of local worker threads
-const int THREADS = 4;
+const int THREADS = 1;
 // a bound on total load of a configuration before we split it into a task
 const int TASK_LOAD = 10;
 const int TASK_DEPTH = 3;
+
+const int WORKER_DEPTH = 1;
+const int QUEEN_DEPTH = 3;
+
 const int EXPANSION_DEPTH = 3;
 const int TASK_LARGEST_ITEM = 5;
 // how much the updater thread sleeps (in milliseconds)
@@ -99,14 +88,28 @@ const int TICK_SLEEP = 50;
 // how many tasks are sufficient for the updater to run the main updater routine
 const int TICK_TASKS = 50;
 // the number of completed tasks after which the exploring thread reports progress
-const int PROGRESS_AFTER = 50;
+const int PROGRESS_AFTER = 1000;
 
 // a threshold for a task becoming overdue
 const std::chrono::seconds THRESHOLD = std::chrono::seconds(90);
 const int MAX_EXPANSION = 1;
 
-// end of configuration constants
 // ------------------------------------------------
+// debug constants
+
+//#define VERBOSE 1
+//#define DEBUG 1
+//#define DEEP_DEBUG 1
+//#define THOROUGH_HASH_CHECKING 1
+
+const bool DISABLE_CACHE = false;
+// completely disable dynamic programmig cache
+// (useful to debug soundness of cache algs)
+const bool DISABLE_DP_CACHE = false;
+
+// ------------------------------------------------
+// system constants and global variables (no need to change)
+
 const bin_int MAX_ITEMS = S*BINS;
 
 const int POSTPONED = 2;
@@ -199,6 +202,7 @@ const int PERMANENT = 1;
 
 // a test for queen being the only process working
 #define QUEEN_ONLY world_size == 1
+#define BEING_WORKER world_rank != 0
 
 //pthread_mutex_t taskq_lock;
 std::mutex taskq_lock;
@@ -285,12 +289,15 @@ void print_sequence(FILE *stream, const std::vector<bin_int>& seq)
 
 #ifdef PROGRESS
 #define PROGRESS_PRINT(...) fprintf(stderr, __VA_ARGS__ )
+#define QUEEN_PROGRESS_PRINT(...) if(QUEEN_ONLY) { fprintf(stderr, __VA_ARGS__ ); }
 #define PROGRESS_PRINT_BINCONF(x) print_binconf_stream(stderr, x)
 #define PROGRESS_ONLY(x) x
 #else
 #define PROGRESS_PRINT(format,...)
+#define QUEEN_PROGRESS_PRINT(format, ...)
 #define PROGRESS_PRINT_BINCONF(x)
 #define PROGRESS_ONLY(x)
+
 #endif
 
 #ifdef GOOD_MOVES
