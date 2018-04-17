@@ -36,13 +36,13 @@ const bin_int BINS = 8;
 
 // If you want to generate a specific lower bound, you can create an initial bin configuration here.
 // You can also insert an initial sequence here.
-//const std::vector<bin_int> INITIAL_LOADS = {};
-//const std::vector<bin_int> INITIAL_ITEMS = {};
-const std::vector<bin_int> INITIAL_LOADS = {8,1,1,1,1,};
-const std::vector<bin_int> INITIAL_ITEMS = {7,0,0,0,1};
+const std::vector<bin_int> INITIAL_LOADS = {};
+const std::vector<bin_int> INITIAL_ITEMS = {};
+//const std::vector<bin_int> INITIAL_LOADS = {8,1,1,1,1,};
+//const std::vector<bin_int> INITIAL_ITEMS = {7,0,0,0,1};
 // You can also insert an initial sequence here, and the adversary will use it as a predefined start.
-const std::vector<bin_int> INITIAL_SEQUENCE = {};
-//const std::vector<bin_int> INITIAL_SEQUENCE = {5};
+//const std::vector<bin_int> INITIAL_SEQUENCE = {};
+const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1};
 
 const int FIRST_PASS = 1;
 
@@ -51,8 +51,8 @@ const int RMOD = (R-1);
 const int ALPHA = (RMOD-S);
 
 // bitwise length of indices of hash tables and lock tables
-const unsigned int HASHLOG = 26;
-const unsigned int BCLOG = 26;
+const unsigned int HASHLOG = 27;
+const unsigned int BCLOG = 27;
 const unsigned int LOADLOG = 13;
 
 // experimental: caching of largest feasible item that can be sent
@@ -73,7 +73,7 @@ const int DEFAULT_DP_SIZE = 100000;
 const int BESTFIT_THRESHOLD = (1*S)/10;
 
 // the number of local worker threads
-const int THREADS = 1;
+const int THREADS = 2;
 // a bound on total load of a configuration before we split it into a task
 const int TASK_LOAD = 10;
 const int TASK_DEPTH = 3;
@@ -88,7 +88,7 @@ const int TICK_SLEEP = 50;
 // how many tasks are sufficient for the updater to run the main updater routine
 const int TICK_TASKS = 50;
 // the number of completed tasks after which the exploring thread reports progress
-const int PROGRESS_AFTER = 1000;
+const int PROGRESS_AFTER = 100;
 
 // a threshold for a task becoming overdue
 const std::chrono::seconds THRESHOLD = std::chrono::seconds(90);
@@ -102,9 +102,9 @@ const int MAX_EXPANSION = 1;
 //#define DEEP_DEBUG 1
 //#define THOROUGH_HASH_CHECKING 1
 
-const bool DISABLE_CACHE = false;
-// completely disable dynamic programmig cache
+// completely disable dynamic programming or binconf cache
 // (useful to debug soundness of cache algs)
+const bool DISABLE_CACHE = false;
 const bool DISABLE_DP_CACHE = false;
 
 // ------------------------------------------------

@@ -148,7 +148,7 @@ bin_int maximum_feasible_triple(binconf *b, const int depth, thread_attr *tat)
 		
 		for (bin_int i = lb+1; i <= maximum_feasible; i++)
 		{
-		    pack_and_hash<PERMANENT>(b,i,0,INFEASIBLE,tat);
+		    pack_and_hash<PERMANENT>(b,i,0,FEASIBLE,tat);
 		}
 	    }
 	}

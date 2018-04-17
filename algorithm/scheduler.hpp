@@ -473,7 +473,14 @@ int lonely_queen()
 	{
 	    clear_cache_of_ones();
  	    purge_sapling(sapling);
+	    MEASURE_ONLY(auto iteration_start = std::chrono::system_clock::now());
 	    ret = worker_solve(sapling);
+#ifdef MEASURE
+	    auto iteration_end = std::chrono::system_clock::now();
+	    std::chrono::duration<long double> iter_time = iteration_end - iteration_start;
+	    MEASURE_PRINT("Iteration time: %Lfs.\n", iter_time.count());
+#endif 
+	
 	    if (ret == 0)
 	    {
 		break;
