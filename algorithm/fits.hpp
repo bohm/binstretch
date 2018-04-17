@@ -11,7 +11,7 @@
 // Heuristics for bypassing dynamic programming. Currently only
 // best fit decreasing.
 
-std::pair<bin_int, bin_int> bestfitalg(const binconf *orig)
+bin_int bestfitalg(const binconf *orig)
 {
     loadconf b;
     // a quick trick: keep track of totalload and terminate when it is 0
@@ -35,20 +35,7 @@ std::pair<bin_int, bin_int> bestfitalg(const binconf *orig)
 
 		    if (tl == 0)
 		    {
-			int first_empty = 1;
-			for (; first_empty <= BINS; first_empty++)
-			{
-			    if (b.loads[first_empty] == 0)
-			    {
-				break;
-			    }
-			}
-
-			if (first_empty == 1)
-			{
-			    assert(false); // bestfit called on 0 items, this shouldn't happen
-			}
-			return std::make_pair(S - b.loads[first_empty-1], BINS-first_empty+1);
+			return S - b.loads[BINS];
 		    }
 		    break;
 		}
@@ -56,27 +43,12 @@ std::pair<bin_int, bin_int> bestfitalg(const binconf *orig)
 
 	    if (!packed)
 	    {
-		return std::make_pair(INFEASIBLE,0);
+		return INFEASIBLE;
 	    }
 	}
     }
 
-    int first_empty = 1;
-    for (; first_empty <= BINS; first_empty++)
-    {
-	if (b.loads[first_empty] == 0)
-	{
-	    break;
-	}
-    }
-// return the largest item that would fit on the smallest bin
-    if (first_empty == 1)
-    {
-	assert(false); // bestfit called on 0 items, this shouldn't happen
-    }
-    return std::make_pair(S - b.loads[first_empty-1], BINS-first_empty+1);
-    
-
+    return S - b.loads[BINS];
 }
 
 std::pair<bin_int, bin_int> bestfit_cut_interval(const binconf *orig)

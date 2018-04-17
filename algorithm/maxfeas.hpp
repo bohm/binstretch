@@ -41,7 +41,7 @@ bin_int maximum_feasible_triple(binconf *b, const int depth, thread_attr *tat)
 	bool bestfit_needed = false;
 	while (lb < ub)
 	{
-	    data = pqf(b,mid,tat);
+	    data = pack_and_query(b,mid,tat);
 	    if (data == FEASIBLE)
 	    {
 		lb = mid;
@@ -58,25 +58,22 @@ bin_int maximum_feasible_triple(binconf *b, const int depth, thread_attr *tat)
 	{
 	    maximum_feasible = lb;
 	} else {
-	    //bounds.second = ub;
-
-	    bin_int bestfit, empty_by_bestfit;
+	    bin_int bestfit;
 	    // does not pack 1's and S'es
-	    std::tie(bestfit, empty_by_bestfit) = bestfitalg(b);
+	    bestfit = bestfitalg(b);
 	    MEASURE_ONLY(tat->bestfit_calls++);
 	   
 	    if (bestfit > lb)
 	    {
-		/* Temporarily disabled. Needs rework so that the entire maxfeas uses
-		   only instances with no ones and Ses.
-		// pack tight instances
 		for(bin_int x = lb+1; x <= bestfit; x++)
 		{
-		    pack_and_hash<HEURISTIC>(b, x, empty_by_bestfit, FEASIBLE, tat);
+		    // disabling information about empty bins
+		    pack_and_hash<PERMANENT>(b,x,0,FEASIBLE,tat);
+		    //pack_and_hash<PERMANENT>(b, x, empty_by_bestfit, FEASIBLE, tat);
 		}
 		
 		// pack non-tight instances
-		if (empty_by_bestfit >= 1)
+		/*if (empty_by_bestfit >= 1)
 		{
 		    for(bin_int x = lb+1; x <= S; x++)
 		    {
@@ -85,7 +82,7 @@ bin_int maximum_feasible_triple(binconf *b, const int depth, thread_attr *tat)
 		    lb = S;
 		} else {
 		    lb = bestfit;
-		}*/
+		    }*/
 
 		lb = bestfit;
 	    }
@@ -104,7 +101,7 @@ bin_int maximum_feasible_triple(binconf *b, const int depth, thread_attr *tat)
 	bool dynprog_needed = false;
 	while (lb < ub)
 	{
-	    data = pqf(b,mid,tat); //pack, query, fill in
+	    data = pack_and_query(b,mid,tat); //pack, query, fill in
 	    if (data == FEASIBLE)
 	    {
 		lb = mid;
@@ -124,8 +121,18 @@ bin_int maximum_feasible_triple(binconf *b, const int depth, thread_attr *tat)
 	else
 	{
 	    MEASURE_ONLY(tat->dynprog_calls++);
-	    // passing ub so that dynprog_max_dangerous takes care of pushing into the cache
-	    maximum_feasible = dynprog_max_dangerous(b,lb,ub,tat);
+	    // DISABLED: passing ub so that dynprog_max_dangerous takes care of pushing into the cache
+	    // DISABLED: maximum_feasible = dynprog_max_dangerous(b,lb,ub,tat);
+	    maximum_feasible = dynprog_max_safe(b,tat);
+	    for (bin_int i = maximum_feasible+1; i <= ub; i++)
+	    {
+		pack_and_hash<PERMANENT>(b,i,0,INFEASIBLE,tat);
+	    }
+
+	    for (bin_int i = lb+1; i <= maximum_feasible; i++)
+	    {
+		pack_and_hash<PERMANENT>(b,i,0,INFEASIBLE,tat);
+	    }
 	}
     }
 

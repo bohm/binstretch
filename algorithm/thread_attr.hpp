@@ -22,6 +22,7 @@ struct thread_attr {
     loadconf ol;
     int id;
     int last_item = 1;
+    int largest_since_computation_root = 0; // largest item since computation root (excluding sequencing and such)
     bin_int prev_max_feasible = S;
     uint64_t iterations = 0;
     uint64_t maximum_feasible_counter = 0;

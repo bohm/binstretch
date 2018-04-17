@@ -28,6 +28,7 @@ int time_stats(thread_attr *tat)
 {
     int ret = 0;
 
+    /*
     std::chrono::time_point<std::chrono::system_clock> cur = std::chrono::system_clock::now();
     auto iter_time = cur - tat->eval_start;
     if (!tat->overdue_printed && iter_time >= THRESHOLD)
@@ -36,19 +37,7 @@ int time_stats(thread_attr *tat)
 	MEASURE_PRINT_BINCONF(tat->explore_root);
 	tat->overdue_printed = true;
     }
-   
-#ifdef OVERDUES
-    if (!tat->current_overdue)
-    {
-
-	if (iter_time >= THRESHOLD && tat->expansion_depth <= (MAX_EXPANSION-1))
-	{
-	    //fprintf(stderr, "Setting overdue to true with depth %d\n", tat->expansion_depth);
-	    tat->overdue_tasks++;
-	    tat->current_overdue = true;
-	}
-    }
-#endif
+    */
 
     // I wonder if there is a penalty for repeatedly constructing the lock
     std::shared_lock<std::shared_timed_mutex> l(running_and_removed_lock);
@@ -59,7 +48,6 @@ int time_stats(thread_attr *tat)
 	ret = TERMINATING;
     }
     l.unlock();
-    // pthread_rwlock_unlock(&running_and_removed_lock);
     return ret;
 }
 
@@ -124,7 +112,8 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
 	current_adversary = outat->last_adv_v;
 	previous_algorithm = outat->last_alg_v;
 
-	if (POSSIBLE_TASK<MODE>(current_adversary))
+	//if (possible_task_mixed<MODE>(current_adversary, tat->largest_since_computation_root))
+	if(possible_task_depth<MODE>(current_adversary))
 	{
 	    add_task(b, tat);
 	    // mark current adversary vertex (created by algorithm() in previous step) as a task
@@ -197,7 +186,6 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
 
     // idea: start with monotonicity 0 (full monotone), and move towards S (full generality)
     int lower_bound = std::max(1, tat->last_item - monotonicity);
-    
     for (int item_size = maximum_feasible; item_size>=lower_bound; item_size--)
     {
         DEEP_DEBUG_PRINT("Sending item %d to algorithm.\n", item_size);
@@ -215,13 +203,16 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
 
 	
 	int li = tat->last_item;
+	int old_largest = tat->largest_since_computation_root; 
 
 	tat->last_item = item_size;
+	tat->largest_since_computation_root = std::max(item_size, tat->largest_since_computation_root);
 	
 	below = algorithm<MODE>(b, item_size, depth+1, tat, outat);
 
 	tat->last_item = li;
-	
+	tat->largest_since_computation_root = old_largest;
+
 	if (MODE == GENERATING || MODE == EXPANDING)
 	{
 	    analyzed_vertex->value = below;

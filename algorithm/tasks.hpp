@@ -46,7 +46,11 @@ template<int MODE> bool possible_task_depth(adversary_vertex *v)
     if (MODE == GENERATING)
     {
 	target_depth = computation_root->depth + TASK_DEPTH;
-	
+
+	/*if (world_rank != 0)
+	{
+	    target_depth--;
+	}*/
 	/*if (computation_root->depth >= 5)
 	{
 	    target_depth--;
@@ -65,18 +69,10 @@ template<int MODE> bool possible_task_depth(adversary_vertex *v)
     return false;
 }
 
-template<int MODE> bool possible_task_mixed(adversary_vertex *v)
+template<int MODE> bool possible_task_mixed(adversary_vertex *v, int largest_item)
 {
 
     // compute the largest item seen so far
-    bin_int largest_item = 0;
-    for (int i =1; i <= S; i++)
-    {
-	if (v->bc->items[i] > 0)
-	{
-	    largest_item = i;
-	}
-    }
 
     if (largest_item >= TASK_LARGEST_ITEM)
     {

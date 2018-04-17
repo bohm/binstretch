@@ -10,15 +10,18 @@
 #include "minimax.hpp"
 #include "scheduler.hpp"
 
+
+#define QUEEN_ONLY world_size == 1
 int main(void)
 {
-    MPI_Init(NULL, NULL);
-
+    int provided = 0;
+    MPI_Init_thread(NULL, NULL, MPI_THREAD_FUNNELED, &provided);
+    assert(provided == MPI_THREAD_FUNNELED);
     MPI_Comm_size(MPI_COMM_WORLD, &world_size);
     MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
 
     int ret = -1;
-    if(world_size == 1)
+    if (QUEEN_ONLY)
     {
 	ret = local_queen();
     } else {
@@ -36,7 +39,8 @@ int main(void)
 	if(ret == 0)
 	{
 	    // TODO: find out max monotonicity used by workers
-	    fprintf(stdout, "Lower bound for %d/%d Bin Stretching on %d bins with starting seq: ", R,S,BINS);
+	    fprintf(stdout, "Lower bound for %d/%d Bin Stretching on %d bins with monotonicity %d and starting seq: ",
+		    R,S,BINS,monotonicity);
 	    print_sequence(stdout, INITIAL_SEQUENCE);
 	    // TODO: check that OUTPUT works with MPI.
 	} else {
@@ -47,8 +51,17 @@ int main(void)
 	
 	fprintf(stderr, "Number of tasks: %" PRIu64 ", completed tasks: %" PRIu64 ", pruned tasks %" PRIu64 ".\n,",
 		task_count, finished_task_count, removed_task_count);
-	
-	// with MPI in place, measuring does not make much sense, so we do not do it this way
+
+	// TODO: enable measuring for queen in multiple worker mode
+	if (QUEEN_ONLY)
+	{
+	    MEASURE_PRINT("Total time (all threads): %Lfs.\n", time_spent.count());
+	    GOOD_MOVES_PRINT("Total good move hit: %" PRIu64 ", miss: %" PRIu64 "\n", total_good_move_hit, total_good_move_miss);
+	    MEASURE_ONLY(print_caching());
+	    MEASURE_ONLY(print_gsheur(stderr));
+	    MEASURE_ONLY(print_dynprog_measurements());
+	    MEASURE_PRINT("Large item hit %" PRIu64 ", miss: %" PRIu64 "\n", total_large_item_hit, total_large_item_miss);
+	}
 	hashtable_cleanup();
 	//graph_cleanup(root_vertex); // TODO: fix this
     }

@@ -18,12 +18,6 @@
 #define _SCHEDULER_H 1
 
 
-int world_size = 0;
-int world_rank = 0;
-MPI_Datatype MPI_loads;
-MPI_Datatype MPI_items;
-
-
 const int QUEEN = 0;
 const int REQUEST = 1;
 const int SENDING_LOADS = 2;
@@ -361,9 +355,9 @@ void worker()
 	if (mon_change_flag)
 	{
 	    MPI_Recv(&monotonicity, 1, MPI_INT, QUEEN, CHANGE_MONOTONICITY, MPI_COMM_WORLD, &stat);
-	    fprintf(stderr, "Worker %d: switch to monotonicity %d.\n", world_rank, monotonicity);
+	    //fprintf(stderr, "Worker %d: switch to monotonicity %d.\n", world_rank, monotonicity);
 	    // clear caches, as monotonicity invalidates some situations
-	    dynprog_hashtable_clear();
+	    // dynprog_hashtable_clear();
 	    clear_cache_of_ones();
 	}
 

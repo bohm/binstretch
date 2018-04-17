@@ -331,7 +331,8 @@ public:
     // as if items[1] == 0 and items[S] == 0.
     uint64_t dphash() const
 	{
-	    return (itemhash ^ Zi[1*(MAX_ITEMS+1) + items[1]] ^ Zi[S*(MAX_ITEMS+1) + items[S]]);
+	    // DISABLED: return (itemhash ^ Zi[1*(MAX_ITEMS+1) + items[1]] ^ Zi[S*(MAX_ITEMS+1) + items[S]]);
+	    return itemhash;
 	}
 
     // Returns (main cache) binconf hash, assuming hash is consistent,
