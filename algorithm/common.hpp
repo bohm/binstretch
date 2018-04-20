@@ -16,6 +16,7 @@
 #include <array>
 #include <unordered_set>
 #include <numeric>
+#include <mpi.h>
 
 typedef unsigned long long int llu;
 typedef signed char tiny;
@@ -28,11 +29,11 @@ typedef int16_t bin_int;
 //#define ONLY_ONE_PASS 1
 
 // maximum load of a bin in the optimal offline setting
-const bin_int S = 14;
+const bin_int S = 82;
 // target goal of the online bin stretching problem
-const bin_int R = 19;
+const bin_int R = 112;
 // Change this number for the selected number of bins.
-const bin_int BINS = 8;
+const bin_int BINS = 3;
 
 // If you want to generate a specific lower bound, you can create an initial bin configuration here.
 // You can also insert an initial sequence here.
@@ -41,18 +42,18 @@ const std::vector<bin_int> INITIAL_ITEMS = {};
 //const std::vector<bin_int> INITIAL_LOADS = {8,1,1,1,1,};
 //const std::vector<bin_int> INITIAL_ITEMS = {7,0,0,0,1};
 // You can also insert an initial sequence here, and the adversary will use it as a predefined start.
-//const std::vector<bin_int> INITIAL_SEQUENCE = {};
-const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1};
+const std::vector<bin_int> INITIAL_SEQUENCE = {};
+//const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1,1,1,1};
 
-const int FIRST_PASS = 1;
+const int FIRST_PASS = 7;
 
 // constants used for good situations
 const int RMOD = (R-1);
 const int ALPHA = (RMOD-S);
 
 // bitwise length of indices of hash tables and lock tables
-const unsigned int HASHLOG = 27;
-const unsigned int BCLOG = 27;
+const unsigned int HASHLOG = 26;
+const unsigned int BCLOG = 26;
 const unsigned int LOADLOG = 13;
 
 // experimental: caching of largest feasible item that can be sent
@@ -73,13 +74,13 @@ const int DEFAULT_DP_SIZE = 100000;
 const int BESTFIT_THRESHOLD = (1*S)/10;
 
 // the number of local worker threads
-const int THREADS = 2;
+const int THREADS = 4;
 // a bound on total load of a configuration before we split it into a task
 const int TASK_LOAD = 10;
 const int TASK_DEPTH = 3;
 
-const int WORKER_DEPTH = 1;
-const int QUEEN_DEPTH = 3;
+const int QUEEN_DEPTH = S > 41 ? 3 : 4;
+//const int QUEEN_DEPTH = 2;
 
 const int EXPANSION_DEPTH = 3;
 const int TASK_LARGEST_ITEM = 5;
@@ -132,6 +133,8 @@ const bin_int INFEASIBLE = -1; // this is -1 so it can be returned with dynprog_
 // MPI-related constants
 int world_size = 0;
 int world_rank = 0;
+MPI_Comm shmcomm; // shared memory communicator
+int shm_rank = 0;
 
 bool generating_tasks;
 
@@ -212,6 +215,7 @@ std::atomic_bool global_terminate_flag(false);
 std::mutex thread_progress_lock;
 
 std::mutex in_progress_mutex;
+std::mutex queen_mutex;
 std::condition_variable cv;
 
 //std::shared_lock running_and_removed_lock;

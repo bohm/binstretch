@@ -8,8 +8,12 @@
 
 #define MAXIMUM_FEASIBLE maximum_feasible_triple
 
-// uses both onlinefit, bestfit and dynprog
-bin_int maximum_feasible_triple(binconf *b, const int depth, thread_attr *tat)
+// uses onlinefit, bestfit and dynprog
+// initial_ub -- upper bound from above (previously maximum feasible item)
+// cannot_send_less -- a "lower" bound on what can be sent
+// (even though smaller items fit, the alg possibly must avoid them due to monotonicity)
+
+bin_int maximum_feasible_triple(binconf *b, const int depth, const bin_int cannot_send_less, bin_int initial_ub, thread_attr *tat)
 {
     MEASURE_ONLY(tat->maximum_feasible_counter++);
     DEEP_DEBUG_PRINT("Starting dynprog maximization of configuration:\n");
@@ -17,143 +21,240 @@ bin_int maximum_feasible_triple(binconf *b, const int depth, thread_attr *tat)
     DEEP_DEBUG_PRINT("\n"); 
 
     bin_int data;
-    bin_int maximum_feasible = 0;
 
-    bin_int lb = onlineloads_bestfit(tat->ol);
-    bin_int ub = std::min((bin_int) ((S*BINS) - b->totalload()), tat->prev_max_feasible);
-    bin_int mid;
+    bin_int lb = onlineloads_bestfit(tat->ol); // definitely can pack at least lb
+    bin_int ub = std::min((bin_int) ((S*BINS) - b->totalload()), initial_ub); // definitely cannot semore than ub
 
-    if(lb > ub)
+    // debug flag
+    int reason = -1; 
+    // consistency check
+    if (lb > ub)
     {
 	print_binconf_stream(stderr, b);
 	fprintf(stderr, "lb %" PRIi16 ", ub %" PRIi16 ".\n", lb, ub);
 	assert(lb <= ub);
     }
-    
-    if (lb == ub)
+ 
+    if(cannot_send_less > ub)
     {
-	maximum_feasible = lb;
-	MEASURE_ONLY(tat->onlinefit_sufficient++);
+	return INFEASIBLE;
     }
-    else
+
+    // we would like to set lb = cannot_send_less, but our algorithm assumes
+    // lb is actually feasible, where with the update it may not be
+    
+    bool lb_certainly_feasible = true;
+    if (lb < cannot_send_less)
     {
-	int mid = (lb+ub+1)/2;
-	bool bestfit_needed = false;
-	while (lb < ub)
+	lb = cannot_send_less;
+	lb_certainly_feasible = false;
+
+	// query lb first
+	if (DISABLE_DP_CACHE)
 	{
-	    if (DISABLE_DP_CACHE)
-	    {
-		data = UNKNOWN;
-	    } else {
-		data = pack_and_query(b,mid,tat);
-	    }
-	    
-	    if (data == FEASIBLE)
-	    {
-		lb = mid;
-	    } else if (data == INFEASIBLE) {
-		ub = mid-1;
-	    } else {
-		bestfit_needed = true;
-		break;
-	    }
-	    
-	    mid = (lb+ub+1)/2;
-	}
-	if (!bestfit_needed)
-	{
-	    maximum_feasible = lb;
+	    data = UNKNOWN;
 	} else {
-	    bin_int bestfit;
-	    // does not pack 1's and S'es
-	    bestfit = bestfitalg(b);
-	    MEASURE_ONLY(tat->bestfit_calls++);
-	   
-	    if (bestfit > lb)
-	    {
-		if (!DISABLE_DP_CACHE)
-		{
-		    for(bin_int x = lb+1; x <= bestfit; x++)
-		    {
-			// disabling information about empty bins
-			pack_and_hash<PERMANENT>(b,x,0,FEASIBLE,tat);
-			//pack_and_hash<PERMANENT>(b, x, empty_by_bestfit, FEASIBLE, tat);
-		    }
-		}
-		// pack non-tight instances
-		/*if (empty_by_bestfit >= 1)
-		{
-		    for(bin_int x = lb+1; x <= S; x++)
-		    {
-			pack_and_hash<HEURISTIC>(b, x, empty_by_bestfit-1, FEASIBLE, tat);
-			}
-		    lb = S;
-		} else {
-		    lb = bestfit;
-		    }*/
-
-		lb = bestfit;
-	    }
-
-	    if (lb == ub)
-	    {
-		maximum_feasible = lb;
-		MEASURE_ONLY(tat->bestfit_sufficient++);
-	    }
+	    data = pack_and_query(b,lb,tat);
 	}
+
+	if (data == FEASIBLE)
+	{
+	    lb_certainly_feasible = true;
+	} else if (data == INFEASIBLE)
+	{
+	    // nothing is feasible
+	    return INFEASIBLE;
+	}
+    }
+	
+    if (lb == ub && lb_certainly_feasible)
+    {
+	MEASURE_ONLY(tat->onlinefit_sufficient++);
+	return lb;
+    }
+
+    bin_int mid = (lb+ub+1)/2;
+    bool bestfit_needed = false;
+    while (lb < ub)
+    {
+	if (DISABLE_DP_CACHE)
+	{
+	    data = UNKNOWN;
+	} else {
+	    data = pack_and_query(b,mid,tat);
+	}
+	
+	if (data == FEASIBLE)
+	{
+	    lb = mid;
+	    lb_certainly_feasible = true;
+	} else if (data == INFEASIBLE) {
+	    ub = mid-1;
+	} else {
+	    bestfit_needed = true;
+	    break;
+	}
+	
+	mid = (lb+ub+1)/2;
     }
     
-    if (maximum_feasible == 0)
+    if (!bestfit_needed && lb_certainly_feasible)
     {
-	mid = (lb+ub+1)/2;
-	bool dynprog_needed = false;
-	while (lb < ub)
-	{
-	    if (DISABLE_DP_CACHE)
-	    {
-		data = UNKNOWN;
-	    } else {
-		data = pack_and_query(b,mid,tat);
-	    }
-	    
-	    if (data == FEASIBLE)
-	    {
-		lb = mid;
-	    } else if (data == INFEASIBLE) {
-		ub = mid-1;
-	    } else {
-		dynprog_needed = true;
-		break;
-	    }
-	    
-	    mid = (lb+ub+1)/2;
-	}
-	if (!dynprog_needed)
-	{
-	    maximum_feasible = lb;
-	}
-	else
-	{
-	    MEASURE_ONLY(tat->dynprog_calls++);
-	    // DISABLED: passing ub so that dynprog_max_dangerous takes care of pushing into the cache
-	    // DISABLED: maximum_feasible = dynprog_max_dangerous(b,lb,ub,tat);
-	    maximum_feasible = dynprog_max_safe(b,tat);
+	return lb; // lb == ub
+    }
 
-	    if(!DISABLE_DP_CACHE)
+    // still not solved:
+
+    bin_int bestfit;
+    bestfit = bestfitalg(b);
+    MEASURE_ONLY(tat->bestfit_calls++);
+
+
+    if (bestfit > ub)
+    {
+	print_binconf_stream(stderr, b);
+	fprintf(stderr, "lb %" PRIi16 ", ub %" PRIi16 ", bestfit: %" PRIi16 ", maxfeas: %" PRIi16 ", initial_ub %" PRIi16".\n", lb, ub, bestfit, dynprog_max_safe(b,tat), initial_ub);
+	fprintf(stderr, "dphash %" PRIu64 ", pack_and_query [%" PRIi16 ", %" PRIi16 "]:", b->dphash(), ub, initial_ub);
+	for (bin_int dbug = ub; dbug <= initial_ub; dbug++)
+	{
+	    fprintf(stderr, "%d,", pack_and_query(b,dbug,tat));
+	}
+	fprintf(stderr, "\nhashes: [");
+	for (bin_int dbug = ub; dbug <= initial_ub; dbug++)
+	{
+	    bin_int dbug_items = b->items[dbug];
+	    // print itemhash as if there was one more item of type dbug
+	    fprintf(stderr, "%" PRIu64 ", ", b->dphash() ^ Zi[dbug*(MAX_ITEMS+1) + dbug_items] ^  Zi[dbug*(MAX_ITEMS+1) + dbug_items+1]);
+	}
+
+	fprintf(stderr, "].\n");
+	assert(bestfit <= ub);
+    }
+	
+    
+    if (bestfit >= lb)
+    {
+	if (!DISABLE_DP_CACHE)
+	{
+	    for(bin_int x = lb; x <= bestfit; x++)
 	    {
-		for (bin_int i = maximum_feasible+1; i <= ub; i++)
-		{
-		    pack_and_hash<PERMANENT>(b,i,0,INFEASIBLE,tat);
-		}
-		
-		for (bin_int i = lb+1; i <= maximum_feasible; i++)
-		{
-		    pack_and_hash<PERMANENT>(b,i,0,FEASIBLE,tat);
-		}
+		// disabling information about empty bins
+		pack_and_hash<PERMANENT>(b,x,0,FEASIBLE,tat);
+		//pack_and_hash<PERMANENT>(b, x, empty_by_bestfit, FEASIBLE, tat);
 	    }
+	}
+	lb = bestfit;
+	lb_certainly_feasible = true;
+    }
+    
+    if (lb == ub && lb_certainly_feasible)
+    {
+	MEASURE_ONLY(tat->bestfit_sufficient++);
+	return lb;
+    }
+
+    assert(lb <= ub);
+    
+    mid = (lb+ub+1)/2;
+    bool dynprog_needed = false;
+    while (lb < ub)
+    {
+	if (DISABLE_DP_CACHE)
+	{
+	    data = UNKNOWN;
+	} else {
+	    data = pack_and_query(b,mid,tat);
+	}
+	
+	if (data == FEASIBLE)
+	{
+	    lb = mid;
+	    lb_certainly_feasible = true;
+	} else if (data == INFEASIBLE) {
+	    ub = mid-1;
+	} else {
+	    dynprog_needed = true;
+	    break;
+	}
+	mid = (lb+ub+1)/2;
+    }
+
+    if (!dynprog_needed && lb_certainly_feasible)
+    {
+	return lb;
+    }
+
+    MEASURE_ONLY(tat->dynprog_calls++);
+    // DISABLED: passing ub so that dynprog_max_dangerous takes care of pushing into the cache
+    // DISABLED: maximum_feasible = dynprog_max_dangerous(b,lb,ub,tat);
+    bin_int maximum_feasible = dynprog_max_safe(b,tat);
+    if (maximum_feasible == INFEASIBLE)
+    {
+	fprintf(stderr, "Maxfeas reports INFEASIBLE, sorting reports %" PRIi16 ":\n", dynprog_max_sorting(b,tat) );
+	print_binconf_stream(stderr, b);
+	fprintf(stderr, "lb %" PRIi16 ", ub %" PRIi16 ", bestfit: %" PRIi16 ", maxfeas: %" PRIi16 ", initial_ub %" PRIi16".\n", lb, ub, bestfit, dynprog_max_safe(b,tat), initial_ub);
+	fprintf(stderr, "dphash %" PRIu64 ", pack_and_query [%" PRIi16 ", %" PRIi16 "]:", b->dphash(), ub, initial_ub);
+	for (bin_int dbug = ub; dbug <= initial_ub; dbug++)
+	{
+	    fprintf(stderr, "%d,", pack_and_query(b,dbug,tat));
+	}
+	fprintf(stderr, "\nhashes: [");
+	for (bin_int dbug = ub; dbug <= initial_ub; dbug++)
+	{
+	    bin_int dbug_items = b->items[dbug];
+	    // print itemhash as if there was one more item of type dbug
+	    fprintf(stderr, "%" PRIu64 ", ", b->dphash() ^ Zi[dbug*(MAX_ITEMS+1) + dbug_items] ^  Zi[dbug*(MAX_ITEMS+1) + dbug_items+1]);
+	}
+
+	fprintf(stderr, "].\n");
+
+	assert(maximum_feasible != INFEASIBLE);
+    }
+    // DEBUG
+    /*  bin_int check = dynprog_max_sorting(b,tat);
+
+    if(check != maximum_feasible)
+    {
+	fprintf(stderr, "Sorting %" PRIi16 " and safe %" PRIi16 " disagree:", check, maximum_feasible);
+	print_binconf_stream(stderr, b);
+	assert(check == maximum_feasible);
+    }
+    */
+    
+    if(!DISABLE_DP_CACHE)
+    {
+	for (bin_int i = maximum_feasible+1; i <= ub; i++)
+	{
+/*	    const uint64_t suspect_hash = 7654491068870699107LLU;
+	    bin_int dbug_items = b->items[i];
+	    if (b->dphash() ^ Zi[i*(MAX_ITEMS+1) + dbug_items] ^  Zi[i*(MAX_ITEMS+1) + dbug_items+1] == suspect_hash)
+	    {
+		fprintf(stderr, "Suspect hash pushed into cache as infeasible with item %" PRIi16 ", initial and binconf:", i);
+		print_binconf_stream(stderr, b);
+		fprintf(stderr, "\nlb %" PRIi16 ", ub %" PRIi16 ", bestfit: %" PRIi16 ", maxfeas: %" PRIi16 ", initial_ub %" PRIi16".\n", lb, ub, bestfit, dynprog_max_safe(b,tat), initial_ub);
+		fprintf(stderr, "dphash %" PRIu64 ", pack_and_query [%" PRIi16 ", %" PRIi16 "]:", b->dphash(), ub, initial_ub);
+		for (bin_int dbug = ub; dbug <= initial_ub; dbug++)
+		{
+		    fprintf(stderr, "%d,", pack_and_query(b,dbug,tat));
+		}
+		fprintf(stderr, "\n");
+	    }
+*/
+
+	    pack_and_hash<PERMANENT>(b,i,0,INFEASIBLE,tat);
+	}
+		
+	for (bin_int i = lb; i <= maximum_feasible; i++)
+	{
+	    pack_and_hash<PERMANENT>(b,i,0,FEASIBLE,tat);
 	}
     }
 
+    if (maximum_feasible < lb)
+    {
+	return INFEASIBLE;
+    }
+ 
     return maximum_feasible;
 }
 

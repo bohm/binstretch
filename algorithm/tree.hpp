@@ -10,6 +10,7 @@
 #include <atomic>
 #include <chrono>
 #include <queue>
+#include <stack>
 #include "common.hpp"
 
 // a game tree (actually a DAG) used for outputting the resulting
@@ -162,7 +163,7 @@ struct tree_attr {
 
 // A sapling is an adversary vertex which will be processed by the parallel
 // minimax algorithm (its tree will be expanded).
-std::queue<adversary_vertex*> sapling_queue;
+std::stack<adversary_vertex*> sapling_queue;
 
 /* Initialize the game tree with the information in the parameters. */
 

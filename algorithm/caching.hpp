@@ -51,7 +51,13 @@ bin_int is_hashed_atomic(conf_el *hashtable, uint64_t hash, uint64_t logpart, th
 
 		if (i == LINPROBE_LIMIT - 1)
 		{
-			posvalue = FULL_NOT_FOUND;
+		    posvalue = FULL_NOT_FOUND;
+		}
+
+		// bounds check
+		if (logpart + i >= HASHSIZE-1)
+		{
+		    return FULL_NOT_FOUND;
 		}
 	}
 	return posvalue;
@@ -90,6 +96,14 @@ int hashpush_atomic(conf_el *hashtable, uint64_t hash, uint64_t data, uint64_t l
 		    found_a_spot = true;
 		    return ret;
 		}
+
+		// bounds check
+		if (logpart+i == HASHSIZE-1)
+		{
+		    hashtable[logpart + i]._data = data;
+		    return INSERTED;
+		}
+
 	}
 
 	// if the cache is full, choose a random position
@@ -116,6 +130,7 @@ dpht_el_extended is_dp_hashed_atomic(uint64_t hash, uint64_t logpart, thread_att
 	{
 	    MEASURE_ONLY(tat->dp_partial_nf++);
 	    candidate._feasible = UNKNOWN;
+	    candidate._permanence = PERMANENT;
 	    return candidate;
 	}
 	
@@ -134,9 +149,17 @@ dpht_el_extended is_dp_hashed_atomic(uint64_t hash, uint64_t logpart, thread_att
 	{
 	    MEASURE_ONLY(tat->dp_full_nf++);
 	}
+
+	// bounds check
+	if (logpart + i >= BC_HASHSIZE-1)
+	{
+	    MEASURE_ONLY(tat->dp_full_nf++);
+	    break;
+	}
     }
 
     candidate._feasible = UNKNOWN;
+    candidate._permanence = PERMANENT;
     return candidate;
 }
 
@@ -168,6 +191,14 @@ template <int MODE> int hashpush_dp_atomic(uint64_t hash, const dpht_el_extended
 		}
 		return INSERTED;
 	    }
+
+// check bounds of hashtable
+	    if (logpart+i == BC_HASHSIZE-1)
+	    {
+		dpht[logpart + i].store(data);
+		return INSERTED;
+	    }
+
 	}
 
 	// if the cache is full, choose a random position
@@ -249,7 +280,7 @@ void loadconf_hashpush(uint64_t loadhash, thread_attr *tat)
     tat->loadht[loadlogpart(loadhash)] = loadhash;
 }
 
-template <int MODE> void dp_hashpush_feasible(const binconf *d, int16_t empty_bins, thread_attr *tat)
+void dp_hashpush_feasible(const binconf *d, thread_attr *tat)
 {
     MEASURE_ONLY(tat->dp_insertions++);
 
@@ -257,9 +288,9 @@ template <int MODE> void dp_hashpush_feasible(const binconf *d, int16_t empty_bi
     dpht_el_extended ins;
     ins._hash = hash;
     ins._feasible = FEASIBLE;
-    ins._permanence = MODE;
-    ins._empty_bins = empty_bins;
-    hashpush_dp_atomic<MODE>(hash, ins, dplogpart(hash), tat);
+    ins._permanence = PERMANENT;
+    ins._empty_bins = 0;
+    hashpush_dp_atomic<PERMANENT>(hash, ins, dplogpart(hash), tat);
 }
 
 void dp_hashpush_infeasible(const binconf *d, thread_attr *tat)

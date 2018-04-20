@@ -10,9 +10,6 @@ struct thread_attr {
     std::unordered_set<std::array<bin_int, BINS> >* oldset;
     std::unordered_set<std::array<bin_int, BINS> >* newset;
 
-    std::vector<std::array<bin_int, BINS > > *oldtqueue;
-    std::vector<std::array<bin_int, BINS > > *newtqueue;
-
     std::vector<loadconf> *oldloadqueue;
     std::vector<loadconf> *newloadqueue;
 
@@ -33,7 +30,8 @@ struct thread_attr {
     std::chrono::time_point<std::chrono::system_clock> eval_start;
     bool current_overdue = false;
     uint64_t overdue_tasks = 0;
-
+// debug
+//    int maxfeas_reason = 0;
 #ifdef MEASURE
     uint64_t dp_hit = 0;
     uint64_t dp_partial_nf = 0;

@@ -28,20 +28,14 @@ std::map<llu, task> tm;
 template<int MODE> bool possible_task_advanced(adversary_vertex *v, int largest_item)
 {
     int target_depth = 0;
-    if (BEING_WORKER)
+    if (largest_item >= S/4)
     {
-	target_depth = computation_root->depth + WORKER_DEPTH;
+	target_depth = computation_root->depth + QUEEN_DEPTH;
+    } else if (largest_item >= 3)
+    {
+	target_depth = computation_root->depth + QUEEN_DEPTH + 1;
     } else {
-	// queen's function is more complicated
-	if (largest_item >= S/4)
-	{
-	    target_depth = computation_root->depth + QUEEN_DEPTH;
-	} else if (largest_item >= 3)
-	{
-	    target_depth = computation_root->depth + QUEEN_DEPTH + 1;
-	} else {
-	    target_depth = computation_root->depth + QUEEN_DEPTH + 3;
-	}
+	target_depth = computation_root->depth + QUEEN_DEPTH + 6;
     }
 
     if (target_depth - v->depth <= 0)
@@ -192,8 +186,7 @@ unsigned int collect_tasks()
     unsigned int collected = 0;
     for (int i =0; i < THREADS; i++)
     {
-	std::unique_lock<std::mutex> l(collection_lock[i]);
-	//pthread_mutex_lock(&collection_lock[i]);
+	std::unique_lock<std::mutex> l(queen_mutex);
 
 	for (auto &kv: completed_tasks[i])
 	{
@@ -212,7 +205,6 @@ unsigned int collect_tasks()
 
 	completed_tasks[i].clear();
 	l.unlock();
-	//pthread_mutex_unlock(&collection_lock[i]);
     }
     return collected;
 }

@@ -45,7 +45,7 @@ void dynprog_attr_free(thread_attr *tat)
 {
     delete tat->oldloadqueue;
     delete tat->newloadqueue;
-    delete tat->loadht;
+    delete[] tat->loadht;
 }
 
 #ifdef MEASURE
@@ -73,9 +73,10 @@ template <int MODE> void pack_and_hash(binconf *h, bin_int item, bin_int empty_b
     h->_itemcount++;
     h->_totalload += item;
     h->dp_rehash(item);
+
     if(feasibility == FEASIBLE)
     {
-	dp_hashpush_feasible<MODE>(h, empty_bins, tat);
+	dp_hashpush_feasible(h, tat);
     } else if (feasibility == INFEASIBLE)
     {
 	dp_hashpush_infeasible(h,tat);
@@ -108,6 +109,176 @@ void print_dynprog_measurements()
 }
 #endif
 
+
+// functions used by dynprog_test_sorting
+
+// lower-level sortload (modifies array, counts from 0)
+int sortarray_one_increased(std::array<bin_int, BINS>& array, int newly_increased)
+{
+    int i = newly_increased;
+    while (!((i == 0) || (array[i-1] >= array[i])))
+    {
+	std::swap(array[i-1],array[i]);
+	i--;
+    }
+
+    return i;
+
+}
+
+
+// lower-level sortload_one_decreased (modifies array, counts from 0)
+int sortarray_one_decreased(std::array<bin_int, BINS>& array, int newly_decreased)
+{
+    int i = newly_decreased;
+    while (!((i == BINS-1) || (array[i+1] <= array[i])))
+    {
+	std::swap(array[i+1],array[i]);
+	i++;
+    }
+    return i;
+}
+
+// Sparse dynprog test which uses tuples directly (and does not encode/decode them)
+bin_int dynprog_test_sorting(const binconf *conf, thread_attr *tat)
+{
+    std::vector<std::array<bin_int, BINS> > oldtqueue = {};
+    std::vector<std::array<bin_int, BINS> > newtqueue = {};
+    
+    std::vector<std::array<bin_int, BINS> > *poldq;
+    std::vector<std::array<bin_int, BINS> > *pnewq;
+
+    poldq = &oldtqueue;
+    pnewq = &newtqueue;
+
+    int phase = 0;
+
+    for (int size=S; size>=3; size--)
+    {
+	int k = conf->items[size];
+	while (k > 0)
+	{
+	    phase++;
+	    if (phase == 1) {
+
+		std::array<bin_int, BINS> first;
+		for (int i = 0; i < BINS; i++)
+		{
+		    first[i] = 0;
+		}
+		first[0] = size;
+		pnewq->push_back(first);
+	    } else {
+		for (unsigned int i=0; i < poldq->size(); i++)
+		{
+		    std::array<bin_int, BINS> tuple = (*poldq)[i];
+
+		    // Instead of having a global array of feasibilities, we now sort the poldq array.
+		    if (i >= 1)
+		    {
+			if (tuple == (*poldq)[i-1])
+			{
+			    continue;
+			}
+		    }
+		    
+		    // try and place the item
+		    for(int i=0; i < BINS; i++)
+		    {
+			// same as with Algorithm, we can skip when sequential bins have the same load
+			if (i > 0 && tuple[i] == tuple[i-1])
+			{
+			    continue;
+			}
+			
+			if(tuple[i] + size > S) {
+			    continue;
+			}
+			
+			tuple[i] += size;
+			int newpos = sortarray_one_increased(tuple, i);
+			pnewq->push_back(tuple);
+			tuple[newpos] -= size;
+			sortarray_one_decreased(tuple, newpos);
+		    }
+		}
+		if (pnewq->size() == 0) {
+		    return INFEASIBLE;
+		}
+	    }
+
+	    std::swap(poldq, pnewq);
+	    std::sort(poldq->begin(), poldq->end()); 
+	    pnewq->clear();
+	    k--;
+	}
+    }
+
+    /* Heuristic: solve the cases of sizes 2 and 1 without generating new
+       configurations. */
+
+   
+    for (unsigned int i=0; i < poldq->size(); i++)
+    {
+	std::array<bin_int, BINS> tuple = (*poldq)[i];
+	// Instead of having a global array of feasibilities, we now sort the poldq array.
+	if (i >= 1)
+	{
+	    if (tuple == (*poldq)[i-1])
+	    {
+		continue;
+	    }
+	}
+	int free_size = 0, free_for_twos = 0;
+	for (int i=0; i<BINS; i++)
+	{
+	    free_size += (S - tuple[i]);
+	    free_for_twos += (S - tuple[i])/2;
+	}
+	
+	if ( free_size < conf->items[1] + 2*conf->items[2])
+	{
+	    continue;
+	}
+	if (free_for_twos >= conf->items[2])
+	{
+	    return FEASIBLE;
+	}
+    }
+
+    return INFEASIBLE;
+}
+
+bin_int dynprog_max_sorting(binconf *conf, thread_attr *tat)
+{
+    bin_int ret = INFEASIBLE;
+    for (int item = S; item >= 1; item--)
+    {
+	conf->items[item]++; // in some sense, it is an inconsistent state, since "item" is not packed in "h"
+	conf->_itemcount++;
+	conf->_totalload += item;
+	conf->dp_rehash(item);
+
+	if (dynprog_test_sorting(conf,tat) == FEASIBLE)
+	{
+	    ret = item;
+	}
+
+	conf->_totalload -= item;
+	conf->_itemcount--;
+	conf->items[item]--;
+	conf->dp_unhash(item);
+
+	if (ret != INFEASIBLE)
+	{
+	    break;
+	}
+
+    }
+
+    return ret;
+}
+
 // Sparse dynprog test which uses tuples directly (and does not encode/decode them)
 dynprog_result dynprog_test_loadhash(const binconf *conf, thread_attr *tat)
 {
@@ -125,7 +296,7 @@ dynprog_result dynprog_test_loadhash(const binconf *conf, thread_attr *tat)
     int phase = 0;
 
     //empty the loadhash first
-    memset(tat->loadht, 0, LOADSIZE*8);
+    //memset(tat->loadht, 0, LOADSIZE*8);
 
     for (int size=S; size>=3; size--)
     {
@@ -219,13 +390,13 @@ bin_int dynprog_max_safe(const binconf *conf, thread_attr *tat)
     tat->oldloadqueue->clear();
     std::vector<loadconf> *poldq = tat->oldloadqueue;
     std::vector<loadconf> *pnewq = tat->newloadqueue;
-    //memset(tat->loadht, 0, LOADSIZE*8);
+    memset(tat->loadht, 0, LOADSIZE*8);
 
     uint64_t salt = rand_64bit();
     int phase = 0;
-    bin_int max_overall = 0;
-    bin_int smallest_item = S;
-    for (int i = 1; i < S; i++)
+    bin_int max_overall = INFEASIBLE;
+    bin_int smallest_item = -1;
+    for (int i = 1; i <= S; i++)
     {
 	if (conf->items[i] > 0)
 	{
@@ -234,9 +405,9 @@ bin_int dynprog_max_safe(const binconf *conf, thread_attr *tat)
 	}
     }
     
-    for (int size=S; size>=3; size--)
+    for (bin_int size=S; size>=1; size--)
     {
-	int k = conf->items[size];
+	bin_int k = conf->items[size];
 	while (k > 0)
 	{
 	    phase++;
@@ -250,6 +421,11 @@ bin_int dynprog_max_safe(const binconf *conf, thread_attr *tat)
 		first.hashinit();
 		first.assign_and_rehash(size, 1);
 		pnewq->push_back(first);
+
+		if(size == smallest_item && k == 1)
+		{
+		    return S;
+		}
 	    } else {
 		MEASURE_ONLY(tat->largest_queue_observed = std::max(tat->largest_queue_observed, poldq->size()));
 		for (loadconf& tuple: *poldq)
@@ -266,6 +442,7 @@ bin_int dynprog_max_safe(const binconf *conf, thread_attr *tat)
 			    break;
 			}
 
+			uint64_t debug_loadhash = tuple.loadhash;
 			int newpos = tuple.assign_and_rehash(size, i);
 			
 			if(! loadconf_hashfind(tuple.loadhash ^ salt, tat))
@@ -284,11 +461,12 @@ bin_int dynprog_max_safe(const binconf *conf, thread_attr *tat)
 			}
 
 		        tuple.unassign_and_rehash(size, newpos);
+			assert(tuple.loadhash == debug_loadhash);
 		    }
 		}
 		if (pnewq->size() == 0)
 		{
-		    return 0;
+		    return INFEASIBLE;
 		}
 	    }
 
@@ -300,6 +478,9 @@ bin_int dynprog_max_safe(const binconf *conf, thread_attr *tat)
 
     /* Heuristic: solve the cases of sizes 2 and 1 without generating new
        configurations. */
+
+    // doesn't work, disabled for now
+    /*
     for (const loadconf& tuple: *poldq)
     {
 	int free_size_except_last = 0, free_for_twos_except_last = 0;
@@ -327,7 +508,7 @@ bin_int dynprog_max_safe(const binconf *conf, thread_attr *tat)
 		max_overall = free_space_on_last;
 	    }
 	}
-    }
+	}*/
     
     return max_overall;
 }
@@ -625,33 +806,13 @@ bin_int pack_and_query(binconf *h, int item, thread_attr *tat)
     h->dp_rehash(item);
     dpht_el_extended query = is_dp_hashed(h, tat);
     bin_int ret = query._feasible;
+    assert(query._permanence == PERMANENT);
     h->_totalload -= item;
     h->_itemcount--;
     h->items[item]--;
     h->dp_unhash(item);
     return ret;
 }
-
-// packs item into h and pushes it into the dynprog cache
-void pack_and_hash(binconf *h, bin_int item, bin_int feasibility, thread_attr *tat)
-{
-
-    h->items[item]++; // in some sense, it is an inconsistent state, since "item" is not packed in "h"
-    h->_itemcount++;
-    h->_totalload += item;
-    h->dp_rehash(item);
-    if(feasibility == FEASIBLE)
-    {
-	dp_hashpush_feasible<PERMANENT>(h,0,tat);
-    } else {
-	dp_hashpush_infeasible(h,tat);
-    }
-    h->_totalload -= item;
-    h->_itemcount--;
-    h->items[item]--;
-    h->dp_unhash(item);
-}
-
 
 // DISABLED: pack, query and fill in
 // returns FEASIBLE, INFEASIBLE or UNKNOWN

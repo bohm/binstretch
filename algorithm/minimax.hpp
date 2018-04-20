@@ -158,17 +158,19 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
 	    return conf_in_hashtable;
 	}
     }
+
+    // idea: start with monotonicity 0 (full monotone), and move towards S (full generality)
+    int lower_bound = std::max(1, tat->last_item - monotonicity);
+
     // finds the maximum feasible item that can be added using dyn. prog.
     bin_int old_max_feasible = tat->prev_max_feasible;
-    bin_int dp = MAXIMUM_FEASIBLE(b, depth, tat);
+    bin_int dp = MAXIMUM_FEASIBLE(b, depth, lower_bound, old_max_feasible, tat);
     tat->prev_max_feasible = dp;
-    int maximum_feasible = dp;
+    int maximum_feasible = dp; // possibly also INFEASIBLE == -1
     int below = 1;
     int r = 1;
     DEEP_DEBUG_PRINT("Trying player zero choices, with maxload starting at %d\n", maximum_feasible);
 
-    // idea: start with monotonicity 0 (full monotone), and move towards S (full generality)
-    int lower_bound = std::max(1, tat->last_item - monotonicity);
     for (int item_size = maximum_feasible; item_size>=lower_bound; item_size--)
     {
         DEEP_DEBUG_PRINT("Sending item %d to algorithm.\n", item_size);

@@ -19,6 +19,9 @@ int main(void)
     MPI_Comm_size(MPI_COMM_WORLD, &world_size);
     MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
 
+    MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, 0, MPI_INFO_NULL, &shmcomm);
+    MPI_Comm_rank(shmcomm, &shm_rank);
+   
     int ret = -1;
     if (QUEEN_ONLY)
     {
@@ -27,7 +30,9 @@ int main(void)
 	if(world_rank != 0)
 	{
 	    worker();
+//	    dummy_worker();
 	} else {
+	    // queen is now by default two-threaded
 	    ret = queen();
 	}
     }

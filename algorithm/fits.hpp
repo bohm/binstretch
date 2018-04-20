@@ -175,7 +175,7 @@ void onlineloads_unassign(loadconf& ol, int item, int bin)
     ol.unassign_without_hash(item, bin);
 }
 
-int onlineloads_bestfit(const loadconf& ol)
+bin_int onlineloads_bestfit(const loadconf& ol)
 {
     // if best fit was not able to legally pack it, return 0
     if(ol.loads[1] > S)

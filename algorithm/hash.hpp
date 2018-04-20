@@ -189,16 +189,6 @@ void hashtable_init()
     {
 	dpht[i].store(x);
     }
-
-#ifdef GOOD_MOVES
-    bmc = new best_move_el[BESTMOVESIZE];
-    for (uint64_t i =0; i < BESTMOVESIZE; i++)
-    {
-	bmc[i]._hash = 0;
-	bmc[i]._move = 0;
-    }
-#endif
-
 }
 
 void cache_measurements()
@@ -293,18 +283,14 @@ void bc_hashtable_clear()
 void hashtable_cleanup()
 {
 
-    delete Zl;
-    delete Zi;
+    delete[] Zl;
+    delete[] Zi;
     
-    delete dpht;
-    delete Ai;
+    delete[] dpht;
+    delete[] Ai;
 
     //hashtable cleanup
-    delete ht;
-#ifdef GOOD_MOVES
-    delete bmc;
-#endif
-
+    delete[] ht;
 }
 
 void printBits32(unsigned int num)
