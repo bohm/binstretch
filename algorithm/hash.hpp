@@ -192,29 +192,38 @@ void shared_memory_init(int sharedmem_size, int sharedmem_rank)
     void *baseptr;
     ht_size = WORKER_HASHSIZE*sharedmem_size;
     dpht_size = WORKER_BC_HASHSIZE*sharedmem_size;
-    fprintf(stderr, "Local process %d of %d: ht_size %llu, dpht_size %llu\n", sharedmem_rank, sharedmem_size, ht_size, dpht_size);
+    fprintf(stderr, "Local process %d of %d: ht_size %llu, dpht_size %llu\n", sharedmem_rank, sharedmem_size, ht_size*sizeof(ht_size*sizeof(std::atomic<conf_el>)), dpht_size*sizeof(std::atomic<dpht_el>));
 // allocate hashtables
     if(sharedmem_rank == 0)
     {
-	MPI_Win_allocate_shared(ht_size*sizeof(std::atomic<conf_el>), sizeof(std::atomic<conf_el>), MPI_INFO_NULL, shmcomm, &baseptr, &ht_win);
+	int ret = MPI_Win_allocate_shared(ht_size*sizeof(std::atomic<conf_el>), sizeof(std::atomic<conf_el>), MPI_INFO_NULL, shmcomm, &baseptr, &ht_win);
+        if (ret == MPI_SUCCESS)
+	{
+	    printf("success\n");
+	}
 	ht = (std::atomic<conf_el>*) baseptr;
-	MPI_Win_allocate_shared(dpht_size*sizeof(std::atomic<dpht_el>), sizeof(std::atomic<dpht_el>), MPI_INFO_NULL, shmcomm, &baseptr, &dpht_win);
-	dpht = (std::atomic<dpht_el>*) baseptr;
-
-	assert(ht != NULL && dpht != NULL);
-	dpht_el x = {0};
+	
+	int ret2 = MPI_Win_allocate_shared(dpht_size*sizeof(std::atomic<dpht_el>), sizeof(std::atomic<dpht_el>), MPI_INFO_NULL, shmcomm, &baseptr, &dpht_win);
+	if(ret2 == MPI_SUCCESS)
+	{
+	    printf("success also\n");
+	}
 	conf_el y = {0};
+	dpht_el x = {0};
+	dpht = (std::atomic<dpht_el>*) baseptr;
+	assert(ht != NULL && dpht != NULL);
 
 	// initialize only your own part of the shared memory
 	for (uint64_t i = 0; i < ht_size; i++)
 	{
 	    ht[i].store(y);
-	    if(i % 10000 == 0)
+	    /*if(i % 10000 == 0)
 	    {
 		fprintf(stderr, "Inserted into element %llu.\n", i);
-	    }
+		}*/
 	}
-	
+
+	/*
 	for (uint64_t i =0; i < dpht_size; i++)
 	{
 	    dpht[i].store(x);
@@ -222,7 +231,8 @@ void shared_memory_init(int sharedmem_size, int sharedmem_rank)
 	    {
 		fprintf(stderr, "DPinserted into element %llu.\n", i);
 	    }
-	}
+	    }*/
+	
     } else {
 	MPI_Win_allocate_shared(0, sizeof(std::atomic<conf_el>), MPI_INFO_NULL,
                               shmcomm, &ht, &ht_win);

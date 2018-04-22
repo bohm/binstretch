@@ -33,7 +33,7 @@ const bin_int S = 14;
 // target goal of the online bin stretching problem
 const bin_int R = 19;
 // Change this number for the selected number of bins.
-const bin_int BINS = 7;
+const bin_int BINS = 9;
 
 // If you want to generate a specific lower bound, you can create an initial bin configuration here.
 // You can also insert an initial sequence here.
@@ -45,15 +45,15 @@ const std::vector<bin_int> INITIAL_ITEMS = {};
 const std::vector<bin_int> INITIAL_SEQUENCE = {5};
 //const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1,1,1,1};
 
-const int FIRST_PASS = 0;
+const int FIRST_PASS = 1;
 
 // constants used for good situations
 const int RMOD = (R-1);
 const int ALPHA = (RMOD-S);
 
 // bitwise length of indices of hash tables and lock tables
-const unsigned int HASHLOG = 15;
-const unsigned int BCLOG = 15;
+const unsigned int HASHLOG = 24;
+const unsigned int BCLOG = 12;
 const unsigned int LOADLOG = 13;
 
 // experimental: caching of largest feasible item that can be sent
@@ -106,7 +106,7 @@ const int MAX_EXPANSION = 1;
 // completely disable dynamic programming or binconf cache
 // (useful to debug soundness of cache algs)
 const bool DISABLE_CACHE = false;
-const bool DISABLE_DP_CACHE = false;
+const bool DISABLE_DP_CACHE = true;
 
 // ------------------------------------------------
 // system constants and global variables (no need to change)
