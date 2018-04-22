@@ -804,7 +804,7 @@ bin_int pack_and_query(binconf *h, int item, thread_attr *tat)
     h->_itemcount++;
     h->_totalload += item;
     h->dp_rehash(item);
-    dpht_el_extended query = is_dp_hashed(h, tat);
+    dpht_el query = is_dp_hashed(h, tat);
     bin_int ret = query._feasible;
     assert(query._permanence == PERMANENT);
     h->_totalload -= item;

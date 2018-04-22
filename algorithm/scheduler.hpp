@@ -26,6 +26,8 @@ const int TERMINATE = 4;
 const int SOLUTION = 5;
 const int CHANGE_MONOTONICITY = 6;
 const int LAST_ITEM = 7;
+const int ZOBRIST_ITEMS = 8;
+const int ZOBRIST_LOADS = 9;
 
 const int SYNCHRO_SLEEP = 20;
 std::vector<uint64_t> remote_taskmap;
@@ -37,6 +39,32 @@ void clear_all_caches()
     winning_tasks.clear();
     tm.clear();
     running_and_removed.clear();
+}
+
+void transmit_zobrist()
+{
+    assert(Zi != NULL && Zl != NULL);
+    fprintf(stderr, "Zi[1]: %" PRIu64 "\n", Zi[1]);
+    for(int i = 1; i < world_size; i++)
+    {
+	// we block here to make sure we are in sync with everyone
+	MPI_Send(Zi,(MAX_ITEMS+1)*(S+1), MPI_UNSIGNED_LONG, i, ZOBRIST_ITEMS, MPI_COMM_WORLD);
+	MPI_Send(Zl,(BINS+1)*(R+1), MPI_UNSIGNED_LONG, i, ZOBRIST_LOADS, MPI_COMM_WORLD);
+    }
+
+}
+
+
+void receive_zobrist()
+{
+
+    MPI_Status stat; 
+    Zi = new uint64_t[(S+1)*(MAX_ITEMS+1)];
+    Zl = new uint64_t[(BINS+1)*(R+1)];
+
+    MPI_Recv(Zi, (MAX_ITEMS+1)*(S+1), MPI_UNSIGNED_LONG, QUEEN, ZOBRIST_ITEMS, MPI_COMM_WORLD, &stat);
+    MPI_Recv(Zl, (BINS+1)*(R+1), MPI_UNSIGNED_LONG, QUEEN, ZOBRIST_LOADS, MPI_COMM_WORLD, &stat);
+    fprintf(stderr, "Worker Zi[1]: %" PRIu64 "\n", Zi[1]);
 }
 
 void collect_worker_tasks()
@@ -195,7 +223,6 @@ void worker()
     MPI_Get_processor_name(processor_name, &name_len);
     printf("Worker reporting for duty: %s, rank %d out of %d instances\n",
 	   processor_name, world_rank, world_size);
-
     int irrel = 1;
     int flag = 0;
     int terminate_flag = 0;
@@ -206,8 +233,9 @@ void worker()
 
     task remote_task;
 
-    zobrist_init();
-    hashtable_init();
+    receive_zobrist();
+    //zobrist_init();
+    shared_memory_init(shm_size, shm_rank);
     while(true)
     {
 	remote_task.bc.blank();
@@ -233,7 +261,7 @@ void worker()
 	    //fprintf(stderr, "Worker %d: switch to monotonicity %d.\n", world_rank, monotonicity);
 	    // clear caches, as monotonicity invalidates some situations
 	    // dynprog_hashtable_clear();
-	    clear_cache_of_ones();
+	    // clear_cache_of_ones();
 	}
 
 	// Wait for the queen to respond with the loads.
@@ -282,7 +310,7 @@ void dummy_worker()
     task remote_task;
 
     zobrist_init();
-    hashtable_init();
+    // shared_memory_init(); // probably not working right now, fix later
     while(true)
     {
 	// Send a request for a task to the queen.
@@ -325,83 +353,6 @@ void dummy_worker()
 
 std::atomic<bool> queen_cycle_terminate(false);
 std::atomic<int> updater_result(POSTPONED);
-
-// evaluation that avoids MPI
-int lonely_queen()
-{
-    char processor_name[MPI_MAX_PROCESSOR_NAME];
-    int name_len;
-    MPI_Get_processor_name(processor_name, &name_len);
-    printf("Lonely queen reporting for duty: %s, rank %d out of %d instances\n",
-	   processor_name, world_rank, world_size);
-
-    int flag = 0;
-    int solution_received = 0;
-    MPI_Status stat;
-    int irrel = 0;
-    int sent = 0;
-    int solution = 0;
-    MPI_Request blankreq;
-    int sol_count = 0;
-
-    zobrist_init();
-    hashtable_init();
-
-    binconf root = {INITIAL_LOADS, INITIAL_ITEMS};
-    adversary_vertex* root_vertex = new adversary_vertex(&root, 0, 1);
-    generated_graph.clear();
-    generated_graph[root_vertex->bc->loadhash ^ root_vertex->bc->itemhash] = root_vertex;
- 
-    if (BINS == 3 && 3*ALPHA >= S)
-    {
-	fprintf(stderr, "All good situation heuristics will be applied.\n");
-    } else {
-	fprintf(stderr, "Only some good situations will be applied.\n");
-    }
-
-    sequencing(INITIAL_SEQUENCE, root, root_vertex);
-
-    int ret = POSTPONED;
-    
-    while (!sapling_queue.empty())
-    {
-	adversary_vertex* sapling = sapling_queue.top();
-	sapling_queue.pop();
-	clear_all_caches();
-
-	PROGRESS_PRINT("Queen: sapling queue size: %zu, current sapling of depth %d:\n", sapling_queue.size(), sapling->depth);
-	print_binconf_stream(stderr, sapling->bc);
-
- 	monotonicity = FIRST_PASS;
-       
-
-	for (; monotonicity <= S-1; monotonicity++)
-	{
-	    clear_cache_of_ones();
- 	    purge_sapling(sapling);
-	    MEASURE_ONLY(auto iteration_start = std::chrono::system_clock::now());
-	    ret = worker_solve(sapling);
-#ifdef MEASURE
-	    auto iteration_end = std::chrono::system_clock::now();
-	    std::chrono::duration<long double> iter_time = iteration_end - iteration_start;
-	    MEASURE_PRINT("Iteration time: %Lfs.\n", iter_time.count());
-#endif 
-	
-	    if (ret == 0)
-	    {
-		break;
-	    }
-	}
-	      
- 	if (ret == 1)
-	{
-	    return 1;
-	}
-	      
-   }
-
-   return 0;
-}
 
 void queen_updater(adversary_vertex* sapling)
 {
@@ -476,6 +427,9 @@ int queen()
     int sol_count = 0;
 
     zobrist_init();
+    transmit_zobrist();
+    // even though the queen does not use the database, it needs to synchronize with others.
+    shared_memory_init(shm_size, shm_rank);
 
     binconf root = {INITIAL_LOADS, INITIAL_ITEMS};
     adversary_vertex* root_vertex = new adversary_vertex(&root, 0, 1);

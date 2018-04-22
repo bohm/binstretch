@@ -45,27 +45,23 @@ inline bin_int get_last_bit(uint64_t n)
 class conf_el
 {
 public:
-    std::atomic<uint64_t> _data;
-
-    conf_el()
-	{
-	}
-    
-    conf_el(uint64_t d)
+    uint64_t _data;
+    /* conf_el(uint64_t d)
 	{
 	    _data = d;
 	}
     conf_el(uint64_t hash, uint64_t posvalue)
 	{
-	    _data = (zero_last_bit(hash) | posvalue);
+	    _data = (zero_last_two_bits(hash) | posvalue);
 	}
+    */
     inline bin_int value() const
 	{
-	    return get_last_bit(_data);
+	    return get_last_two_bits(_data);
 	}
     inline uint64_t hash() const
 	{
-	    return zero_last_bit(_data);
+	    return zero_last_two_bits(_data);
 	}
     inline bool empty() const
 	{
@@ -92,9 +88,7 @@ public:
 	}
 };
 
-
-// An extended variant of dpht_el
-class dpht_el_extended
+class dpht_el
 {
 public:
     uint64_t _hash;
@@ -132,10 +126,12 @@ public:
 };
 
 // generic hash table (for configurations)
-conf_el *ht;
+std::atomic<conf_el> *ht = NULL;
+std::atomic<dpht_el> *dpht = NULL; // = new std::atomic<dpht_el_extended>[BC_HASHSIZE];
+//void *baseptr, *dpbaseptr;
 
+uint64_t ht_size = 0, dpht_size = 0;
 // hash table for dynamic programming calls / feasibility checks
-std::atomic<dpht_el_extended> *dpht = new std::atomic<dpht_el_extended>[BC_HASHSIZE];
 
 // DEBUG: Mersenne twister
 
@@ -147,10 +143,9 @@ uint64_t rand_64bit()
     return r;
 }
 
-/* Initializes the Zobrist hash table.
-   Adding Zl[i][0] and Zi[i][0] enables us
-   to "unhash" zero.
- */
+// Initializes the Zobrist hash table.
+// Adding Zl[i][0] and Zi[i][0] enables us to "unhash" zero.
+
 void zobrist_init()
 {
     // seeded, non-random
@@ -158,13 +153,13 @@ void zobrist_init()
     Zi = new uint64_t[(S+1)*(MAX_ITEMS+1)];
     Zl = new uint64_t[(BINS+1)*(R+1)];
 
-    Ai = new uint64_t[S+1];
 
-    for (int i=0; i<=S; i++) {
-	for (int j=0; j<=MAX_ITEMS; j++) {
+    for (int i=0; i<=S; i++)
+    {
+	for (int j=0; j<=MAX_ITEMS; j++)
+	{
 	    Zi[i*(MAX_ITEMS+1)+j] = rand_64bit();
 	}
-	Ai[i] = rand_64bit();
     }
 
     for (int i=0; i<=BINS; i++)
@@ -176,21 +171,75 @@ void zobrist_init()
     }
 }
 
-void hashtable_init()
+uint64_t quicklog(uint64_t x)
 {
-    ht = new conf_el[HASHSIZE];
-    for (uint64_t i =0; i < HASHSIZE; i++)
+    uint64_t ret;
+    while(x >>= 1)
     {
-	ht[i]._data = 0;
+	ret++;
     }
-
-    dpht_el_extended x = {0};
-    for (uint64_t i =0; i < BC_HASHSIZE; i++)
-    {
-	dpht[i].store(x);
-    }
+    return ret;
 }
 
+// Initializes hashtables.
+// Temporarily assume sharedmem_size is a power of two.
+
+void shared_memory_init(int sharedmem_size, int sharedmem_rank)
+{
+    // allocate shared memory
+    MPI_Win ht_win;
+    MPI_Win dpht_win;
+    void *baseptr;
+    ht_size = WORKER_HASHSIZE*sharedmem_size;
+    dpht_size = WORKER_BC_HASHSIZE*sharedmem_size;
+    fprintf(stderr, "Local process %d of %d: ht_size %llu, dpht_size %llu\n", sharedmem_rank, sharedmem_size, ht_size, dpht_size);
+// allocate hashtables
+    if(sharedmem_rank == 0)
+    {
+	MPI_Win_allocate_shared(ht_size*sizeof(std::atomic<conf_el>), sizeof(std::atomic<conf_el>), MPI_INFO_NULL, shmcomm, &baseptr, &ht_win);
+	ht = (std::atomic<conf_el>*) baseptr;
+	MPI_Win_allocate_shared(dpht_size*sizeof(std::atomic<dpht_el>), sizeof(std::atomic<dpht_el>), MPI_INFO_NULL, shmcomm, &baseptr, &dpht_win);
+	dpht = (std::atomic<dpht_el>*) baseptr;
+
+	assert(ht != NULL && dpht != NULL);
+	dpht_el x = {0};
+	conf_el y = {0};
+
+	// initialize only your own part of the shared memory
+	for (uint64_t i = 0; i < ht_size; i++)
+	{
+	    ht[i].store(y);
+	    if(i % 10000 == 0)
+	    {
+		fprintf(stderr, "Inserted into element %llu.\n", i);
+	    }
+	}
+	
+	for (uint64_t i =0; i < dpht_size; i++)
+	{
+	    dpht[i].store(x);
+	    if(i % 10000 == 0)
+	    {
+		fprintf(stderr, "DPinserted into element %llu.\n", i);
+	    }
+	}
+    } else {
+	MPI_Win_allocate_shared(0, sizeof(std::atomic<conf_el>), MPI_INFO_NULL,
+                              shmcomm, &ht, &ht_win);
+	MPI_Win_allocate_shared(0, sizeof(std::atomic<dpht_el>), MPI_INFO_NULL,
+			      shmcomm, &dpht, &dpht_win);
+
+	// unnecessary parameters
+	MPI_Aint ssize; int disp_unit;
+	MPI_Win_shared_query(ht_win, 0, &ssize, &disp_unit, &ht);
+	MPI_Win_shared_query(dpht_win, 0, &ssize, &disp_unit, &dpht);
+    }
+
+    // synchronize again, to make sure the memory is zeroed out for everyone
+    MPI_Barrier(MPI_COMM_WORLD);
+}
+
+/*
 void cache_measurements()
 {
 
@@ -262,22 +311,24 @@ void clear_cache_of_ones()
 
     //MEASURE_PRINT("Hashtable size: %llu, kept: %" PRIu64 ", erased: %" PRIu64 "\n", HASHSIZE, kept, erased);
 }
-void dynprog_hashtable_clear()
+*/
+
+// watch out to avoid overwriting all data
+void hashtable_clear()
 {
-    dpht_el_extended x = {0};
-    for (uint64_t i =0; i < BC_HASHSIZE; i++)
+    dpht_el x = {0};
+    conf_el y = {0};
+    
+    for (uint64_t i = 0; i < dpht_size; i++)
     {
 	dpht[i].store(x);
     }
 
-}
-
-void bc_hashtable_clear()
-{
-    for (uint64_t i =0; i < HASHSIZE; i++)
+    for (uint64_t i = 0; i < ht_size; i++)
     {
-	ht[i]._data = 0;
+	ht[i].store(y);
     }
+
 }
 
 void hashtable_cleanup()
@@ -285,12 +336,11 @@ void hashtable_cleanup()
 
     delete[] Zl;
     delete[] Zi;
-    
-    delete[] dpht;
     delete[] Ai;
-
-    //hashtable cleanup
-    delete[] ht;
+    
+// also needs to be done differently
+//    delete[] dpht;
+//    delete[] ht;
 }
 
 void printBits32(unsigned int num)
@@ -313,27 +363,25 @@ void printBits64(llu num)
    fprintf(stderr, "\n");
 }
 
-uint64_t lowerpart(llu x)
-{
-    uint64_t mask,y;
-    mask = (HASHSIZE) - 1;
-    y = (x) & mask;
-    return y;
-}
-
-inline uint64_t bmhash(const binconf* b, bin_int next_item)
-{
-    //assert(next_item >= 1 && next_item <= S);
-    return b->loadhash ^ b->itemhash ^ Ai[next_item];
-}
-
 template<unsigned int LOG> inline uint64_t logpart(uint64_t x)
 {
     return x >> (64 - LOG); 
 }
 
-const auto dplogpart = logpart<BCLOG>;
-const auto hashlogpart = logpart<HASHLOG>;
+// shared hashlog
+uint64_t hashlogpart(const uint64_t x)
+{
+    return x >> (64 - HASHLOG - shm_log); 
+}
+
+// shared dplog
+uint64_t dplogpart(const uint64_t x)
+{
+    return x >> (64 - BCLOG - shm_log); 
+}
+
+//const auto dplogpart = logpart<BCLOG>;
+//const auto hashlogpart = logpart<HASHLOG>;
 const auto loadlogpart = logpart<LOADLOG>;
 
 #endif // _HASH_HPP

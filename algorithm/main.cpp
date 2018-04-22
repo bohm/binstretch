@@ -20,12 +20,15 @@ int main(void)
     MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
 
     MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, 0, MPI_INFO_NULL, &shmcomm);
+    MPI_Comm_size(shmcomm, &shm_size);
     MPI_Comm_rank(shmcomm, &shm_rank);
-   
+    shm_log = quicklog(shm_size);
+    
     int ret = -1;
     if (QUEEN_ONLY)
     {
-	ret = lonely_queen();
+	return -1;
+	// ret = lonely_queen();
     } else {
 	if(world_rank != 0)
 	{
@@ -57,6 +60,7 @@ int main(void)
 		task_count, finished_task_count, removed_task_count);
 
 	// TODO: enable measuring for queen in multiple worker mode
+	/*
 	if (QUEEN_ONLY)
 	{
 	    MEASURE_PRINT("Total time (all threads): %Lfs.\n", time_spent.count());
@@ -66,6 +70,8 @@ int main(void)
 	    MEASURE_ONLY(print_dynprog_measurements());
 	    MEASURE_PRINT("Large item hit %" PRIu64 ", miss: %" PRIu64 "\n", total_large_item_hit, total_large_item_miss);
 	}
+	*/
+	    
 	hashtable_cleanup();
 	//graph_cleanup(root_vertex); // TODO: fix this
     }

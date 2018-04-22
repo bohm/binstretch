@@ -29,11 +29,11 @@ typedef int16_t bin_int;
 //#define ONLY_ONE_PASS 1
 
 // maximum load of a bin in the optimal offline setting
-const bin_int S = 82;
+const bin_int S = 14;
 // target goal of the online bin stretching problem
-const bin_int R = 112;
+const bin_int R = 19;
 // Change this number for the selected number of bins.
-const bin_int BINS = 3;
+const bin_int BINS = 7;
 
 // If you want to generate a specific lower bound, you can create an initial bin configuration here.
 // You can also insert an initial sequence here.
@@ -42,26 +42,26 @@ const std::vector<bin_int> INITIAL_ITEMS = {};
 //const std::vector<bin_int> INITIAL_LOADS = {8,1,1,1,1,};
 //const std::vector<bin_int> INITIAL_ITEMS = {7,0,0,0,1};
 // You can also insert an initial sequence here, and the adversary will use it as a predefined start.
-const std::vector<bin_int> INITIAL_SEQUENCE = {};
+const std::vector<bin_int> INITIAL_SEQUENCE = {5};
 //const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1,1,1,1};
 
-const int FIRST_PASS = 7;
+const int FIRST_PASS = 0;
 
 // constants used for good situations
 const int RMOD = (R-1);
 const int ALPHA = (RMOD-S);
 
 // bitwise length of indices of hash tables and lock tables
-const unsigned int HASHLOG = 26;
-const unsigned int BCLOG = 26;
+const unsigned int HASHLOG = 15;
+const unsigned int BCLOG = 15;
 const unsigned int LOADLOG = 13;
 
 // experimental: caching of largest feasible item that can be sent
 const unsigned int LFEASLOG = 10;
 // size of the hash table
 
-const llu HASHSIZE = (1ULL<<HASHLOG);
-const llu BC_HASHSIZE = (1ULL<<BCLOG);
+const llu WORKER_HASHSIZE = (1ULL<<HASHLOG);
+const llu WORKER_BC_HASHSIZE = (1ULL<<BCLOG);
 const llu LOADSIZE = (1ULL<<LOADLOG);
 
 
@@ -135,6 +135,8 @@ int world_size = 0;
 int world_rank = 0;
 MPI_Comm shmcomm; // shared memory communicator
 int shm_rank = 0;
+int shm_size = 0;
+uint64_t shm_log = 0;
 
 bool generating_tasks;
 
