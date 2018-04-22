@@ -48,7 +48,7 @@ void shared_memory_init(int sharedmem_size, int sharedmem_rank)
 	ht = (std::atomic<conf_el>*) baseptr;
 	baseptr = NULL;
 	// 16 == sizeof(std::atomic<dpht_el>)
-	int ret2 = MPI_Win_allocate_shared(dpht_size*16, 16, MPI_INFO_NULL, shmcomm, &baseptr, &dpht_win);
+	int ret2 = MPI_Win_allocate_shared(dpht_size*sizeof(std::atomic<dpht_el>), sizeof(std::atomic<dpht_el>), MPI_INFO_NULL, shmcomm, &baseptr, &dpht_win);
 	if(ret2 == MPI_SUCCESS)
 	{
 	    printf("success also\n");
@@ -75,7 +75,7 @@ void shared_memory_init(int sharedmem_size, int sharedmem_rank)
     } else {
 	MPI_Win_allocate_shared(0, sizeof(std::atomic<conf_el>), MPI_INFO_NULL,
                               shmcomm, &ht, &ht_win);
-	MPI_Win_allocate_shared(0, 8, MPI_INFO_NULL,
+	MPI_Win_allocate_shared(0, sizeof(std::atomic<dpht_el>), MPI_INFO_NULL,
 			      shmcomm, &dpht, &dpht_win);
 
 	// unnecessary parameters
@@ -101,5 +101,6 @@ int main(void)
     MPI_Comm_size(shmcomm, &shm_size);
     MPI_Comm_rank(shmcomm, &shm_rank);
     shared_memory_init(shm_size, shm_rank);
+    MPI_Finalize();
     return 0;
 }
