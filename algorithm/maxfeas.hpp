@@ -6,16 +6,16 @@
 #include "hash.hpp"
 #include "fits.hpp"
 
-#define MAXIMUM_FEASIBLE maximum_feasible_triple
+#define MAXIMUM_FEASIBLE maximum_feasible
 
 // uses onlinefit, bestfit and dynprog
 // initial_ub -- upper bound from above (previously maximum feasible item)
 // cannot_send_less -- a "lower" bound on what can be sent
 // (even though smaller items fit, the alg possibly must avoid them due to monotonicity)
 
-bin_int maximum_feasible_triple(binconf *b, const int depth, const bin_int cannot_send_less, bin_int initial_ub, thread_attr *tat)
+bin_int maximum_feasible(binconf *b, const int depth, const bin_int cannot_send_less, bin_int initial_ub, thread_attr *tat)
 {
-    MEASURE_ONLY(tat->maximum_feasible_counter++);
+    MEASURE_ONLY(tat->meas.maximum_feasible_counter++);
     DEEP_DEBUG_PRINT("Starting dynprog maximization of configuration:\n");
     DEEP_DEBUG_PRINT_BINCONF(b);
     DEEP_DEBUG_PRINT("\n"); 
@@ -50,11 +50,11 @@ bin_int maximum_feasible_triple(binconf *b, const int depth, const bin_int canno
 	lb_certainly_feasible = false;
 
 	// query lb first
-	if (DISABLE_DP_CACHE)
+	if (!DISABLE_DP_CACHE)
 	{
-	    data = UNKNOWN;
-	} else {
 	    data = pack_and_query(b,lb,tat);
+	} else {
+	    data = UNKNOWN;
 	}
 
 	if (data == FEASIBLE)
@@ -69,7 +69,7 @@ bin_int maximum_feasible_triple(binconf *b, const int depth, const bin_int canno
 	
     if (lb == ub && lb_certainly_feasible)
     {
-	MEASURE_ONLY(tat->onlinefit_sufficient++);
+	MEASURE_ONLY(tat->meas.onlinefit_sufficient++);
 	return lb;
     }
 
@@ -107,7 +107,7 @@ bin_int maximum_feasible_triple(binconf *b, const int depth, const bin_int canno
 
     bin_int bestfit;
     bestfit = bestfitalg(b);
-    MEASURE_ONLY(tat->bestfit_calls++);
+    MEASURE_ONLY(tat->meas.bestfit_calls++);
 
 
     if (bestfit > ub)
@@ -149,7 +149,7 @@ bin_int maximum_feasible_triple(binconf *b, const int depth, const bin_int canno
     
     if (lb == ub && lb_certainly_feasible)
     {
-	MEASURE_ONLY(tat->bestfit_sufficient++);
+	MEASURE_ONLY(tat->meas.bestfit_sufficient++);
 	return lb;
     }
 
@@ -184,7 +184,7 @@ bin_int maximum_feasible_triple(binconf *b, const int depth, const bin_int canno
 	return lb;
     }
 
-    MEASURE_ONLY(tat->dynprog_calls++);
+    MEASURE_ONLY(tat->meas.dynprog_calls++);
     // DISABLED: passing ub so that dynprog_max_dangerous takes care of pushing into the cache
     // DISABLED: maximum_feasible = dynprog_max_dangerous(b,lb,ub,tat);
     bin_int maximum_feasible = dynprog_max_safe(b,tat);

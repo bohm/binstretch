@@ -33,7 +33,7 @@ const bin_int S = 14;
 // target goal of the online bin stretching problem
 const bin_int R = 19;
 // Change this number for the selected number of bins.
-const bin_int BINS = 9;
+const bin_int BINS = 8;
 
 // If you want to generate a specific lower bound, you can create an initial bin configuration here.
 // You can also insert an initial sequence here.
@@ -52,8 +52,8 @@ const int RMOD = (R-1);
 const int ALPHA = (RMOD-S);
 
 // bitwise length of indices of hash tables and lock tables
-const unsigned int HASHLOG = 24;
-const unsigned int BCLOG = 12;
+const unsigned int HASHLOG = 23;
+const unsigned int BCLOG = 23;
 const unsigned int LOADLOG = 13;
 
 // experimental: caching of largest feasible item that can be sent
@@ -74,13 +74,12 @@ const int DEFAULT_DP_SIZE = 100000;
 const int BESTFIT_THRESHOLD = (1*S)/10;
 
 // the number of local worker threads
-const int THREADS = 4;
+const int THREADS = 1;
 // a bound on total load of a configuration before we split it into a task
 const int TASK_LOAD = 10;
-const int TASK_DEPTH = 3;
+const int TASK_DEPTH = S > 41 ? 2 : 3;
 
-const int QUEEN_DEPTH = S > 41 ? 3 : 4;
-//const int QUEEN_DEPTH = 2;
+#define POSSIBLE_TASK possible_task_depth
 
 const int EXPANSION_DEPTH = 3;
 const int TASK_LARGEST_ITEM = 5;
@@ -106,7 +105,7 @@ const int MAX_EXPANSION = 1;
 // completely disable dynamic programming or binconf cache
 // (useful to debug soundness of cache algs)
 const bool DISABLE_CACHE = false;
-const bool DISABLE_DP_CACHE = true;
+const bool DISABLE_DP_CACHE = false;
 
 // ------------------------------------------------
 // system constants and global variables (no need to change)

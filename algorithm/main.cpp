@@ -45,19 +45,18 @@ int main(void)
 	assert(ret == 0 || ret == 1);
 	if(ret == 0)
 	{
-	    // TODO: find out max monotonicity used by workers
 	    fprintf(stdout, "Lower bound for %d/%d Bin Stretching on %d bins with monotonicity %d and starting seq: ",
 		    R,S,BINS,monotonicity);
 	    print_sequence(stdout, INITIAL_SEQUENCE);
-	    // TODO: check that OUTPUT works with MPI.
+	    // TODO: make sure that OUTPUT works with MPI.
 	} else {
 	    fprintf(stdout, "Algorithm wins %d/%d Bin Stretching on %d bins with sequence:\n", R,S,BINS);
 	    print_sequence(stdout, INITIAL_SEQUENCE);
 	}
 	
 	
-	fprintf(stderr, "Number of tasks: %" PRIu64 ", completed tasks: %" PRIu64 ", pruned tasks %" PRIu64 ".\n,",
-		task_count, finished_task_count, removed_task_count);
+	fprintf(stderr, "Number of tasks: %" PRIu64 ", collected tasks: %u,  pruned tasks %" PRIu64 ".\n,",
+		task_count, collected_cumulative, removed_task_count);
 
 	// TODO: enable measuring for queen in multiple worker mode
 	/*

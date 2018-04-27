@@ -28,6 +28,7 @@ const int CHANGE_MONOTONICITY = 6;
 const int LAST_ITEM = 7;
 const int ZOBRIST_ITEMS = 8;
 const int ZOBRIST_LOADS = 9;
+const int MEASUREMENTS = 10;
 
 const int SYNCHRO_SLEEP = 20;
 std::vector<uint64_t> remote_taskmap;
@@ -66,6 +67,27 @@ void receive_zobrist()
     MPI_Recv(Zl, (BINS+1)*(R+1), MPI_UNSIGNED_LONG, QUEEN, ZOBRIST_LOADS, MPI_COMM_WORLD, &stat);
     fprintf(stderr, "Worker Zi[1]: %" PRIu64 "\n", Zi[1]);
 }
+
+
+void transmit_measurements()
+{
+    MPI_Send(g_meas.serialize(),sizeof(measure_attr), MPI_CHAR, QUEEN, MEASUREMENTS, MPI_COMM_WORLD);
+    MPI_Barrier(MPI_COMM_WORLD);
+}
+
+void receive_measurements()
+{
+    MPI_Status stat;
+    measure_attr recv;
+    
+    for(int sender = 1; sender < world_size; sender++)
+    {
+	MPI_Recv(&recv, sizeof(measure_attr), MPI_CHAR, sender, MEASUREMENTS, MPI_COMM_WORLD, &stat);
+	g_meas.add(recv);
+    }
+    MPI_Barrier(MPI_COMM_WORLD);
+}
+
 
 void collect_worker_tasks()
 {
@@ -209,6 +231,7 @@ int worker_solve(adversary_vertex* start_vertex)
     // worker depth is now set to be permanently zero
     tat.prev_max_feasible = S;
     ret = explore(&task_copy, &tat);
+    g_meas.add(tat.meas);
     assert(ret != POSTPONED);
     dynprog_attr_free(&tat);
     return ret;
@@ -230,18 +253,20 @@ void worker()
     bool request_sent = false;
     MPI_Status stat;
     MPI_Request blankreq;
-
+    std::chrono::time_point<std::chrono::system_clock> wait_start, wait_end;
     task remote_task;
 
     receive_zobrist();
     //zobrist_init();
     shared_memory_init(shm_size, shm_rank);
+    
     while(true)
     {
-	remote_task.bc.blank();
 	// Send a request for a task to the queen.
 	if(!request_sent)
 	{
+	    remote_task.bc.blank();
+	    MEASURE_ONLY(wait_start = std::chrono::system_clock::now());
 	    MPI_Isend(&irrel, 1, MPI_INT, QUEEN, REQUEST, MPI_COMM_WORLD, &blankreq);
 	    request_sent = true;
 	}
@@ -280,6 +305,12 @@ void worker()
 	    generated_graph.clear();
 	    generated_graph[root_vertex->bc->loadhash ^ root_vertex->bc->itemhash] = root_vertex;
 
+#ifdef MEASURE
+	    wait_end = std::chrono::system_clock::now();
+	    std::chrono::duration<long double> wait_time = wait_end - wait_start;
+	    //MEASURE_PRINT("Worker %d waited for a request %Lfs.\n", world_rank, wait_time.count());
+#endif
+	    
 	    int solution = worker_solve(root_vertex);
 	    assert(solution == 0 || solution == 1);
 	    MPI_Isend(&solution, 1, MPI_INT, QUEEN, SOLUTION, MPI_COMM_WORLD, &blankreq);
@@ -288,6 +319,9 @@ void worker()
 
 	std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
+
+    MPI_Barrier(MPI_COMM_WORLD);
+    transmit_measurements();
 }
 
 // worker that just responds 1 to all requests; used for communication testing
@@ -354,11 +388,13 @@ void dummy_worker()
 std::atomic<bool> queen_cycle_terminate(false);
 std::atomic<int> updater_result(POSTPONED);
 
+// global measure of queen's collected tasks
+unsigned int collected_cumulative = 0;
+
 void queen_updater(adversary_vertex* sapling)
 {
 
     unsigned int collected_no = 0;
-    unsigned int collected_cumulative = 0;
     unsigned int last_printed = 0;
     //updater_result.store(POSTPONED);
     
@@ -425,7 +461,7 @@ int queen()
     int solution = 0;
     MPI_Request blankreq;
     int sol_count = 0;
-
+    int ret = 0;
     zobrist_init();
     transmit_zobrist();
     // even though the queen does not use the database, it needs to synchronize with others.
@@ -540,17 +576,20 @@ int queen()
 	
 	if (updater_result == 1)
 	{
-	    // queen sends signals to take five to everyone
-	    send_terminations();
-	    return 1;
+	    ret = 1;
+	    break;
 	}
 	
 	// TODO: make regrow work again
 	// REGROW_ONLY(regrow(sapling));
-   }
+    }
 
-   send_terminations();
-   return 0;
+    send_terminations();
+    MPI_Barrier(MPI_COMM_WORLD);
+    receive_measurements();
+    g_meas.print();
+
+    return ret;
 }
 /*
 void evaluate_local_tasks(int threadid)

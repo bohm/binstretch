@@ -48,24 +48,6 @@ void dynprog_attr_free(thread_attr *tat)
     delete[] tat->loadht;
 }
 
-#ifdef MEASURE
-void dynprog_extra_measurements(const binconf *conf, thread_attr *tat)
-{
-    tat->dynprog_itemcount[conf->_itemcount]++;
-}
-
-void collect_dynprog_from_thread(const thread_attr &tat)
-{
-    for (int i =0; i <= BINS*S; i++)
-    {
-	total_dynprog_itemcount[i] += tat.dynprog_itemcount[i];
-    }
-
-    total_onlinefit_sufficient += tat.onlinefit_sufficient;
-    total_bestfit_sufficient += tat.bestfit_sufficient;
-    total_bestfit_calls += tat.bestfit_calls;
-}
-
 // packs item into h (which is guaranteed to be feasible) and pushes it into dynprog cache
 template <int MODE> void pack_and_hash(binconf *h, bin_int item, bin_int empty_bins, bin_int feasibility, thread_attr *tat)
 {
@@ -90,24 +72,6 @@ template <int MODE> void pack_and_hash(binconf *h, bin_int item, bin_int empty_b
     h->dp_unhash(item);
 }
 
-
-void print_dynprog_measurements()
-{
-    MEASURE_PRINT("Max_feas calls: %" PRIu64 ", Dynprog calls: %" PRIu64 ".\n", total_max_feasible, total_dynprog_calls);
-    MEASURE_PRINT("Largest queue observed: %" PRIu64 "\n", total_largest_queue);
-
-    MEASURE_PRINT("Onlinefit sufficient in: %" PRIu64 ", bestfit calls: %" PRIu64 ", bestfit sufficient: %" PRIu64 ".\n",
-		  total_onlinefit_sufficient, total_bestfit_calls, total_bestfit_sufficient);
-    /*MEASURE_PRINT("Sizes of binconfs which enter dyn. prog.:\n");
-     for (int i =0; i <= BINS*S; i++)
-    {
-	if (total_dynprog_itemcount[i] > 0)
-	{
-	    MEASURE_PRINT("Size %d: %" PRIu64 ".\n", i, total_dynprog_itemcount[i]);
-	}
-	} */
-}
-#endif
 
 
 // functions used by dynprog_test_sorting
@@ -315,7 +279,7 @@ dynprog_result dynprog_test_loadhash(const binconf *conf, thread_attr *tat)
 		first.assign_and_rehash(size, 1);
 		pnewq->push_back(first);
 	    } else {
-		MEASURE_ONLY(tat->largest_queue_observed = std::max(tat->largest_queue_observed, poldq->size()));
+		MEASURE_ONLY(tat->meas.largest_queue_observed = std::max(tat->meas.largest_queue_observed, poldq->size()));
 		for (loadconf & tuple: *poldq)
 		{
 		    //loadconf  tuple = tupleit;
@@ -427,7 +391,7 @@ bin_int dynprog_max_safe(const binconf *conf, thread_attr *tat)
 		    return S;
 		}
 	    } else {
-		MEASURE_ONLY(tat->largest_queue_observed = std::max(tat->largest_queue_observed, poldq->size()));
+		MEASURE_ONLY(tat->meas.largest_queue_observed = std::max(tat->meas.largest_queue_observed, poldq->size()));
 		for (loadconf& tuple: *poldq)
 		{
 		    for (int i=BINS; i >= 1; i--)
@@ -476,44 +440,8 @@ bin_int dynprog_max_safe(const binconf *conf, thread_attr *tat)
 	}
     }
 
-    /* Heuristic: solve the cases of sizes 2 and 1 without generating new
-       configurations. */
-
-    // doesn't work, disabled for now
-    /*
-    for (const loadconf& tuple: *poldq)
-    {
-	int free_size_except_last = 0, free_for_twos_except_last = 0;
-	int free_size_last = 0, free_for_twos_last = 0;
-	for (int i=1; i<=BINS-1; i++)
-	{
-	    free_size_except_last += (S - tuple.loads[i]);
-	    free_for_twos_except_last += (S - tuple.loads[i])/2;
-	}
-
-	free_size_last = (S - tuple.loads[BINS]);
-	free_for_twos_last = (S - tuple.loads[BINS])/2;
-	if (free_size_last + free_size_except_last < conf->items[1] + 2*conf->items[2])
-	{
-	    continue;
-	}
-	if (free_for_twos_except_last + free_for_twos_last >= conf->items[2])
-	{
-	    // it fits, compute the max_overall contribution
-	    int twos_on_last = std::max(0,conf->items[2] - free_for_twos_except_last);
-	    int ones_on_last = std::max(0,conf->items[1] - (free_size_except_last - 2*(conf->items[2] - twos_on_last)));
-	    int free_space_on_last = S - tuple.loads[BINS] - 2*twos_on_last - ones_on_last;
-	    if (free_space_on_last > max_overall)
-	    {
-		max_overall = free_space_on_last;
-	    }
-	}
-	}*/
-    
     return max_overall;
 }
-
-
 
 // maximize while doing dynamic programming
 // now also pushes into cache straight away
@@ -586,7 +514,7 @@ bin_int dynprog_max_incorrect(binconf *conf, bin_int lb, bin_int ub, thread_attr
 		    pnewq->push_back(first);
 		} else {
 		    
-		    MEASURE_ONLY(tat->largest_queue_observed = std::max(tat->largest_queue_observed, poldq->size()));
+		    MEASURE_ONLY(tat->meas.largest_queue_observed = std::max(tat->meas.largest_queue_observed, poldq->size()));
 		    for (loadconf& tuple: *poldq)
 		    {
 			// try and place the item
@@ -737,7 +665,7 @@ std::pair<bool, bin_int> dynprog_max_vector(const binconf *conf, const std::vect
 		pnewq->push_back(first);
 	    } else {
 #ifdef MEASURE
-		tat->largest_queue_observed = std::max(tat->largest_queue_observed, poldq->size());
+		tat->meas.largest_queue_observed = std::max(tat->meas.largest_queue_observed, poldq->size());
 #endif
 		for (loadconf& tuple: *poldq)
 		{

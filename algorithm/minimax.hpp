@@ -113,7 +113,7 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
 	previous_algorithm = outat->last_alg_v;
 
 	// if(possible_task_depth<MODE>(current_adversary))
-	if (possible_task_advanced<MODE>(current_adversary, tat->largest_since_computation_root))
+	if (POSSIBLE_TASK<MODE>(current_adversary, tat->largest_since_computation_root))
 	{
 	    add_task(b, tat);
 	    // mark current adversary vertex (created by algorithm() in previous step) as a task
@@ -242,9 +242,7 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
 
     if (MODE == EXPLORING && !DISABLE_CACHE)
     {
-	//std::lock_guard<std::mutex> lg(in_progress_mutex);
 	conf_hashpush(b, r, tat);
-	//cv.notify_all();
     }
 
     /* Sanity check. */

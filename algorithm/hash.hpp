@@ -217,21 +217,20 @@ void shared_memory_init(int sharedmem_size, int sharedmem_rank)
 	for (uint64_t i = 0; i < ht_size; i++)
 	{
 	    ht[i].store(y);
-	    /*if(i % 10000 == 0)
+	    if(i % 10000 == 0)
 	    {
-		fprintf(stderr, "Inserted into element %llu.\n", i);
-		}*/
+		//fprintf(stderr, "Inserted into element %llu.\n", i);
+	    }
 	}
 
-	/*
 	for (uint64_t i =0; i < dpht_size; i++)
 	{
 	    dpht[i].store(x);
 	    if(i % 10000 == 0)
 	    {
-		fprintf(stderr, "DPinserted into element %llu.\n", i);
+		//fprintf(stderr, "DPinserted into element %llu.\n", i);
 	    }
-	    }*/
+	}
 	
     } else {
 	MPI_Win_allocate_shared(0, sizeof(std::atomic<conf_el>), MPI_INFO_NULL,

@@ -124,7 +124,7 @@ dpht_el is_dp_hashed_atomic(uint64_t hash, uint64_t logpart, thread_attr *tat)
 	candidate = dpht[logpart + i].load();
 	if (candidate.hash() == 0)
 	{
-	    MEASURE_ONLY(tat->dp_partial_nf++);
+	    MEASURE_ONLY(tat->meas.dp_partial_nf++);
 	    candidate._feasible = UNKNOWN;
 	    candidate._permanence = PERMANENT;
 	    return candidate;
@@ -137,19 +137,19 @@ dpht_el is_dp_hashed_atomic(uint64_t hash, uint64_t logpart, thread_attr *tat)
 	}
 	if (candidate.hash() == hash)
 	{
-	    MEASURE_ONLY(tat->dp_hit++);
+	    MEASURE_ONLY(tat->meas.dp_hit++);
 	    return candidate;
 	}
 	
 	if (i == LINPROBE_LIMIT - 1)
 	{
-	    MEASURE_ONLY(tat->dp_full_nf++);
+	    MEASURE_ONLY(tat->meas.dp_full_nf++);
 	}
 
 	// bounds check
 	if (logpart + i >= dpht_size-1)
 	{
-	    MEASURE_ONLY(tat->dp_full_nf++);
+	    MEASURE_ONLY(tat->meas.dp_full_nf++);
 	    break;
 	}
     }
@@ -205,7 +205,7 @@ template <int MODE> int hashpush_dp_atomic(uint64_t hash, const dpht_el& data, u
 void conf_hashpush(const binconf *d, uint64_t posvalue, thread_attr *tat)
 {
 #ifdef MEASURE
-    tat->bc_insertions++;
+    tat->meas.bc_insertions++;
 #endif
 
     uint64_t bchash = d->itemhash ^ d->loadhash;
@@ -219,25 +219,25 @@ void conf_hashpush(const binconf *d, uint64_t posvalue, thread_attr *tat)
     {
 	if (posvalue == IN_PROGRESS)
 	{
-	    tat->bc_in_progress_insert++;
+	    tat->meas.bc_in_progress_insert++;
 	} else {
-	    tat->bc_normal_insert++;
+	    tat->meas.bc_normal_insert++;
 	}
     } else if (ret == INSERTED_RANDOMLY)
     {
 	if (posvalue == IN_PROGRESS)
 	{
-	    tat->bc_in_progress_insert++;
+	    tat->meas.bc_in_progress_insert++;
 	} else {
-	    tat->bc_random_insert++;
+	    tat->meas.bc_random_insert++;
 	}
 
     } else if (ret == ALREADY_INSERTED)
     {
-	tat->bc_already_inserted++;
+	tat->meas.bc_already_inserted++;
     } else if (ret == OVERWRITE_OF_PROGRESS)
     {
-	tat->bc_overwrite++;
+	tat->meas.bc_overwrite++;
     }
 #endif
 }
@@ -250,15 +250,15 @@ bin_int is_conf_hashed(const binconf *d, thread_attr *tat)
 
 	if (ret >= 0)
 	{
-		MEASURE_ONLY(tat->bc_hit++);
+		MEASURE_ONLY(tat->meas.bc_hit++);
 	}
 	else if (ret == NOT_FOUND)
 	{
-		MEASURE_ONLY(tat->bc_partial_nf++);
+		MEASURE_ONLY(tat->meas.bc_partial_nf++);
 	}
 	else if (ret == FULL_NOT_FOUND)
 	{
-		MEASURE_ONLY(tat->bc_full_nf++);
+		MEASURE_ONLY(tat->meas.bc_full_nf++);
 		ret = NOT_FOUND;
 	}
 	return ret;
@@ -280,7 +280,7 @@ void loadconf_hashpush(uint64_t loadhash, thread_attr *tat)
 
 void dp_hashpush_feasible(const binconf *d, thread_attr *tat)
 {
-    MEASURE_ONLY(tat->dp_insertions++);
+    MEASURE_ONLY(tat->meas.dp_insertions++);
 
     uint64_t hash = d->dphash();
     dpht_el ins;
@@ -293,7 +293,7 @@ void dp_hashpush_feasible(const binconf *d, thread_attr *tat)
 
 void dp_hashpush_infeasible(const binconf *d, thread_attr *tat)
 {
-    MEASURE_ONLY(tat->dp_insertions++);
+    MEASURE_ONLY(tat->meas.dp_insertions++);
 
     // we currently do not use 1's and S'es in the feasibility queries
     uint64_t hash = d->dphash();
