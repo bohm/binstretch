@@ -19,6 +19,7 @@
 #include "maxfeas.hpp"
 #include "gs.hpp"
 #include "tasks.hpp"
+#include "scheduler.hpp"
 
 /* declarations */
 template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_attr *outat);
@@ -26,7 +27,7 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 
 int time_stats(thread_attr *tat)
 {
-    int ret = 0;
+    // int ret = 0;
 
     /*
     std::chrono::time_point<std::chrono::system_clock> cur = std::chrono::system_clock::now();
@@ -39,7 +40,16 @@ int time_stats(thread_attr *tat)
     }
     */
 
+    check_root_solved();
+    check_termination();
+    if (root_solved || worker_terminate)
+    {
+	return IRRELEVANT;
+    }
+
+    return 0;
     // I wonder if there is a penalty for repeatedly constructing the lock
+    /*
     std::shared_lock<std::shared_timed_mutex> l(running_and_removed_lock);
     //l.lock();
     auto it = running_and_removed.find(tat->explore_roothash);
@@ -49,6 +59,7 @@ int time_stats(thread_attr *tat)
     }
     l.unlock();
     return ret;
+    */
 }
 
 /* return values: 0: player 1 cannot pack the sequence starting with binconf b
@@ -131,17 +142,13 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
 	{
 #ifdef MEASURE
 	    int recommendation = time_stats(tat);
-	    if (recommendation == TERMINATING)
+	    if (recommendation == TERMINATING || recommendation == IRRELEVANT)
 	    {
 		//fprintf(stderr, "We got advice to terminate.\n");
-		return TERMINATING;
+		return recommendation;
 	    }
 	    
 #endif
-	    if (global_terminate_flag)
-	    {
-		return TERMINATING;
-	    }
 	}
     }
 
@@ -206,7 +213,7 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
 	}
 
 	// send signal that we should terminate immediately upwards
-	if (below == TERMINATING || below == OVERDUE)
+	if (below == TERMINATING || below == IRRELEVANT)
 	{
 	    return below;
 	}
@@ -274,24 +281,12 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 	{
 #ifdef MEASURE
 	    int recommendation = time_stats(tat);
-	    if (recommendation == TERMINATING)
+	    if (recommendation == TERMINATING || recommendation == IRRELEVANT)
 	    {
 		//fprintf(stderr, "We got advice to terminate.\n");
-		return TERMINATING;
-	    }
-	    
-
-#endif
-#ifdef OVERDUE
-	    if (tat->current_overdue)
-	    {
-		return OVERDUE;
+		return recommendation;
 	    }
 #endif
-	    if (global_terminate_flag)
-	    {
-		return TERMINATING;
-	    }
 	}
     }
  
@@ -362,9 +357,9 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 		below = adversary<MODE>(b, depth, tat, outat);
 
 		// send signal that we should terminate immediately upwards
-		if (below == TERMINATING)
+		if (below == TERMINATING || below == IRRELEVANT)
 		{
-		    return TERMINATING;
+		    return below;
 		}
 		
 

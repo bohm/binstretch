@@ -8,8 +8,8 @@
 #include "binconf.hpp"
 #include "hash.hpp"
 #include "minimax.hpp"
-#include "scheduler.hpp"
-
+#include "queen.hpp"
+#include "worker.hpp"
 
 int main(void)
 {

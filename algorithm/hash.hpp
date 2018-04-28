@@ -192,7 +192,9 @@ void shared_memory_init(int sharedmem_size, int sharedmem_rank)
     void *baseptr;
     ht_size = WORKER_HASHSIZE*sharedmem_size;
     dpht_size = WORKER_BC_HASHSIZE*sharedmem_size;
-    fprintf(stderr, "Local process %d of %d: ht_size %llu, dpht_size %llu\n", sharedmem_rank, sharedmem_size, ht_size*sizeof(ht_size*sizeof(std::atomic<conf_el>)), dpht_size*sizeof(std::atomic<dpht_el>));
+    fprintf(stderr, "Local process %d of %d: ht_size %" PRIu64 ", dpht_size %" PRIu64 "\n",
+	    sharedmem_rank, sharedmem_size, ht_size*sizeof(ht_size*sizeof(std::atomic<conf_el>)),
+	    dpht_size*sizeof(std::atomic<dpht_el>));
 // allocate hashtables
     if(sharedmem_rank == 0)
     {
@@ -246,6 +248,34 @@ void shared_memory_init(int sharedmem_size, int sharedmem_rank)
 
     // synchronize again, to make sure the memory is zeroed out for everyone
     MPI_Barrier(MPI_COMM_WORLD);
+}
+
+void clear_cache_of_ones()
+{
+    if (shm_rank == 0)
+    {
+
+	uint64_t kept = 0, erased = 0;
+	conf_el empty{0};
+	
+	for (uint64_t i =0; i < ht_size; i++)
+	{
+	    conf_el field = ht[i];
+	    if (!field.empty() && !field.removed())
+	    {
+		bin_int last_bit = field.value();
+		if (last_bit != 0)
+		{
+		    ht[i].store(empty);
+		    erased++;
+		} else {
+		    kept++;
+		}
+	    }
+	}
+    }
+
+    //MEASURE_PRINT("Hashtable size: %llu, kept: %" PRIu64 ", erased: %" PRIu64 "\n", HASHSIZE, kept, erased);
 }
 
 /*

@@ -34,7 +34,7 @@ template<int MODE> bool possible_task_advanced(adversary_vertex *v, int largest_
     {
 	target_depth = computation_root->depth + TASK_DEPTH + 1;
     } else {
-	target_depth = computation_root->depth + TASK_DEPTH + 6;
+	target_depth = computation_root->depth + TASK_DEPTH + 3;
     }
 
     if (target_depth - v->depth <= 0)

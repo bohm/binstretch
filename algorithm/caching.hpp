@@ -32,7 +32,7 @@ bin_int is_hashed_atomic(uint64_t hash, uint64_t logpart, thread_attr *tat)
 	// Use linear probing to check for the hashed value.
 	for (int i = 0; i < LINPROBE_LIMIT; i++)
 	{
-		candidate = ht[logpart + i].load();
+		candidate = ht[logpart + i].load(std::memory_order_acquire);
 
 		if (candidate.hash() == 0)
 		{
@@ -74,12 +74,12 @@ int hashpush_atomic(const conf_el& new_el, uint64_t logpart, thread_attr *tat)
 	conf_el candidate;
 	for (int i = 0; i< LINPROBE_LIMIT; i++)
 	{
-	    candidate = ht[logpart + i].load();
+	    candidate = ht[logpart + i].load(std::memory_order_acquire);
 	    if (candidate.empty() || candidate.removed())
 	    {
 		// since we are doing two sequential atomic edits, a collision may occur,
 		// but this should just give an item a wrong information about depth
-		ht[logpart + i].store(new_el);
+		ht[logpart + i].store(new_el, std::memory_order_release);
 		return INSERTED;
 	    }
 	    else if (candidate.hash() == new_el.hash())
@@ -94,20 +94,20 @@ int hashpush_atomic(const conf_el& new_el, uint64_t logpart, thread_attr *tat)
 		    ret = ALREADY_INSERTED;
 		}
 		
-		ht[logpart + i].store(new_el);
+		ht[logpart + i].store(new_el, std::memory_order_release);
 		return ret;
 	    }
 	    
 	    // bounds check
 	    if (logpart + i == ht_size - 1)
 	    {
-		ht[logpart + i].store(new_el);
+		ht[logpart + i].store(new_el, std::memory_order_release);
 		return INSERTED;
 	    }
 	}
 	
 	// if the cache is full, choose a random position
-	ht[rand() % LINPROBE_LIMIT].store(new_el);
+	ht[rand() % LINPROBE_LIMIT].store(new_el, std::memory_order_release);
 	return INSERTED_RANDOMLY;
 }
 
@@ -121,7 +121,7 @@ dpht_el is_dp_hashed_atomic(uint64_t hash, uint64_t logpart, thread_attr *tat)
     
     for (int i = 0; i < LINPROBE_LIMIT; i++)
     {
-	candidate = dpht[logpart + i].load();
+	candidate = dpht[logpart + i].load(std::memory_order_acquire);
 	if (candidate.hash() == 0)
 	{
 	    MEASURE_ONLY(tat->meas.dp_partial_nf++);
@@ -164,12 +164,12 @@ template <int MODE> int hashpush_dp_atomic(uint64_t hash, const dpht_el& data, u
 	dpht_el candidate;
 	for (int i = 0; i< LINPROBE_LIMIT; i++)
 	{
-	    candidate = dpht[logpart + i].load();
+	    candidate = dpht[logpart + i].load(std::memory_order_acquire);
 	    if (candidate.hash() == 0 || candidate.hash() == REMOVED)
 	    {
 		// since we are doing two sequential atomic edits, a collision may occur,
 		// but this should just give an item a wrong information about depth
-		dpht[logpart + i].store(data);
+		dpht[logpart + i].store(data, std::memory_order_release);
 		return INSERTED;
 	    }
 	    else if (candidate.hash() == hash)
@@ -178,12 +178,12 @@ template <int MODE> int hashpush_dp_atomic(uint64_t hash, const dpht_el& data, u
 		// insert a permanent entry
 		if (MODE == PERMANENT && candidate._permanence == HEURISTIC)
 		{
-		    dpht[logpart + i].store(data);
+		    dpht[logpart + i].store(data, std::memory_order_release);
 		}
 
 		if (MODE == HEURISTIC && candidate._permanence != PERMANENT && candidate._empty_bins < data._empty_bins)
 		{
-		    dpht[logpart + i].store(data);
+		    dpht[logpart + i].store(data, std::memory_order_release);
 		}
 		return INSERTED;
 	    }
@@ -191,14 +191,14 @@ template <int MODE> int hashpush_dp_atomic(uint64_t hash, const dpht_el& data, u
 // check bounds of hashtable
 	    if (logpart+i == dpht_size-1)
 	    {
-		dpht[logpart + i].store(data);
+		dpht[logpart + i].store(data, std::memory_order_release);
 		return INSERTED;
 	    }
 
 	}
 
 	// if the cache is full, choose a random position
-	dpht[rand() % LINPROBE_LIMIT].store(data);
+	dpht[rand() % LINPROBE_LIMIT].store(data, std::memory_order_release);
 	return INSERTED_RANDOMLY;
 }
 
