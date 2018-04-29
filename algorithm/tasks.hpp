@@ -17,18 +17,24 @@ struct task
     binconf bc;
     int last_item = 1;
     int expansion_depth = 0;
+
+    /* returns the struct as a serialized object of size sizeof(task) */
+    char* serialize()
+	{
+	    return static_cast<char*>(static_cast<void*>(this));
+	}
+
 };
 
-// global task map indexed by binconf hashes
-// std::map<llu, task> tm;
-
-// Shared memory between queen and the antenna.
 std::atomic<int> *tstatus;
 
-// an array of tasks (indexed by their order, the ordering is the same as in tstatus).
-std::vector<task> tarray;
+// tarray used by the queen, who does not know the tarray size when it's pushing into it
+std::vector<task> tarray_queen;
+// tarray used by the workers, who are told the size
+task* tarray_worker;
+
 int tcount = 0;
-int thead = 0; // head of the tarray queue
+int thead = 0; // head of the tarray queue which queen uses to send tasks
 
 // global measure of queen's collected tasks
 std::atomic<unsigned int> collected_cumulative{0};
@@ -130,16 +136,16 @@ void add_task(const binconf *x, thread_attr *tat)
     duplicate(&(newtask.bc), x);
     newtask.last_item = tat->last_item;
     newtask.expansion_depth = tat->expansion_depth; 
-    tarray.push_back(newtask);
+    tarray_queen.push_back(newtask);
     tcount++;
 }
 
 // builds an inverse task map after all tasks are inserte into the task array.
 void build_tmap()
 {
-    for(int i = 0; i < tarray.size(); i++)
+    for(int i = 0; i < tarray_queen.size(); i++)
     {
-	tmap.insert(std::make_pair(tarray[i].bc.loadhash ^ tarray[i].bc.itemhash, i));
+	tmap.insert(std::make_pair(tarray_queen[i].bc.loadhash ^ tarray_queen[i].bc.itemhash, i));
     }
 }
 
@@ -181,7 +187,13 @@ void print_tasks()
 {
     for(int i = 0; i < tcount; i++)
     {
-        DEBUG_PRINT_BINCONF(&tarray[i].bc);
+	if(BEING_QUEEN)
+	{
+	    print_binconf_stream(stderr, &tarray_queen[i].bc);
+	} else {
+	    print_binconf_stream(stderr, &tarray_worker[i].bc);
+	}
     }
 }
+
 #endif

@@ -20,8 +20,9 @@ const int QUEEN = 0;
 
 // communication constants
 const int REQUEST = 1;
-const int SENDING_LOADS = 2;
-const int SENDING_ITEMS = 3; 
+//const int SENDING_LOADS = 2;
+//const int SENDING_ITEMS = 3;
+const int SENDING_TASK = 2;
 const int TERMINATE = 4;
 const int SOLUTION = 5;
 const int CHANGE_MONOTONICITY = 6;
@@ -31,6 +32,8 @@ const int ZOBRIST_LOADS = 9;
 const int MEASUREMENTS = 10;
 const int ROOT_SOLVED = 11;
 const int TASK_IRRELEVANT = 12;
+const int SENDING_TCOUNT = 13;
+const int SENDING_TARRAY = 14;
 
 const int SYNCHRO_SLEEP = 20;
 std::vector<int> remote_taskmap;
@@ -38,7 +41,7 @@ std::vector<int> remote_taskmap;
 void clear_all_caches()
 {
     delete_status();
-    tarray.clear();
+    tarray_queen.clear();
 }
 
 void transmit_zobrist()
@@ -170,7 +173,7 @@ void send_out_tasks()
 	// we need to collect worker tasks now to avoid a synchronization problem
 	// where queen overwrites remote_taskmap information.
 	collect_worker_task(sender);
-	task current;
+	int outgoing_task = -1;
 
 	// fetches the first available task 
 	while (thead < tcount)
@@ -178,22 +181,19 @@ void send_out_tasks()
 	    int stat = tstatus[thead].load(std::memory_order_acquire);
 	    if (stat == TASK_AVAILABLE)
 	    {
-		current = tarray[thead];
+		outgoing_task = thead;
 		thead++;
-		got_task = true;
 		break;
 	    }
 	    thead++;
 	}
 	
-	if(got_task)
+	if (outgoing_task != -1)
 	{
 	    // check the synchronization problem does not happen (as above)
 	    assert(remote_taskmap[sender] == -1);
 	    remote_taskmap[sender] = thead-1;
-	    MPI_Isend(current.bc.loads.data(), BINS+1, MPI_UNSIGNED_SHORT, sender, SENDING_LOADS, MPI_COMM_WORLD, &blankreq);
-	    MPI_Isend(current.bc.items.data(), S+1, MPI_UNSIGNED_SHORT, sender, SENDING_ITEMS, MPI_COMM_WORLD, &blankreq);
-    	    MPI_Isend(&current.last_item, 1, MPI_INT, sender, LAST_ITEM, MPI_COMM_WORLD, &blankreq);
+	    MPI_Send(&outgoing_task, 1, MPI_INT, sender, SENDING_TASK, MPI_COMM_WORLD);
 	    MPI_Iprobe(MPI_ANY_SOURCE, REQUEST, MPI_COMM_WORLD, &flag, &stat); // possibly sets flag to true
 	} else {
 	    // no more tasks, but also we cannot quit completely yet (some may still be processing)
@@ -271,6 +271,34 @@ void transmit_monotonicity(int m)
 	// we block here to make sure we are in sync with everyone
 	MPI_Send(&m, 1, MPI_INT, i, CHANGE_MONOTONICITY, MPI_COMM_WORLD);
     }
+}
+
+void receive_tarray()
+{
+    MPI_Status stat;
+
+    MPI_Recv(&tcount, 1, MPI_INT, QUEEN, SENDING_TCOUNT, MPI_COMM_WORLD, &stat);
+    tarray_worker = (task *) malloc(tcount * sizeof(task));
+    for (int i = 0; i < tcount; i++)
+    {
+	MPI_Recv(&(tarray_worker[i]), sizeof(task), MPI_CHAR, QUEEN, SENDING_TARRAY, MPI_COMM_WORLD, &stat);
+    }
+    MPI_Barrier(MPI_COMM_WORLD);
+}
+
+void send_tarray()
+{
+    for (int target = 1; target < world_size; target++)
+    {
+	// we block here to make sure we are in sync with everyone
+	MPI_Send(&tcount, 1, MPI_INT, target, SENDING_TCOUNT, MPI_COMM_WORLD);
+	for (int i = 0; i < tcount; i++)
+	{
+	    MPI_Send(tarray_queen[i].serialize(), sizeof(task), MPI_CHAR, target, SENDING_TARRAY, MPI_COMM_WORLD);
+	}
+    }
+    MPI_Barrier(MPI_COMM_WORLD);
+    PROGRESS_PRINT("Tasks synchronized.\n");
 }
 
 #endif
