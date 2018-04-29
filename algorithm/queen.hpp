@@ -156,38 +156,31 @@ int queen()
 	    auto x = std::thread(queen_updater, sapling);
 	    x.detach();
 
-	    if(lonely)
+	    // the flag is updated by the other thread
+	    while(updater_result == POSTPONED)
 	    {
-		// TODO: finish integrating the lonely queen into the general queen
-	    } else {
-		
-		// the flag is updated by the other thread
-		while(updater_result == POSTPONED)
-		{
-		    collect_worker_tasks();
-		    send_out_tasks();
-		    //std::this_thread::sleep_for(std::chrono::milliseconds(TICK_UPDATE));
-		}
+		collect_worker_tasks();
+		send_out_tasks();
+		//std::this_thread::sleep_for(std::chrono::milliseconds(TICK_UPDATE));
+	    }
 
 #ifdef PROGRESS
-		auto iteration_end = std::chrono::system_clock::now();
-		std::chrono::duration<long double> iteration_time = iteration_end - iteration_start;
-		PROGRESS_PRINT("Iteration time: %Lfs.\n", iteration_time.count());
+	    auto iteration_end = std::chrono::system_clock::now();
+	    std::chrono::duration<long double> iteration_time = iteration_end - iteration_start;
+	    PROGRESS_PRINT("Iteration time: %Lfs.\n", iteration_time.count());
 #endif
-	
-		// collect needless data
-		collect_worker_tasks();
+	    
+	    // collect needless data
+	    collect_worker_tasks();
 		
-	
-		if (updater_result == 0)
-		{
-		    break;
-		} else {
-		    //clear_cache_of_ones();
-		}
+	    
+	    if (updater_result == 0)
+	    {
+		break;
+	    } else {
+		//clear_cache_of_ones();
 	    }
 	}
-
 	dynprog_attr_free(&tat);
 	
 #ifdef PROGRESS
@@ -201,18 +194,18 @@ int queen()
 	if (updater_result == 1)
 	{
 	    ret = 1;
-	    break;
+	break;
 	}
-	
+    
 	// TODO: make regrow work again
 	// REGROW_ONLY(regrow(sapling));
     }
-
+    
     send_terminations();
     MPI_Barrier(MPI_COMM_WORLD);
     receive_measurements();
     g_meas.print();
-
+    
     return ret;
 }
 

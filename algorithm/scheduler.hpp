@@ -18,6 +18,7 @@
 // queen's world_rank
 const int QUEEN = 0;
 
+
 // communication constants
 const int REQUEST = 1;
 //const int SENDING_LOADS = 2;
@@ -34,6 +35,9 @@ const int ROOT_SOLVED = 11;
 const int TASK_IRRELEVANT = 12;
 const int SENDING_TCOUNT = 13;
 const int SENDING_TARRAY = 14;
+// ----
+const int TERMINATION_SIGNAL = -1;
+const int ROOT_SOLVED_SIGNAL = -2;
 
 const int SYNCHRO_SLEEP = 20;
 std::vector<int> remote_taskmap;
@@ -216,10 +220,21 @@ void send_terminations()
 {
     MPI_Request blankreq;
     int irrel = 0;
-    
-    for(int i = 1; i < world_size; i++)
+
+// workers may actively wait on various messages, so we send termination on several channels
+    for (int i = 1; i < world_size; i++)
     {
-	MPI_Isend(&irrel, 1, MPI_INT, i, TERMINATE, MPI_COMM_WORLD, &blankreq);
+	MPI_Isend(&TERMINATION_SIGNAL, 1, MPI_INT, i, TERMINATE, MPI_COMM_WORLD, &blankreq);
+    }
+
+    for (int i = 1; i < world_size; i++)
+    {
+	MPI_Isend(&TERMINATION_SIGNAL, 1, MPI_INT, i, CHANGE_MONOTONICITY, MPI_COMM_WORLD, &blankreq);
+    }
+
+    for (int i = 1; i < world_size; i++)
+    {
+	MPI_Isend(&TERMINATION_SIGNAL, 1, MPI_INT, i, SENDING_TASK, MPI_COMM_WORLD, &blankreq);
     }
 }
 
@@ -227,10 +242,16 @@ void send_root_solved()
 {
     MPI_Request blankreq;
     int irrel = 0;
-    
-    for(int i = 1; i < world_size; i++)
+
+    // again, workers may wait for tasks, so inform them directly
+    for (int i = 1; i < world_size; i++)
     {
-	MPI_Isend(&irrel, 1, MPI_INT, i, ROOT_SOLVED, MPI_COMM_WORLD, &blankreq);
+	MPI_Isend(&ROOT_SOLVED_SIGNAL, 1, MPI_INT, i, ROOT_SOLVED, MPI_COMM_WORLD, &blankreq);
+    }
+
+    for (int i = 1; i < world_size; i++)
+    {
+	MPI_Isend(&ROOT_SOLVED_SIGNAL, 1, MPI_INT, i, SENDING_TASK, MPI_COMM_WORLD, &blankreq);
     }
 
 }
