@@ -12,17 +12,36 @@ queue update code. */
 // a strictly size-based tasker
 
 
-class task
+struct task
 {
-public:
     binconf bc;
     int last_item = 1;
     int expansion_depth = 0;
 };
 
 // global task map indexed by binconf hashes
-std::map<llu, task> tm;
+// std::map<llu, task> tm;
 
+// Shared memory between queen and the antenna.
+std::atomic<int> *tstatus;
+
+// an array of tasks (indexed by their order, the ordering is the same as in tstatus).
+std::vector<task> tarray;
+int tcount = 0;
+int thead = 0; // head of the tarray queue
+
+// global measure of queen's collected tasks
+std::atomic<unsigned int> collected_cumulative{0};
+std::atomic<unsigned int> collected_now{0};
+
+
+const int TASK_AVAILABLE = 2;
+const int TASK_IN_PROGRESS = 3;
+const int TASK_PRUNED = 4;
+
+
+// Mapping from hashes to status indices. The mapping does not change after generation.
+std::map<llu, int> tmap;
 
 template<int MODE> bool possible_task_advanced(adversary_vertex *v, int largest_item)
 {
@@ -103,117 +122,66 @@ template<int MODE> bool possible_task_mixed(adversary_vertex *v, int largest_ite
 }
 
 
-// Adds a task to the global task queue.
-void add_task(const binconf *x, thread_attr *tat) {
+// Adds a task to the task array.
+void add_task(const binconf *x, thread_attr *tat)
+{
     task_count++;
     task newtask;
     duplicate(&(newtask.bc), x);
     newtask.last_item = tat->last_item;
     newtask.expansion_depth = tat->expansion_depth; 
-    //pthread_mutex_lock(&taskq_lock); // LOCK
-    std::unique_lock<std::mutex> l(taskq_lock);
-    //taskq_lock.lock();
-    tm.insert(std::pair<llu, task>((x->loadhash ^ x->itemhash), newtask));
-    l.unlock();
-    //pthread_mutex_unlock(&taskq_lock); // UNLOCK
+    tarray.push_back(newtask);
+    tcount++;
 }
 
-// Removes a task from the global task map. If the task is not
-// present, it just silently does nothing.
+// builds an inverse task map after all tasks are inserte into the task array.
+void build_tmap()
+{
+    for(int i = 0; i < tarray.size(); i++)
+    {
+	tmap.insert(std::make_pair(tarray[i].bc.loadhash ^ tarray[i].bc.itemhash, i));
+    }
+}
+
+void build_status()
+{
+    tstatus = (std::atomic<int>*) malloc(tcount * sizeof(std::atomic<int>));
+    for (int i = 0; i < tcount; i++)
+    {
+	tstatus[i].store(TASK_AVAILABLE);
+    }
+}
+
+void delete_status()
+{
+    free(tstatus);
+    tstatus = NULL;
+}
+
+// Does not actually remove a task, just marks it as completed.
 void remove_task(llu hash)
 {
-    removed_task_count++; // no race condition here, variable only used in the UPDATING thread
-
-    //pthread_mutex_lock(&taskq_lock); // LOCK
-    std::unique_lock<std::mutex> l(taskq_lock);
-    //taskq_lock.lock();
-    auto it = tm.find(hash);
-    if (it != tm.end()) {
-	DEBUG_PRINT("Erasing task: ");
-	DEBUG_PRINT_BINCONF(&(it->second.bc));
-	tm.erase(it);
-    } else {
-	// pthread_rwlock_wrlock(&running_and_removed_lock);
-	std::unique_lock<std::shared_timed_mutex> rl(running_and_removed_lock);
-	//l.lock();
-	running_and_removed.insert(hash);
-	rl.unlock();
-	// pthread_rwlock_unlock(&running_and_removed_lock);
-    }
-    l.unlock();
-    //pthread_mutex_unlock(&taskq_lock); // UNLOCK
+    removed_task_count++;
+    tstatus[tmap[hash]].store(TASK_PRUNED);
 }
 
-/* Check if a given task is complete, return its value. 
-
-   Since we store the completed tasks in a secondary stucture
-   (map), we incur an O(log n) penalty for checking completion,
-   where n is the number of tasks.
-*/
-
+// Check if a given task is complete, return its value. 
 int completion_check(llu hash)
 {
-    auto fin = losing_tasks.find(hash);
-
-    int ret = POSTPONED;
-    if (fin != losing_tasks.end())
+    int query = tstatus[tmap[hash]].load(std::memory_order_acquire);
+    if (query == 0 || query == 1)
     {
-	ret = fin->second;
-	assert(ret == 1);
+	return query;
     }
-
-    auto fin2 = winning_tasks.find(hash);
-    if (fin2 != winning_tasks.end())
-    {
-	ret = fin2->second;
-	assert(ret == 0);
-    }
-
-    auto fin3 = overdue_tasks.find(hash);
-    if (fin3 != overdue_tasks.end())
-    {
-	ret = fin3->second;
-	assert(ret == OVERDUE);
-    }
-
-    return ret;
+    return POSTPONED;
 }
 
-// called by the updater, collects tasks from other threads
-unsigned int collect_tasks()
-{
-    unsigned int collected = 0;
-    for (int i =0; i < THREADS; i++)
-    {
-	std::unique_lock<std::mutex> l(queen_mutex);
-
-	for (auto &kv: completed_tasks[i])
-	{
-
-	    if (kv.second == 0)
-	    {
-		winning_tasks.insert(kv);
-	    } else if (kv.second == 1) {
-		losing_tasks.insert(kv);
-	    } else if (kv.second == OVERDUE)
-	    {
-		overdue_tasks.insert(kv);
-	    }
-	    collected++;
-	}
-
-	completed_tasks[i].clear();
-	l.unlock();
-    }
-    return collected;
-}
-
-/* A debug function for printing out the global task map. */
+// A debug function for printing out the global task map. 
 void print_tasks()
 {
-    for(auto it = tm.begin(); it != tm.end(); ++it)
+    for(int i = 0; i < tcount; i++)
     {
-        DEBUG_PRINT_BINCONF(&(it->second.bc));
+        DEBUG_PRINT_BINCONF(&tarray[i].bc);
     }
 }
 #endif

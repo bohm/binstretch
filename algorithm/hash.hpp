@@ -190,10 +190,12 @@ void shared_memory_init(int sharedmem_size, int sharedmem_rank)
     MPI_Win ht_win;
     MPI_Win dpht_win;
     void *baseptr;
+    // a slight hack here -- since queen uses two threads, we change the allocation slightly
     ht_size = WORKER_HASHSIZE*sharedmem_size;
     dpht_size = WORKER_BC_HASHSIZE*sharedmem_size;
+
     fprintf(stderr, "Local process %d of %d: ht_size %" PRIu64 ", dpht_size %" PRIu64 "\n",
-	    sharedmem_rank, sharedmem_size, ht_size*sizeof(ht_size*sizeof(std::atomic<conf_el>)),
+	    sharedmem_rank, sharedmem_size, ht_size*sizeof(std::atomic<conf_el>),
 	    dpht_size*sizeof(std::atomic<dpht_el>));
 // allocate hashtables
     if(sharedmem_rank == 0)
@@ -219,19 +221,19 @@ void shared_memory_init(int sharedmem_size, int sharedmem_rank)
 	for (uint64_t i = 0; i < ht_size; i++)
 	{
 	    ht[i].store(y);
-	    if(i % 10000 == 0)
+	    /* if(i % 10000 == 0)
 	    {
-		//fprintf(stderr, "Inserted into element %llu.\n", i);
-	    }
+		fprintf(stderr, "Inserted into element %llu.\n", i);
+		}*/
 	}
 
 	for (uint64_t i =0; i < dpht_size; i++)
 	{
 	    dpht[i].store(x);
-	    if(i % 10000 == 0)
+	    /* if(i % 10000 == 0)
 	    {
-		//fprintf(stderr, "DPinserted into element %llu.\n", i);
-	    }
+		fprintf(stderr, "DPinserted into element %llu.\n", i);
+		} */
 	}
 	
     } else {

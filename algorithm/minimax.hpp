@@ -48,18 +48,6 @@ int time_stats(thread_attr *tat)
     }
 
     return 0;
-    // I wonder if there is a penalty for repeatedly constructing the lock
-    /*
-    std::shared_lock<std::shared_timed_mutex> l(running_and_removed_lock);
-    //l.lock();
-    auto it = running_and_removed.find(tat->explore_roothash);
-    if(it != running_and_removed.end())
-    {
-	ret = TERMINATING;
-    }
-    l.unlock();
-    return ret;
-    */
 }
 
 /* return values: 0: player 1 cannot pack the sequence starting with binconf b

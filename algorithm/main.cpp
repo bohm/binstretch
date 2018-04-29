@@ -55,8 +55,8 @@ int main(void)
 	}
 	
 	
-	fprintf(stderr, "Number of tasks: %" PRIu64 ", collected tasks: %u,  pruned tasks %" PRIu64 ".\n,",
-		task_count, collected_cumulative, removed_task_count);
+	fprintf(stderr, "Number of tasks: %d, collected tasks: %u,  pruned tasks %" PRIu64 ".\n,",
+		tcount, collected_cumulative.load(), removed_task_count);
 
 	// TODO: enable measuring for queen in multiple worker mode
 	/*

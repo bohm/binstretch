@@ -33,15 +33,12 @@ const int ROOT_SOLVED = 11;
 const int TASK_IRRELEVANT = 12;
 
 const int SYNCHRO_SLEEP = 20;
-std::vector<uint64_t> remote_taskmap;
+std::vector<int> remote_taskmap;
 
 void clear_all_caches()
 {
-
-    losing_tasks.clear();
-    winning_tasks.clear();
-    tm.clear();
-    running_and_removed.clear();
+    delete_status();
+    tarray.clear();
 }
 
 void transmit_zobrist()
@@ -90,7 +87,6 @@ void receive_measurements()
     MPI_Barrier(MPI_COMM_WORLD);
 }
 
-
 void collect_worker_tasks()
 {
     int solution_received = 0;
@@ -98,24 +94,35 @@ void collect_worker_tasks()
     MPI_Status stat;
 
     MPI_Iprobe(MPI_ANY_SOURCE, SOLUTION, MPI_COMM_WORLD, &solution_received, &stat);
+#ifdef MEASURE
+    auto col_start = std::chrono::system_clock::now();
+#endif
     while(solution_received)
     {
 	solution_received = 0;
 	int sender = stat.MPI_SOURCE;
 	MPI_Recv(&solution, 1, MPI_INT, sender, SOLUTION, MPI_COMM_WORLD, &stat);
+	collected_now++;
+	collected_cumulative++;
 	//printf("Queen: received solution %d.\n", solution);
         // add it to the collected set of the queen
-	assert(remote_taskmap[sender] != 0);
+	assert(remote_taskmap[sender] != -1);
 	if (solution != IRRELEVANT)
 	{
-	    std::unique_lock<std::mutex> l(queen_mutex);
-	    completed_tasks[0].insert(std::make_pair(remote_taskmap[sender], solution));
-	    l.unlock();
+	    tstatus[remote_taskmap[sender]].store(solution, std::memory_order_release);
 	}
-	remote_taskmap[sender] = 0;
+	remote_taskmap[sender] = -1;
 	
 	MPI_Iprobe(MPI_ANY_SOURCE, SOLUTION, MPI_COMM_WORLD, &solution_received, &stat);
     }
+#ifdef MEASURE
+    auto col_end = std::chrono::system_clock::now();
+    std::chrono::duration<long double> col_time = col_end - col_start;
+    if (col_time.count() >= 0.01)
+    {
+	MEASURE_PRINT("Queen spent %Lfs in the collection loop.\n", col_time.count());
+    }
+#endif
 }
 
 void collect_worker_task(int sender)
@@ -130,14 +137,14 @@ void collect_worker_task(int sender)
     {
 	solution_received = 0;
 	MPI_Recv(&solution, 1, MPI_INT, sender, SOLUTION, MPI_COMM_WORLD, &stat);
-	assert(remote_taskmap[sender] != 0);
+	collected_now++;
+	collected_cumulative++;
+	assert(remote_taskmap[sender] != -1);
 	if (solution != IRRELEVANT)
 	{
-	    std::unique_lock<std::mutex> l(queen_mutex);
-	    completed_tasks[0].insert(std::make_pair(remote_taskmap[sender], solution));
-	    l.unlock();
+	    tstatus[remote_taskmap[sender]].store(solution, std::memory_order_release); 
 	}
-	remote_taskmap[sender] = 0;
+	remote_taskmap[sender] = -1;
     }
 }
 
@@ -150,6 +157,11 @@ void send_out_tasks()
     int irrel = 0;
     bool got_task = false;
     MPI_Iprobe(MPI_ANY_SOURCE, REQUEST, MPI_COMM_WORLD, &flag, &stat);
+
+#ifdef MEASURE
+    auto send_start = std::chrono::system_clock::now();
+#endif
+
     while (flag)
     {
 	flag = 0;
@@ -159,22 +171,26 @@ void send_out_tasks()
 	// where queen overwrites remote_taskmap information.
 	collect_worker_task(sender);
 	task current;
-	//std::unique_lock<std::mutex> l(queen_mutex);
-	if(tm.size() != 0)
+
+	// fetches the first available task 
+	while (thead < tcount)
 	{
-	    // select first task and send it
-	    current = tm.begin()->second;
-	    tm.erase(tm.begin());
-	    got_task = true;
+	    int stat = tstatus[thead].load(std::memory_order_acquire);
+	    if (stat == TASK_AVAILABLE)
+	    {
+		current = tarray[thead];
+		thead++;
+		got_task = true;
+		break;
+	    }
+	    thead++;
 	}
-	// unlock needs to happen in both cases
-        //l.unlock();
 	
 	if(got_task)
 	{
 	    // check the synchronization problem does not happen (as above)
-	    assert(remote_taskmap[sender] == 0);
-	    remote_taskmap[sender] = current.bc.hash();
+	    assert(remote_taskmap[sender] == -1);
+	    remote_taskmap[sender] = thead-1;
 	    MPI_Isend(current.bc.loads.data(), BINS+1, MPI_UNSIGNED_SHORT, sender, SENDING_LOADS, MPI_COMM_WORLD, &blankreq);
 	    MPI_Isend(current.bc.items.data(), S+1, MPI_UNSIGNED_SHORT, sender, SENDING_ITEMS, MPI_COMM_WORLD, &blankreq);
     	    MPI_Isend(&current.last_item, 1, MPI_INT, sender, LAST_ITEM, MPI_COMM_WORLD, &blankreq);
@@ -184,6 +200,16 @@ void send_out_tasks()
 	    break;
 	}
     }
+
+#ifdef MEASURE
+    auto send_end = std::chrono::system_clock::now();
+    std::chrono::duration<long double> send_time = send_end - send_start;
+    if (send_time.count() >= 0.01)
+    {
+	MEASURE_PRINT("Queen spent %Lfs in the send loop.\n", send_time.count());
+    }
+#endif
+
 }
 
 void send_terminations()

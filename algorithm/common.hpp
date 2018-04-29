@@ -58,6 +58,7 @@ const int ALPHA = (RMOD-S);
 // bitwise length of indices of hash tables and lock tables
 const unsigned int HASHLOG = 26;
 const unsigned int BCLOG = 24;
+
 const unsigned int LOADLOG = 13;
 
 // size of the hash table
@@ -203,34 +204,7 @@ const int PERMANENT = 1;
 // a test for queen being the only process working
 #define QUEEN_ONLY world_size == 1
 #define BEING_WORKER world_rank != 0
-
-//pthread_mutex_t taskq_lock;
-std::mutex taskq_lock;
-std::shared_timed_mutex running_and_removed_lock;
-std::mutex collection_lock[THREADS];
-std::atomic_bool global_terminate_flag(false);
-std::mutex thread_progress_lock;
-
-std::mutex in_progress_mutex;
-std::mutex queen_mutex;
-std::condition_variable cv;
-
-//std::shared_lock running_and_removed_lock;
-// global hash-like map of completed tasks (and their parents up to
-// the root)
-std::map<uint64_t, int> winning_tasks;
-std::map<uint64_t, int> losing_tasks;
-std::map<uint64_t, int> overdue_tasks;
-
-std::unordered_set<uint64_t> running_and_removed;
-
-
-// hash-like map of completed tasks, serving as output map for each
-// thread separately
-std::map<uint64_t, int> completed_tasks[THREADS];
-
-// counter of finished threads
-bool thread_finished[THREADS];
+#define BEING_QUEEN world_rank == 0
 
 // monotonicity 0: monotonely non-decreasing lower bound
 // monotonicity S: equivalent to full generality lower bound
