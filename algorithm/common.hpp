@@ -26,18 +26,18 @@ typedef signed char tiny;
 // than 127 items or not. We allow it to go negative for signalling -1/-2.
 typedef int16_t bin_int;
 
-#define PROGRESS 1
+//#define PROGRESS 1
 //#define REGROW 1
 //#define OUTPUT 1
-#define MEASURE 1
+//#define MEASURE 1
 //#define ONLY_ONE_PASS 1
 
 // maximum load of a bin in the optimal offline setting
-const bin_int S = 90;
+const bin_int S = 14;
 // target goal of the online bin stretching problem
-const bin_int R = 123;
+const bin_int R = 19;
 // Change this number for the selected number of bins.
-const bin_int BINS = 3;
+const bin_int BINS = 8;
 
 // If you want to generate a specific lower bound, you can create an initial bin configuration here.
 // You can also insert an initial sequence here.
@@ -46,20 +46,20 @@ const std::vector<bin_int> INITIAL_ITEMS = {};
 //const std::vector<bin_int> INITIAL_LOADS = {8,1,1,1,1,};
 //const std::vector<bin_int> INITIAL_ITEMS = {7,0,0,0,1};
 // You can also insert an initial sequence here, and the adversary will use it as a predefined start.
-const std::vector<bin_int> INITIAL_SEQUENCE = {};
+const std::vector<bin_int> INITIAL_SEQUENCE = {5};
 //const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1,1,1,1};
 
-const int FIRST_PASS = 10;
+const int FIRST_PASS = 0;
 
 // constants used for good situations
 const int RMOD = (R-1);
 const int ALPHA = (RMOD-S);
 
 // bitwise length of indices of hash tables and lock tables
-const unsigned int HASHLOG = 26;
-const unsigned int BCLOG = 24;
+const unsigned int HASHLOG = 20;
+const unsigned int BCLOG = 20;
 
-const unsigned int LOADLOG = 13;
+const unsigned int LOADLOG = 10;
 
 // size of the hash table
 const llu WORKER_HASHSIZE = (1ULL<<HASHLOG);
@@ -67,7 +67,7 @@ const llu WORKER_BC_HASHSIZE = (1ULL<<BCLOG);
 const llu LOADSIZE = (1ULL<<LOADLOG);
 
 // linear probing limit
-const int LINPROBE_LIMIT = 8;
+const int LINPROBE_LIMIT = 4;
 const int BMC_LIMIT = 2;
 
 const int DEFAULT_DP_SIZE = 100000;
@@ -76,10 +76,11 @@ const int BESTFIT_THRESHOLD = (1*S)/10;
 // the number of local worker threads
 const int THREADS = 1;
 // a bound on total load of a configuration before we split it into a task
-const int TASK_LOAD = 10;
-const int TASK_DEPTH = S > 41 ? 2 : 3;
+const int TASK_LOAD = 16;
+const int TASK_DEPTH = 2;
+//const int TASK_DEPTH = S > 41 ? 3 : 4;
 
-#define POSSIBLE_TASK possible_task_advanced
+#define POSSIBLE_TASK possible_task_mixed
 
 const int EXPANSION_DEPTH = 3;
 const int TASK_LARGEST_ITEM = 5;
@@ -122,24 +123,23 @@ const bin_int FEASIBLE = 1;
 const bin_int UNKNOWN = 0;
 const bin_int INFEASIBLE = -1; // this is -1 so it can be returned with dynprog_max()
 
-#define GENERATING 1
-#define EXPLORING 2
-#define EXPANDING 3
-
-#define FULL 1
-#define MONOTONE 2
-#define MIXED 3
+const int GENERATING = 1;
+const int EXPLORING = 2;
+const int EXPANDING = 3;
+const int UPDATING = 4;
+const int SEQUENCING = 5;
+const int CLEANUP = 6;
 
 // MPI-related constants
 int world_size = 0;
 int world_rank = 0;
+char processor_name[MPI_MAX_PROCESSOR_NAME];
 MPI_Comm shmcomm; // shared memory communicator
 int shm_rank = 0;
 int shm_size = 0;
 uint64_t shm_log = 0;
 bool root_solved = false;
 bool worker_terminate = false;
-
 bool generating_tasks;
 uint64_t *Zi; // Zobrist table for items
 uint64_t *Zl; // Zobrist table for loads
@@ -160,17 +160,15 @@ class adv_outedge;
 class alg_outedge;
 */
 
-struct dp_hash_item {
+struct dp_hash_item
+{
     int8_t feasible;
     llu itemhash;
 };
 
-typedef struct dp_hash_item dp_hash_item;
-
 // dynprog_result is data point about a particular configuration
-class dynprog_result
+struct dynprog_result
 {
-public:
     bool feasible = false;
     // largest_sendable[i] -- largest item sendable BINS-i times
     // std::array<uint8_t, BINS> largest_sendable = {};

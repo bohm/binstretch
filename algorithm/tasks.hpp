@@ -1,17 +1,17 @@
-#include <cstdio>
-
-#include "common.hpp"
-#include "tree.hpp"
-
 /* This header file contains the task generation code and the task
 queue update code. */
 
 #ifndef _TASKS_HPP
 #define _TASKS_HPP 1
 
+#include <cstdio>
+#include <vector>
+#include <algorithm>
+
+#include "common.hpp"
+#include "tree.hpp"
+
 // a strictly size-based tasker
-
-
 struct task
 {
     binconf bc;
@@ -27,6 +27,7 @@ struct task
 };
 
 std::atomic<int> *tstatus;
+std::vector<int> tstatus_temporary;
 
 // tarray used by the queen, who does not know the tarray size when it's pushing into it
 std::vector<task> tarray_queen;
@@ -116,15 +117,28 @@ template<int MODE> bool possible_task_depth(adversary_vertex *v, int largest_ite
 template<int MODE> bool possible_task_mixed(adversary_vertex *v, int largest_item)
 {
 
-    // compute the largest item seen so far
-
-    if (largest_item >= TASK_LARGEST_ITEM)
+    int target_depth = 0;
+    if (largest_item >= S/4)
     {
-	return possible_task_depth<MODE>(v);
+	target_depth = computation_root->depth + TASK_DEPTH;
+    } else if (largest_item >= 3) {
+	target_depth = computation_root->depth + TASK_DEPTH + 1;
     } else {
-	return possible_task_size<MODE>(v);
+	if (v->bc->totalload() >= TASK_LOAD)
+	{
+	    return true;
+	} else {
+	    return false;
+	}
     }
-    
+
+    if (target_depth - v->depth <= 0)
+    {
+	return true;
+    } else {
+	return false;
+    }
+
 }
 
 
@@ -136,25 +150,28 @@ void add_task(const binconf *x, thread_attr *tat)
     duplicate(&(newtask.bc), x);
     newtask.last_item = tat->last_item;
     newtask.expansion_depth = tat->expansion_depth; 
+    tmap.insert(std::make_pair(newtask.bc.loadhash ^ newtask.bc.itemhash, tarray_queen.size()));
     tarray_queen.push_back(newtask);
+    tstatus_temporary.push_back(TASK_AVAILABLE);
     tcount++;
 }
 
 // builds an inverse task map after all tasks are inserte into the task array.
-void build_tmap()
+void rebuild_tmap()
 {
-    for(int i = 0; i < tarray_queen.size(); i++)
+    tmap.clear();
+    for (int i = 0; i < tcount; i++)
     {
 	tmap.insert(std::make_pair(tarray_queen[i].bc.loadhash ^ tarray_queen[i].bc.itemhash, i));
     }
+   
 }
-
-void build_status()
+void build_tstatus()
 {
     tstatus = (std::atomic<int>*) malloc(tcount * sizeof(std::atomic<int>));
     for (int i = 0; i < tcount; i++)
     {
-	tstatus[i].store(TASK_AVAILABLE);
+	tstatus[i].store(tstatus_temporary[i]);
     }
 }
 
@@ -165,10 +182,22 @@ void delete_status()
 }
 
 // Does not actually remove a task, just marks it as completed.
-void remove_task(llu hash)
+template <int MODE> void remove_task(llu hash)
 {
-    removed_task_count++;
-    tstatus[tmap[hash]].store(TASK_PRUNED);
+
+    if (MODE == GENERATING || MODE == UPDATING)
+    {
+	removed_task_count++;
+	if (MODE == GENERATING)
+	{
+	    tstatus_temporary[tmap[hash]] = TASK_PRUNED;
+	}
+	
+	if (MODE == UPDATING)
+	{
+	    tstatus[tmap[hash]].store(TASK_PRUNED);
+	}
+    }
 }
 
 // Check if a given task is complete, return its value. 

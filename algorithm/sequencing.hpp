@@ -128,10 +128,10 @@ int sequencing_adversary(binconf *b, unsigned int depth, thread_attr *tat, tree_
     {
 	r = 0;
 	
-	remove_outedges_except(current_adversary, item_size);
+	remove_outedges_except<SEQUENCING>(current_adversary, item_size);
     } else if (below == 1)
     {
-	remove_edge(new_edge);
+	remove_edge<SEQUENCING>(new_edge);
     } else if (below == POSTPONED)
     {
 	if (r == 1)
@@ -225,7 +225,7 @@ int sequencing_algorithm(binconf *b, int k, unsigned int depth, thread_attr *tat
 	    {
 		r = below;
 		VERBOSE_PRINT("Winning position for algorithm, returning 1.\n");
-		remove_outedges(current_algorithm);
+		remove_outedges<SEQUENCING>(current_algorithm);
 		return r;
 	    } else if (below == 0)
 	    {

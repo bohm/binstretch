@@ -321,37 +321,37 @@ void print_compact(FILE* stream, adversary_vertex *v)
 
 /* remove_inedge removes the edge from the list of the incoming edges,
    but does not touch the outgoing edge list. */
-void remove_inedge(alg_outedge *e);
-void remove_inedge(adv_outedge *e);
+template <int MODE> void remove_inedge(alg_outedge *e);
+template <int MODE> void remove_inedge(adv_outedge *e);
 
-void remove_outedges(algorithm_vertex *v);
-void remove_outedges(adversary_vertex *v);
+template <int MODE> void remove_outedges(algorithm_vertex *v);
+template <int MODE> void remove_outedges(adversary_vertex *v);
 
 /* Forward declaration of remove_task for inclusion purposes. */
-void remove_task(llu hash);
+template <int MODE> void remove_task(llu hash);
 
-void remove_inedge(adv_outedge *e)
+template <int MODE> void remove_inedge(adv_outedge *e)
 {
     e->to->in.erase(e->pos_child);
 
     /* The vertex is no longer reachable, delete it. */
     if (e->to->in.empty())
     {
-	remove_outedges(e->to);
+	remove_outedges<MODE>(e->to);
 	delete e->to;
     }
 }
 
-void remove_inedge(alg_outedge *e)
+template <int MODE> void remove_inedge(alg_outedge *e)
 {
     e->to->in.erase(e->pos_child);
     if (e->to->in.empty())
     {
-	remove_outedges(e->to);
+	remove_outedges<MODE>(e->to);
 	// if e->to is task, remove it from the queue
 	if (e->to->task && e->to->value == POSTPONED)
 	{
-	    remove_task(e->to->bc->loadhash ^ e->to->bc->itemhash);
+	    remove_task<MODE>(e->to->bc->loadhash ^ e->to->bc->itemhash);
 	}
 	// remove it from the generated graph
 	generated_graph.erase(e->to->bc->loadhash ^ e->to->bc->itemhash);
@@ -361,22 +361,22 @@ void remove_inedge(alg_outedge *e)
 
 /* Removes all outgoing edges (including from the inedge lists).
    In order to preserve incoming edges, leaves the vertex be. */
-void remove_outedges(algorithm_vertex *v)
+template <int MODE> void remove_outedges(algorithm_vertex *v)
 {
     for (auto&& e: v->out)
     {
-	remove_inedge(e);
+	remove_inedge<MODE>(e);
 	delete e;
     }
 
     v->out.clear();
 }
 
-void remove_outedges(adversary_vertex *v)
+template <int MODE> void remove_outedges(adversary_vertex *v)
 {
     for (auto&& e: v->out)
     {
-	remove_inedge(e);
+	remove_inedge<MODE>(e);
 	delete e;
     }
 
@@ -384,29 +384,29 @@ void remove_outedges(adversary_vertex *v)
 }
 
 // removes both the outedge and the inedge
-void remove_edge(alg_outedge *e)
+template <int MODE> void remove_edge(alg_outedge *e)
 {
-    remove_inedge(e);
+    remove_inedge<MODE>(e);
     e->from->out.erase(e->pos);
     delete e;
 }
 
-void remove_edge(adv_outedge *e)
+template <int MODE> void remove_edge(adv_outedge *e)
 {
-    remove_inedge(e);
+    remove_inedge<MODE>(e);
     e->from->out.erase(e->pos);
     delete e;
 }
 
 // Remove all outedges except the right path.
-void remove_outedges_except(adversary_vertex *v, int right_item)
+template <int MODE> void remove_outedges_except(adversary_vertex *v, int right_item)
 {
     adv_outedge *right_edge;
     for (auto&& e: v->out)
     {
 	if (e->item != right_item)
 	{
-	    remove_inedge(e);
+	    remove_inedge<MODE>(e);
 	    delete e;
 	} else {
 	    right_edge = e;
@@ -421,7 +421,7 @@ void remove_outedges_except(adversary_vertex *v, int right_item)
 
 void graph_cleanup(adversary_vertex *root)
 {
-    remove_outedges(root); // should delete root
+    remove_outedges<CLEANUP>(root); // should delete root
     generated_graph.clear();
 }
 
@@ -429,6 +429,6 @@ void purge_sapling(adversary_vertex *sapling)
 {
     sapling->value = POSTPONED;
     sapling->last_item = 1; // TODO: it doesn't clearly state that last item should be ignored.
-    remove_outedges(sapling);
+    remove_outedges<CLEANUP>(sapling);
 }
 #endif

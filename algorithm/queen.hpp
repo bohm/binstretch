@@ -50,7 +50,6 @@ int queen()
     {
 	fprintf(stderr, "Lonely queen reporting for duty.\n");
     } else {
-	char processor_name[MPI_MAX_PROCESSOR_NAME];
 	int name_len;
 	MPI_Get_processor_name(processor_name, &name_len);
 	fprintf(stderr, "Queen Two Threads reporting for duty: %s, rank %d out of %d instances\n",
@@ -148,8 +147,12 @@ int queen()
 		}
 	    }
 
- 	    build_status();
-	    build_tmap();
+ 	    build_tstatus();
+
+	    // permutes the tasks 
+	    std::random_shuffle(tarray_queen.begin(), tarray_queen.end());
+	    rebuild_tmap();
+	    
 	    PROGRESS_PRINT("Queen: Generated %d tasks.\n", tcount);
 	    send_tarray();
 

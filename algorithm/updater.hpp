@@ -77,7 +77,7 @@ int update(adversary_vertex *v)
 	    {
 
 		adv_outedge *removed_edge = (*it);
-		remove_inedge(*it);
+		remove_inedge<UPDATING>(*it);
 		it = v->out.erase(it); // serves as it++
 		delete removed_edge;
 	    } else if (below == POSTPONED)
@@ -91,7 +91,7 @@ int update(adversary_vertex *v)
 	// remove outedges only for a non-task
 	if (result == 0)
 	{
-	    remove_outedges_except(v, right_move);
+	    remove_outedges_except<UPDATING>(v, right_move);
 	}
 
 
@@ -155,7 +155,7 @@ int update(algorithm_vertex *v)
     
     if (result == 1)
     {
-	remove_outedges(v);
+	remove_outedges<UPDATING>(v);
 	assert( v->out.empty() );
 
     }

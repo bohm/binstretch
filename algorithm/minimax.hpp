@@ -27,26 +27,13 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 
 int time_stats(thread_attr *tat)
 {
-    // int ret = 0;
-
-    /*
-    std::chrono::time_point<std::chrono::system_clock> cur = std::chrono::system_clock::now();
-    auto iter_time = cur - tat->eval_start;
-    if (!tat->overdue_printed && iter_time >= THRESHOLD)
-    {
-	MEASURE_PRINT("Task is at least %ld s overdue: ", THRESHOLD.count());
-	MEASURE_PRINT_BINCONF(tat->explore_root);
-	tat->overdue_printed = true;
-    }
-    */
-
-    check_root_solved();
+/*    check_root_solved();
     check_termination();
     if (root_solved || worker_terminate)
     {
 	return IRRELEVANT;
     }
-
+*/
     return 0;
 }
 
@@ -213,7 +200,7 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
 	    if (MODE == GENERATING || MODE == EXPANDING)
 	    {
 		// remove all outedges except the right one
-		remove_outedges_except(current_adversary, item_size);
+		remove_outedges_except<GENERATING>(current_adversary, item_size);
 	    }
 	    break;
 	} else if (below == 1)
@@ -221,7 +208,7 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
 	    if (MODE == GENERATING || MODE == EXPANDING)
 	    {
 		// no decreasing, but remove this branch of the game tree
-		remove_edge(new_edge);
+		remove_edge<GENERATING>(new_edge);
 		// assert(new_edge == NULL); // TODO: make a better assertion
 	    }
 	} else if (below == POSTPONED)
@@ -374,7 +361,7 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 		{
 		    // delete all edges from the current algorithmic vertex
 		    // which should also delete the adversary vertex
-		    remove_outedges(current_algorithm);
+		    remove_outedges<GENERATING>(current_algorithm);
 		    // assert(current_algorithm == NULL); // sanity check
 		}
 

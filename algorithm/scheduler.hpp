@@ -101,9 +101,9 @@ void collect_worker_tasks()
     MPI_Status stat;
 
     MPI_Iprobe(MPI_ANY_SOURCE, SOLUTION, MPI_COMM_WORLD, &solution_received, &stat);
-#ifdef MEASURE
+/* #ifdef MEASURE
     auto col_start = std::chrono::system_clock::now();
-#endif
+#endif */
     while(solution_received)
     {
 	solution_received = 0;
@@ -122,14 +122,14 @@ void collect_worker_tasks()
 	
 	MPI_Iprobe(MPI_ANY_SOURCE, SOLUTION, MPI_COMM_WORLD, &solution_received, &stat);
     }
-#ifdef MEASURE
+/* #ifdef MEASURE
     auto col_end = std::chrono::system_clock::now();
     std::chrono::duration<long double> col_time = col_end - col_start;
     if (col_time.count() >= 0.01)
     {
 	MEASURE_PRINT("Queen spent %Lfs in the collection loop.\n", col_time.count());
     }
-#endif
+    #endif */
 }
 
 void collect_worker_task(int sender)
@@ -165,9 +165,9 @@ void send_out_tasks()
     bool got_task = false;
     MPI_Iprobe(MPI_ANY_SOURCE, REQUEST, MPI_COMM_WORLD, &flag, &stat);
 
-#ifdef MEASURE
+/* #ifdef MEASURE
     auto send_start = std::chrono::system_clock::now();
-#endif
+    #endif */
 
     while (flag)
     {
@@ -205,14 +205,14 @@ void send_out_tasks()
 	}
     }
 
-#ifdef MEASURE
+/* #ifdef MEASURE
     auto send_end = std::chrono::system_clock::now();
     std::chrono::duration<long double> send_time = send_end - send_start;
     if (send_time.count() >= 0.01)
     {
 	MEASURE_PRINT("Queen spent %Lfs in the send loop.\n", send_time.count());
     }
-#endif
+    #endif */
 
 }
 
