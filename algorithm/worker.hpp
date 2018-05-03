@@ -4,6 +4,29 @@
 #include "common.hpp"
 #include "scheduler.hpp"
 
+int receive_monotonicity()
+{
+    int m;
+    MPI_Status stat;
+    MPI_Recv(&m, 1, MPI_INT, QUEEN, CHANGE_MONOTONICITY, MPI_COMM_WORLD, &stat);
+    return m;
+}
+
+void request_task()
+{
+    int irrel = 0;
+    MPI_Send(&irrel, 1, MPI_INT, QUEEN, REQUEST, MPI_COMM_WORLD);
+}
+
+int receive_task()
+{
+    MPI_Status stat;
+    int task_id = -3;
+    MPI_Recv(&task_id, 1, MPI_INT, QUEEN, SENDING_TASK, MPI_COMM_WORLD, &stat);
+    return task_id;
+}
+
+
 int worker_solve(const task *t)
 {
     int ret = POSTPONED;
@@ -45,13 +68,14 @@ void worker()
     MPI_Status stat;
     MPI_Request blankreq;
     std::chrono::time_point<std::chrono::system_clock> wait_start, wait_end,
-	processing_start, processing_end, wraparound_start, wraparound_end;
+	processing_start, processing_end;
     task* current_task = NULL;
     int taskcounter = 0;
     int exp = 0;
-
     receive_zobrist();
+    init_private_memory();
     shared_memory_init(shm_size, shm_rank);
+    sync_up();
     
     while(true)
     {
@@ -60,43 +84,46 @@ void worker()
 	    wait_for_monotonicity = false;
 	    root_solved = false;
 	    
-	    MPI_Recv(&monotonicity, 1, MPI_INT, QUEEN, CHANGE_MONOTONICITY, MPI_COMM_WORLD, &stat);
-
+	    monotonicity = receive_monotonicity();
+	    // fprintf(stderr, "Worker %d received new monotonicity.\n", world_rank);
+	    taskcounter = 0;
+	    
 	    //fprintf(stderr, "Worker %d: switch to monotonicity %d.\n", world_rank, monotonicity);
 	    // clear caches, as monotonicity invalidates some situations
-	    if (monotonicity != FIRST_PASS)
-	    {
-		clear_cache_of_ones();
-	    }
+	    clear_cache_of_ones();
 
 	    if (monotonicity == TERMINATION_SIGNAL)
 	    {
 		break;
 	    }
 	    
-	    // sync up
-	    taskcounter = 0;
-	    MPI_Barrier(MPI_COMM_WORLD);
-
-	    // receive (new) task array
-	    if (monotonicity != FIRST_PASS)
+	    sync_up(); // Monotonicity.
+   
+	    blocking_check_root_solved();
+	    
+	    if (root_solved)
 	    {
-		free(tarray_worker);
+		fprintf(stderr, "Root_solved; worker %d switching to new monotonicity.\n", world_rank);
+		wait_for_monotonicity = true;
+		ignore_additional_signals();
+		sync_up(); // Root solved.
+		continue;
 	    }
+			       
+	    // receive (new) task array
 	    receive_tarray();
+	    // fprintf(stderr, "Worker %d moving on to request a task.\n", world_rank);
+
 	}
 
 	taskcounter++;
 	// Send a request for a task to the queen.
-#ifdef MEASURE
-	wait_start = std::chrono::system_clock::now();
-#endif
-	MPI_Send(&irrel, 1, MPI_INT, QUEEN, REQUEST, MPI_COMM_WORLD);
-	// the queen may send a termination signal instead of the task
-	int current_task_id = -3;
-	MPI_Recv(&current_task_id, 1, MPI_INT, QUEEN, SENDING_TASK, MPI_COMM_WORLD, &stat);
+	request_task();
 
-	//int current_task_id = ++exp;
+	if (MEASURE) { wait_start = std::chrono::system_clock::now(); }
+	// the queen may send a termination signal instead of the task
+	int current_task_id = receive_task();
+
 	if (current_task_id == TERMINATION_SIGNAL)
 	{
 	    break; 
@@ -105,6 +132,9 @@ void worker()
 	if (current_task_id == ROOT_SOLVED_SIGNAL)
 	{
 	    wait_for_monotonicity = true;
+	    ignore_additional_signals();
+	    free(tarray_worker);
+	    sync_up(); // Root solved.
 	    continue;
 	}
 
@@ -112,27 +142,33 @@ void worker()
 	current_task->bc.hash_loads_init();
 	// printf("Worker %d: printing received binconf (last item %d): ", world_rank, current_task->last_item); 
 	// print_binconf_stream(stdout, &(current_task->bc));
-#ifdef MEASURE
-	wait_end = std::chrono::system_clock::now();
-	std::chrono::duration<long double> wait_time = wait_end - wait_start;
-	if (wait_time.count() >= 1.0)
+	if (MEASURE)
 	{
-	    //MEASURE_PRINT("Worker %d on %s waited for its %dth request %Lfs.\n", world_rank, processor_name, taskcounter, wait_time.count());
+	    wait_end = std::chrono::system_clock::now();
+	    std::chrono::duration<long double> wait_time = wait_end - wait_start;
+	    if (wait_time.count() >= 1.0)
+	    {
+		//print<MEASURE>("Worker %d on %s waited for its %dth request %Lfs.\n", world_rank, processor_name, taskcounter, wait_time.count());
+	    }
 	}
-	processing_start = std::chrono::system_clock::now();
-#endif
-	// solution may still be irrelevant if a signal came mid-computation
+	if (TASKLOG)
+	{
+	    processing_start = std::chrono::system_clock::now();
+	}
+
+// solution may still be irrelevant if a signal came mid-computation
 	int solution = worker_solve(current_task);
-#ifdef MEASURE
-	processing_end = std::chrono::system_clock::now();
-	std::chrono::duration<long double> processing_time = processing_end - processing_start;
-	if (processing_time.count() >= 1.0)
+
+	if (TASKLOG)
 	{
-	    //MEASURE_PRINT("Worker %d on %s processed its %dth request %Lfs.\n", world_rank, processor_name, taskcounter, processing_time.count());
-	    MEASURE_PRINT("%Lfs: ", processing_time.count());
-	    MEASURE_PRINT_BINCONF(&(current_task->bc));
+	    processing_end = std::chrono::system_clock::now();
+	    std::chrono::duration<long double> processing_time = processing_end - processing_start;
+	    if (processing_time.count() >= TASKLOG_THRESHOLD)
+	    {
+		fprintf(stderr, "%Lfs: ", processing_time.count());
+		print_binconf_stream(stderr, &(current_task->bc));
+	    }
 	}
-#endif
 	assert(solution == 0 || solution == 1 || solution == IRRELEVANT);
 
 	MPI_Send(&solution, 1, MPI_INT, QUEEN, SOLUTION, MPI_COMM_WORLD);
@@ -140,16 +176,23 @@ void worker()
 	if (root_solved)
 	{
 	    wait_for_monotonicity = true;
+	    ignore_additional_signals();
+	    free(tarray_worker);
+	    sync_up(); // Root solved.
+	    continue;
 	}
 	
 	if (worker_terminate)
 	{
+	    free(tarray_worker);
 	    break;
 	}
     }
 
-    MPI_Barrier(MPI_COMM_WORLD);
+    sync_up();
     transmit_measurements();
+    delete_private_memory();
+    sync_up();
 }
 
 #endif // WORKER

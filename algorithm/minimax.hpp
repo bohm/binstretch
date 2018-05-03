@@ -27,13 +27,13 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 
 int time_stats(thread_attr *tat)
 {
-/*    check_root_solved();
+    check_root_solved();
     check_termination();
     if (root_solved || worker_terminate)
     {
 	return IRRELEVANT;
     }
-*/
+
     return 0;
 }
 
@@ -115,15 +115,15 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
 	tat->iterations++;
 	if (tat->iterations % 100 == 0)
 	{
-#ifdef MEASURE
-	    int recommendation = time_stats(tat);
-	    if (recommendation == TERMINATING || recommendation == IRRELEVANT)
+	    if (MEASURE)
 	    {
-		//fprintf(stderr, "We got advice to terminate.\n");
-		return recommendation;
+		int recommendation = time_stats(tat);
+		if (recommendation == TERMINATING || recommendation == IRRELEVANT)
+		{
+		    //fprintf(stderr, "We got advice to terminate.\n");
+		    return recommendation;
+		}
 	    }
-	    
-#endif
 	}
     }
 
@@ -254,14 +254,15 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 
 	if (tat->iterations % 100 == 0)
 	{
-#ifdef MEASURE
-	    int recommendation = time_stats(tat);
-	    if (recommendation == TERMINATING || recommendation == IRRELEVANT)
+	    if (MEASURE)
 	    {
-		//fprintf(stderr, "We got advice to terminate.\n");
-		return recommendation;
+		int recommendation = time_stats(tat);
+		if (recommendation == TERMINATING || recommendation == IRRELEVANT)
+		{
+		    //fprintf(stderr, "We got advice to terminate.\n");
+		    return recommendation;
+		}
 	    }
-#endif
 	}
     }
  

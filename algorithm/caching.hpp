@@ -22,7 +22,7 @@ const int INSERTED_RANDOMLY = -1;
 const int ALREADY_INSERTED = -2;
 const int OVERWRITE_OF_PROGRESS = -3;
 
-bin_int is_hashed_atomic(uint64_t hash, uint64_t logpart, thread_attr *tat)
+template <bool ATOMIC> bin_int is_hashed(uint64_t hash, uint64_t logpart, thread_attr *tat)
 {
 	//fprintf(stderr, "Bchash %" PRIu64 ", zero_last_bit %" PRIu64 " get_last_bit %" PRId8 " \n", bchash, zero_last_bit(bchash), get_last_bit(bchash));
 
@@ -32,41 +32,46 @@ bin_int is_hashed_atomic(uint64_t hash, uint64_t logpart, thread_attr *tat)
 	// Use linear probing to check for the hashed value.
 	for (int i = 0; i < LINPROBE_LIMIT; i++)
 	{
+	    if (ATOMIC)
+	    {
 		candidate = ht[logpart + i].load(std::memory_order_acquire);
+	    } else
+	    {
+		candidate = ht_p[logpart + i];
+	    }
 
-		if (candidate.hash() == 0)
-		{
-		    break;
-		}
-
-		// we have to continue in this case, because it might be stored after this element
-		if (candidate.removed())
-		{
-		    continue;
-		}
-		
-		if (candidate.hash() == hash)
-		{
-		    posvalue = candidate.value();
-		    break;
-		}
-
-		if (i == LINPROBE_LIMIT - 1)
-		{
-		    posvalue = FULL_NOT_FOUND;
-		}
-
-		// bounds check
-		if (logpart + i >= ht_size-1)
-		{
-		    return FULL_NOT_FOUND;
-		}
+	    if (candidate.hash() == 0)
+	    {
+		break;
+	    }
+	    
+	    // we have to continue in this case, because it might be stored after this element
+	    if (candidate.removed())
+	    {
+		continue;
+	    }
+	    
+	    if (candidate.hash() == hash)
+	    {
+		posvalue = candidate.value();
+		break;
+	    }
+	    
+	    if (i == LINPROBE_LIMIT - 1)
+	    {
+		posvalue = FULL_NOT_FOUND;
+	    }
+	    
+	    // bounds check
+	    if (logpart + i >= ht_size-1)
+	    {
+		return FULL_NOT_FOUND;
+	    }
 	}
 	return posvalue;
 }
 
-
-int hashpush_atomic(const conf_el& new_el, uint64_t logpart, thread_attr *tat)
+template <bool ATOMIC> int hashpush(const conf_el& new_el, uint64_t logpart, thread_attr *tat)
 {
     //uint64_t maxposition = logpart;
 
@@ -74,12 +79,22 @@ int hashpush_atomic(const conf_el& new_el, uint64_t logpart, thread_attr *tat)
 	conf_el candidate;
 	for (int i = 0; i< LINPROBE_LIMIT; i++)
 	{
-	    candidate = ht[logpart + i].load(std::memory_order_acquire);
+	    if (ATOMIC)
+	    {
+		candidate = ht[logpart + i].load(std::memory_order_acquire);
+	    } else {
+		candidate = ht_p[logpart + i];
+	    }
 	    if (candidate.empty() || candidate.removed())
 	    {
 		// since we are doing two sequential atomic edits, a collision may occur,
 		// but this should just give an item a wrong information about depth
-		ht[logpart + i].store(new_el, std::memory_order_release);
+		if (ATOMIC)
+		{
+		    ht[logpart + i].store(new_el, std::memory_order_release);
+		} else {
+		    ht_p[logpart + i] = new_el;
+		}
 		return INSERTED;
 	    }
 	    else if (candidate.hash() == new_el.hash())
@@ -93,27 +108,43 @@ int hashpush_atomic(const conf_el& new_el, uint64_t logpart, thread_attr *tat)
 		{
 		    ret = ALREADY_INSERTED;
 		}
-		
-		ht[logpart + i].store(new_el, std::memory_order_release);
+
+		if (ATOMIC)
+		{
+		    ht[logpart + i].store(new_el, std::memory_order_release);
+		} else {
+		    ht_p[logpart + i] = new_el;
+		}
+
 		return ret;
 	    }
 	    
 	    // bounds check
 	    if (logpart + i == ht_size - 1)
 	    {
-		ht[logpart + i].store(new_el, std::memory_order_release);
+		if (ATOMIC)
+		{
+		    ht[logpart + i].store(new_el, std::memory_order_release);
+		} else {
+		    ht_p[logpart + i] = new_el;
+		}
 		return INSERTED;
 	    }
 	}
 	
 	// if the cache is full, choose a random position
-	ht[rand() % LINPROBE_LIMIT].store(new_el, std::memory_order_release);
+	if (ATOMIC)
+	{
+	    ht[logpart + (rand() % LINPROBE_LIMIT)].store(new_el, std::memory_order_release);
+	} else {
+	    ht_p[logpart + (rand() % LINPROBE_LIMIT)] = new_el;
+	}
 	return INSERTED_RANDOMLY;
 }
 
-dpht_el is_dp_hashed_atomic(uint64_t hash, uint64_t logpart, thread_attr *tat)
+template <bool ATOMIC> dpht_el is_dp_hashed(uint64_t hash, uint64_t logpart, thread_attr *tat)
 {
-	//fprintf(stderr, "Bchash %" PRIu64 ", zero_last_bit %" PRIu64 " get_last_bit %" PRId8 " \n", bchash, zero_last_bit(bchash), get_last_bit(bchash));
+    //fprintf(stderr, "Bchash %" PRIu64 ", zero_last_bit %" PRIu64 " get_last_bit %" PRId8 " \n", bchash, zero_last_bit(bchash), get_last_bit(bchash));
 
     dpht_el candidate = {0};
 
@@ -121,7 +152,13 @@ dpht_el is_dp_hashed_atomic(uint64_t hash, uint64_t logpart, thread_attr *tat)
     
     for (int i = 0; i < LINPROBE_LIMIT; i++)
     {
-	candidate = dpht[logpart + i].load(std::memory_order_acquire);
+	if (ATOMIC)
+	{
+	    candidate = dpht[logpart + i].load(std::memory_order_acquire);
+	} else {
+	    candidate = dpht_p[logpart + i];
+	}
+	
 	if (candidate.hash() == 0)
 	{
 	    MEASURE_ONLY(tat->meas.dp_partial_nf++);
@@ -147,10 +184,19 @@ dpht_el is_dp_hashed_atomic(uint64_t hash, uint64_t logpart, thread_attr *tat)
 	}
 
 	// bounds check
-	if (logpart + i >= dpht_size-1)
+	if (ATOMIC)
 	{
-	    MEASURE_ONLY(tat->meas.dp_full_nf++);
-	    break;
+	    if (logpart + i >= dpht_size-1)
+	    {
+		MEASURE_ONLY(tat->meas.dp_full_nf++);
+		break;
+	    }
+	} else {
+	    if (logpart + i >= PRIVATE_DPSIZE-1)
+	    {
+		MEASURE_ONLY(tat->meas.dp_full_nf++);
+		break;
+	    }
 	}
     }
 
@@ -159,12 +205,19 @@ dpht_el is_dp_hashed_atomic(uint64_t hash, uint64_t logpart, thread_attr *tat)
     return candidate;
 }
 
-template <int MODE> int hashpush_dp_atomic(uint64_t hash, const dpht_el& data, uint64_t logpart, thread_attr *tat)
+template <bool ATOMIC, int MODE> int hashpush_dp(uint64_t hash, const dpht_el& data, uint64_t logpart, thread_attr *tat)
 {
 	dpht_el candidate;
 	for (int i = 0; i< LINPROBE_LIMIT; i++)
 	{
-	    candidate = dpht[logpart + i].load(std::memory_order_acquire);
+
+	    if (ATOMIC)
+	    {
+		candidate = dpht[logpart + i].load(std::memory_order_acquire);
+	    } else {
+		candidate = dpht_p[logpart + i];
+	    }
+
 	    if (candidate.hash() == 0 || candidate.hash() == REMOVED)
 	    {
 		// since we are doing two sequential atomic edits, a collision may occur,
@@ -178,74 +231,111 @@ template <int MODE> int hashpush_dp_atomic(uint64_t hash, const dpht_el& data, u
 		// insert a permanent entry
 		if (MODE == PERMANENT && candidate._permanence == HEURISTIC)
 		{
-		    dpht[logpart + i].store(data, std::memory_order_release);
+		    if (ATOMIC)
+		    {
+			dpht[logpart + i].store(data, std::memory_order_release);
+		    } else {
+			dpht_p[logpart + i] = data;
+		    }
 		}
 
 		if (MODE == HEURISTIC && candidate._permanence != PERMANENT && candidate._empty_bins < data._empty_bins)
 		{
-		    dpht[logpart + i].store(data, std::memory_order_release);
+		    if (ATOMIC)
+		    {
+			dpht[logpart + i].store(data, std::memory_order_release);
+		    } else {
+			dpht_p[logpart + i] = data;
+		    }
 		}
 		return INSERTED;
 	    }
 
 // check bounds of hashtable
-	    if (logpart+i == dpht_size-1)
+	    if (ATOMIC)
 	    {
-		dpht[logpart + i].store(data, std::memory_order_release);
+		if (logpart+i == dpht_size-1)
+		{
+		    dpht[logpart + i].store(data, std::memory_order_release);
+		}
+		return INSERTED;
+	    } else {
+		if (logpart+i == PRIVATE_DPSIZE-1)
+		{
+		    dpht_p[logpart + i] = data;
+		}
 		return INSERTED;
 	    }
-
 	}
 
 	// if the cache is full, choose a random position
-	dpht[rand() % LINPROBE_LIMIT].store(data, std::memory_order_release);
+	if (ATOMIC)
+	{
+	    dpht[logpart + (rand() % LINPROBE_LIMIT)].store(data, std::memory_order_release);
+	} else {
+	    dpht_p[logpart + (rand() % LINPROBE_LIMIT)] = data;
+	}
+	
 	return INSERTED_RANDOMLY;
 }
 
 void conf_hashpush(const binconf *d, uint64_t posvalue, thread_attr *tat)
 {
-#ifdef MEASURE
-    tat->meas.bc_insertions++;
-#endif
+    MEASURE_ONLY(tat->meas.bc_insertions++);
 
     uint64_t bchash = d->itemhash ^ d->loadhash;
     assert(posvalue >= 0 && posvalue <= 2);
     conf_el new_item;
     new_item._data = zero_last_two_bits(bchash) | posvalue;
-    
-    int ret = hashpush_atomic(new_item, hashlogpart(bchash), tat);
-#ifdef MEASURE
-    if (ret == INSERTED)
-    {
-	if (posvalue == IN_PROGRESS)
-	{
-	    tat->meas.bc_in_progress_insert++;
-	} else {
-	    tat->meas.bc_normal_insert++;
-	}
-    } else if (ret == INSERTED_RANDOMLY)
-    {
-	if (posvalue == IN_PROGRESS)
-	{
-	    tat->meas.bc_in_progress_insert++;
-	} else {
-	    tat->meas.bc_random_insert++;
-	}
 
-    } else if (ret == ALREADY_INSERTED)
+    int ret;
+    if (d->itemcount() <= CONF_ITEMCOUNT_THRESHOLD)
     {
-	tat->meas.bc_already_inserted++;
-    } else if (ret == OVERWRITE_OF_PROGRESS)
-    {
-	tat->meas.bc_overwrite++;
+	ret = hashpush<true>(new_item, shared_conflogpart(bchash), tat);
+    } else {
+	ret = hashpush<false>(new_item, private_conflogpart(bchash), tat);
     }
-#endif
+    
+    if (MEASURE)
+    {
+	if (ret == INSERTED)
+	{
+	    if (posvalue == IN_PROGRESS)
+	    {
+		tat->meas.bc_in_progress_insert++;
+	    } else {
+		tat->meas.bc_normal_insert++;
+	    }
+	} else if (ret == INSERTED_RANDOMLY)
+	{
+	    if (posvalue == IN_PROGRESS)
+	    {
+		tat->meas.bc_in_progress_insert++;
+	    } else {
+		tat->meas.bc_random_insert++;
+	    }
+	    
+	} else if (ret == ALREADY_INSERTED)
+	{
+	    tat->meas.bc_already_inserted++;
+	} else if (ret == OVERWRITE_OF_PROGRESS)
+	{
+	    tat->meas.bc_overwrite++;
+	}
+    }
 }
 
 bin_int is_conf_hashed(const binconf *d, thread_attr *tat)
 {
 	uint64_t bchash = zero_last_two_bits(d->itemhash ^ d->loadhash);
-	bin_int ret = is_hashed_atomic(bchash, hashlogpart(bchash), tat);
+
+	bin_int ret;
+	if (d->itemcount() <= CONF_ITEMCOUNT_THRESHOLD)
+	{
+	    ret = is_hashed<true>(bchash, shared_conflogpart(bchash), tat);
+	} else {
+	    ret = is_hashed<false>(bchash, private_conflogpart(bchash), tat);
+	}
 	assert(ret <= 2 && ret >= -2);
 
 	if (ret >= 0)
@@ -288,7 +378,12 @@ void dp_hashpush_feasible(const binconf *d, thread_attr *tat)
     ins._feasible = FEASIBLE;
     ins._permanence = PERMANENT;
     ins._empty_bins = 0;
-    hashpush_dp_atomic<PERMANENT>(hash, ins, dplogpart(hash), tat);
+    if (d->itemcount() <= DP_ITEMCOUNT_THRESHOLD)
+    {
+	hashpush_dp<true, PERMANENT>(hash, ins, shared_dplogpart(hash), tat);
+    } else {
+	hashpush_dp<false, PERMANENT>(hash, ins, private_dplogpart(hash), tat);
+    }
 }
 
 void dp_hashpush_infeasible(const binconf *d, thread_attr *tat)
@@ -301,62 +396,26 @@ void dp_hashpush_infeasible(const binconf *d, thread_attr *tat)
     ins._hash = hash;
     ins._feasible = INFEASIBLE;
     ins._permanence = PERMANENT;
-    hashpush_dp_atomic<PERMANENT>(hash, ins, dplogpart(hash), tat);
+
+    if (d->itemcount() <= DP_ITEMCOUNT_THRESHOLD)
+    {
+	hashpush_dp<true, PERMANENT>(hash, ins, shared_dplogpart(hash), tat);
+    } else {
+	hashpush_dp<false, PERMANENT>(hash, ins, private_dplogpart(hash), tat);
+    }
 }
 
 dpht_el is_dp_hashed(const binconf *d, thread_attr *tat)
 {
     uint64_t hash = d->dphash();
-    dpht_el query = is_dp_hashed_atomic(hash, dplogpart(hash), tat);
+    dpht_el query;
+    if (d->itemcount() <= DP_ITEMCOUNT_THRESHOLD)
+    {
+	query = is_dp_hashed<true>(hash, shared_dplogpart(hash), tat);
+    } else {
+	query = is_dp_hashed<false>(hash, private_dplogpart(hash), tat);
+    }
     return query;
 }
 
-/* Temporarily disabled.
-#ifdef MEASURE
-
-void collect_caching_from_thread(const thread_attr &tat)
-{
-    total_dp_insertions += tat.dp_insertions;
-    total_dp_hit += tat.dp_hit;
-    total_dp_partial_nf += tat.dp_partial_nf;
-    total_dp_full_nf += tat.dp_full_nf;
-
-    total_bc_insertions += tat.bc_insertions;
-    total_bc_hit += tat.bc_hit;
-    total_bc_partial_nf += tat.bc_partial_nf;
-    total_bc_full_nf += tat.bc_full_nf;
-
-    total_bc_normal_insert += tat.bc_normal_insert;
-    total_bc_random_insert += tat.bc_random_insert;
-    total_bc_in_progress_insert += tat.bc_in_progress_insert;
-    total_bc_already_inserted += tat.bc_already_inserted;
-    total_bc_overwrite += tat.bc_overwrite;
-
-#ifdef LF
-    lf_tot_full_nf += tat.lf_full_nf;
-    lf_tot_partial_nf += tat.lf_partial_nf;
-    lf_tot_hit += tat.lf_hit;
-    lf_tot_insertions += tat.lf_insertions;
-#endif // LF
-}
-
-
-void print_caching()
-{
-    MEASURE_PRINT("Main cache size: %llu, #search: %" PRIu64 "(#hit: %" PRIu64 ",  #miss: %" PRIu64 ") #full miss: %" PRIu64 ".\n",
-		  WORKER_HASHSIZE, (total_bc_hit+total_bc_partial_nf+total_bc_full_nf), total_bc_hit,
-		  total_bc_partial_nf + total_bc_full_nf, total_bc_full_nf);
-    MEASURE_PRINT("Insertions: %" PRIu64 ", new data insertions: %" PRIu64 ", (normal: %" PRIu64 ", random inserts: %" PRIu64 ", already inserted: %" PRIu64 ", in progress: %" PRIu64 ", overwrite of in progress: %" PRIu64 ").\n",
-		  total_bc_insertions, total_bc_insertions - total_bc_already_inserted - total_bc_in_progress_insert, total_bc_normal_insert, total_bc_random_insert,
-		  total_bc_already_inserted, total_bc_in_progress_insert, total_bc_overwrite);
-    MEASURE_PRINT("DP cache size: %llu, #insert: %" PRIu64 ", #search: %" PRIu64 "(#hit: %" PRIu64 ",  #part. miss: %" PRIu64 ",#full miss: %" PRIu64 ").\n",
-		  WORKER_BC_HASHSIZE, total_dp_insertions, (total_dp_hit+total_dp_partial_nf+total_dp_full_nf), total_dp_hit,
-		  total_dp_partial_nf, total_dp_full_nf);
-
-    LFPRINT("Larg. feas. cache size %llu, #insert: %" PRIu64 ", #hit: %" PRIu64 ", #part. miss: %" PRIu64 ", #full miss: %" PRIu64 "\n",
-	    LFEASSIZE, lf_tot_insertions, lf_tot_hit, lf_tot_partial_nf, lf_tot_full_nf);
-
-}
-#endif // MEASURE
-*/
 #endif // _CACHING_HPP

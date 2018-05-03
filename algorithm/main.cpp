@@ -58,19 +58,6 @@ int main(void)
 	fprintf(stderr, "Number of tasks: %d, collected tasks: %u,  pruned tasks %" PRIu64 ".\n,",
 		tcount, collected_cumulative.load(), removed_task_count);
 
-	// TODO: enable measuring for queen in multiple worker mode
-	/*
-	if (QUEEN_ONLY)
-	{
-	    MEASURE_PRINT("Total time (all threads): %Lfs.\n", time_spent.count());
-	    GOOD_MOVES_PRINT("Total good move hit: %" PRIu64 ", miss: %" PRIu64 "\n", total_good_move_hit, total_good_move_miss);
-	    MEASURE_ONLY(print_caching());
-	    MEASURE_ONLY(print_gsheur(stderr));
-	    MEASURE_ONLY(print_dynprog_measurements());
-	    MEASURE_PRINT("Large item hit %" PRIu64 ", miss: %" PRIu64 "\n", total_large_item_hit, total_large_item_miss);
-	}
-	*/
-	    
 	hashtable_cleanup();
 	//graph_cleanup(root_vertex); // TODO: fix this
     }

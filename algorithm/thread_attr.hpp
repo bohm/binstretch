@@ -107,8 +107,9 @@ struct measure_attr
 	    }
 
 	    // caching
+	    // TODO: make it work with the new shared/private model
 	    fprintf(stderr, "Main cache size: %llu, #search: %" PRIu64 "(#hit: %" PRIu64 ",  #miss: %" PRIu64 ") #full miss: %" PRIu64 ".\n",
-			  WORKER_HASHSIZE, (bc_hit+bc_partial_nf+bc_full_nf), bc_hit,
+			  SHARED_CONFSIZE, (bc_hit+bc_partial_nf+bc_full_nf), bc_hit,
 			  bc_partial_nf + bc_full_nf, bc_full_nf);
 	    fprintf(stderr, "Insertions: %" PRIu64 ", new data insertions: %" PRIu64 ", (normal: %" PRIu64 ", random inserts: %" PRIu64
 		    ", already inserted: %" PRIu64 ", in progress: %" PRIu64 ", overwrite of in progress: %" PRIu64 ").\n",
@@ -116,7 +117,7 @@ struct measure_attr
 		    bc_already_inserted, bc_in_progress_insert, bc_overwrite);
 	    
 	    fprintf(stderr, "DP cache size: %llu, #insert: %" PRIu64 ", #search: %" PRIu64 "(#hit: %" PRIu64 ",  #part. miss: %" PRIu64 ",#full miss: %" PRIu64 ").\n",
-		    WORKER_BC_HASHSIZE, dp_insertions, (dp_hit+dp_partial_nf+dp_full_nf), dp_hit,
+		    SHARED_DPSIZE, dp_insertions, (dp_hit+dp_partial_nf+dp_full_nf), dp_hit,
 		    dp_partial_nf, dp_full_nf);
 	}
 };
@@ -125,24 +126,33 @@ struct measure_attr
 measure_attr g_meas;
 
 /* dynprog global variables and other attributes separate for each thread */
-struct thread_attr {
+struct thread_attr
+{
+
+    // --- persistent thread attributes ---
+    int monotonicity = 0;
+
+    // --- minimax computation attributes ---
+
+    // dynamic programming
     std::unordered_set<std::array<bin_int, BINS> >* oldset;
     std::unordered_set<std::array<bin_int, BINS> >* newset;
-
     std::vector<loadconf> *oldloadqueue;
     std::vector<loadconf> *newloadqueue;
-
-
     uint64_t *loadht;
+
     optconf oc;
     loadconf ol;
     int id;
     int last_item = 1;
-    int largest_since_computation_root = 0; // largest item since computation root (excluding sequencing and such)
+    // largest item since computation root (excluding sequencing and such)
+    int largest_since_computation_root = 0;
+    // previous maxmimum_feasible
     bin_int prev_max_feasible = S;
     uint64_t iterations = 0;
     int expansion_depth = 0;
-    binconf* explore_root;
+    // root of the current minimax evaluation
+    binconf* explore_root = NULL;
     uint64_t explore_roothash = 0;
     
     std::chrono::time_point<std::chrono::system_clock> eval_start;
@@ -151,9 +161,9 @@ struct thread_attr {
     bool current_overdue = false;
     uint64_t overdue_tasks = 0;
 
-    measure_attr meas;
-//  debug
-//  int maxfeas_reason = 0;
+    // --- measure attributes ---
+    measure_attr meas; // measurements for one computation
+    measure_attr g_meas; // persistent measurements per process
 };
 
 #endif

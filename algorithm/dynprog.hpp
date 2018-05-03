@@ -664,9 +664,7 @@ std::pair<bool, bin_int> dynprog_max_vector(const binconf *conf, const std::vect
 		first.loadhash ^= conf->itemhash;
 		pnewq->push_back(first);
 	    } else {
-#ifdef MEASURE
-		tat->meas.largest_queue_observed = std::max(tat->meas.largest_queue_observed, poldq->size());
-#endif
+		MEASURE_ONLY(tat->meas.largest_queue_observed = std::max(tat->meas.largest_queue_observed, poldq->size()));
 		for (loadconf& tuple: *poldq)
 		{
 		    //loadconf tuple = tupleit;

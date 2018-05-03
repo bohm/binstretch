@@ -38,14 +38,34 @@ const int SENDING_TARRAY = 14;
 // ----
 const int TERMINATION_SIGNAL = -1;
 const int ROOT_SOLVED_SIGNAL = -2;
+const int ROOT_UNSOLVED_SIGNAL = -3;
 
 const int SYNCHRO_SLEEP = 20;
+
 std::vector<int> remote_taskmap;
 
-void clear_all_caches()
+void init_remote_taskmap()
 {
-    delete_status();
-    tarray_queen.clear();
+    // prepare remote taskmap
+    for (int i =0; i < world_size; i++)
+    {
+	remote_taskmap.push_back(-1);
+    }
+}
+
+void reset_remote_taskmap()
+{
+    for (int i =0; i < world_size; i++)
+    {
+	remote_taskmap[i] = -1;
+    }
+}
+
+// just an alias for MPI_Barrier
+void sync_up()
+{
+    MPI_Barrier(MPI_COMM_WORLD);
+
 }
 
 void transmit_zobrist()
@@ -78,7 +98,6 @@ void receive_zobrist()
 void transmit_measurements()
 {
     MPI_Send(g_meas.serialize(),sizeof(measure_attr), MPI_CHAR, QUEEN, MEASUREMENTS, MPI_COMM_WORLD);
-    MPI_Barrier(MPI_COMM_WORLD);
 }
 
 void receive_measurements()
@@ -91,7 +110,6 @@ void receive_measurements()
 	MPI_Recv(&recv, sizeof(measure_attr), MPI_CHAR, sender, MEASUREMENTS, MPI_COMM_WORLD, &stat);
 	g_meas.add(recv);
     }
-    MPI_Barrier(MPI_COMM_WORLD);
 }
 
 void collect_worker_tasks()
@@ -240,21 +258,87 @@ void send_terminations()
 
 void send_root_solved()
 {
-    MPI_Request blankreq;
-    int irrel = 0;
-
-    // again, workers may wait for tasks, so inform them directly
     for (int i = 1; i < world_size; i++)
     {
-	MPI_Isend(&ROOT_SOLVED_SIGNAL, 1, MPI_INT, i, ROOT_SOLVED, MPI_COMM_WORLD, &blankreq);
+	MPI_Send(&ROOT_SOLVED_SIGNAL, 1, MPI_INT, i, ROOT_SOLVED, MPI_COMM_WORLD);
+    }
+}
+
+void send_root_solved_via_task()
+{
+    for (int i = 1; i < world_size; i++)
+    {
+	MPI_Send(&ROOT_SOLVED_SIGNAL, 1, MPI_INT, i, SENDING_TASK, MPI_COMM_WORLD);
+    }
+}
+
+// Workers fetch and ignore additional signals about root solved (since it may arrive in two places).
+void ignore_additional_signals()
+{
+    MPI_Status stat;
+    int signal_present = 0;
+    int irrel = 0 ;
+    MPI_Iprobe(QUEEN, SENDING_TASK, MPI_COMM_WORLD, &signal_present, &stat);
+
+    while (signal_present)
+    {
+	MPI_Recv(&irrel, 1, MPI_INT, QUEEN, SENDING_TASK, MPI_COMM_WORLD, &stat);
+	MPI_Iprobe(QUEEN, SENDING_TASK, MPI_COMM_WORLD, &signal_present, &stat);
     }
 
-    for (int i = 1; i < world_size; i++)
+    MPI_Iprobe(QUEEN, ROOT_SOLVED, MPI_COMM_WORLD, &signal_present, &stat);
+
+    while (signal_present)
     {
-	MPI_Isend(&ROOT_SOLVED_SIGNAL, 1, MPI_INT, i, SENDING_TASK, MPI_COMM_WORLD, &blankreq);
+	MPI_Recv(&irrel, 1, MPI_INT, QUEEN, ROOT_SOLVED, MPI_COMM_WORLD, &stat);
+	MPI_Iprobe(QUEEN, ROOT_SOLVED, MPI_COMM_WORLD, &signal_present, &stat);
+    }
+}
+
+// Queen fetches and ignores the remaining tasks from the previous iteration.
+void ignore_additional_requests()
+{
+    int request_received = 0;
+    int irrel = 0;
+    MPI_Status stat;
+
+
+    MPI_Iprobe(MPI_ANY_SOURCE, REQUEST, MPI_COMM_WORLD, &request_received, &stat);
+    while (request_received)
+    {
+	request_received = 0;
+	int sender = stat.MPI_SOURCE;
+	MPI_Recv(&irrel, 1, MPI_INT, sender, REQUEST, MPI_COMM_WORLD, &stat);
+	MPI_Iprobe(MPI_ANY_SOURCE, REQUEST, MPI_COMM_WORLD, &request_received, &stat);
+    }
+}
+
+
+// Queen fetches and ignores the remaining tasks from the previous iteration.
+void ignore_additional_tasks()
+{
+    int solution_received = 0;
+    int solution = 0;
+    MPI_Status stat;
+    MPI_Iprobe(MPI_ANY_SOURCE, SOLUTION, MPI_COMM_WORLD, &solution_received, &stat);
+    while(solution_received)
+    {
+	solution_received = 0;
+	int sender = stat.MPI_SOURCE;
+	MPI_Recv(&solution, 1, MPI_INT, sender, SOLUTION, MPI_COMM_WORLD, &stat);
+	MPI_Iprobe(MPI_ANY_SOURCE, SOLUTION, MPI_COMM_WORLD, &solution_received, &stat);
     }
 
 }
+
+void send_root_unsolved()
+{
+    for (int i = 1; i < world_size; i++)
+    {
+	MPI_Send(&ROOT_UNSOLVED_SIGNAL, 1, MPI_INT, i, ROOT_SOLVED, MPI_COMM_WORLD);
+    }
+}
+
 
 void check_termination()
 {
@@ -270,17 +354,32 @@ void check_termination()
     }
 }
 
-
 void check_root_solved()
 {
     MPI_Status stat;
     int root_solved_flag = 0;
-    int irrel = 0;
     MPI_Iprobe(QUEEN, ROOT_SOLVED, MPI_COMM_WORLD, &root_solved_flag, &stat);
-    if(root_solved_flag)
+    if (root_solved_flag)
     {
-	MPI_Recv(&irrel, 1, MPI_INT, QUEEN, ROOT_SOLVED, MPI_COMM_WORLD, &stat);
+	int r_s = ROOT_UNSOLVED_SIGNAL;
+	MPI_Recv(&r_s, 1, MPI_INT, QUEEN, ROOT_SOLVED, MPI_COMM_WORLD, &stat);
 	// set global root solved flag
+	if (r_s == ROOT_SOLVED_SIGNAL)
+	{
+	    root_solved = true;
+	}
+    }
+}
+
+
+void blocking_check_root_solved()
+{
+    MPI_Status stat;
+    int r_s = -1;
+    MPI_Recv(&r_s, 1, MPI_INT, QUEEN, ROOT_SOLVED, MPI_COMM_WORLD, &stat);
+    // set global root solved flag
+    if (r_s == ROOT_SOLVED_SIGNAL)
+    {
 	root_solved = true;
     }
 }
@@ -304,7 +403,6 @@ void receive_tarray()
     {
 	MPI_Recv(&(tarray_worker[i]), sizeof(task), MPI_CHAR, QUEEN, SENDING_TARRAY, MPI_COMM_WORLD, &stat);
     }
-    MPI_Barrier(MPI_COMM_WORLD);
 }
 
 void send_tarray()
@@ -318,8 +416,7 @@ void send_tarray()
 	    MPI_Send(tarray_queen[i].serialize(), sizeof(task), MPI_CHAR, target, SENDING_TARRAY, MPI_COMM_WORLD);
 	}
     }
-    MPI_Barrier(MPI_COMM_WORLD);
-    PROGRESS_PRINT("Tasks synchronized.\n");
+    print<PROGRESS>("Tasks synchronized.\n");
 }
 
 #endif

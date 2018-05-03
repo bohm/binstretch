@@ -6,6 +6,16 @@
 #include "updater.hpp"
 #include "sequencing.hpp"
 
+/*
+
+Message sequence:
+
+1. Monotonicity sent.
+2. Root solved/unsolved after generation.
+3. Synchronizing task list.
+4. Sending/receiving tasks.
+
+ */
 
 std::atomic<bool> queen_cycle_terminate(false);
 std::atomic<int> updater_result(POSTPONED);
@@ -25,7 +35,7 @@ void queen_updater(adversary_vertex* sapling)
 	if (collected_cumulative.load(std::memory_order_acquire) / PROGRESS_AFTER > last_printed)
 	{
 	    last_printed = collected_cumulative / PROGRESS_AFTER;
-	    PROGRESS_PRINT("Queen collects task number %u, %d remain. \n", collected_cumulative.load(std::memory_order_acquire), tcount - thead);
+	    print<PROGRESS>("Queen collects task number %u, %d remain. \n", collected_cumulative.load(std::memory_order_acquire), tcount - thead);
 	}
 	
 	// update main tree and task map
@@ -45,29 +55,24 @@ void queen_updater(adversary_vertex* sapling)
 
 int queen()
 {
-    bool lonely = false;
-    if(lonely)
-    {
-	fprintf(stderr, "Lonely queen reporting for duty.\n");
-    } else {
-	int name_len;
-	MPI_Get_processor_name(processor_name, &name_len);
-	fprintf(stderr, "Queen Two Threads reporting for duty: %s, rank %d out of %d instances\n",
-	       processor_name, world_rank, world_size);
-    }
+    std::chrono::time_point<std::chrono::system_clock> iteration_start, iteration_end,
+	scheduler_start, scheduler_end;
 
-    // prepare remote taskmap
-    for (int i =0; i < world_size; i++)
-    {
-	remote_taskmap.push_back(-1);
-    }
+    int name_len;
+    MPI_Get_processor_name(processor_name, &name_len);
+    fprintf(stderr, "Queen Two Threads reporting for duty: %s, rank %d out of %d instances\n",
+	    processor_name, world_rank, world_size);
 
+
+    init_remote_taskmap();
+    
     int ret = 0;
     zobrist_init();
     transmit_zobrist();
 
     // even though the queen does not use the database, it needs to synchronize with others.
     shared_memory_init(shm_size, shm_rank);
+    sync_up();
 
     binconf root = {INITIAL_LOADS, INITIAL_ITEMS};
     adversary_vertex* root_vertex = new adversary_vertex(&root, 0, 1);
@@ -88,11 +93,9 @@ int queen()
 	adversary_vertex* sapling = sapling_queue.top();
 	sapling_queue.pop();
 	
-	PROGRESS_PRINT("Queen: sapling queue size: %zu, current sapling of depth %d:\n", sapling_queue.size(), sapling->depth);
+	print<PROGRESS>("Queen: sapling queue size: %zu, current sapling of depth %d:\n", sapling_queue.size(), sapling->depth);
 	print_binconf_stream(stderr, sapling->bc);
 
-	clear_all_caches();
-	
 	// temporarily isolate sapling (detach it from its parent, set depth to 0)
         int orig_value = sapling->value;
 	sapling->task = false;
@@ -108,25 +111,24 @@ int queen()
 	binconf sapling_bc;  
 	duplicate(&sapling_bc, sapling->bc);
 	
-	PROGRESS_ONLY(auto scheduler_start = std::chrono::system_clock::now());
+        if (PROGRESS) { scheduler_start = std::chrono::system_clock::now(); }
 	monotonicity = FIRST_PASS;
 	for (; monotonicity <= S-1; monotonicity++)
 	{
 	    fprintf(stderr, "Queen: switch to monotonicity %d.\n", monotonicity);
-
 	    // queen sends the current monotonicity to the workers
 	    transmit_monotonicity(monotonicity);
+
+	    clear_tasks();
 	    // we have to clear cache of ones here too, even though the queen
 	    // doesn't use the cache, because the queen could be
 	    // the task with shared rank == 0
-	    if (monotonicity != FIRST_PASS)
-	    { 
-		clear_cache_of_ones();
-	    }
-	    // sync up
-	    MPI_Barrier(MPI_COMM_WORLD);
+	    clear_cache_of_ones();
+
+	    sync_up();
 	    
-	    PROGRESS_ONLY(auto iteration_start = std::chrono::system_clock::now());
+	    if (PROGRESS) { iteration_start = std::chrono::system_clock::now(); }
+	    
 	    clear_visited_bits();
 	    purge_sapling(sapling);
 
@@ -138,6 +140,11 @@ int queen()
 	    if(sapling->value != POSTPONED)
 	    {
 		fprintf(stderr, "Queen: We have evaluated the tree: %d\n", sapling->value);
+		send_root_solved();
+		sync_up(); // Root solved.
+		ignore_additional_tasks();
+		ignore_additional_requests();
+		reset_remote_taskmap();
 		if (sapling->value == 0)
 		{
 		    break;
@@ -145,6 +152,8 @@ int queen()
 		{
 		    continue;
 		}
+	    } else {
+		send_root_unsolved();
 	    }
 
  	    build_tstatus();
@@ -153,8 +162,9 @@ int queen()
 	    std::random_shuffle(tarray_queen.begin(), tarray_queen.end());
 	    rebuild_tmap();
 	    
-	    PROGRESS_PRINT("Queen: Generated %d tasks.\n", tcount);
+	    print<PROGRESS>("Queen: Generated %d tasks.\n", tcount);
 	    send_tarray();
+	    //sync_up();
 
 	    auto x = std::thread(queen_updater, sapling);
 	    x.detach();
@@ -164,52 +174,60 @@ int queen()
 	    {
 		collect_worker_tasks();
 		send_out_tasks();
-		//std::this_thread::sleep_for(std::chrono::milliseconds(TICK_UPDATE));
 	    }
 
-#ifdef PROGRESS
-	    auto iteration_end = std::chrono::system_clock::now();
-	    std::chrono::duration<long double> iteration_time = iteration_end - iteration_start;
-	    PROGRESS_PRINT("Iteration time: %Lfs.\n", iteration_time.count());
-#endif
+	    // Updater_result is no longer POSTPONED.
+
+	    if (PROGRESS)
+	    {
+		iteration_end = std::chrono::system_clock::now();
+		std::chrono::duration<long double> iteration_time = iteration_end - iteration_start;
+		print<PROGRESS>("Iteration time: %Lfs.\n", iteration_time.count());
+	    }
 	    
-	    // collect needless data
-	    collect_worker_tasks();
-		
-	    
+	    // Send ROOT_SOLVED signal to workers that wait for tasks and those
+	    // that process tasks.
+	    send_root_solved_via_task();
+	    send_root_solved();
+	    sync_up(); // Root solved.
+
+	    // collect remaining, unnecessary solutions
+	    ignore_additional_tasks();
+	    ignore_additional_requests();
+	    reset_remote_taskmap();
+
 	    if (updater_result == 0)
 	    {
 		break;
-	    } else {
-		//clear_cache_of_ones();
 	    }
 	}
 	dynprog_attr_free(&tat);
-	
-#ifdef PROGRESS
-	auto scheduler_end = std::chrono::system_clock::now();
+
+	if (PROGRESS)
+    {
+	scheduler_end = std::chrono::system_clock::now();
 	std::chrono::duration<long double> scheduler_time = scheduler_end - scheduler_start;
-	PROGRESS_PRINT("Full evaluation time: %Lfs.\n", scheduler_time.count());
-#endif
-	
-	assert(orig_value == POSTPONED || orig_value == updater_result);
-	
-	if (updater_result == 1)
-	{
-	    ret = 1;
-	break;
-	}
-    
-	// TODO: make regrow work again
-	// REGROW_ONLY(regrow(sapling));
+	print<PROGRESS>("Full evaluation time: %Lfs.\n", scheduler_time.count());
     }
-    
-    send_terminations();
-    MPI_Barrier(MPI_COMM_WORLD);
-    receive_measurements();
-    g_meas.print();
-    
-    return ret;
+
+    assert(orig_value == POSTPONED || orig_value == updater_result);
+    if (updater_result == 1)
+    {
+	ret = 1;
+	break;
+    }
+
+    // TODO: make regrow work again
+    // REGROW_ONLY(regrow(sapling));
+}
+
+send_terminations();
+sync_up();
+receive_measurements();
+sync_up();
+g_meas.print();
+
+return ret;
 }
 
 

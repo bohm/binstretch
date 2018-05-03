@@ -1,11 +1,12 @@
+#ifndef _HASH_HPP
+#define _HASH_HPP 1
+
 #include <cstdio>
 #include <cstdlib>
 #include <cassert>
 #include <random>
 #include <limits>
-
-#ifndef _HASH_HPP
-#define _HASH_HPP 1
+#include <mpi.h>
 
 #include "common.hpp"
 #include "binconf.hpp"
@@ -133,6 +134,12 @@ std::atomic<dpht_el> *dpht = NULL; // = new std::atomic<dpht_el_extended>[BC_HAS
 uint64_t ht_size = 0, dpht_size = 0;
 // hash table for dynamic programming calls / feasibility checks
 
+// TODO: implement ht_p, dpht_p
+//std::array<conf_el, PRIVATE_CONFSIZE> ht_p = {0};
+conf_el *ht_p;
+dpht_el *dpht_p;
+
+
 // DEBUG: Mersenne twister
 
 std::mt19937_64 gen(12345);
@@ -181,6 +188,47 @@ uint64_t quicklog(uint64_t x)
     return ret;
 }
 
+// Memory that is private for each MPI process.
+// There is some bug (unknown right now) that causes processes to hang
+// when too much memory is shared
+void init_private_memory()
+{
+    if (PRIVATE_CONFLOG > 0)
+    {
+	ht_p = new conf_el[PRIVATE_CONFSIZE];
+	conf_el empty{0};
+	for (uint64_t i =0; i < PRIVATE_CONFSIZE; i++)
+	{
+	    ht_p[i] = empty;
+	}
+    }
+
+    if (PRIVATE_DPLOG > 0)
+    {
+
+	dpht_p = new dpht_el[PRIVATE_DPSIZE];
+	dpht_el empty{0};
+	for (uint64_t i =0; i < PRIVATE_DPSIZE; i++)
+	{
+	    dpht_p[i] = empty;
+	}
+    }
+
+}
+
+void delete_private_memory()
+{
+    if (PRIVATE_CONFLOG > 0)
+    {
+	delete[] ht_p;
+    }
+
+    if (PRIVATE_DPLOG > 0)
+    {
+	delete[] dpht_p;
+    }
+}
+
 // Initializes hashtables.
 // Temporarily assume sharedmem_size is a power of two.
 
@@ -191,8 +239,8 @@ void shared_memory_init(int sharedmem_size, int sharedmem_rank)
     MPI_Win dpht_win;
     void *baseptr;
     // a slight hack here -- since queen uses two threads, we change the allocation slightly
-    ht_size = WORKER_HASHSIZE*sharedmem_size;
-    dpht_size = WORKER_BC_HASHSIZE*sharedmem_size;
+    ht_size = SHARED_CONFSIZE*sharedmem_size;
+    dpht_size = SHARED_DPSIZE*sharedmem_size;
 
     fprintf(stderr, "Local process %d of %d: ht_size %" PRIu64 ", dpht_size %" PRIu64 "\n",
 	    sharedmem_rank, sharedmem_size, ht_size*sizeof(std::atomic<conf_el>),
@@ -247,9 +295,6 @@ void shared_memory_init(int sharedmem_size, int sharedmem_rank)
 	MPI_Win_shared_query(ht_win, 0, &ssize, &disp_unit, &ht);
 	MPI_Win_shared_query(dpht_win, 0, &ssize, &disp_unit, &dpht);
     }
-
-    // synchronize again, to make sure the memory is zeroed out for everyone
-    MPI_Barrier(MPI_COMM_WORLD);
 }
 
 void clear_cache_of_ones()
@@ -410,19 +455,18 @@ template<unsigned int LOG> inline uint64_t logpart(uint64_t x)
 }
 
 // shared hashlog
-uint64_t hashlogpart(const uint64_t x)
+uint64_t shared_conflogpart(const uint64_t x)
 {
-    return x >> (64 - HASHLOG - shm_log); 
+    return x >> (64 - SHARED_CONFLOG - shm_log); 
 }
 
 // shared dplog
-uint64_t dplogpart(const uint64_t x)
+uint64_t shared_dplogpart(const uint64_t x)
 {
-    return x >> (64 - BCLOG - shm_log); 
+    return x >> (64 - SHARED_DPLOG - shm_log); 
 }
 
-//const auto dplogpart = logpart<BCLOG>;
-//const auto hashlogpart = logpart<HASHLOG>;
 const auto loadlogpart = logpart<LOADLOG>;
-
+const auto private_conflogpart = logpart<PRIVATE_CONFLOG>;
+const auto private_dplogpart = logpart<PRIVATE_DPLOG>;
 #endif // _HASH_HPP

@@ -4,6 +4,7 @@
 //#define NDEBUG  // turns off all asserts
 #include <cstdio>
 #include <cstdlib>
+#include <cstdarg>
 #include <cassert>
 #include <cstdint>
 #include <mutex>
@@ -26,18 +27,23 @@ typedef signed char tiny;
 // than 127 items or not. We allow it to go negative for signalling -1/-2.
 typedef int16_t bin_int;
 
-//#define PROGRESS 1
+const bool PROGRESS = true; // print progress
+const bool MEASURE = true; // collect and print measurements
+
 //#define REGROW 1
 //#define OUTPUT 1
-//#define MEASURE 1
 //#define ONLY_ONE_PASS 1
 
+// log tasks which run at least some amount of time
+const bool TASKLOG = false;
+const long double TASKLOG_THRESHOLD = 5.0; // in seconds
+
 // maximum load of a bin in the optimal offline setting
-const bin_int S = 14;
+const bin_int S = 63;
 // target goal of the online bin stretching problem
-const bin_int R = 19;
+const bin_int R = 86;
 // Change this number for the selected number of bins.
-const bin_int BINS = 8;
+const bin_int BINS = 3;
 
 // If you want to generate a specific lower bound, you can create an initial bin configuration here.
 // You can also insert an initial sequence here.
@@ -46,39 +52,48 @@ const std::vector<bin_int> INITIAL_ITEMS = {};
 //const std::vector<bin_int> INITIAL_LOADS = {8,1,1,1,1,};
 //const std::vector<bin_int> INITIAL_ITEMS = {7,0,0,0,1};
 // You can also insert an initial sequence here, and the adversary will use it as a predefined start.
-const std::vector<bin_int> INITIAL_SEQUENCE = {5};
-//const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1,1,1,1};
+//const std::vector<bin_int> INITIAL_SEQUENCE = {5};
+const std::vector<bin_int> INITIAL_SEQUENCE = {};
 
-const int FIRST_PASS = 0;
+const int FIRST_PASS = 6;
 
 // constants used for good situations
 const int RMOD = (R-1);
 const int ALPHA = (RMOD-S);
 
 // bitwise length of indices of hash tables and lock tables
-const unsigned int HASHLOG = 20;
-const unsigned int BCLOG = 20;
+const unsigned int SHARED_CONFLOG = 20;
+const unsigned int SHARED_DPLOG = 20;
 
-const unsigned int LOADLOG = 10;
+const unsigned int PRIVATE_CONFLOG = 24;
+const unsigned int PRIVATE_DPLOG = 24;
 
-// size of the hash table
-const llu WORKER_HASHSIZE = (1ULL<<HASHLOG);
-const llu WORKER_BC_HASHSIZE = (1ULL<<BCLOG);
+const unsigned int LOADLOG = 13;
+
+// sizes of the hash tables
+const llu SHARED_CONFSIZE = (1ULL<<SHARED_CONFLOG);
+const llu SHARED_DPSIZE = (1ULL<<SHARED_DPLOG);
+
+const llu PRIVATE_CONFSIZE = (1ULL<<PRIVATE_CONFLOG);
+const llu PRIVATE_DPSIZE = (1ULL<<PRIVATE_DPLOG);
+
+// if a dynprog has > this many items, it goes into the private memory
+const int CONF_ITEMCOUNT_THRESHOLD = 12;
+const int DP_ITEMCOUNT_THRESHOLD = 16;
+
+
 const llu LOADSIZE = (1ULL<<LOADLOG);
 
 // linear probing limit
-const int LINPROBE_LIMIT = 4;
-const int BMC_LIMIT = 2;
+const int LINPROBE_LIMIT = 8;
 
 const int DEFAULT_DP_SIZE = 100000;
 const int BESTFIT_THRESHOLD = (1*S)/10;
 
-// the number of local worker threads
-const int THREADS = 1;
 // a bound on total load of a configuration before we split it into a task
-const int TASK_LOAD = 16;
-const int TASK_DEPTH = 2;
-//const int TASK_DEPTH = S > 41 ? 3 : 4;
+const int TASK_LOAD = 14;
+//const int TASK_DEPTH = 2;
+const int TASK_DEPTH = S > 41 ? 2 : 3;
 
 #define POSSIBLE_TASK possible_task_mixed
 
@@ -224,8 +239,19 @@ void print_sequence(FILE *stream, const std::vector<bin_int>& seq)
     fprintf(stream, "\n");
 }
 
-// Helper macros for debug, verbose, and measure output.
 
+template <bool PARAM> void print(const char *format, ...)
+{
+    if (PARAM)
+    {
+	va_list argptr;
+	va_start(argptr, format);
+	vfprintf(stderr, format, argptr);
+	va_end(argptr);
+    }
+}
+
+// Helper macros for debug, verbose, and measure output.
 #ifdef DEBUG
 #define DEBUG_PRINT(...) fprintf(stderr, __VA_ARGS__ )
 #define DEBUG_PRINT_BINCONF(x) print_binconf_stream(stderr,x)
@@ -242,15 +268,7 @@ void print_sequence(FILE *stream, const std::vector<bin_int>& seq)
 #define DEEP_DEBUG_PRINT_BINCONF(x)
 #endif
 
-#ifdef MEASURE
-#define MEASURE_PRINT(...) fprintf(stderr,  __VA_ARGS__ )
-#define MEASURE_PRINT_BINCONF(x) print_binconf_stream(stderr, x)
-#define MEASURE_ONLY(x) x
-#else
-#define MEASURE_PRINT(format,...)
-#define MEASURE_PRINT_BINCONF(x)
-#define MEASURE_ONLY(x)
-#endif
+#define MEASURE_ONLY(x) if (MEASURE) {x;}
 
 #ifdef VERBOSE
 #define VERBOSE_PRINT(...) fprintf(stderr, __VA_ARGS__ )
@@ -258,38 +276,6 @@ void print_sequence(FILE *stream, const std::vector<bin_int>& seq)
 #else
 #define VERBOSE_PRINT(format,...)
 #define VERBOSE_PRINT_BINCONF(x)
-#endif
-
-#ifdef PROGRESS
-#define PROGRESS_PRINT(...) fprintf(stderr, __VA_ARGS__ )
-#define QUEEN_PROGRESS_PRINT(...) if(QUEEN_ONLY) { fprintf(stderr, __VA_ARGS__ ); }
-#define PROGRESS_PRINT_BINCONF(x) print_binconf_stream(stderr, x)
-#define PROGRESS_ONLY(x) x
-#else
-#define PROGRESS_PRINT(format,...)
-#define QUEEN_PROGRESS_PRINT(format, ...)
-#define PROGRESS_PRINT_BINCONF(x)
-#define PROGRESS_ONLY(x)
-
-#endif
-
-#ifdef GOOD_MOVES
-#define GOOD_MOVES_PRINT(...) fprintf(stderr,  __VA_ARGS__ )
-#define GOOD_MOVES_PRINT_BINCONF(x) print_binconf_stream(stderr, x)
-#define GOOD_MOVES_ONLY(x) x
-
-#else
-#define GOOD_MOVES_PRINT(format,...)
-#define GOOD_MOVES_PRINT_BINCONF(x)
-#define GOOD_MOVES_ONLY(x)
-#endif
-
-#ifdef LF
-#define LFPRINT(...) fprintf(stderr,  __VA_ARGS__ )
-#define LFPRINT_BINCONF(x) print_binconf_stream(stderr, x)
-#else
-#define LFPRINT(format,...)
-#define LFPRINT_BINCONF(x)
 #endif
 
 #ifdef REGROW

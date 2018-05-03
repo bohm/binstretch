@@ -118,11 +118,11 @@ template<int MODE> bool possible_task_mixed(adversary_vertex *v, int largest_ite
 {
 
     int target_depth = 0;
-    if (largest_item >= S/4)
+    if (largest_item >= 3)
     {
 	target_depth = computation_root->depth + TASK_DEPTH;
-    } else if (largest_item >= 3) {
-	target_depth = computation_root->depth + TASK_DEPTH + 1;
+	// } else if (largest_item >= 3) {
+	//target_depth = computation_root->depth + TASK_DEPTH + 1;
     } else {
 	if (v->bc->totalload() >= TASK_LOAD)
 	{
@@ -175,10 +175,15 @@ void build_tstatus()
     }
 }
 
-void delete_status()
+void clear_tasks()
 {
     free(tstatus);
     tstatus = NULL;
+    tcount = 0;
+    thead = 0;
+    tstatus_temporary.clear();
+    tmap.clear();
+    tarray_queen.clear();
 }
 
 // Does not actually remove a task, just marks it as completed.
