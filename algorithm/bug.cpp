@@ -29,6 +29,8 @@ uint64_t ht_size = 1, dpht_size = 1;
 int world_size = 0, world_rank = 0, shm_size = 0, shm_rank = 0;
 MPI_Comm shmcomm;
 
+__int128 bigint = 0;
+
 void shared_memory_init(int sharedmem_size, int sharedmem_rank)
 {
     // allocate shared memory

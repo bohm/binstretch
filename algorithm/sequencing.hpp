@@ -100,8 +100,8 @@ int sequencing_adversary(binconf *b, unsigned int depth, thread_attr *tat, tree_
     int item_size = seq[depth];
     int below = 1;
     int r = 1;
-    DEEP_DEBUG_PRINT("Trying player zero choices, with maxload starting at %d\n", maximum_feasible);
-    DEEP_DEBUG_PRINT("Sending item %d to algorithm.\n", item_size);
+    print<DEBUG>("Trying player zero choices, with maxload starting at %d\n", maximum_feasible);
+    print<DEBUG>("Sending item %d to algorithm.\n", item_size);
     // algorithm's vertex for the next step
     algorithm_vertex *analyzed_vertex; // used only in the GENERATING mode
     
@@ -213,8 +213,8 @@ int sequencing_algorithm(binconf *b, int k, unsigned int depth, thread_attr *tat
 		// and set it back to the previous value
 		outat->last_adv_v = previous_adversary;
 		
-		DEEP_DEBUG_PRINT("We have calculated the following position, result is %d\n", below);
-		DEEP_DEBUG_PRINT_BINCONF(b);
+		print<DEBUG>("We have calculated the following position, result is %d\n", below);
+		print_binconf<DEBUG>(b);
 	    }
 	    
 	    // return b to original form
@@ -224,7 +224,6 @@ int sequencing_algorithm(binconf *b, int k, unsigned int depth, thread_attr *tat
 	    if (below == 1)
 	    {
 		r = below;
-		VERBOSE_PRINT("Winning position for algorithm, returning 1.\n");
 		remove_outedges<SEQUENCING>(current_algorithm);
 		return r;
 	    } else if (below == 0)

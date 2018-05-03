@@ -244,7 +244,7 @@ bin_int dynprog_max_sorting(binconf *conf, thread_attr *tat)
 }
 
 // Sparse dynprog test which uses tuples directly (and does not encode/decode them)
-dynprog_result dynprog_test_loadhash(const binconf *conf, thread_attr *tat)
+bool dynprog_test_loadhash(const binconf *conf, thread_attr *tat)
 {
     tat->newloadqueue->clear();
     tat->oldloadqueue->clear();
@@ -255,8 +255,6 @@ dynprog_result dynprog_test_loadhash(const binconf *conf, thread_attr *tat)
     poldq = tat->oldloadqueue;
     pnewq = tat->newloadqueue;
 
-    dynprog_result ret;
- 
     int phase = 0;
 
     //empty the loadhash first
@@ -307,9 +305,9 @@ dynprog_result dynprog_test_loadhash(const binconf *conf, thread_attr *tat)
 		        tuple.unassign_and_rehash(size, newpos);
 		    }
 		}
-		if (pnewq->size() == 0) {
-		    ret.feasible = false;
-		    return ret;
+		if (pnewq->size() == 0)
+		{
+		    return false;
 		}
 	    }
 
@@ -339,13 +337,11 @@ dynprog_result dynprog_test_loadhash(const binconf *conf, thread_attr *tat)
 	}
 	if (free_for_twos >= conf->items[2])
 	{
-	    ret.feasible = true;
-	    return ret;
+	    return true;
 	}
     }
     
-    ret.feasible = false;
-    return ret;
+    return false;
 }
 
 bin_int dynprog_max_safe(const binconf *conf, thread_attr *tat)

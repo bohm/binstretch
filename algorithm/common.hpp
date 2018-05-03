@@ -30,9 +30,10 @@ typedef int16_t bin_int;
 const bool PROGRESS = true; // print progress
 const bool MEASURE = true; // collect and print measurements
 
-//#define REGROW 1
-//#define OUTPUT 1
-//#define ONLY_ONE_PASS 1
+// TODO: re-implement the following.
+const bool REGROW = false;
+const bool OUTPUT = false;
+const bool ONLY_ONE_PASS = false;
 
 // log tasks which run at least some amount of time
 const bool TASKLOG = false;
@@ -114,10 +115,8 @@ const int MAX_EXPANSION = 1;
 // ------------------------------------------------
 // debug constants
 
-//#define VERBOSE 1
-//#define DEBUG 1
-//#define DEEP_DEBUG 1
-//#define THOROUGH_HASH_CHECKING 1
+const bool VERBOSE = false;
+const bool DEBUG = false;
 
 // completely disable dynamic programming or binconf cache
 // (useful to debug soundness of cache algs)
@@ -145,7 +144,7 @@ const int UPDATING = 4;
 const int SEQUENCING = 5;
 const int CLEANUP = 6;
 
-// MPI-related constants
+// MPI-related globals
 int world_size = 0;
 int world_rank = 0;
 char processor_name[MPI_MAX_PROCESSOR_NAME];
@@ -160,35 +159,12 @@ uint64_t *Zi; // Zobrist table for items
 uint64_t *Zl; // Zobrist table for loads
 uint64_t *Ai; // Zobrist table for next item to pack (used for the algorithm's best move table)
 
-//static_assert(BINS*S <= 127, "S is bigger than 127, fix bin_int in transposition tables.");
 // A bin configuration consisting of three loads and a list of items that have arrived so far.
 // The same DS is also used in the hash as an element.
 
 // defined in binconf.hpp
 class binconf;
 class loadconf; 
-
-// defined in tree.hpp
-/* typedef struct adversary_vertex adversary_vertex;
-typedef struct algorithm_vertex algorithm_vertex;
-class adv_outedge;
-class alg_outedge;
-*/
-
-struct dp_hash_item
-{
-    int8_t feasible;
-    llu itemhash;
-};
-
-// dynprog_result is data point about a particular configuration
-struct dynprog_result
-{
-    bool feasible = false;
-    // largest_sendable[i] -- largest item sendable BINS-i times
-    // std::array<uint8_t, BINS> largest_sendable = {};
-    uint64_t hash = 0;
-};
 
 // aliases for measurements of good situations
 const int SITUATIONS = 10;
@@ -251,37 +227,7 @@ template <bool PARAM> void print(const char *format, ...)
     }
 }
 
-// Helper macros for debug, verbose, and measure output.
-#ifdef DEBUG
-#define DEBUG_PRINT(...) fprintf(stderr, __VA_ARGS__ )
-#define DEBUG_PRINT_BINCONF(x) print_binconf_stream(stderr,x)
-#else
-#define DEBUG_PRINT(format,...)
-#define DEBUG_PRINT_BINCONF(x)
-#endif
-
-#ifdef DEEP_DEBUG
-#define DEEP_DEBUG_PRINT(...) fprintf(stderr, __VA_ARGS__ )
-#define DEEP_DEBUG_PRINT_BINCONF(x) print_binconf_stream(stderr,x)
-#else
-#define DEEP_DEBUG_PRINT(format,...)
-#define DEEP_DEBUG_PRINT_BINCONF(x)
-#endif
-
 #define MEASURE_ONLY(x) if (MEASURE) {x;}
-
-#ifdef VERBOSE
-#define VERBOSE_PRINT(...) fprintf(stderr, __VA_ARGS__ )
-#define VERBOSE_PRINT_BINCONF(x) print_binconf_stream(stderr, x)
-#else
-#define VERBOSE_PRINT(format,...)
-#define VERBOSE_PRINT_BINCONF(x)
-#endif
-
-#ifdef REGROW
-#define REGROW_ONLY(x) x
-#else
-#define REGROW_ONLY(x)
-#endif // REGROW
+#define REGROW_ONLY(x) if (REGROW) {x;}
 
 #endif // _COMMON_HPP

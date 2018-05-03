@@ -342,15 +342,15 @@ int testgs(const binconf *b, thread_attr *tat) {
     if(gs1(b, tat) == 1)
     {
 
-	DEEP_DEBUG_PRINT("The following binconf hits GS1:\n");
-	DEEP_DEBUG_PRINT_BINCONF(b);
+	print<DEBUG>("The following binconf hits GS1:\n");
+	print_binconf<DEBUG>(b);
 	return 1;
     }
     
     if( gs2variant(b, tat) == 1)
     {
-	DEEP_DEBUG_PRINT("The following binconf hits GS2variant:\n");
-	DEEP_DEBUG_PRINT_BINCONF(b);
+	print<DEBUG>("The following binconf hits GS2variant:\n");
+	print_binconf<DEBUG>(b);
 	return 1;
     }
 
@@ -379,29 +379,29 @@ int testgs(const binconf *b, thread_attr *tat) {
 	// GS2, GS3 and GS5 are never hit for BINS == 3 now, it seems.
 	/*if(gs2(b, tat) == 1)
 	{
-	    DEEP_DEBUG_PRINT(stderr, "The following binconf hits GS2:\n");
-	    DEEP_DEBUG_PRINT_BINCONF(b);
+	    print<DEBUG>(stderr, "The following binconf hits GS2:\n");
+	    print_binconf<DEBUG>(b);
 	    return 1;
 	}*/
 
 	/*if(gs3(b, tat) == 1)
 	{
-	    DEEP_DEBUG_PRINT("The following binconf hits GS3:\n");
-	    DEEP_DEBUG_PRINT_BINCONF(b);
+	    print<DEBUG>("The following binconf hits GS3:\n");
+	    print_binconf<DEBUG>(b);
 	    return 1;
 	}*/
 	
 	if(gs4(b, tat) == 1)
 	{
-	    DEEP_DEBUG_PRINT("The following binconf hits GS4:\n");
-	    DEEP_DEBUG_PRINT_BINCONF(b);
+	    print<DEBUG>("The following binconf hits GS4:\n");
+	    print_binconf<DEBUG>(b);
 	    return 1;
 	}
 	
 	/* if(gs5(b, tat) == 1)
 	{
-	    DEEP_DEBUG_PRINT("The following binconf hits GS5:\n");
-	    DEEP_DEBUG_PRINT_BINCONF(b);
+	    print<DEBUG>("The following binconf hits GS5:\n");
+	    print_binconf<DEBUG>(b);
 	    return 1;
 	}*/
 	

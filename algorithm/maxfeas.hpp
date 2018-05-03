@@ -16,9 +16,9 @@
 bin_int maximum_feasible(binconf *b, const int depth, const bin_int cannot_send_less, bin_int initial_ub, thread_attr *tat)
 {
     MEASURE_ONLY(tat->meas.maximum_feasible_counter++);
-    DEEP_DEBUG_PRINT("Starting dynprog maximization of configuration:\n");
-    DEEP_DEBUG_PRINT_BINCONF(b);
-    DEEP_DEBUG_PRINT("\n"); 
+    print<DEBUG>("Starting dynprog maximization of configuration:\n");
+    print_binconf<DEBUG>(b);
+    print<DEBUG>("\n"); 
 
     bin_int data;
 

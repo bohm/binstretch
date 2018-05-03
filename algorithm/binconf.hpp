@@ -382,14 +382,39 @@ bool binconf_equal(const binconf *a, const binconf *b)
 // debug function for printing bin configurations (into stderr or log files)
 void print_binconf_stream(FILE* stream, const binconf* b)
 {
-    for (int i=1; i<=BINS; i++) {
-	fprintf(stream, "%d-", b->loads[i]);
+    bool first = true;
+    for (int i=1; i<=BINS; i++)
+    {
+	if(first)
+	{
+	    first = false;
+	    fprintf(stream, "%d", b->loads[i]);
+	} else {
+	    fprintf(stream, "-%d", b->loads[i]);
+	}
     }
     fprintf(stream, " ");
-    for (int j=1; j<=S; j++) {
-	fprintf(stream, "%d", b->items[j]);
+    first = true;
+    for (int j=1; j<=S; j++)
+    {
+	if (first)
+	{
+	    fprintf(stream, "%d", b->items[j]);
+	    first = false;
+	} else {
+	    fprintf(stream, ",%d", b->items[j]);
+	}
     }
+    
     fprintf(stream, "\n");
+}
+
+template <bool MODE> void print_binconf(const binconf *b)
+{
+    if (MODE)
+    {
+	print_binconf_stream(stderr, b);
+    }
 }
 
 int binconf::assign_item(int item, int bin)

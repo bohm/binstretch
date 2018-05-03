@@ -35,13 +35,13 @@ public:
 	this->id = ++global_vertex_counter;
 	this->value = POSTPONED;
 	this->visited = false;
-	//DEBUG_PRINT("Vertex %" PRIu64 "created.\n", this->id);
+	//print<DEBUG>("Vertex %" PRIu64 "created.\n", this->id);
 
     }
 
     ~algorithm_vertex()
     {
-	//DEBUG_PRINT("Vertex %" PRIu64 "destroyed.\n", this->id);
+	//print<DEBUG>("Vertex %" PRIu64 "destroyed.\n", this->id);
     }
 };
 
@@ -74,14 +74,14 @@ public:
 	this->value = POSTPONED;
 	this->last_item = last_item;
 	duplicate(this->bc, b);
-	//DEBUG_PRINT("Vertex %" PRIu64 "created.\n", this->id);
+	//print<DEBUG>("Vertex %" PRIu64 "created.\n", this->id);
 
     }
 
     ~adversary_vertex()
     {
 	delete this->bc;
-	//DEBUG_PRINT("Vertex %" PRIu64 "destroyed.\n", this->id);
+	//print<DEBUG>("Vertex %" PRIu64 "destroyed.\n", this->id);
     }
 
 };
@@ -102,12 +102,12 @@ public:
 	this->pos = from->out.insert(from->out.begin(), this);
 	this->pos_child = to->in.insert(to->in.begin(), this);
 	this->id = ++global_edge_counter;
-	//DEBUG_PRINT("Edge %" PRIu64 " created. \n", this->id);
+	//print<DEBUG>("Edge %" PRIu64 " created. \n", this->id);
     }
 
     ~adv_outedge()
     {
-	//DEBUG_PRINT("Edge %" PRIu64 " destroyed.\n", this->id);
+	//print<DEBUG>("Edge %" PRIu64 " destroyed.\n", this->id);
     }
 };
 
@@ -125,12 +125,12 @@ public:
 	this->pos = from->out.insert(from->out.begin(), this);
 	this->pos_child = to->in.insert(to->in.begin(), this);
 	this->id = ++global_edge_counter;
-	//DEBUG_PRINT("Edge %" PRIu64 " created.\n", this->id);
+	//print<DEBUG>("Edge %" PRIu64 " created.\n", this->id);
 
     }
     ~alg_outedge()
     {
-	//DEBUG_PRINT("Edge %" PRIu64 " destroyed.\n", this->id);
+	//print<DEBUG>("Edge %" PRIu64 " destroyed.\n", this->id);
     }
 };
 

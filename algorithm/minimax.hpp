@@ -151,11 +151,11 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
     int maximum_feasible = dp; // possibly also INFEASIBLE == -1
     int below = 1;
     int r = 1;
-    DEEP_DEBUG_PRINT("Trying player zero choices, with maxload starting at %d\n", maximum_feasible);
+    print<DEBUG>("Trying player zero choices, with maxload starting at %d\n", maximum_feasible);
 
     for (int item_size = maximum_feasible; item_size>=lower_bound; item_size--)
     {
-        DEEP_DEBUG_PRINT("Sending item %d to algorithm.\n", item_size);
+        print<DEBUG>("Sending item %d to algorithm.\n", item_size);
 	// algorithm's vertex for the next step
 	algorithm_vertex *analyzed_vertex; // used only in the GENERATING mode
 	
@@ -346,8 +346,8 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 		    outat->last_adv_v = previous_adversary;
 		}
 		
-		DEEP_DEBUG_PRINT("We have calculated the following position, result is %d\n", below);
-		DEEP_DEBUG_PRINT_BINCONF(b);
+		print<DEBUG>("We have calculated the following position, result is %d\n", below);
+		print_binconf<DEBUG>(b);
 
 	    }
 
@@ -357,7 +357,6 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 	    if (below == 1)
 	    {
 		r = below;
-		VERBOSE_PRINT("Winning position for algorithm, returning 1.\n");
 		if (MODE == GENERATING || MODE == EXPANDING)
 		{
 		    // delete all edges from the current algorithmic vertex
