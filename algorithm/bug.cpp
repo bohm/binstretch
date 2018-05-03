@@ -3,90 +3,65 @@
 #include <atomic>
 #include <mpi.h>
 
-class conf_el
-{
-public:
-    uint64_t _data;
-};
-
-class dpht_el
-{
-public:
-    uint64_t _hash;
-    int16_t _feasible;
-    int16_t _empty_bins;
-    int16_t _permanence;
-    int16_t _unused; //align to 128 bit.
-};
-
-// generic hash table (for configurations)
-std::atomic<conf_el> *ht = NULL;
-std::atomic<dpht_el> *dpht = NULL; // = new std::atomic<dpht_el_extended>[BC_HASHSIZE];
-//void *baseptr, *dpbaseptr;
-
-uint64_t ht_size = 1, dpht_size = 1;
+std::atomic<int64_t> *ex1 = NULL;
+std::atomic<__int128> *ex2 = NULL;
 
 int world_size = 0, world_rank = 0, shm_size = 0, shm_rank = 0;
 MPI_Comm shmcomm;
 
-__int128 bigint = 0;
-
 void shared_memory_init(int sharedmem_size, int sharedmem_rank)
 {
     // allocate shared memory
-    MPI_Win ht_win;
-    MPI_Win dpht_win;
-    void *baseptr;
-    fprintf(stderr, "Local process %d of %d: ht_size %llu, dpht_size %llu\n", sharedmem_rank, sharedmem_size, ht_size*sizeof(ht_size*sizeof(std::atomic<conf_el>)), dpht_size*sizeof(std::atomic<dpht_el>));
-// allocate hashtables
+    MPI_Win ex1_win;
+    MPI_Win ex2_win;
+    void *baseptr = NULL;
     if (sharedmem_rank == 0)
     {
-	int ret = MPI_Win_allocate_shared(ht_size*sizeof(std::atomic<conf_el>), sizeof(std::atomic<conf_el>), MPI_INFO_NULL, shmcomm, &baseptr, &ht_win);
+	int ret = MPI_Win_allocate_shared(1*sizeof(std::atomic<int64_t>), sizeof(std::atomic<int64_t>), MPI_INFO_NULL, shmcomm, &baseptr, &ex1_win);
         if (ret == MPI_SUCCESS)
 	{
-	    printf("success\n");
+	    printf("ex1 success.\n");
 	    assert(baseptr != NULL);
 	}
-	ht = (std::atomic<conf_el>*) baseptr;
+	ex1 = (std::atomic<int64_t>*) baseptr;
 	baseptr = NULL;
-	// 16 == sizeof(std::atomic<dpht_el>)
-	int ret2 = MPI_Win_allocate_shared(dpht_size*sizeof(std::atomic<dpht_el>), sizeof(std::atomic<dpht_el>), MPI_INFO_NULL, shmcomm, &baseptr, &dpht_win);
+	int ret2 = MPI_Win_allocate_shared(1*sizeof(std::atomic<__int128>), sizeof(std::atomic<__int128>), MPI_INFO_NULL, shmcomm, &baseptr, &ex2_win);
 	if(ret2 == MPI_SUCCESS)
 	{
-	    printf("success also\n");
+	    printf("ex2 success.\n");
 	    assert(baseptr != NULL);
 	}
-	dpht = (std::atomic<dpht_el>*) baseptr;
+	ex2 = (std::atomic<__int128>*) baseptr;
 	
-	conf_el y = {0};
-	dpht_el x = {0};
-
 	// initialize only your own part of the shared memory
-	for (uint64_t i = 0; i < ht_size; i++)
+	assert(ex1[0].is_lock_free());
+	ex1[0].store(-1);
+	fprintf(stderr, "Inserted into ex1.\n");
+	assert(ex2[0].is_lock_free());
+	ex2[0].store(-1);
+	fprintf(stderr, "Inserted into ex2.\n");
+    } else
+    {
+	MPI_Win_allocate_shared(0, sizeof(std::atomic<int64_t>), MPI_INFO_NULL, shmcomm, &baseptr, &ex1_win);
+	MPI_Aint size;
+	int disp_unit = 0;
+	int ret = MPI_Win_shared_query(ex1_win, 0, &size, &disp_unit, &baseptr); 
+        if (ret == MPI_SUCCESS)
 	{
-	    ht[i].store(y);
-	    fprintf(stderr, "Inserted into element %llu.\n", i);
+	    printf("Thread %d: ex1 success.\n", world_rank);
+	    assert(baseptr != NULL);
 	}
-
-	for (uint64_t i =0; i < dpht_size; i++)
+	ex1 = (std::atomic<int64_t>*) baseptr;
+	baseptr = NULL;
+	MPI_Win_allocate_shared(0, sizeof(std::atomic<__int128>), MPI_INFO_NULL, shmcomm, &baseptr, &ex2_win);
+	int ret2 = MPI_Win_shared_query(ex2_win, 0, &size, &disp_unit, &baseptr); 
+	if(ret2 == MPI_SUCCESS)
 	{
-	    dpht[i].store(x);
-	    fprintf(stderr, "DPinserted into element %llu.\n", i);
+	    printf("Thread %d: ex2 success.\n", world_rank);
+	    assert(baseptr != NULL);
 	}
-	
-    } else {
-	MPI_Win_allocate_shared(0, sizeof(std::atomic<conf_el>), MPI_INFO_NULL,
-                              shmcomm, &ht, &ht_win);
-	MPI_Win_allocate_shared(0, sizeof(std::atomic<dpht_el>), MPI_INFO_NULL,
-			      shmcomm, &dpht, &dpht_win);
-
-	// unnecessary parameters
-	MPI_Aint ssize; int disp_unit;
-	MPI_Win_shared_query(ht_win, 0, &ssize, &disp_unit, &ht);
-	MPI_Win_shared_query(dpht_win, 0, &ssize, &disp_unit, &dpht);
+	ex2 = (std::atomic<__int128>*) baseptr;
     }
-
-    // synchronize again, to make sure the memory is zeroed out for everyone
     MPI_Barrier(MPI_COMM_WORLD);
 }
 

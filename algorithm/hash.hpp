@@ -268,6 +268,7 @@ void shared_memory_init(int sharedmem_size, int sharedmem_rank)
 	// initialize only your own part of the shared memory
 	for (uint64_t i = 0; i < ht_size; i++)
 	{
+	    assert(ht[i].is_lock_free());
 	    ht[i].store(y);
 	    /* if(i % 10000 == 0)
 	    {
@@ -277,6 +278,7 @@ void shared_memory_init(int sharedmem_size, int sharedmem_rank)
 
 	for (uint64_t i =0; i < dpht_size; i++)
 	{
+	    assert(dpht[i].is_lock_free());
 	    dpht[i].store(x);
 	    /* if(i % 10000 == 0)
 	    {

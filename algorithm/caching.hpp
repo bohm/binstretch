@@ -295,7 +295,6 @@ void conf_hashpush(const binconf *d, uint64_t posvalue, thread_attr *tat)
     } else {
 	ret = hashpush<false>(new_item, private_conflogpart(bchash), tat);
     }
-    
     if (MEASURE)
     {
 	if (ret == INSERTED)
