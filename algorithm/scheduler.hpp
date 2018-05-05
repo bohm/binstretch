@@ -42,25 +42,6 @@ const int ROOT_UNSOLVED_SIGNAL = -3;
 
 const int SYNCHRO_SLEEP = 20;
 
-std::vector<int> remote_taskmap;
-
-void init_remote_taskmap()
-{
-    // prepare remote taskmap
-    for (int i =0; i < world_size; i++)
-    {
-	remote_taskmap.push_back(-1);
-    }
-}
-
-void reset_remote_taskmap()
-{
-    for (int i =0; i < world_size; i++)
-    {
-	remote_taskmap[i] = -1;
-    }
-}
-
 // just an alias for MPI_Barrier
 void sync_up()
 {
@@ -68,32 +49,24 @@ void sync_up()
 
 }
 
-void transmit_zobrist()
+void broadcast_zobrist()
 {
-    assert(Zi != NULL && Zl != NULL);
-    //fprintf(stderr, "Zi[1]: %" PRIu64 "\n", Zi[1]);
-    for(int i = 1; i < world_size; i++)
+    if (BEING_QUEEN)
     {
-	// we block here to make sure we are in sync with everyone
-	MPI_Send(Zi,(MAX_ITEMS+1)*(S+1), MPI_UNSIGNED_LONG, i, ZOBRIST_ITEMS, MPI_COMM_WORLD);
-	MPI_Send(Zl,(BINS+1)*(R+1), MPI_UNSIGNED_LONG, i, ZOBRIST_LOADS, MPI_COMM_WORLD);
+	assert(Zi != NULL && Zl != NULL);
+    } else
+    {
+	assert(Zi == NULL && Zl == NULL);
+	Zi = new uint64_t[(S+1)*(MAX_ITEMS+1)];
+	Zl = new uint64_t[(BINS+1)*(R+1)];
     }
 
+    // bcast blocks, no need to synchronize
+    MPI_Bcast(Zi, (MAX_ITEMS+1)*(S+1), MPI_UNSIGNED_LONG, QUEEN, MPI_COMM_WORLD);
+    MPI_Bcast(Zl, (BINS+1)*(R+1), MPI_UNSIGNED_LONG, QUEEN, MPI_COMM_WORLD);
+
+    // fprintf(stderr, "Process %d Zi[1]: %" PRIu64 "\n", world_rank, Zi[1]);
 }
-
-
-void receive_zobrist()
-{
-
-    MPI_Status stat; 
-    Zi = new uint64_t[(S+1)*(MAX_ITEMS+1)];
-    Zl = new uint64_t[(BINS+1)*(R+1)];
-
-    MPI_Recv(Zi, (MAX_ITEMS+1)*(S+1), MPI_UNSIGNED_LONG, QUEEN, ZOBRIST_ITEMS, MPI_COMM_WORLD, &stat);
-    MPI_Recv(Zl, (BINS+1)*(R+1), MPI_UNSIGNED_LONG, QUEEN, ZOBRIST_LOADS, MPI_COMM_WORLD, &stat);
-    //fprintf(stderr, "Worker Zi[1]: %" PRIu64 "\n", Zi[1]);
-}
-
 
 void transmit_measurements()
 {
@@ -339,30 +312,36 @@ void transmit_monotonicity(int m)
     }
 }
 
-void receive_tarray()
+void broadcast_tarray()
 {
-    MPI_Status stat;
+    // we block here to make sure we are in sync with everyone
 
-    MPI_Recv(&tcount, 1, MPI_INT, QUEEN, SENDING_TCOUNT, MPI_COMM_WORLD, &stat);
-    tarray_worker = (task *) malloc(tcount * sizeof(task));
+    if (BEING_QUEEN)
+    {
+	init_tarray(tarray_queen);
+	assert(tcount > 0);
+    }
+    
+    MPI_Bcast(&tcount, 1, MPI_INT, QUEEN, MPI_COMM_WORLD);
+
+    if (BEING_WORKER)
+    {
+	// allocate tarray
+	init_tarray();
+    }
+
     for (int i = 0; i < tcount; i++)
     {
-	MPI_Recv(&(tarray_worker[i]), sizeof(task), MPI_CHAR, QUEEN, SENDING_TARRAY, MPI_COMM_WORLD, &stat);
+	MPI_Bcast(tarray[i].serialize(), sizeof(task), MPI_CHAR, QUEEN, MPI_COMM_WORLD);
     }
-}
 
-void send_tarray()
-{
-    for (int target = 1; target < world_size; target++)
+    if (BEING_QUEEN)
     {
-	// we block here to make sure we are in sync with everyone
-	MPI_Send(&tcount, 1, MPI_INT, target, SENDING_TCOUNT, MPI_COMM_WORLD);
-	for (int i = 0; i < tcount; i++)
-	{
-	    MPI_Send(tarray_queen[i].serialize(), sizeof(task), MPI_CHAR, target, SENDING_TARRAY, MPI_COMM_WORLD);
-	}
+	print<PROGRESS>("Tasks synchronized.\n");
+	// print_binconf<PROGRESS>(&tarray[0].bc);
+    } else {
+	// print_binconf<PROGRESS>(&tarray[0].bc);
     }
-    print<PROGRESS>("Tasks synchronized.\n");
 }
 
 #endif

@@ -196,9 +196,9 @@ const int HEURISTIC = 0;
 const int PERMANENT = 1;
 
 // a test for queen being the only process working
-#define QUEEN_ONLY world_size == 1
-#define BEING_WORKER world_rank != 0
-#define BEING_QUEEN world_rank == 0
+#define QUEEN_ONLY (world_size == 1)
+#define BEING_WORKER (world_rank != 0)
+#define BEING_QUEEN (world_rank == 0)
 
 // monotonicity 0: monotonely non-decreasing lower bound
 // monotonicity S: equivalent to full generality lower bound

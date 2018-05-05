@@ -32,7 +32,7 @@ std::vector<int> tstatus_temporary;
 // tarray used by the queen, who does not know the tarray size when it's pushing into it
 std::vector<task> tarray_queen;
 // tarray used by the workers, who are told the size
-task* tarray_worker;
+task* tarray;
 
 int tcount = 0;
 int thead = 0; // head of the tarray queue which queen uses to send tasks
@@ -47,6 +47,26 @@ const int TASK_IN_PROGRESS = 3;
 const int TASK_PRUNED = 4;
 
 
+void init_tarray()
+{
+    assert(tcount != 0);
+    tarray = new task[tcount];
+}
+
+void init_tarray(const std::vector<task>& taq)
+{
+    tcount = taq.size();
+    init_tarray();
+    for (int i = 0; i < tcount; i++)
+    {
+	tarray[i] = taq[i];
+    }
+}
+
+void destroy_tarray()
+{
+    delete[] tarray;
+}
 // Mapping from hashes to status indices. The mapping does not change after generation.
 std::map<llu, int> tmap;
 
@@ -221,12 +241,7 @@ void print_tasks()
 {
     for(int i = 0; i < tcount; i++)
     {
-	if(BEING_QUEEN)
-	{
-	    print_binconf_stream(stderr, &tarray_queen[i].bc);
-	} else {
-	    print_binconf_stream(stderr, &tarray_worker[i].bc);
-	}
+	print_binconf_stream(stderr, &tarray[i].bc);
     }
 }
 

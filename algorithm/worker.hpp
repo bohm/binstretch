@@ -72,7 +72,7 @@ void worker()
     task* current_task = NULL;
     int taskcounter = 0;
     int exp = 0;
-    receive_zobrist();
+    broadcast_zobrist();
     init_private_memory();
     shared_memory_init(shm_size, shm_rank);
     sync_up();
@@ -111,9 +111,7 @@ void worker()
 	    }
 			       
 	    // receive (new) task array
-	    receive_tarray();
-	    // fprintf(stderr, "Worker %d moving on to request a task.\n", world_rank);
-
+	    broadcast_tarray();
 	}
 
 	taskcounter++;
@@ -133,12 +131,12 @@ void worker()
 	{
 	    wait_for_monotonicity = true;
 	    ignore_additional_signals();
-	    free(tarray_worker);
+	    destroy_tarray();
 	    sync_up(); // Root solved.
 	    continue;
 	}
 
-	current_task = &tarray_worker[current_task_id];
+	current_task = &tarray[current_task_id];
 	current_task->bc.hash_loads_init();
 	// printf("Worker %d: printing received binconf (last item %d): ", world_rank, current_task->last_item); 
 	// print_binconf_stream(stdout, &(current_task->bc));
@@ -182,14 +180,14 @@ void worker()
 	{
 	    wait_for_monotonicity = true;
 	    ignore_additional_signals();
-	    free(tarray_worker);
+	    destroy_tarray();
 	    sync_up(); // Root solved.
 	    continue;
 	}
 	
 	if (worker_terminate)
 	{
-	    free(tarray_worker);
+	    destroy_tarray();
 	    break;
 	}
     }

@@ -69,11 +69,9 @@ int queen()
 	    processor_name, world_rank, world_size);
 
 
-    init_remote_taskmap();
-    
     int ret = 0;
     zobrist_init();
-    transmit_zobrist();
+    broadcast_zobrist();
 
     // even though the queen does not use the database, it needs to synchronize with others.
     shared_memory_init(shm_size, shm_rank);
@@ -149,7 +147,6 @@ int queen()
 		sync_up(); // Root solved.
 		ignore_additional_tasks();
 		ignore_additional_requests();
-		reset_remote_taskmap();
 		if (sapling->value == 0)
 		{
 		    break;
@@ -168,7 +165,7 @@ int queen()
 	    rebuild_tmap();
 	    
 	    print<PROGRESS>("Queen: Generated %d tasks.\n", tcount);
-	    send_tarray();
+	    broadcast_tarray();
 	    //sync_up();
 
 	    auto x = std::thread(queen_updater, sapling);
@@ -199,8 +196,10 @@ int queen()
 	    // collect remaining, unnecessary solutions
 	    ignore_additional_tasks();
 	    ignore_additional_requests();
-	    reset_remote_taskmap();
 
+	    destroy_tarray();
+	    tarray_queen.clear();
+	    
 	    if (updater_result == 0)
 	    {
 		break;
