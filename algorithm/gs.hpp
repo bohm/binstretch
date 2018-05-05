@@ -391,19 +391,19 @@ int testgs(const binconf *b, thread_attr *tat) {
 	    return 1;
 	}*/
 	
-	if(gs4(b, tat) == 1)
+	if (gs4(b, tat) == 1)
 	{
 	    print<DEBUG>("The following binconf hits GS4:\n");
 	    print_binconf<DEBUG>(b);
 	    return 1;
 	}
 	
-	/* if(gs5(b, tat) == 1)
+	if (gs5(b, tat) == 1)
 	{
 	    print<DEBUG>("The following binconf hits GS5:\n");
 	    print_binconf<DEBUG>(b);
 	    return 1;
-	}*/
+	}
 	
 	if(gs6(b, tat) == 1)
 	{

@@ -40,11 +40,11 @@ const bool TASKLOG = false;
 const long double TASKLOG_THRESHOLD = 5.0; // in seconds
 
 // maximum load of a bin in the optimal offline setting
-const bin_int S = 63;
+const bin_int S = 14;
 // target goal of the online bin stretching problem
-const bin_int R = 86;
+const bin_int R = 19;
 // Change this number for the selected number of bins.
-const bin_int BINS = 3;
+const bin_int BINS = 8;
 
 // If you want to generate a specific lower bound, you can create an initial bin configuration here.
 // You can also insert an initial sequence here.
@@ -53,10 +53,10 @@ const std::vector<bin_int> INITIAL_ITEMS = {};
 //const std::vector<bin_int> INITIAL_LOADS = {8,1,1,1,1,};
 //const std::vector<bin_int> INITIAL_ITEMS = {7,0,0,0,1};
 // You can also insert an initial sequence here, and the adversary will use it as a predefined start.
-//const std::vector<bin_int> INITIAL_SEQUENCE = {5};
-const std::vector<bin_int> INITIAL_SEQUENCE = {};
+const std::vector<bin_int> INITIAL_SEQUENCE = {5};
+//const std::vector<bin_int> INITIAL_SEQUENCE = {};
 
-const int FIRST_PASS = 6;
+const int FIRST_PASS = 1;
 
 // constants used for good situations
 const int RMOD = (R-1);
@@ -92,9 +92,9 @@ const int DEFAULT_DP_SIZE = 100000;
 const int BESTFIT_THRESHOLD = (1*S)/10;
 
 // a bound on total load of a configuration before we split it into a task
-const int TASK_LOAD = 14;
-//const int TASK_DEPTH = 2;
-const int TASK_DEPTH = S > 41 ? 2 : 3;
+const int TASK_LOAD = 18;
+const int TASK_DEPTH = 2;
+//const int TASK_DEPTH = S > 41 ? 2 : 3;
 
 #define POSSIBLE_TASK possible_task_mixed
 

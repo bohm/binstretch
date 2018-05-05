@@ -40,6 +40,7 @@ void queen_updater(adversary_vertex* sapling)
 	
 	// update main tree and task map
 	bool should_do_update = ((collected_now >= TICK_TASKS) || (tcount - thead <= TICK_TASKS)) && (updater_result == POSTPONED);
+	// bool should_do_update = true;
 	if (should_do_update)
 	{
 	    collected_now.store(0, std::memory_order_release);

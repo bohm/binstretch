@@ -9,6 +9,8 @@ std::atomic<__int128> *ex2 = NULL;
 int world_size = 0, world_rank = 0, shm_size = 0, shm_rank = 0;
 MPI_Comm shmcomm;
 
+const uint64_t INT128_SIZE = 16; 
+
 void shared_memory_init(int sharedmem_size, int sharedmem_rank)
 {
     // allocate shared memory
@@ -25,20 +27,21 @@ void shared_memory_init(int sharedmem_size, int sharedmem_rank)
 	}
 	ex1 = (std::atomic<int64_t>*) baseptr;
 	baseptr = NULL;
-	int ret2 = MPI_Win_allocate_shared(1*sizeof(std::atomic<__int128>), sizeof(std::atomic<__int128>), MPI_INFO_NULL, shmcomm, &baseptr, &ex2_win);
+	int ret2 = MPI_Win_allocate_shared(2*INT128_SIZE, 0, MPI_INFO_NULL, shmcomm, &baseptr, &ex2_win);
 	if(ret2 == MPI_SUCCESS)
 	{
 	    printf("ex2 success.\n");
 	    assert(baseptr != NULL);
 	}
-	ex2 = (std::atomic<__int128>*) baseptr;
+	uintptr_t alignment = (INT128_SIZE) - ((uintptr_t) baseptr % INT128_SIZE);
+	ex2 = (std::atomic<__int128>*) ((uintptr_t) baseptr + alignment);
 	
 	// initialize only your own part of the shared memory
 	assert(ex1[0].is_lock_free());
 	ex1[0].store(-1);
 	fprintf(stderr, "Inserted into ex1.\n");
 	assert(ex2[0].is_lock_free());
-	ex2[0].store(-1);
+//	ex2[0].store(-1);
 	fprintf(stderr, "Inserted into ex2.\n");
     } else
     {
@@ -53,14 +56,16 @@ void shared_memory_init(int sharedmem_size, int sharedmem_rank)
 	}
 	ex1 = (std::atomic<int64_t>*) baseptr;
 	baseptr = NULL;
-	MPI_Win_allocate_shared(0, sizeof(std::atomic<__int128>), MPI_INFO_NULL, shmcomm, &baseptr, &ex2_win);
+	MPI_Win_allocate_shared(0, 0, MPI_INFO_NULL, shmcomm, &baseptr, &ex2_win);
 	int ret2 = MPI_Win_shared_query(ex2_win, 0, &size, &disp_unit, &baseptr); 
-	if(ret2 == MPI_SUCCESS)
+
+	if (ret2 == MPI_SUCCESS)
 	{
 	    printf("Thread %d: ex2 success.\n", world_rank);
 	    assert(baseptr != NULL);
 	}
-	ex2 = (std::atomic<__int128>*) baseptr;
+	uintptr_t alignment = (INT128_SIZE) - ((uintptr_t) baseptr % INT128_SIZE);
+	ex2 = (std::atomic<__int128>*) ((uintptr_t) baseptr+alignment);
     }
     MPI_Barrier(MPI_COMM_WORLD);
 }

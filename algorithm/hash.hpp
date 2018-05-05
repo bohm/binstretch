@@ -19,6 +19,7 @@ value of the item. */
 
 /* As a result, thorough hash checking is currently not possible. */
 
+const uint64_t DPHT_BYTES = 16;
 const uint64_t REMOVED = std::numeric_limits<uint64_t>::max();
 
 // zeroes last bit of a number -- useful to check hashes
@@ -242,33 +243,36 @@ void shared_memory_init(int sharedmem_size, int sharedmem_rank)
     ht_size = SHARED_CONFSIZE*sharedmem_size;
     dpht_size = SHARED_DPSIZE*sharedmem_size;
 
-    fprintf(stderr, "Local process %d of %d: ht_size %" PRIu64 ", dpht_size %" PRIu64 "\n",
+    /* fprintf(stderr, "Local process %d of %d: ht_size %" PRIu64 ", dpht_size %" PRIu64 "\n",
 	    sharedmem_rank, sharedmem_size, ht_size*sizeof(std::atomic<conf_el>),
-	    dpht_size*sizeof(std::atomic<dpht_el>));
+	    dpht_size*sizeof(std::atomic<dpht_el>));*/
 // allocate hashtables
     if(sharedmem_rank == 0)
     {
 	int ret = MPI_Win_allocate_shared(ht_size*sizeof(std::atomic<conf_el>), sizeof(std::atomic<conf_el>), MPI_INFO_NULL, shmcomm, &baseptr, &ht_win);
         if (ret == MPI_SUCCESS)
 	{
-	    printf("success\n");
+	    //printf("success\n");
 	}
 	ht = (std::atomic<conf_el>*) baseptr;
 	
-	int ret2 = MPI_Win_allocate_shared(dpht_size*sizeof(std::atomic<dpht_el>), sizeof(std::atomic<dpht_el>), MPI_INFO_NULL, shmcomm, &baseptr, &dpht_win);
+	int ret2 = MPI_Win_allocate_shared(1+ dpht_size*DPHT_BYTES, 0, MPI_INFO_NULL, shmcomm, &baseptr, &dpht_win);
 	if(ret2 == MPI_SUCCESS)
 	{
-	    printf("success also\n");
+	    //printf("success also\n");
 	}
+
+	uintptr_t alignment = (DPHT_BYTES) - ((uintptr_t) baseptr % DPHT_BYTES);
+	dpht = (std::atomic<dpht_el>*) ((uintptr_t) baseptr + alignment);
+	
 	conf_el y = {0};
 	dpht_el x = {0};
-	dpht = (std::atomic<dpht_el>*) baseptr;
 	assert(ht != NULL && dpht != NULL);
 
 	// initialize only your own part of the shared memory
 	for (uint64_t i = 0; i < ht_size; i++)
 	{
-	    assert(ht[i].is_lock_free());
+	    //assert(ht[i].is_lock_free());
 	    ht[i].store(y);
 	    /* if(i % 10000 == 0)
 	    {
@@ -278,7 +282,7 @@ void shared_memory_init(int sharedmem_size, int sharedmem_rank)
 
 	for (uint64_t i =0; i < dpht_size; i++)
 	{
-	    assert(dpht[i].is_lock_free());
+	    //assert(dpht[i].is_lock_free());
 	    dpht[i].store(x);
 	    /* if(i % 10000 == 0)
 	    {
@@ -287,15 +291,17 @@ void shared_memory_init(int sharedmem_size, int sharedmem_rank)
 	}
 	
     } else {
-	MPI_Win_allocate_shared(0, sizeof(std::atomic<conf_el>), MPI_INFO_NULL,
+	MPI_Win_allocate_shared(0, 0, MPI_INFO_NULL,
                               shmcomm, &ht, &ht_win);
-	MPI_Win_allocate_shared(0, sizeof(std::atomic<dpht_el>), MPI_INFO_NULL,
+	MPI_Win_allocate_shared(0, 0, MPI_INFO_NULL,
 			      shmcomm, &dpht, &dpht_win);
 
 	// unnecessary parameters
 	MPI_Aint ssize; int disp_unit;
 	MPI_Win_shared_query(ht_win, 0, &ssize, &disp_unit, &ht);
-	MPI_Win_shared_query(dpht_win, 0, &ssize, &disp_unit, &dpht);
+	MPI_Win_shared_query(dpht_win, 0, &ssize, &disp_unit, &baseptr);
+	uintptr_t alignment = (DPHT_BYTES) - ((uintptr_t) baseptr % DPHT_BYTES);
+	dpht = (std::atomic<dpht_el>*) ((uintptr_t) baseptr + alignment);
     }
 }
 

@@ -71,7 +71,7 @@ void sync_up()
 void transmit_zobrist()
 {
     assert(Zi != NULL && Zl != NULL);
-    fprintf(stderr, "Zi[1]: %" PRIu64 "\n", Zi[1]);
+    //fprintf(stderr, "Zi[1]: %" PRIu64 "\n", Zi[1]);
     for(int i = 1; i < world_size; i++)
     {
 	// we block here to make sure we are in sync with everyone
@@ -91,7 +91,7 @@ void receive_zobrist()
 
     MPI_Recv(Zi, (MAX_ITEMS+1)*(S+1), MPI_UNSIGNED_LONG, QUEEN, ZOBRIST_ITEMS, MPI_COMM_WORLD, &stat);
     MPI_Recv(Zl, (BINS+1)*(R+1), MPI_UNSIGNED_LONG, QUEEN, ZOBRIST_LOADS, MPI_COMM_WORLD, &stat);
-    fprintf(stderr, "Worker Zi[1]: %" PRIu64 "\n", Zi[1]);
+    //fprintf(stderr, "Worker Zi[1]: %" PRIu64 "\n", Zi[1]);
 }
 
 

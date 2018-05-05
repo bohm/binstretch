@@ -393,7 +393,7 @@ void print_binconf_stream(FILE* stream, const binconf* b)
 	    fprintf(stream, "-%d", b->loads[i]);
 	}
     }
-    fprintf(stream, " ");
+    fprintf(stream, " (");
     first = true;
     for (int j=1; j<=S; j++)
     {
@@ -402,11 +402,16 @@ void print_binconf_stream(FILE* stream, const binconf* b)
 	    fprintf(stream, "%d", b->items[j]);
 	    first = false;
 	} else {
-	    fprintf(stream, ",%d", b->items[j]);
+	    if (j%10 == 1)
+	    {
+		fprintf(stream, "|%d", b->items[j]);
+	    } else {
+		fprintf(stream, ",%d", b->items[j]);
+	    }
 	}
     }
     
-    fprintf(stream, "\n");
+    fprintf(stream, ")\n");
 }
 
 template <bool MODE> void print_binconf(const binconf *b)
