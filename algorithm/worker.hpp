@@ -2,7 +2,9 @@
 #define _WORKER_HPP 1
 
 #include "common.hpp"
-#include "scheduler.hpp"
+#include "binconf.hpp"
+#include "tasks.hpp"
+#include "networking.hpp"
 
 int receive_monotonicity()
 {

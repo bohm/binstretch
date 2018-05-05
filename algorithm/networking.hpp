@@ -1,3 +1,6 @@
+#ifndef _NETWORKING_HPP
+#define _NETWORKING_HPP 1
+
 #include <cstdio>
 #include <cstdlib>
 #include <cassert>
@@ -11,9 +14,6 @@
 //#include "minimax.hpp"
 #include "hash.hpp"
 #include "caching.hpp"
-
-#ifndef _SCHEDULER_H
-#define _SCHEDULER_H 1
 
 // queen's world_rank
 const int QUEEN = 0;

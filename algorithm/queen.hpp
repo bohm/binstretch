@@ -2,9 +2,10 @@
 #define _QUEEN_H 1
 
 #include "common.hpp"
-#include "scheduler.hpp"
+#include "networking.hpp"
 #include "updater.hpp"
 #include "sequencing.hpp"
+#include "tasks.hpp"
 
 /*
 

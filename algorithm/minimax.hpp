@@ -19,7 +19,7 @@
 #include "maxfeas.hpp"
 #include "gs.hpp"
 #include "tasks.hpp"
-#include "scheduler.hpp"
+#include "networking.hpp"
 
 /* declarations */
 template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_attr *outat);
