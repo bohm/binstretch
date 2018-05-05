@@ -171,7 +171,12 @@ void worker()
 	}
 	assert(solution == 0 || solution == 1 || solution == IRRELEVANT);
 
-	MPI_Send(&solution, 1, MPI_INT, QUEEN, SOLUTION, MPI_COMM_WORLD);
+	// create a solution pair and send it
+	int solution_pair[2];
+	solution_pair[0] = current_task_id;
+	solution_pair[1] = solution;
+
+	MPI_Send(&solution_pair, 2, MPI_INT, QUEEN, SOLUTION, MPI_COMM_WORLD);
 
 	if (root_solved)
 	{

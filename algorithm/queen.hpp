@@ -49,7 +49,11 @@ void queen_updater(adversary_vertex* sapling)
 	    if (updater_result != POSTPONED)
 	    {
 		fprintf(stderr, "We have evaluated the tree: %d\n", updater_result.load(std::memory_order_acquire));
+	    } else {
+		// print<PROGRESS>("Updated tree, still POSTPONED.\n");
 	    }
+	} else {
+	    // print<PROGRESS>("Update not done.\n");
 	}
     }
 }

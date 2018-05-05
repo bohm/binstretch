@@ -115,86 +115,44 @@ void receive_measurements()
 void collect_worker_tasks()
 {
     int solution_received = 0;
-    int solution = 0;
+    int solution_pair[2] = {0,0};
     MPI_Status stat;
 
     MPI_Iprobe(MPI_ANY_SOURCE, SOLUTION, MPI_COMM_WORLD, &solution_received, &stat);
-/* #ifdef MEASURE
-    auto col_start = std::chrono::system_clock::now();
-#endif */
     while(solution_received)
     {
 	solution_received = 0;
 	int sender = stat.MPI_SOURCE;
-	MPI_Recv(&solution, 1, MPI_INT, sender, SOLUTION, MPI_COMM_WORLD, &stat);
+	MPI_Recv(solution_pair, 2, MPI_INT, sender, SOLUTION, MPI_COMM_WORLD, &stat);
 	collected_now++;
 	collected_cumulative++;
 	//printf("Queen: received solution %d.\n", solution);
         // add it to the collected set of the queen
-	assert(remote_taskmap[sender] != -1);
-	if (solution != IRRELEVANT)
+	if (solution_pair[1] != IRRELEVANT)
 	{
-	    tstatus[remote_taskmap[sender]].store(solution, std::memory_order_release);
+	    tstatus[solution_pair[0]].store(solution_pair[1], std::memory_order_release);
 	}
-	remote_taskmap[sender] = -1;
-	
 	MPI_Iprobe(MPI_ANY_SOURCE, SOLUTION, MPI_COMM_WORLD, &solution_received, &stat);
     }
-/* #ifdef MEASURE
-    auto col_end = std::chrono::system_clock::now();
-    std::chrono::duration<long double> col_time = col_end - col_start;
-    if (col_time.count() >= 0.01)
-    {
-	MEASURE_PRINT("Queen spent %Lfs in the collection loop.\n", col_time.count());
-    }
-    #endif */
 }
-
-void collect_worker_task(int sender)
-{
-    uint64_t collected = 0;
-    int solution_received = 0;
-    MPI_Status stat;
-    int solution = 0;
-
-    MPI_Iprobe(sender, SOLUTION, MPI_COMM_WORLD, &solution_received, &stat);
-    if (solution_received)
-    {
-	solution_received = 0;
-	MPI_Recv(&solution, 1, MPI_INT, sender, SOLUTION, MPI_COMM_WORLD, &stat);
-	collected_now++;
-	collected_cumulative++;
-	assert(remote_taskmap[sender] != -1);
-	if (solution != IRRELEVANT)
-	{
-	    tstatus[remote_taskmap[sender]].store(solution, std::memory_order_release); 
-	}
-	remote_taskmap[sender] = -1;
-    }
-}
-
 
 void send_out_tasks()
 {
-    int flag = 0;
+    int request_pending = 0;
     MPI_Status stat;
     MPI_Request blankreq;
     int irrel = 0;
     bool got_task = false;
-    MPI_Iprobe(MPI_ANY_SOURCE, REQUEST, MPI_COMM_WORLD, &flag, &stat);
+    MPI_Iprobe(MPI_ANY_SOURCE, REQUEST, MPI_COMM_WORLD, &request_pending, &stat);
 
-/* #ifdef MEASURE
-    auto send_start = std::chrono::system_clock::now();
-    #endif */
-
-    while (flag)
+    while (request_pending)
     {
-	flag = 0;
+	request_pending = 0;
 	int sender = stat.MPI_SOURCE;
 	MPI_Recv(&irrel, 1, MPI_INT, sender, REQUEST, MPI_COMM_WORLD, &stat);
 	// we need to collect worker tasks now to avoid a synchronization problem
 	// where queen overwrites remote_taskmap information.
-	collect_worker_task(sender);
+	// collect_worker_task(sender);
 	int outgoing_task = -1;
 
 	// fetches the first available task 
@@ -213,25 +171,13 @@ void send_out_tasks()
 	if (outgoing_task != -1)
 	{
 	    // check the synchronization problem does not happen (as above)
-	    assert(remote_taskmap[sender] == -1);
-	    remote_taskmap[sender] = thead-1;
 	    MPI_Send(&outgoing_task, 1, MPI_INT, sender, SENDING_TASK, MPI_COMM_WORLD);
-	    MPI_Iprobe(MPI_ANY_SOURCE, REQUEST, MPI_COMM_WORLD, &flag, &stat); // possibly sets flag to true
+	    MPI_Iprobe(MPI_ANY_SOURCE, REQUEST, MPI_COMM_WORLD, &request_pending, &stat); // possibly sets flag to true
 	} else {
 	    // no more tasks, but also we cannot quit completely yet (some may still be processing)
 	    break;
 	}
     }
-
-/* #ifdef MEASURE
-    auto send_end = std::chrono::system_clock::now();
-    std::chrono::duration<long double> send_time = send_end - send_start;
-    if (send_time.count() >= 0.01)
-    {
-	MEASURE_PRINT("Queen spent %Lfs in the send loop.\n", send_time.count());
-    }
-    #endif */
-
 }
 
 void send_terminations()
@@ -318,14 +264,14 @@ void ignore_additional_requests()
 void ignore_additional_tasks()
 {
     int solution_received = 0;
-    int solution = 0;
+    int solution_pair[2] = {0,0};
     MPI_Status stat;
     MPI_Iprobe(MPI_ANY_SOURCE, SOLUTION, MPI_COMM_WORLD, &solution_received, &stat);
     while(solution_received)
     {
 	solution_received = 0;
 	int sender = stat.MPI_SOURCE;
-	MPI_Recv(&solution, 1, MPI_INT, sender, SOLUTION, MPI_COMM_WORLD, &stat);
+	MPI_Recv(solution_pair, 2, MPI_INT, sender, SOLUTION, MPI_COMM_WORLD, &stat);
 	MPI_Iprobe(MPI_ANY_SOURCE, SOLUTION, MPI_COMM_WORLD, &solution_received, &stat);
     }
 
