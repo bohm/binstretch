@@ -44,7 +44,7 @@ const bin_int S = 14;
 // target goal of the online bin stretching problem
 const bin_int R = 19;
 // Change this number for the selected number of bins.
-const bin_int BINS = 8;
+const bin_int BINS = 7;
 
 // If you want to generate a specific lower bound, you can create an initial bin configuration here.
 // You can also insert an initial sequence here.

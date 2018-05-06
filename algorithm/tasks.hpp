@@ -26,14 +26,66 @@ struct task
 
 };
 
+// semi-atomic queue: one pusher, one puller, no resize
+class semiatomic_q
+{
+private:
+    int *data = NULL;
+    std::atomic<int> qsize{0};
+    int reserve = 0;
+    int qhead = 0;
+    
+public:
+    ~semiatomic_q()
+	{
+	    if(data != NULL)
+	    {
+		delete[] data;
+	    }
+	}
+
+    void init(const int& r)
+	{
+	    data = new int[r];
+	    reserve = r;
+	}
+
+
+    void push(const int& n)
+	{
+	    assert(qsize < reserve);
+	    data[qsize] = n;
+	    qsize++;
+	}
+
+    int pop_if_able()
+	{
+	    if (qhead <= qsize)
+	    {
+		return -1;
+	    } else {
+		return data[++qhead];
+	    }
+	}
+
+    void clear()
+	{
+	    qsize.store(0);
+	    qhead = 0;
+	    reserve = 0;
+	    delete[] data;
+	    data = NULL;
+	}
+};
+
+
 std::atomic<int> *tstatus;
 std::vector<int> tstatus_temporary;
 
-// tarray used by the queen, who does not know the tarray size when it's pushing into it
-std::vector<task> tarray_queen;
-// tarray used by the workers, who are told the size
-task* tarray;
+std::vector<task> tarray_temporary; // temporary array used for building
+task* tarray; // tarray used after we know the size
 
+semiatomic_q irrel_taskq;
 int tcount = 0;
 int thead = 0; // head of the tarray queue which queen uses to send tasks
 
@@ -41,15 +93,13 @@ int thead = 0; // head of the tarray queue which queen uses to send tasks
 std::atomic<unsigned int> collected_cumulative{0};
 std::atomic<unsigned int> collected_now{0};
 
-
 const int TASK_AVAILABLE = 2;
 const int TASK_IN_PROGRESS = 3;
 const int TASK_PRUNED = 4;
 
-
 void init_tarray()
 {
-    assert(tcount != 0);
+    assert(tcount > 0);
     tarray = new task[tcount];
 }
 
@@ -65,10 +115,81 @@ void init_tarray(const std::vector<task>& taq)
 
 void destroy_tarray()
 {
-    delete[] tarray;
+    delete[] tarray; tarray = NULL;
 }
-// Mapping from hashes to status indices. The mapping does not change after generation.
+
+void init_tstatus()
+{
+    assert(tcount > 0);
+    tstatus = new std::atomic<int>[tcount];
+}
+
+// call before tstatus is permuted
+void init_tstatus(const std::vector<int>& tstatus_temp)
+{
+    init_tstatus();
+    for (int i = 0; i < tcount; i++)
+    {
+	tstatus[i].store(tstatus_temp[i]);
+    }
+}
+
+void destroy_tstatus()
+{
+    delete[] tstatus; tstatus = NULL;
+
+    if (BEING_QUEEN)
+    {
+	tstatus_temporary.clear();
+    }
+}
+
+// Mapping from hashes to status indices.
 std::map<llu, int> tmap;
+
+// builds an inverse task map after all tasks are inserted into the task array.
+void rebuild_tmap()
+{
+    tmap.clear();
+    for (int i = 0; i < tcount; i++)
+    {
+	tmap.insert(std::make_pair(tarray[i].bc.loadhash ^ tarray[i].bc.itemhash, i));
+    }
+   
+}
+
+
+
+// permutes tarray and tstatus (with the same permutation), rebuilds tmap.
+void permute_tarray_tstatus()
+{
+    assert(tcount > 0);
+    std::vector<int> perm;
+
+    for (int i = 0; i < tcount; i++)
+    {
+        perm.push_back(i);
+    }
+    
+    // permutes the tasks 
+    std::random_shuffle(perm.begin(), perm.end());
+    task *tarray_new = new task[tcount];
+    std::atomic<int> *tstatus_new = new std::atomic<int>[tcount];
+    for (int i = 0; i < tcount; i++)
+    {
+	tarray_new[perm[i]] = tarray[i];
+	tstatus_new[perm[i]].store(tstatus[i]);
+    }
+
+    delete[] tarray;
+    delete[] tstatus;
+    tarray = tarray_new;
+    tstatus = tstatus_new;
+
+    rebuild_tmap();
+}
+
+
 
 template<int MODE> bool possible_task_advanced(adversary_vertex *v, int largest_item)
 {
@@ -170,40 +291,19 @@ void add_task(const binconf *x, thread_attr *tat)
     duplicate(&(newtask.bc), x);
     newtask.last_item = tat->last_item;
     newtask.expansion_depth = tat->expansion_depth; 
-    tmap.insert(std::make_pair(newtask.bc.loadhash ^ newtask.bc.itemhash, tarray_queen.size()));
-    tarray_queen.push_back(newtask);
+    tmap.insert(std::make_pair(newtask.bc.loadhash ^ newtask.bc.itemhash, tarray_temporary.size()));
+    tarray_temporary.push_back(newtask);
     tstatus_temporary.push_back(TASK_AVAILABLE);
     tcount++;
 }
 
-// builds an inverse task map after all tasks are inserte into the task array.
-void rebuild_tmap()
-{
-    tmap.clear();
-    for (int i = 0; i < tcount; i++)
-    {
-	tmap.insert(std::make_pair(tarray_queen[i].bc.loadhash ^ tarray_queen[i].bc.itemhash, i));
-    }
-   
-}
-void build_tstatus()
-{
-    tstatus = (std::atomic<int>*) malloc(tcount * sizeof(std::atomic<int>));
-    for (int i = 0; i < tcount; i++)
-    {
-	tstatus[i].store(tstatus_temporary[i]);
-    }
-}
-
 void clear_tasks()
 {
-    free(tstatus);
-    tstatus = NULL;
     tcount = 0;
     thead = 0;
     tstatus_temporary.clear();
+    tarray_temporary.clear();
     tmap.clear();
-    tarray_queen.clear();
 }
 
 // Does not actually remove a task, just marks it as completed.
@@ -221,6 +321,8 @@ template <int MODE> void remove_task(llu hash)
 	if (MODE == UPDATING)
 	{
 	    tstatus[tmap[hash]].store(TASK_PRUNED);
+	    // add task to irrelevant task queue
+	    irrel_taskq.push(tmap[hash]);
 	}
     }
 }

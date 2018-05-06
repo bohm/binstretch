@@ -123,7 +123,6 @@ int queen()
 	    // queen sends the current monotonicity to the workers
 	    transmit_monotonicity(monotonicity);
 
-	    clear_tasks();
 	    // we have to clear cache of ones here too, even though the queen
 	    // doesn't use the cache, because the queen could be
 	    // the task with shared rank == 0
@@ -159,14 +158,15 @@ int queen()
 		send_root_unsolved();
 	    }
 
- 	    build_tstatus();
-
-	    // permutes the tasks 
-	    std::random_shuffle(tarray_queen.begin(), tarray_queen.end());
-	    rebuild_tmap();
-	    
+ 	    init_tstatus(tstatus_temporary); tstatus_temporary.clear();
+	    init_tarray(tarray_temporary); tarray_temporary.clear();
+	    permute_tarray_tstatus(); // randomly shuffles the tasks 
+	    irrel_taskq.init(tcount);
+	    // note: do not push into irrel_taskq before permutation is done;
+	    // the numbers will not make any sense.
+    
 	    print<PROGRESS>("Queen: Generated %d tasks.\n", tcount);
-	    broadcast_tarray();
+	    broadcast_tarray_tstatus();
 	    //sync_up();
 
 	    auto x = std::thread(queen_updater, sapling);
@@ -177,6 +177,7 @@ int queen()
 	    {
 		collect_worker_tasks();
 		send_out_tasks();
+		transmit_all_irrelevant();
 	    }
 
 	    // Updater_result is no longer POSTPONED.
@@ -199,8 +200,10 @@ int queen()
 	    ignore_additional_requests();
 
 	    destroy_tarray();
-	    tarray_queen.clear();
-	    
+	    destroy_tstatus();
+	    irrel_taskq.clear();
+	    clear_tasks();
+    
 	    if (updater_result == 0)
 	    {
 		break;

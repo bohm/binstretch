@@ -21,20 +21,15 @@ const int QUEEN = 0;
 
 // communication constants
 const int REQUEST = 1;
-//const int SENDING_LOADS = 2;
-//const int SENDING_ITEMS = 3;
 const int SENDING_TASK = 2;
+const int SENDING_IRRELEVANT = 3;
 const int TERMINATE = 4;
 const int SOLUTION = 5;
 const int CHANGE_MONOTONICITY = 6;
-const int LAST_ITEM = 7;
 const int ZOBRIST_ITEMS = 8;
 const int ZOBRIST_LOADS = 9;
 const int MEASUREMENTS = 10;
 const int ROOT_SOLVED = 11;
-const int TASK_IRRELEVANT = 12;
-const int SENDING_TCOUNT = 13;
-const int SENDING_TARRAY = 14;
 // ----
 const int TERMINATION_SIGNAL = -1;
 const int ROOT_SOLVED_SIGNAL = -2;
@@ -85,74 +80,6 @@ void receive_measurements()
     }
 }
 
-void collect_worker_tasks()
-{
-    int solution_received = 0;
-    int solution_pair[2] = {0,0};
-    MPI_Status stat;
-
-    MPI_Iprobe(MPI_ANY_SOURCE, SOLUTION, MPI_COMM_WORLD, &solution_received, &stat);
-    while(solution_received)
-    {
-	solution_received = 0;
-	int sender = stat.MPI_SOURCE;
-	MPI_Recv(solution_pair, 2, MPI_INT, sender, SOLUTION, MPI_COMM_WORLD, &stat);
-	collected_now++;
-	collected_cumulative++;
-	//printf("Queen: received solution %d.\n", solution);
-        // add it to the collected set of the queen
-	if (solution_pair[1] != IRRELEVANT)
-	{
-	    tstatus[solution_pair[0]].store(solution_pair[1], std::memory_order_release);
-	}
-	MPI_Iprobe(MPI_ANY_SOURCE, SOLUTION, MPI_COMM_WORLD, &solution_received, &stat);
-    }
-}
-
-void send_out_tasks()
-{
-    int request_pending = 0;
-    MPI_Status stat;
-    MPI_Request blankreq;
-    int irrel = 0;
-    bool got_task = false;
-    MPI_Iprobe(MPI_ANY_SOURCE, REQUEST, MPI_COMM_WORLD, &request_pending, &stat);
-
-    while (request_pending)
-    {
-	request_pending = 0;
-	int sender = stat.MPI_SOURCE;
-	MPI_Recv(&irrel, 1, MPI_INT, sender, REQUEST, MPI_COMM_WORLD, &stat);
-	// we need to collect worker tasks now to avoid a synchronization problem
-	// where queen overwrites remote_taskmap information.
-	// collect_worker_task(sender);
-	int outgoing_task = -1;
-
-	// fetches the first available task 
-	while (thead < tcount)
-	{
-	    int stat = tstatus[thead].load(std::memory_order_acquire);
-	    if (stat == TASK_AVAILABLE)
-	    {
-		outgoing_task = thead;
-		thead++;
-		break;
-	    }
-	    thead++;
-	}
-	
-	if (outgoing_task != -1)
-	{
-	    // check the synchronization problem does not happen (as above)
-	    MPI_Send(&outgoing_task, 1, MPI_INT, sender, SENDING_TASK, MPI_COMM_WORLD);
-	    MPI_Iprobe(MPI_ANY_SOURCE, REQUEST, MPI_COMM_WORLD, &request_pending, &stat); // possibly sets flag to true
-	} else {
-	    // no more tasks, but also we cannot quit completely yet (some may still be processing)
-	    break;
-	}
-    }
-}
-
 void send_terminations()
 {
     MPI_Request blankreq;
@@ -191,6 +118,47 @@ void send_root_solved_via_task()
     }
 }
 
+// queen transmits an irrelevant task to all workers
+// TODO: it doesn't look like this could be a broadcast, but maybe I am overlooking something?
+void transmit_irrelevant_task(int taskno)
+{
+    MPI_Request blankreq;
+    print<DEBUG>("Transmitting task %d as irrelevant.\n", taskno);
+    for (int i = 1; i < world_size; i++)
+    {
+	MPI_Isend(&taskno, 1, MPI_INT, i, SENDING_IRRELEVANT, MPI_COMM_WORLD, &blankreq);
+    }
+}
+
+void transmit_all_irrelevant()
+{
+    int p = irrel_taskq.pop_if_able();
+    while (p != -1)
+    {
+	transmit_irrelevant_task(p);
+	p = irrel_taskq.pop_if_able();
+    }
+}
+
+void fetch_irrelevant_tasks()
+{
+    MPI_Status stat;
+    int irrel_task_incoming = 0;
+    int ir_task = 0;
+
+    MPI_Iprobe(QUEEN, SENDING_IRRELEVANT, MPI_COMM_WORLD, &irrel_task_incoming, &stat);
+
+    while (irrel_task_incoming)
+    {
+	irrel_task_incoming = 0;
+	MPI_Recv(&ir_task, 1, MPI_INT, QUEEN, SENDING_IRRELEVANT, MPI_COMM_WORLD, &stat);
+	// mark task as irrelevant
+	tstatus[ir_task].store(IRRELEVANT);
+        print<DEBUG>("Worker %d: marking %d as irrelevant.\n", world_rank, ir_task);
+	MPI_Iprobe(QUEEN, SENDING_IRRELEVANT, MPI_COMM_WORLD, &irrel_task_incoming, &stat);
+    }
+}
+
 // Workers fetch and ignore additional signals about root solved (since it may arrive in two places).
 void ignore_additional_signals()
 {
@@ -201,6 +169,7 @@ void ignore_additional_signals()
 
     while (signal_present)
     {
+	signal_present = 0;
 	MPI_Recv(&irrel, 1, MPI_INT, QUEEN, SENDING_TASK, MPI_COMM_WORLD, &stat);
 	MPI_Iprobe(QUEEN, SENDING_TASK, MPI_COMM_WORLD, &signal_present, &stat);
     }
@@ -209,6 +178,7 @@ void ignore_additional_signals()
 
     while (signal_present)
     {
+	signal_present = 0;
 	MPI_Recv(&irrel, 1, MPI_INT, QUEEN, ROOT_SOLVED, MPI_COMM_WORLD, &stat);
 	MPI_Iprobe(QUEEN, ROOT_SOLVED, MPI_COMM_WORLD, &signal_present, &stat);
     }
@@ -312,13 +282,10 @@ void transmit_monotonicity(int m)
     }
 }
 
-void broadcast_tarray()
+void broadcast_tarray_tstatus()
 {
-    // we block here to make sure we are in sync with everyone
-
     if (BEING_QUEEN)
     {
-	init_tarray(tarray_queen);
 	assert(tcount > 0);
     }
     
@@ -326,14 +293,17 @@ void broadcast_tarray()
 
     if (BEING_WORKER)
     {
-	// allocate tarray
 	init_tarray();
+	init_tstatus();
     }
 
     for (int i = 0; i < tcount; i++)
     {
 	MPI_Bcast(tarray[i].serialize(), sizeof(task), MPI_CHAR, QUEEN, MPI_COMM_WORLD);
     }
+
+    
+    MPI_Bcast(tstatus, tcount, MPI_INT, QUEEN, MPI_COMM_WORLD);
 
     if (BEING_QUEEN)
     {
@@ -342,6 +312,82 @@ void broadcast_tarray()
     } else {
 	// print_binconf<PROGRESS>(&tarray[0].bc);
     }
+
+
+
 }
+
+
+void collect_worker_tasks()
+{
+    int solution_received = 0;
+    int solution_pair[2] = {0,0};
+    MPI_Status stat;
+
+    MPI_Iprobe(MPI_ANY_SOURCE, SOLUTION, MPI_COMM_WORLD, &solution_received, &stat);
+    while(solution_received)
+    {
+	solution_received = 0;
+	int sender = stat.MPI_SOURCE;
+	MPI_Recv(solution_pair, 2, MPI_INT, sender, SOLUTION, MPI_COMM_WORLD, &stat);
+	collected_now++;
+	collected_cumulative++;
+	//printf("Queen: received solution %d.\n", solution);
+        // add it to the collected set of the queen
+	if (solution_pair[1] != IRRELEVANT)
+	{
+	    tstatus[solution_pair[0]].store(solution_pair[1], std::memory_order_release);
+	    // transmit the solution_pair[0] as solved
+	    transmit_irrelevant_task(solution_pair[0]);
+	}
+	
+	MPI_Iprobe(MPI_ANY_SOURCE, SOLUTION, MPI_COMM_WORLD, &solution_received, &stat);
+    }
+}
+
+void send_out_tasks()
+{
+    int request_pending = 0;
+    MPI_Status stat;
+    MPI_Request blankreq;
+    int irrel = 0;
+    bool got_task = false;
+    MPI_Iprobe(MPI_ANY_SOURCE, REQUEST, MPI_COMM_WORLD, &request_pending, &stat);
+
+    while (request_pending)
+    {
+	request_pending = 0;
+	int sender = stat.MPI_SOURCE;
+	MPI_Recv(&irrel, 1, MPI_INT, sender, REQUEST, MPI_COMM_WORLD, &stat);
+	// we need to collect worker tasks now to avoid a synchronization problem
+	// where queen overwrites remote_taskmap information.
+	// collect_worker_task(sender);
+	int outgoing_task = -1;
+
+	// fetches the first available task 
+	while (thead < tcount)
+	{
+	    int stat = tstatus[thead].load(std::memory_order_acquire);
+	    if (stat == TASK_AVAILABLE)
+	    {
+		outgoing_task = thead;
+		thead++;
+		break;
+	    }
+	    thead++;
+	}
+	
+	if (outgoing_task != -1)
+	{
+	    // check the synchronization problem does not happen (as above)
+	    MPI_Send(&outgoing_task, 1, MPI_INT, sender, SENDING_TASK, MPI_COMM_WORLD);
+	    MPI_Iprobe(MPI_ANY_SOURCE, REQUEST, MPI_COMM_WORLD, &request_pending, &stat); // possibly sets flag to true
+	} else {
+	    // no more tasks, but also we cannot quit completely yet (some may still be processing)
+	    break;
+	}
+    }
+}
+
 
 #endif

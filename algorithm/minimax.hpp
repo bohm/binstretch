@@ -25,15 +25,21 @@
 template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_attr *outat);
 template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat, tree_attr *outat);
 
-int time_stats(thread_attr *tat)
+int check_messages(thread_attr *tat)
 {
     check_root_solved();
     check_termination();
+    fetch_irrelevant_tasks();
     if (root_solved || worker_terminate)
     {
 	return IRRELEVANT;
     }
 
+    if (tstatus[tat->task_id].load() == IRRELEVANT)
+    {
+	print<true>("Worker %d works on an irrelevant thread.\n", world_rank);
+	return IRRELEVANT;
+    }
     return 0;
 }
 
@@ -117,7 +123,7 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
 	{
 	    if (MEASURE)
 	    {
-		int recommendation = time_stats(tat);
+		int recommendation = check_messages(tat);
 		if (recommendation == TERMINATING || recommendation == IRRELEVANT)
 		{
 		    //fprintf(stderr, "We got advice to terminate.\n");
@@ -256,7 +262,7 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 	{
 	    if (MEASURE)
 	    {
-		int recommendation = time_stats(tat);
+		int recommendation = check_messages(tat);
 		if (recommendation == TERMINATING || recommendation == IRRELEVANT)
 		{
 		    //fprintf(stderr, "We got advice to terminate.\n");

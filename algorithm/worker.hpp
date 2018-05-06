@@ -29,13 +29,14 @@ int receive_task()
 }
 
 
-int worker_solve(const task *t)
+int worker_solve(const task *t, const int& task_id)
 {
     int ret = POSTPONED;
 
     thread_attr tat;
     dynprog_attr_init(&tat);
     tat.last_item = t->last_item;
+    tat.task_id = task_id;
     computation_root = NULL; // we do not run GENERATE or EXPAND on the workers currently
    
     // We create a copy of the sapling's bin configuration
@@ -113,7 +114,7 @@ void worker()
 	    }
 			       
 	    // receive (new) task array
-	    broadcast_tarray();
+	    broadcast_tarray_tstatus();
 	}
 
 	taskcounter++;
@@ -134,6 +135,7 @@ void worker()
 	    wait_for_monotonicity = true;
 	    ignore_additional_signals();
 	    destroy_tarray();
+	    destroy_tstatus();
 	    sync_up(); // Root solved.
 	    continue;
 	}
@@ -157,7 +159,7 @@ void worker()
 	}
 
 // solution may still be irrelevant if a signal came mid-computation
-	int solution = worker_solve(current_task);
+	int solution = worker_solve(current_task, current_task_id);
 
 	if (TASKLOG)
 	{
@@ -183,6 +185,7 @@ void worker()
 	    wait_for_monotonicity = true;
 	    ignore_additional_signals();
 	    destroy_tarray();
+	    destroy_tstatus();
 	    sync_up(); // Root solved.
 	    continue;
 	}
@@ -190,6 +193,7 @@ void worker()
 	if (worker_terminate)
 	{
 	    destroy_tarray();
+	    destroy_tstatus();
 	    break;
 	}
     }
