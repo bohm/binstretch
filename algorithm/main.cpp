@@ -32,7 +32,7 @@ int main(void)
     } else {
 	if(world_rank != 0)
 	{
-	    worker();
+	    overseer();
 //	    dummy_worker();
 	} else {
 	    // queen is now by default two-threaded
@@ -57,6 +57,7 @@ int main(void)
 	
 	fprintf(stderr, "Number of tasks: %d, collected tasks: %u,  pruned tasks %" PRIu64 ".\n,",
 		tcount, collected_cumulative.load(), removed_task_count);
+	fprintf(stderr, "Pruned & transmitted tasks: %" PRIu64 "\n", irrel_transmitted_count);
 
 	hashtable_cleanup();
 	//graph_cleanup(root_vertex); // TODO: fix this

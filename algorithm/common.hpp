@@ -54,8 +54,8 @@ const std::vector<bin_int> INITIAL_ITEMS = {};
 //const std::vector<bin_int> INITIAL_ITEMS = {7,0,0,0,1};
 // You can also insert an initial sequence here, and the adversary will use it as a predefined start.
 
-const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1};
-//const std::vector<bin_int> INITIAL_SEQUENCE = {5};
+//const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1};
+const std::vector<bin_int> INITIAL_SEQUENCE = {5};
 //const std::vector<bin_int> INITIAL_SEQUENCE = {};
 
 const int FIRST_PASS = 0;
@@ -64,27 +64,17 @@ const int FIRST_PASS = 0;
 const int RMOD = (R-1);
 const int ALPHA = (RMOD-S);
 
-// bitwise length of indices of hash tables and lock tables
-const unsigned int SHARED_CONFLOG = 20;
-const unsigned int SHARED_DPLOG = 20;
-
-const unsigned int PRIVATE_CONFLOG = 24;
-const unsigned int PRIVATE_DPLOG = 24;
+// Dplog, conflog -- bitwise length of indices of hash tables and lock tables.
+// ht_size = 2^conflog, dpht_size = 2^dplog.
+// Dplog, conflog, dpsize and confsize are now set at runtime.
+unsigned int conflog = 0;
+unsigned int dplog = 0;
+uint64_t ht_size = 0;
+uint64_t dpht_size = 0;
 
 const unsigned int LOADLOG = 13;
 
 // sizes of the hash tables
-const llu SHARED_CONFSIZE = (1ULL<<SHARED_CONFLOG);
-const llu SHARED_DPSIZE = (1ULL<<SHARED_DPLOG);
-
-const llu PRIVATE_CONFSIZE = (1ULL<<PRIVATE_CONFLOG);
-const llu PRIVATE_DPSIZE = (1ULL<<PRIVATE_DPLOG);
-
-// if a dynprog has > this many items, it goes into the private memory
-const int CONF_ITEMCOUNT_THRESHOLD = 12;
-const int DP_ITEMCOUNT_THRESHOLD = 16;
-
-
 const llu LOADSIZE = (1ULL<<LOADLOG);
 
 // linear probing limit
@@ -94,7 +84,7 @@ const int DEFAULT_DP_SIZE = 100000;
 const int BESTFIT_THRESHOLD = (1*S)/10;
 
 // a bound on total load of a configuration before we split it into a task
-const int TASK_LOAD = 18;
+const int TASK_LOAD = 16;
 //const int TASK_DEPTH = 2;
 const int TASK_DEPTH = S > 41 ? 2 : 3;
 #define POSSIBLE_TASK possible_task_mixed
@@ -157,12 +147,21 @@ MPI_Comm shmcomm; // shared memory communicator
 int shm_rank = 0;
 int shm_size = 0;
 uint64_t shm_log = 0;
-bool root_solved = false;
-bool worker_terminate = false;
+std::atomic<bool> root_solved{false};
+std::atomic<bool> worker_terminate{false};
 bool generating_tasks;
 uint64_t *Zi; // Zobrist table for items
 uint64_t *Zl; // Zobrist table for loads
 uint64_t *Ai; // Zobrist table for next item to pack (used for the algorithm's best move table)
+
+
+// thread rank idea:
+// if worker has thread rank 3 and reported thread count 5, it is assigned worker ranks 3,4,5,6,7.
+//
+int worker_count = 0;
+int thread_rank = 0;
+int thread_rank_size = 0;
+
 
 // A bin configuration consisting of three loads and a list of items that have arrived so far.
 // The same DS is also used in the hash as an element.

@@ -27,15 +27,15 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 
 int check_messages(thread_attr *tat)
 {
-    check_root_solved();
-    check_termination();
-    fetch_irrelevant_tasks();
+    // check_root_solved();
+    // check_termination();
+    // fetch_irrelevant_tasks();
     if (root_solved || worker_terminate)
     {
 	return IRRELEVANT;
     }
 
-    if (tstatus[tat->task_id].load() == IRRELEVANT)
+    if (tstatus[tat->task_id].load() == TASK_PRUNED)
     {
 	print<true>("Worker %d works on an irrelevant thread.\n", world_rank);
 	return IRRELEVANT;

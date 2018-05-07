@@ -36,12 +36,12 @@ void queen_updater(adversary_vertex* sapling)
 	if (collected_cumulative.load(std::memory_order_acquire) / PROGRESS_AFTER > last_printed)
 	{
 	    last_printed = collected_cumulative / PROGRESS_AFTER;
-	    print<PROGRESS>("Queen collects task number %u, %d remain. \n", collected_cumulative.load(std::memory_order_acquire), tcount - thead);
+	    print<PROGRESS>("Queen collects task number %u, %d remain. \n", collected_cumulative.load(std::memory_order_acquire), tcount - collected_cumulative.load(std::memory_order_acquire) - removed_task_count);
 	}
 	
 	// update main tree and task map
-	bool should_do_update = ((collected_now >= TICK_TASKS) || (tcount - thead <= TICK_TASKS)) && (updater_result == POSTPONED);
-	// bool should_do_update = true;
+	// bool should_do_update = ((collected_now >= TICK_TASKS) || (tcount - thead <= TICK_TASKS)) && (updater_result == POSTPONED);
+	bool should_do_update = true;
 	if (should_do_update)
 	{
 	    collected_now.store(0, std::memory_order_release);
@@ -73,9 +73,9 @@ int queen()
     int ret = 0;
     zobrist_init();
     broadcast_zobrist();
+    compute_thread_ranks(); 
 
     // even though the queen does not use the database, it needs to synchronize with others.
-    shared_memory_init(shm_size, shm_rank);
     sync_up();
 
     binconf root = {INITIAL_LOADS, INITIAL_ITEMS};
@@ -137,6 +137,7 @@ int queen()
 
 // generates tasks for workers
 	    clear_visited_bits();
+	    removed_task_count = 0;
 	    updater_result = generate(&sapling_bc, &tat, sapling);
 
 	    sapling->value = updater_result.load(std::memory_order_acquire);
@@ -176,7 +177,7 @@ int queen()
 	    while(updater_result == POSTPONED)
 	    {
 		collect_worker_tasks();
-		send_out_tasks();
+		//send_out_tasks();
 		transmit_all_irrelevant();
 	    }
 

@@ -30,6 +30,9 @@ const int ZOBRIST_ITEMS = 8;
 const int ZOBRIST_LOADS = 9;
 const int MEASUREMENTS = 10;
 const int ROOT_SOLVED = 11;
+const int THREAD_COUNT = 12;
+const int THREAD_RANK = 13;
+
 // ----
 const int TERMINATION_SIGNAL = -1;
 const int ROOT_SOLVED_SIGNAL = -2;
@@ -136,6 +139,7 @@ void transmit_all_irrelevant()
     while (p != -1)
     {
 	transmit_irrelevant_task(p);
+	irrel_transmitted_count++;
 	p = irrel_taskq.pop_if_able();
     }
 }
@@ -153,7 +157,7 @@ void fetch_irrelevant_tasks()
 	irrel_task_incoming = 0;
 	MPI_Recv(&ir_task, 1, MPI_INT, QUEEN, SENDING_IRRELEVANT, MPI_COMM_WORLD, &stat);
 	// mark task as irrelevant
-	tstatus[ir_task].store(IRRELEVANT);
+	tstatus[ir_task].store(TASK_PRUNED);
         print<DEBUG>("Worker %d: marking %d as irrelevant.\n", world_rank, ir_task);
 	MPI_Iprobe(QUEEN, SENDING_IRRELEVANT, MPI_COMM_WORLD, &irrel_task_incoming, &stat);
     }
@@ -166,7 +170,6 @@ void ignore_additional_signals()
     int signal_present = 0;
     int irrel = 0 ;
     MPI_Iprobe(QUEEN, SENDING_TASK, MPI_COMM_WORLD, &signal_present, &stat);
-
     while (signal_present)
     {
 	signal_present = 0;
@@ -175,13 +178,23 @@ void ignore_additional_signals()
     }
 
     MPI_Iprobe(QUEEN, ROOT_SOLVED, MPI_COMM_WORLD, &signal_present, &stat);
-
     while (signal_present)
     {
 	signal_present = 0;
 	MPI_Recv(&irrel, 1, MPI_INT, QUEEN, ROOT_SOLVED, MPI_COMM_WORLD, &stat);
 	MPI_Iprobe(QUEEN, ROOT_SOLVED, MPI_COMM_WORLD, &signal_present, &stat);
     }
+    
+    MPI_Iprobe(QUEEN, SENDING_IRRELEVANT, MPI_COMM_WORLD, &signal_present, &stat);
+    while (signal_present)
+    {
+	signal_present = 0;
+	MPI_Recv(&irrel, 1, MPI_INT, QUEEN, SENDING_IRRELEVANT, MPI_COMM_WORLD, &stat);
+	MPI_Iprobe(QUEEN, SENDING_IRRELEVANT, MPI_COMM_WORLD, &signal_present, &stat);
+    }
+
+
+
 }
 
 // Queen fetches and ignores the remaining tasks from the previous iteration.
@@ -239,7 +252,7 @@ void check_termination()
     {
 	MPI_Recv(&irrel, 1, MPI_INT, QUEEN, TERMINATE, MPI_COMM_WORLD, &stat);
 	// set global root solved flag
-	worker_terminate = true;
+	worker_terminate.store(true);
     }
 }
 
@@ -255,7 +268,7 @@ void check_root_solved()
 	// set global root solved flag
 	if (r_s == ROOT_SOLVED_SIGNAL)
 	{
-	    root_solved = true;
+	    root_solved.store(true);
 	}
     }
 }
@@ -269,7 +282,7 @@ void blocking_check_root_solved()
     // set global root solved flag
     if (r_s == ROOT_SOLVED_SIGNAL)
     {
-	root_solved = true;
+	root_solved.store(true);
     }
 }
 
@@ -317,6 +330,36 @@ void broadcast_tarray_tstatus()
 
 }
 
+int* worker_threads; // number of worker threads for each worker
+
+void compute_thread_ranks()
+{
+    MPI_Status stat;
+    if (BEING_WORKER)
+    {
+	MPI_Send(&worker_count, 1, MPI_INT, QUEEN, THREAD_COUNT, MPI_COMM_WORLD);
+	MPI_Recv(&thread_rank, 1, MPI_INT, QUEEN, THREAD_RANK, MPI_COMM_WORLD, &stat);
+	MPI_Bcast(&thread_rank_size, 1, MPI_INT, QUEEN, MPI_COMM_WORLD);
+	print<true>("Worker %d has %d threads, ranked %d of %d total.\n", world_rank, worker_count, thread_rank, thread_rank_size);
+    } else if (BEING_QUEEN)
+    {
+	worker_threads = new int[world_size];
+	for (int worker = 1; worker < world_size; worker++)
+	{
+	    MPI_Recv(&worker_threads[worker], 1, MPI_INT, worker, THREAD_COUNT, MPI_COMM_WORLD, &stat);
+	}
+
+	int worker_rank = 0;
+	for (int worker = 1; worker < world_size; worker++)
+	{
+	    MPI_Send(&worker_rank, 1, MPI_INT, worker, THREAD_RANK, MPI_COMM_WORLD);
+	    worker_rank += worker_threads[worker];
+	}
+
+	thread_rank_size = worker_rank;
+	MPI_Bcast(&thread_rank_size, 1, MPI_INT, QUEEN, MPI_COMM_WORLD);
+    }
+}
 
 void collect_worker_tasks()
 {

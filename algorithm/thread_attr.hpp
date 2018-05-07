@@ -11,6 +11,7 @@ uint64_t task_count = 0;
 uint64_t finished_task_count = 0;
 uint64_t removed_task_count = 0; // number of tasks which are removed due to minimax pruning
 uint64_t decreased_task_count = 0;
+uint64_t irrel_transmitted_count = 0;
 
 struct measure_attr
 {
@@ -109,7 +110,7 @@ struct measure_attr
 	    // caching
 	    // TODO: make it work with the new shared/private model
 	    fprintf(stderr, "Main cache size: %llu, #search: %" PRIu64 "(#hit: %" PRIu64 ",  #miss: %" PRIu64 ") #full miss: %" PRIu64 ".\n",
-			  SHARED_CONFSIZE, (bc_hit+bc_partial_nf+bc_full_nf), bc_hit,
+			  ht_size, (bc_hit+bc_partial_nf+bc_full_nf), bc_hit,
 			  bc_partial_nf + bc_full_nf, bc_full_nf);
 	    fprintf(stderr, "Insertions: %" PRIu64 ", new data insertions: %" PRIu64 ", (normal: %" PRIu64 ", random inserts: %" PRIu64
 		    ", already inserted: %" PRIu64 ", in progress: %" PRIu64 ", overwrite of in progress: %" PRIu64 ").\n",
@@ -117,7 +118,7 @@ struct measure_attr
 		    bc_already_inserted, bc_in_progress_insert, bc_overwrite);
 	    
 	    fprintf(stderr, "DP cache size: %llu, #insert: %" PRIu64 ", #search: %" PRIu64 "(#hit: %" PRIu64 ",  #part. miss: %" PRIu64 ",#full miss: %" PRIu64 ").\n",
-		    SHARED_DPSIZE, dp_insertions, (dp_hit+dp_partial_nf+dp_full_nf), dp_hit,
+		    dpht_size, dp_insertions, (dp_hit+dp_partial_nf+dp_full_nf), dp_hit,
 		    dp_partial_nf, dp_full_nf);
 	}
 };

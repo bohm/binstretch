@@ -29,11 +29,12 @@ struct task
 // semi-atomic queue: one pusher, one puller, no resize
 class semiatomic_q
 {
-private:
+//private:
+public:
     int *data = NULL;
     std::atomic<int> qsize{0};
     int reserve = 0;
-    int qhead = 0;
+    std::atomic<int> qhead{0};
     
 public:
     ~semiatomic_q()
@@ -60,18 +61,18 @@ public:
 
     int pop_if_able()
 	{
-	    if (qhead <= qsize)
+	    if (qhead >= qsize)
 	    {
 		return -1;
 	    } else {
-		return data[++qhead];
+		return data[qhead++];
 	    }
 	}
 
     void clear()
 	{
 	    qsize.store(0);
-	    qhead = 0;
+	    qhead.store(0);
 	    reserve = 0;
 	    delete[] data;
 	    data = NULL;
@@ -88,6 +89,7 @@ task* tarray; // tarray used after we know the size
 semiatomic_q irrel_taskq;
 int tcount = 0;
 int thead = 0; // head of the tarray queue which queen uses to send tasks
+int tpruned = 0; // number of tasks which are pruned
 
 // global measure of queen's collected tasks
 std::atomic<unsigned int> collected_cumulative{0};

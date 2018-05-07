@@ -132,15 +132,6 @@ std::atomic<conf_el> *ht = NULL;
 std::atomic<dpht_el> *dpht = NULL; // = new std::atomic<dpht_el_extended>[BC_HASHSIZE];
 //void *baseptr, *dpbaseptr;
 
-uint64_t ht_size = 0, dpht_size = 0;
-// hash table for dynamic programming calls / feasibility checks
-
-// TODO: implement ht_p, dpht_p
-//std::array<conf_el, PRIVATE_CONFSIZE> ht_p = {0};
-conf_el *ht_p;
-dpht_el *dpht_p;
-
-
 // DEBUG: Mersenne twister
 
 std::mt19937_64 gen(12345);
@@ -189,148 +180,57 @@ uint64_t quicklog(uint64_t x)
     return ret;
 }
 
-// Memory that is private for each MPI process.
-// There is some bug (unknown right now) that causes processes to hang
-// when too much memory is shared
-void init_private_memory()
-{
-    if (PRIVATE_CONFLOG > 0)
-    {
-	ht_p = new conf_el[PRIVATE_CONFSIZE];
-	conf_el empty{0};
-	for (uint64_t i =0; i < PRIVATE_CONFSIZE; i++)
-	{
-	    ht_p[i] = empty;
-	}
-    }
-
-    if (PRIVATE_DPLOG > 0)
-    {
-
-	dpht_p = new dpht_el[PRIVATE_DPSIZE];
-	dpht_el empty{0};
-	for (uint64_t i =0; i < PRIVATE_DPSIZE; i++)
-	{
-	    dpht_p[i] = empty;
-	}
-    }
-
-}
-
-void delete_private_memory()
-{
-    if (PRIVATE_CONFLOG > 0)
-    {
-	delete[] ht_p;
-    }
-
-    if (PRIVATE_DPLOG > 0)
-    {
-	delete[] dpht_p;
-    }
-}
-
 // Initializes hashtables.
-// Temporarily assume sharedmem_size is a power of two.
+// Call by overseer, not by workers.
 
-void shared_memory_init(int sharedmem_size, int sharedmem_rank)
+void init_worker_memory()
 {
-    // allocate shared memory
-    MPI_Win ht_win;
-    MPI_Win dpht_win;
-    void *baseptr;
-    // a slight hack here -- since queen uses two threads, we change the allocation slightly
-    ht_size = SHARED_CONFSIZE*sharedmem_size;
-    dpht_size = SHARED_DPSIZE*sharedmem_size;
+    // TODO: make this dependent on the machine
+    ht = new std::atomic<conf_el>[ht_size];
+    dpht = new std::atomic<dpht_el>[dpht_size];
 
-    /* fprintf(stderr, "Local process %d of %d: ht_size %" PRIu64 ", dpht_size %" PRIu64 "\n",
-	    sharedmem_rank, sharedmem_size, ht_size*sizeof(std::atomic<conf_el>),
-	    dpht_size*sizeof(std::atomic<dpht_el>));*/
-// allocate hashtables
-    if(sharedmem_rank == 0)
+    conf_el y{0};
+    dpht_el x{0};
+    assert(ht != NULL && dpht != NULL);
+    
+    // initialize only your own part of the shared memory
+    for (uint64_t i = 0; i < ht_size; i++)
     {
-	int ret = MPI_Win_allocate_shared(ht_size*sizeof(std::atomic<conf_el>), sizeof(std::atomic<conf_el>), MPI_INFO_NULL, shmcomm, &baseptr, &ht_win);
-        if (ret == MPI_SUCCESS)
-	{
-	    //printf("success\n");
-	}
-	ht = (std::atomic<conf_el>*) baseptr;
-	
-	int ret2 = MPI_Win_allocate_shared(1+ dpht_size*DPHT_BYTES, 0, MPI_INFO_NULL, shmcomm, &baseptr, &dpht_win);
-	if(ret2 == MPI_SUCCESS)
-	{
-	    //printf("success also\n");
-	}
-
-	uintptr_t alignment = (DPHT_BYTES) - ((uintptr_t) baseptr % DPHT_BYTES);
-	dpht = (std::atomic<dpht_el>*) ((uintptr_t) baseptr + alignment);
-	
-	conf_el y = {0};
-	dpht_el x = {0};
-	assert(ht != NULL && dpht != NULL);
-
-	// initialize only your own part of the shared memory
-	for (uint64_t i = 0; i < ht_size; i++)
-	{
-	    //assert(ht[i].is_lock_free());
-	    ht[i].store(y);
-	    /* if(i % 10000 == 0)
-	    {
-		fprintf(stderr, "Inserted into element %llu.\n", i);
-		}*/
-	}
-
-	for (uint64_t i =0; i < dpht_size; i++)
-	{
-	    //assert(dpht[i].is_lock_free());
-	    dpht[i].store(x);
-	    /* if(i % 10000 == 0)
-	    {
-		fprintf(stderr, "DPinserted into element %llu.\n", i);
-		} */
-	}
-	
-    } else {
-	MPI_Win_allocate_shared(0, 0, MPI_INFO_NULL,
-                              shmcomm, &ht, &ht_win);
-	MPI_Win_allocate_shared(0, 0, MPI_INFO_NULL,
-			      shmcomm, &dpht, &dpht_win);
-
-	// unnecessary parameters
-	MPI_Aint ssize; int disp_unit;
-	MPI_Win_shared_query(ht_win, 0, &ssize, &disp_unit, &ht);
-	MPI_Win_shared_query(dpht_win, 0, &ssize, &disp_unit, &baseptr);
-	uintptr_t alignment = (DPHT_BYTES) - ((uintptr_t) baseptr % DPHT_BYTES);
-	dpht = (std::atomic<dpht_el>*) ((uintptr_t) baseptr + alignment);
+	std::atomic_init(&ht[i], y);
     }
+
+    for (uint64_t i =0; i < dpht_size; i++)
+    {
+	std::atomic_init(&dpht[i],x);
+    }
+}
+
+void free_worker_memory()
+{
+    delete[] ht; ht = NULL;
+    delete[] dpht; dpht = NULL;
 }
 
 void clear_cache_of_ones()
 {
-    if (shm_rank == 0)
+    uint64_t kept = 0, erased = 0;
+    conf_el empty{0};
+    
+    for (uint64_t i =0; i < ht_size; i++)
     {
-
-	uint64_t kept = 0, erased = 0;
-	conf_el empty{0};
-	
-	for (uint64_t i =0; i < ht_size; i++)
+	conf_el field = ht[i];
+	if (!field.empty() && !field.removed())
 	{
-	    conf_el field = ht[i];
-	    if (!field.empty() && !field.removed())
+	    bin_int last_bit = field.value();
+	    if (last_bit != 0)
 	    {
-		bin_int last_bit = field.value();
-		if (last_bit != 0)
-		{
-		    ht[i].store(empty);
-		    erased++;
-		} else {
-		    kept++;
-		}
+		ht[i].store(empty);
+		erased++;
+	    } else {
+		kept++;
 	    }
 	}
     }
-
-    //MEASURE_PRINT("Hashtable size: %llu, kept: %" PRIu64 ", erased: %" PRIu64 "\n", HASHSIZE, kept, erased);
 }
 
 /*
@@ -431,10 +331,6 @@ void hashtable_cleanup()
     delete[] Zl;
     delete[] Zi;
     delete[] Ai;
-    
-// also needs to be done differently
-//    delete[] dpht;
-//    delete[] ht;
 }
 
 void printBits32(unsigned int num)
@@ -457,24 +353,28 @@ void printBits64(llu num)
    fprintf(stderr, "\n");
 }
 
+// template logpart
+
 template<unsigned int LOG> inline uint64_t logpart(uint64_t x)
 {
     return x >> (64 - LOG); 
 }
 
-// shared hashlog
-uint64_t shared_conflogpart(const uint64_t x)
+// with some memory allocated dynamically, we also need a dynamic logpart
+
+inline uint64_t conflogpart(uint64_t x)
 {
-    return x >> (64 - SHARED_CONFLOG - shm_log); 
+    return x >> (64 - conflog);
 }
 
-// shared dplog
-uint64_t shared_dplogpart(const uint64_t x)
+inline uint64_t dplogpart(uint64_t x)
 {
-    return x >> (64 - SHARED_DPLOG - shm_log); 
+    return x >> (64 - dplog);
 }
 
+
+
+// const auto shared_conflogpart = logpart<SHARED_CONFLOG>;
+// const auto shared_dplogpart = logpart<SHARED_DPLOG>;
 const auto loadlogpart = logpart<LOADLOG>;
-const auto private_conflogpart = logpart<PRIVATE_CONFLOG>;
-const auto private_dplogpart = logpart<PRIVATE_DPLOG>;
 #endif // _HASH_HPP
