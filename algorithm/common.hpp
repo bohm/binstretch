@@ -44,7 +44,7 @@ const bin_int S = 14;
 // target goal of the online bin stretching problem
 const bin_int R = 19;
 // Change this number for the selected number of bins.
-const bin_int BINS = 7;
+const bin_int BINS = 9;
 
 // If you want to generate a specific lower bound, you can create an initial bin configuration here.
 // You can also insert an initial sequence here.
@@ -54,8 +54,8 @@ const std::vector<bin_int> INITIAL_ITEMS = {};
 //const std::vector<bin_int> INITIAL_ITEMS = {7,0,0,0,1};
 // You can also insert an initial sequence here, and the adversary will use it as a predefined start.
 
-//const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1};
-const std::vector<bin_int> INITIAL_SEQUENCE = {5};
+const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1,1,1};
+//const std::vector<bin_int> INITIAL_SEQUENCE = {5};
 //const std::vector<bin_int> INITIAL_SEQUENCE = {};
 
 const int FIRST_PASS = 0;
@@ -85,7 +85,7 @@ const int BESTFIT_THRESHOLD = (1*S)/10;
 
 // a bound on total load of a configuration before we split it into a task
 const int TASK_LOAD = 16;
-//const int TASK_DEPTH = 2;
+// const int TASK_DEPTH = 2;
 const int TASK_DEPTH = S > 41 ? 2 : 3;
 #define POSSIBLE_TASK possible_task_mixed
 

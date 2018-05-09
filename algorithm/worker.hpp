@@ -89,8 +89,9 @@ void worker(int thread_id)
 
    
     // compute the interval of tasks that belong to this overseer
-    int chunk = tcount / thread_rank_size;
-    if (tcount % thread_rank_size != 0) { chunk++; }
+    // int chunk = tcount / thread_rank_size;
+    // if (tcount % thread_rank_size != 0) { chunk++; }
+    // chunk is a global variable now
     int worker_rank = thread_rank + thread_id;
     int interval_begin = worker_rank * chunk;
     int interval_end = (worker_rank+1) * chunk;
@@ -173,7 +174,9 @@ void overseer()
     int exp = 0;
     int current_task_id = 0;
 
-
+    // lower and upper limit of the interval for this particular overseer
+    int ov_interval_lb = 0;
+    int ov_interval_ub = 0;
     // set global constants used for allocating caches and worker count
     std::tuple<unsigned int, unsigned int, unsigned int> settings;
     settings = server_properties(processor_name);
@@ -230,19 +233,9 @@ void overseer()
 			       
 	    // receive (new) task array
 	    broadcast_tarray_tstatus();
-	    
-	    // compute the interval of tasks that belong to this overseer
-	    /* int chunk = tcount / thread_rank_size;
-	    if (tcount % thread_rank_size != 0) { chunk++; }
-	    task_begin = thread_rank * chunk;
-	    task_end = (thread_rank + worker_count) * chunk;
-	    if (thread_rank == thread_rank_size-1)
-	    {
-		task_end = std::min(task_end, tcount);
-	    }
-	    shared_tid.store(task_begin);
-	    print<true>("Worker %d has task interval from %d to %d.\n", world_rank, task_begin, task_end);
-	    */
+	    broadcast_task_partitioning();
+	    ov_interval_lb = thread_rank * chunk;
+	    ov_interval_ub = std::min(tcount+1, (thread_rank + worker_count)*chunk);
 	    
 	    // finally, spawn solver processes
 	    for (int i = 0; i < worker_count; i++)
@@ -254,7 +247,7 @@ void overseer()
 	}
 
 	process_finished_tasks();
-	fetch_irrelevant_tasks();
+	fetch_irrelevant_tasks(ov_interval_lb, ov_interval_ub);
 	check_root_solved();
 	check_termination();
 	

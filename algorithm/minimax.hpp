@@ -37,7 +37,7 @@ int check_messages(thread_attr *tat)
 
     if (tstatus[tat->task_id].load() == TASK_PRUNED)
     {
-	print<true>("Worker %d works on an irrelevant thread.\n", world_rank);
+	//print<true>("Worker %d works on an irrelevant thread.\n", world_rank);
 	return IRRELEVANT;
     }
     return 0;

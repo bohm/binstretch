@@ -121,16 +121,91 @@ void send_root_solved_via_task()
     }
 }
 
-// queen transmits an irrelevant task to all workers
-// TODO: it doesn't look like this could be a broadcast, but maybe I am overlooking something?
+
+int* workers_per_overseer; // number of worker threads for each worker
+int* overseer_map = NULL; // a quick map from workers to overseer
+
+void compute_thread_ranks()
+{
+    MPI_Status stat;
+    if (BEING_WORKER)
+    {
+	MPI_Send(&worker_count, 1, MPI_INT, QUEEN, THREAD_COUNT, MPI_COMM_WORLD);
+	MPI_Recv(&thread_rank, 1, MPI_INT, QUEEN, THREAD_RANK, MPI_COMM_WORLD, &stat);
+	MPI_Bcast(&thread_rank_size, 1, MPI_INT, QUEEN, MPI_COMM_WORLD);
+
+	print<true>("Overseer %d has %d threads, ranked [%d,%d] of %d total.\n",
+		    world_rank, worker_count, thread_rank,
+		    thread_rank + worker_count - 1, thread_rank_size);
+    } else if (BEING_QUEEN)
+    {
+	workers_per_overseer = new int[world_size];
+	for (int overseer = 1; overseer < world_size; overseer++)
+	{
+	    MPI_Recv(&workers_per_overseer[overseer], 1, MPI_INT, overseer, THREAD_COUNT, MPI_COMM_WORLD, &stat);
+	}
+
+	int worker_rank = 0;
+	for (int overseer = 1; overseer < world_size; overseer++)
+	{
+	    MPI_Send(&worker_rank, 1, MPI_INT, overseer, THREAD_RANK, MPI_COMM_WORLD);
+	    worker_rank += workers_per_overseer[overseer];
+	}
+
+	thread_rank_size = worker_rank;
+	MPI_Bcast(&thread_rank_size, 1, MPI_INT, QUEEN, MPI_COMM_WORLD);
+
+	// compute overseer map
+	overseer_map = new int[thread_rank_size];
+	int cur_thread = 0;
+	int partial_sum = 0;
+	for (int overseer = 1; overseer < world_size; overseer++)
+	{
+	    partial_sum += workers_per_overseer[overseer]; 
+	    while (cur_thread < partial_sum)
+	    {
+		overseer_map[cur_thread] = overseer;
+		cur_thread++;
+	    }
+	}
+
+	// debug
+	fprintf(stderr, "Workers per overseer: ");
+	for (int i = 1; i < world_size; i++)
+	{
+	    fprintf(stderr, "%d,", workers_per_overseer[i]);
+	}
+	fprintf(stderr, "\n");
+	fprintf(stderr, "Overseer map: ");
+	for (int i = 0; i < thread_rank_size; i++)
+	{
+	    fprintf(stderr, "%d,", overseer_map[i]);
+	}
+	fprintf(stderr, "\n");
+    }
+}
+
+int chunk = 0;
+void broadcast_task_partitioning()
+{
+    if (BEING_WORKER)
+    {
+	MPI_Bcast(&chunk, 1, MPI_INT, QUEEN, MPI_COMM_WORLD);
+    } else {
+	chunk = tcount / thread_rank_size;
+	if (tcount % thread_rank_size != 0) { chunk++; }
+	MPI_Bcast(&chunk, 1, MPI_INT, QUEEN, MPI_COMM_WORLD);
+    }
+}
+
+// queen transmits an irrelevant task to the right worker
 void transmit_irrelevant_task(int taskno)
 {
-    MPI_Request blankreq;
-    print<DEBUG>("Transmitting task %d as irrelevant.\n", taskno);
-    for (int i = 1; i < world_size; i++)
-    {
-	MPI_Isend(&taskno, 1, MPI_INT, i, SENDING_IRRELEVANT, MPI_COMM_WORLD, &blankreq);
-    }
+    // MPI_Request blankreq;
+    int target_overseer = overseer_map[taskno/chunk];
+    // print<DEBUG>("Transmitting task %d as irrelevant.\n", taskno);
+   // MPI_Isend(&taskno, 1, MPI_INT, target_overseer, SENDING_IRRELEVANT, MPI_COMM_WORLD, &blankreq);
+    MPI_Send(&taskno, 1, MPI_INT, target_overseer, SENDING_IRRELEVANT, MPI_COMM_WORLD);
 }
 
 void transmit_all_irrelevant()
@@ -144,7 +219,7 @@ void transmit_all_irrelevant()
     }
 }
 
-void fetch_irrelevant_tasks()
+void fetch_irrelevant_tasks(const int& overseer_lb, const int& overseer_ub)
 {
     MPI_Status stat;
     int irrel_task_incoming = 0;
@@ -156,6 +231,13 @@ void fetch_irrelevant_tasks()
     {
 	irrel_task_incoming = 0;
 	MPI_Recv(&ir_task, 1, MPI_INT, QUEEN, SENDING_IRRELEVANT, MPI_COMM_WORLD, &stat);
+	if (!(ir_task >= overseer_lb && ir_task < overseer_ub))
+	{
+	    print<true>("Overseer %d fetched task %d which is out of bounds [%d,%d).\n",
+			world_rank, ir_task, overseer_lb, overseer_ub);
+	    print<true>("Chunk size: %d.\n", chunk);
+	    assert(ir_task >= overseer_lb && ir_task < overseer_ub);
+	}
 	// mark task as irrelevant
 	tstatus[ir_task].store(TASK_PRUNED);
         print<DEBUG>("Worker %d: marking %d as irrelevant.\n", world_rank, ir_task);
@@ -198,26 +280,7 @@ void ignore_additional_signals()
 }
 
 // Queen fetches and ignores the remaining tasks from the previous iteration.
-void ignore_additional_requests()
-{
-    int request_received = 0;
-    int irrel = 0;
-    MPI_Status stat;
-
-
-    MPI_Iprobe(MPI_ANY_SOURCE, REQUEST, MPI_COMM_WORLD, &request_received, &stat);
-    while (request_received)
-    {
-	request_received = 0;
-	int sender = stat.MPI_SOURCE;
-	MPI_Recv(&irrel, 1, MPI_INT, sender, REQUEST, MPI_COMM_WORLD, &stat);
-	MPI_Iprobe(MPI_ANY_SOURCE, REQUEST, MPI_COMM_WORLD, &request_received, &stat);
-    }
-}
-
-
-// Queen fetches and ignores the remaining tasks from the previous iteration.
-void ignore_additional_tasks()
+void ignore_additional_solutions()
 {
     int solution_received = 0;
     int solution_pair[2] = {0,0};
@@ -328,37 +391,6 @@ void broadcast_tarray_tstatus()
 
 
 
-}
-
-int* worker_threads; // number of worker threads for each worker
-
-void compute_thread_ranks()
-{
-    MPI_Status stat;
-    if (BEING_WORKER)
-    {
-	MPI_Send(&worker_count, 1, MPI_INT, QUEEN, THREAD_COUNT, MPI_COMM_WORLD);
-	MPI_Recv(&thread_rank, 1, MPI_INT, QUEEN, THREAD_RANK, MPI_COMM_WORLD, &stat);
-	MPI_Bcast(&thread_rank_size, 1, MPI_INT, QUEEN, MPI_COMM_WORLD);
-	print<true>("Worker %d has %d threads, ranked %d of %d total.\n", world_rank, worker_count, thread_rank, thread_rank_size);
-    } else if (BEING_QUEEN)
-    {
-	worker_threads = new int[world_size];
-	for (int worker = 1; worker < world_size; worker++)
-	{
-	    MPI_Recv(&worker_threads[worker], 1, MPI_INT, worker, THREAD_COUNT, MPI_COMM_WORLD, &stat);
-	}
-
-	int worker_rank = 0;
-	for (int worker = 1; worker < world_size; worker++)
-	{
-	    MPI_Send(&worker_rank, 1, MPI_INT, worker, THREAD_RANK, MPI_COMM_WORLD);
-	    worker_rank += worker_threads[worker];
-	}
-
-	thread_rank_size = worker_rank;
-	MPI_Bcast(&thread_rank_size, 1, MPI_INT, QUEEN, MPI_COMM_WORLD);
-    }
 }
 
 void collect_worker_tasks()

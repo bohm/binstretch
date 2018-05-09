@@ -146,8 +146,7 @@ int queen()
 		fprintf(stderr, "Queen: We have evaluated the tree: %d\n", sapling->value);
 		send_root_solved();
 		sync_up(); // Root solved.
-		ignore_additional_tasks();
-		ignore_additional_requests();
+		ignore_additional_solutions();
 		if (sapling->value == 0)
 		{
 		    break;
@@ -161,13 +160,14 @@ int queen()
 
  	    init_tstatus(tstatus_temporary); tstatus_temporary.clear();
 	    init_tarray(tarray_temporary); tarray_temporary.clear();
-	    permute_tarray_tstatus(); // randomly shuffles the tasks 
+	    // permute_tarray_tstatus(); // randomly shuffles the tasks 
 	    irrel_taskq.init(tcount);
 	    // note: do not push into irrel_taskq before permutation is done;
 	    // the numbers will not make any sense.
     
 	    print<PROGRESS>("Queen: Generated %d tasks.\n", tcount);
 	    broadcast_tarray_tstatus();
+	    broadcast_task_partitioning();
 	    //sync_up();
 
 	    auto x = std::thread(queen_updater, sapling);
@@ -197,8 +197,7 @@ int queen()
 	    sync_up(); // Root solved.
 
 	    // collect remaining, unnecessary solutions
-	    ignore_additional_tasks();
-	    ignore_additional_requests();
+	    ignore_additional_solutions();
 
 	    destroy_tarray();
 	    destroy_tstatus();
