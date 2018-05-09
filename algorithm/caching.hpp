@@ -23,7 +23,9 @@ const int ALREADY_INSERTED = -2;
 const int OVERWRITE_OF_PROGRESS = -3;
 
 // atomic by default now
-bin_int is_hashed(uint64_t hash, uint64_t logpart, thread_attr *tat)
+// uses a  C-style bool-flag to output the result
+
+bin_int is_hashed(uint64_t hash, uint64_t logpart, thread_attr *tat, bool& found)
 {
 	//fprintf(stderr, "Bchash %" PRIu64 ", zero_last_bit %" PRIu64 " get_last_bit %" PRId8 " \n", bchash, zero_last_bit(bchash), get_last_bit(bchash));
 
@@ -50,28 +52,32 @@ bin_int is_hashed(uint64_t hash, uint64_t logpart, thread_attr *tat)
 	    if (candidate.hash() == hash)
 	    {
 		posvalue = candidate.value();
-		break;
+		found = true;
+		return posvalue;
 	    }
 	    
 	    if (i == LINPROBE_LIMIT - 1)
 	    {
-		posvalue = FULL_NOT_FOUND;
+		found = false;
+		return FULL_NOT_FOUND;
 	    }
 	    
 	    // bounds check
 	    if (logpart + i >= ht_size-1)
 	    {
+		found = false;
 		return FULL_NOT_FOUND;
 	    }
 	}
-	return posvalue;
+
+	found = false;
+	return NOT_FOUND;
 }
 
 int hashpush(const conf_el& new_el, uint64_t logpart, thread_attr *tat)
 {
     //uint64_t maxposition = logpart;
 
-	bool found_a_spot = false;
 	conf_el candidate;
 	for (int i = 0; i< LINPROBE_LIMIT; i++)
 	{
@@ -112,7 +118,7 @@ int hashpush(const conf_el& new_el, uint64_t logpart, thread_attr *tat)
 	return INSERTED_RANDOMLY;
 }
 
-dpht_el is_dp_hashed(uint64_t hash, uint64_t logpart, thread_attr *tat)
+dpht_el is_dp_hashed(uint64_t hash, uint64_t logpart, thread_attr *tat, bool& found)
 {
     //fprintf(stderr, "Bchash %" PRIu64 ", zero_last_bit %" PRIu64 " get_last_bit %" PRId8 " \n", bchash, zero_last_bit(bchash), get_last_bit(bchash));
 
@@ -126,19 +132,19 @@ dpht_el is_dp_hashed(uint64_t hash, uint64_t logpart, thread_attr *tat)
 	if (candidate.hash() == 0)
 	{
 	    MEASURE_ONLY(tat->meas.dp_partial_nf++);
-	    candidate._feasible = UNKNOWN;
-	    candidate._permanence = PERMANENT;
+	    found = false;
 	    return candidate;
 	}
 	
 	// we have to continue in this case, because it might be stored after this element
-	if (candidate.hash() == REMOVED)
+	if (candidate.removed())
 	{
 	    continue;
 	}
-	if (candidate.hash() == hash)
+	if (candidate.match(hash))
 	{
 	    MEASURE_ONLY(tat->meas.dp_hit++);
+	    found = true;
 	    return candidate;
 	}
 	
@@ -155,8 +161,7 @@ dpht_el is_dp_hashed(uint64_t hash, uint64_t logpart, thread_attr *tat)
 	}
     }
 
-    candidate._feasible = UNKNOWN;
-    candidate._permanence = PERMANENT;
+    found = false;
     return candidate;
 }
 
@@ -167,26 +172,30 @@ template <int MODE> int hashpush_dp(uint64_t hash, const dpht_el& data, uint64_t
 	{
 
 	    candidate = dpht[logpart + i].load(std::memory_order_acquire);
-	    if (candidate.hash() == 0 || candidate.hash() == REMOVED)
+	    if (candidate.empty() || candidate.removed())
 	    {
 		// since we are doing two sequential atomic edits, a collision may occur,
 		// but this should just give an item a wrong information about depth
 		dpht[logpart + i].store(data, std::memory_order_release);
 		return INSERTED;
 	    }
-	    else if (candidate.hash() == hash)
+	    else if (candidate.match(hash))
 	    {
+		dpht[logpart + i].store(data, std::memory_order_release);
+		// temporarily disabled:
 		// store the new hash entry if you either improve the heuristic or
 		// insert a permanent entry
-		if (MODE == PERMANENT && candidate._permanence == HEURISTIC)
+		/*
+		if (MODE == PERMANENT && candidate.permanence() == HEURISTIC)
 		{
 			dpht[logpart + i].store(data, std::memory_order_release);
 		}
 
-		if (MODE == HEURISTIC && candidate._permanence != PERMANENT && candidate._empty_bins < data._empty_bins)
+		if (MODE == HEURISTIC && candidate.permanence() != PERMANENT && candidate._empty_bins < data._empty_bins)
 		{
 			dpht[logpart + i].store(data, std::memory_order_release);
 		}
+		*/
 		return INSERTED;
 	    }
 
@@ -210,7 +219,7 @@ void conf_hashpush(const binconf *d, uint64_t posvalue, thread_attr *tat)
     uint64_t bchash = d->itemhash ^ d->loadhash;
     assert(posvalue >= 0 && posvalue <= 2);
     conf_el new_item;
-    new_item._data = zero_last_two_bits(bchash) | posvalue;
+    new_item.set(bchash, posvalue);
 
     int ret;
 	ret = hashpush(new_item, conflogpart(bchash), tat);
@@ -243,12 +252,12 @@ void conf_hashpush(const binconf *d, uint64_t posvalue, thread_attr *tat)
     }
 }
 
-bin_int is_conf_hashed(const binconf *d, thread_attr *tat)
+bin_int is_conf_hashed(const binconf *d, thread_attr *tat, bool &found)
 {
 	uint64_t bchash = zero_last_two_bits(d->itemhash ^ d->loadhash);
 
 	bin_int ret;
-	ret = is_hashed(bchash, conflogpart(bchash), tat);
+	ret = is_hashed(bchash, conflogpart(bchash), tat, found);
 	assert(ret <= 2 && ret >= -2);
 
 	if (ret >= 0)
@@ -287,10 +296,7 @@ void dp_hashpush_feasible(const binconf *d, thread_attr *tat)
 
     uint64_t hash = d->dphash();
     dpht_el ins;
-    ins._hash = hash;
-    ins._feasible = FEASIBLE;
-    ins._permanence = PERMANENT;
-    ins._empty_bins = 0;
+    ins.set(hash, FEASIBLE, PERMANENT);
     hashpush_dp<PERMANENT>(hash, ins, dplogpart(hash), tat);
 }
 
@@ -301,17 +307,15 @@ void dp_hashpush_infeasible(const binconf *d, thread_attr *tat)
     // we currently do not use 1's and S'es in the feasibility queries
     uint64_t hash = d->dphash();
     dpht_el ins;
-    ins._hash = hash;
-    ins._feasible = INFEASIBLE;
-    ins._permanence = PERMANENT;
+    ins.set(hash, INFEASIBLE, PERMANENT);
     hashpush_dp<PERMANENT>(hash, ins, dplogpart(hash), tat);
 }
 
-dpht_el is_dp_hashed(const binconf *d, thread_attr *tat)
+dpht_el is_dp_hashed(const binconf *d, thread_attr *tat, bool &found)
 {
     uint64_t hash = d->dphash();
     dpht_el query;
-    query = is_dp_hashed(hash, dplogpart(hash), tat);
+    query = is_dp_hashed(hash, dplogpart(hash), tat, found);
     return query;
 }
 

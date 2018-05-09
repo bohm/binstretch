@@ -109,7 +109,7 @@ struct measure_attr
 
 	    // caching
 	    // TODO: make it work with the new shared/private model
-	    fprintf(stderr, "Main cache size: %llu, #search: %" PRIu64 "(#hit: %" PRIu64 ",  #miss: %" PRIu64 ") #full miss: %" PRIu64 ".\n",
+	    fprintf(stderr, "Main cache size: %" PRIu64 ", #search: %" PRIu64 "(#hit: %" PRIu64 ",  #miss: %" PRIu64 ") #full miss: %" PRIu64 ".\n",
 			  ht_size, (bc_hit+bc_partial_nf+bc_full_nf), bc_hit,
 			  bc_partial_nf + bc_full_nf, bc_full_nf);
 	    fprintf(stderr, "Insertions: %" PRIu64 ", new data insertions: %" PRIu64 ", (normal: %" PRIu64 ", random inserts: %" PRIu64
@@ -117,7 +117,7 @@ struct measure_attr
 		    bc_insertions, bc_insertions - bc_already_inserted - bc_in_progress_insert, bc_normal_insert, bc_random_insert,
 		    bc_already_inserted, bc_in_progress_insert, bc_overwrite);
 	    
-	    fprintf(stderr, "DP cache size: %llu, #insert: %" PRIu64 ", #search: %" PRIu64 "(#hit: %" PRIu64 ",  #part. miss: %" PRIu64 ",#full miss: %" PRIu64 ").\n",
+	    fprintf(stderr, "DP cache size: %" PRIu64 ", #insert: %" PRIu64 ", #search: %" PRIu64 "(#hit: %" PRIu64 ",  #part. miss: %" PRIu64 ",#full miss: %" PRIu64 ").\n",
 		    dpht_size, dp_insertions, (dp_hit+dp_partial_nf+dp_full_nf), dp_hit,
 		    dp_partial_nf, dp_full_nf);
 	}

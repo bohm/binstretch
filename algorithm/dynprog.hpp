@@ -439,8 +439,198 @@ bin_int dynprog_max_safe(const binconf *conf, thread_attr *tat)
     return max_overall;
 }
 
+// check if any of the choices in the vector is feasible while doing dynamic programming
+// first index of vector -- size of item, second index -- count of items
+std::pair<bool, bin_int> dynprog_max_vector(const binconf *conf, const std::vector<std::pair<bin_int,bin_int> >& vec, thread_attr *tat)
+{
+    tat->newloadqueue->clear();
+    tat->oldloadqueue->clear();
+    std::vector<loadconf> *poldq = tat->oldloadqueue;
+    std::vector<loadconf> *pnewq = tat->newloadqueue;
+
+    int phase = 0;
+    bin_int smallest_item = S;
+    std::pair<bool, bin_int> ret(false,0);
+    if (vec.empty()) { return ret; }
+    for (int i = 1; i < S; i++)
+    {
+	if (conf->items[i] > 0)
+	{
+	    smallest_item = i;
+	    break;
+	}
+    }
+
+    // change from unsafe to safe
+    memset(tat->loadht, 0, LOADSIZE*8);
+   
+    // do not empty the loadht, instead XOR in the itemhash
+
+    for (int size=S; size>=1; size--)
+    {
+	int k = conf->items[size];
+	while (k > 0)
+	{
+	    phase++;
+	    if (phase == 1) {
+
+		loadconf first;
+		for (int i = 1; i <= BINS; i++)
+		{
+		    first.loads[i] = 0;
+		}	
+		first.hashinit();
+		first.assign_and_rehash(size, 1);
+		first.loadhash ^= conf->itemhash;
+		pnewq->push_back(first);
+	    } else {
+		MEASURE_ONLY(tat->meas.largest_queue_observed = std::max(tat->meas.largest_queue_observed, poldq->size()));
+		for (loadconf& tuple: *poldq)
+		{
+		    //loadconf tuple = tupleit;
+
+		    // try and place the item
+		    for (int i=1; i <= BINS; i++)
+		    {
+			// same as with Algorithm, we can skip when sequential bins have the same load
+			if (i > 1 && tuple.loads[i] == tuple.loads[i-1])
+			{
+			    continue;
+			}
+			
+			if (tuple.loads[i] + size > S) {
+			    continue;
+			}
+
+			int newpos = tuple.assign_and_rehash(size, i);
+			
+			if(! loadconf_hashfind(tuple.loadhash, tat))
+			{
+			    if(size == smallest_item && k == 1)
+			    {
+				for (const auto& pr: vec)
+				{
+				    // if pr.second items of size pr.first fit into tuple
+				    if (tuple.loads[BINS-pr.second+1] <= S - pr.first)
+				    {
+					ret.first = true;
+					ret.second = pr.first;
+					return ret;
+				    }
+				}
+			    }
+
+			    pnewq->push_back(tuple);
+			    loadconf_hashpush(tuple.loadhash, tat);
+			}
+
+		        tuple.unassign_and_rehash(size, newpos);
+		    }
+		}
+		if (pnewq->size() == 0)
+		{
+		    return ret;
+		}
+		
+	    }
+
+	    std::swap(poldq, pnewq);
+	    pnewq->clear();
+	    k--;
+	}
+    }
+
+    return ret;
+}
+
+// packs item into h and pushes it into the dynprog cache
+bin_int pack_and_query(binconf *h, int item, thread_attr *tat, bool &found)
+{
+    h->items[item]++; // in some sense, it is an inconsistent state, since "item" is not packed in "h"
+    h->_itemcount++;
+    h->_totalload += item;
+    h->dp_rehash(item);
+    dpht_el query = is_dp_hashed(h, tat, found);
+    bin_int ret = query.value();
+    h->_totalload -= item;
+    h->_itemcount--;
+    h->items[item]--;
+    h->dp_unhash(item);
+    return ret;
+}
+
+std::pair<bool,bin_int> large_item_heuristic(binconf *b, thread_attr *tat)
+{
+    std::vector<std::pair<bin_int, bin_int> > required_items;
+    
+    int ideal_item_lb2 = (R - b->loads[BINS]+1)/2; 
+    for (int i=BINS; i>=2; i--)
+    {
+        int ideal_item = std::max(R-b->loads[i], ideal_item_lb2); 
+
+	// checking only items > S/2 so that it is easier to check if you can pack them all
+	// in dynprog_max_vector
+	if (ideal_item <= S && ideal_item > S/2 && ideal_item * (BINS-i+1) <= S*BINS - b->totalload())
+	{
+	    required_items.push_back(std::make_pair(ideal_item, BINS-i+1));
+	}
+    }
+
+    return dynprog_max_vector(b, required_items, tat);
+}
+
+/*
+
+// Disabled: pack, query and fill in
+// returns FEASIBLE, INFEASIBLE or UNKNOWN
+
+bin_int pqf(binconf *h, int item, thread_attr *tat)
+{
+    bin_int ret = UNKNOWN;
+
+    h->items[item]++; // in some sense, it is an inconsistent state, since "item" is not packed in "h"
+    h->_itemcount++;
+    h->_totalload += item;
+    h->dp_rehash(item);
+
+    dpht_el_extended query = is_dp_hashed(h, tat);
+
+    // fill
+    if(query._feasible == FEASIBLE)
+    {
+	// Solve the case of sizes 1 and S and actually report maximum feasible item.
+	bin_int free_load = S*BINS - h->totalload();
+	if (h->items[S] <= BINS && query._empty_bins >= h->items[S] && free_load >= 0)
+	{
+	    // even if permanence was heuristic, we know it is feasible
+	    ret = FEASIBLE;
+	} else {
+	    if (query._permanence == PERMANENT)
+	    {
+		ret = INFEASIBLE;
+	    } // else UNKNOWN
+	}
+    } else if (query._feasible == INFEASIBLE)
+    {
+	ret = INFEASIBLE;
+    }
+
+    h->_totalload -= item;
+    h->_itemcount--;
+    h->items[item]--;
+    h->dp_unhash(item);
+
+    return ret;
+    } */
+
+
+
+
+/* Disabled for now, might try to salvage later.
+
 // maximize while doing dynamic programming
 // now also pushes into cache straight away
+
 bin_int dynprog_max_incorrect(binconf *conf, bin_int lb, bin_int ub, thread_attr *tat)
 {
     tat->newloadqueue->clear();
@@ -569,14 +759,13 @@ bin_int dynprog_max_incorrect(binconf *conf, bin_int lb, bin_int ub, thread_attr
 
 // Push information into the cache.
     
-    int c = 0;
+    // int c = 0;
 
     // Actually a heuristic; there is no reason why lower things should not be pushed
     // except performance.
     bin_int push_lb = std::max((bin_int)2, lb);
     bin_int push_ub = std::min((bin_int)(S-1), ub);
 
-    /*
     while (max_with_empties[c] != -1)
     {
 	// looks quite aggressive
@@ -586,11 +775,9 @@ bin_int dynprog_max_incorrect(binconf *conf, bin_int lb, bin_int ub, thread_attr
 	}
 	c++;
     }
-    */
 
 
     // ub is essentially a heuristic;
-    /*
     if (max_with_empties[0] != -1)
     {
 	// also maybe too aggressive
@@ -599,7 +786,7 @@ bin_int dynprog_max_incorrect(binconf *conf, bin_int lb, bin_int ub, thread_attr
 	    // pack as infeasible
 	    pack_and_hash<PERMANENT>(conf, i, 0, INFEASIBLE, tat);
 	}
-    }*/
+    }
 
     // Solve the case of sizes 1 and S and actually report maximum feasible item.
     bin_int free_load = S*BINS - conf->totalload();
@@ -613,189 +800,7 @@ bin_int dynprog_max_incorrect(binconf *conf, bin_int lb, bin_int ub, thread_attr
     return std::min(free_load, max_with_empties[conf->items[S]]);
 }
 
-
-
-// check if any of the choices in the vector is feasible while doing dynamic programming
-// first index of vector -- size of item, second index -- count of items
-std::pair<bool, bin_int> dynprog_max_vector(const binconf *conf, const std::vector<std::pair<bin_int,bin_int> >& vec, thread_attr *tat)
-{
-    tat->newloadqueue->clear();
-    tat->oldloadqueue->clear();
-    std::vector<loadconf> *poldq = tat->oldloadqueue;
-    std::vector<loadconf> *pnewq = tat->newloadqueue;
-
-    int phase = 0;
-    bin_int smallest_item = S;
-    std::pair<bool, bin_int> ret(false,0);
-    if (vec.empty()) { return ret; }
-    for (int i = 1; i < S; i++)
-    {
-	if (conf->items[i] > 0)
-	{
-	    smallest_item = i;
-	    break;
-	}
-    }
-
-    // change from unsafe to safe
-    memset(tat->loadht, 0, LOADSIZE*8);
-   
-    // do not empty the loadht, instead XOR in the itemhash
-
-    for (int size=S; size>=1; size--)
-    {
-	int k = conf->items[size];
-	while (k > 0)
-	{
-	    phase++;
-	    if (phase == 1) {
-
-		loadconf first;
-		for (int i = 1; i <= BINS; i++)
-		{
-		    first.loads[i] = 0;
-		}	
-		first.hashinit();
-		first.assign_and_rehash(size, 1);
-		first.loadhash ^= conf->itemhash;
-		pnewq->push_back(first);
-	    } else {
-		MEASURE_ONLY(tat->meas.largest_queue_observed = std::max(tat->meas.largest_queue_observed, poldq->size()));
-		for (loadconf& tuple: *poldq)
-		{
-		    //loadconf tuple = tupleit;
-
-		    // try and place the item
-		    for (int i=1; i <= BINS; i++)
-		    {
-			// same as with Algorithm, we can skip when sequential bins have the same load
-			if (i > 1 && tuple.loads[i] == tuple.loads[i-1])
-			{
-			    continue;
-			}
-			
-			if (tuple.loads[i] + size > S) {
-			    continue;
-			}
-
-			int newpos = tuple.assign_and_rehash(size, i);
-			
-			if(! loadconf_hashfind(tuple.loadhash, tat))
-			{
-			    if(size == smallest_item && k == 1)
-			    {
-				for (const auto& pr: vec)
-				{
-				    // if pr.second items of size pr.first fit into tuple
-				    if (tuple.loads[BINS-pr.second+1] <= S - pr.first)
-				    {
-					ret.first = true;
-					ret.second = pr.first;
-					return ret;
-				    }
-				}
-			    }
-
-			    pnewq->push_back(tuple);
-			    loadconf_hashpush(tuple.loadhash, tat);
-			}
-
-		        tuple.unassign_and_rehash(size, newpos);
-		    }
-		}
-		if (pnewq->size() == 0)
-		{
-		    return ret;
-		}
-		
-	    }
-
-	    std::swap(poldq, pnewq);
-	    pnewq->clear();
-	    k--;
-	}
-    }
-
-    return ret;
-}
-
-// packs item into h and pushes it into the dynprog cache
-bin_int pack_and_query(binconf *h, int item, thread_attr *tat)
-{
-    h->items[item]++; // in some sense, it is an inconsistent state, since "item" is not packed in "h"
-    h->_itemcount++;
-    h->_totalload += item;
-    h->dp_rehash(item);
-    dpht_el query = is_dp_hashed(h, tat);
-    bin_int ret = query._feasible;
-    assert(query._permanence == PERMANENT);
-    h->_totalload -= item;
-    h->_itemcount--;
-    h->items[item]--;
-    h->dp_unhash(item);
-    return ret;
-}
-
-// DISABLED: pack, query and fill in
-// returns FEASIBLE, INFEASIBLE or UNKNOWN
-/* bin_int pqf(binconf *h, int item, thread_attr *tat)
-{
-    bin_int ret = UNKNOWN;
-
-    h->items[item]++; // in some sense, it is an inconsistent state, since "item" is not packed in "h"
-    h->_itemcount++;
-    h->_totalload += item;
-    h->dp_rehash(item);
-
-    dpht_el_extended query = is_dp_hashed(h, tat);
-
-    // fill
-    if(query._feasible == FEASIBLE)
-    {
-	// Solve the case of sizes 1 and S and actually report maximum feasible item.
-	bin_int free_load = S*BINS - h->totalload();
-	if (h->items[S] <= BINS && query._empty_bins >= h->items[S] && free_load >= 0)
-	{
-	    // even if permanence was heuristic, we know it is feasible
-	    ret = FEASIBLE;
-	} else {
-	    if (query._permanence == PERMANENT)
-	    {
-		ret = INFEASIBLE;
-	    } // else UNKNOWN
-	}
-    } else if (query._feasible == INFEASIBLE)
-    {
-	ret = INFEASIBLE;
-    }
-
-    h->_totalload -= item;
-    h->_itemcount--;
-    h->items[item]--;
-    h->dp_unhash(item);
-
-    return ret;
-    } */
-
-std::pair<bool,bin_int> large_item_heuristic(binconf *b, thread_attr *tat)
-{
-    std::vector<std::pair<bin_int, bin_int> > required_items;
-    
-    int ideal_item_lb2 = (R - b->loads[BINS]+1)/2; 
-    for (int i=BINS; i>=2; i--)
-    {
-        int ideal_item = std::max(R-b->loads[i], ideal_item_lb2); 
-
-	// checking only items > S/2 so that it is easier to check if you can pack them all
-	// in dynprog_max_vector
-	if (ideal_item <= S && ideal_item > S/2 && ideal_item * (BINS-i+1) <= S*BINS - b->totalload())
-	{
-	    required_items.push_back(std::make_pair(ideal_item, BINS-i+1));
-	}
-    }
-
-    return dynprog_max_vector(b, required_items, tat);
-}
+*/
 
 
 #endif // _DYNPROG_HPP

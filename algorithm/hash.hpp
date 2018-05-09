@@ -48,15 +48,13 @@ class conf_el
 {
 public:
     uint64_t _data;
-    /* conf_el(uint64_t d)
+
+    inline void set(uint64_t hash, uint64_t val)
 	{
-	    _data = d;
+	    assert(val == 0 || val == 1);
+	    _data = (zero_last_two_bits(hash) | val);
 	}
-    conf_el(uint64_t hash, uint64_t posvalue)
-	{
-	    _data = (zero_last_two_bits(hash) | posvalue);
-	}
-    */
+
     inline bin_int value() const
 	{
 	    return get_last_two_bits(_data);
@@ -90,7 +88,59 @@ public:
 	}
 };
 
-class dpht_el
+
+class dpht_el_64
+{
+public:
+    uint64_t _data;
+
+    // 64-bit dpht_el does not make use of permanence.
+    inline void set(uint64_t hash, uint16_t feasible, uint16_t permanence)
+	{
+	    assert(feasible == 0 || feasible == 1);
+	    _data = (zero_last_bit(hash) | feasible);
+	}
+    inline bin_int value() const
+	{
+	    return get_last_bit(_data);
+	}
+    inline uint64_t hash() const
+	{
+	    return zero_last_bit(_data);
+	}
+    inline bool empty() const
+	{
+	    return _data == 0;
+	}
+    inline bool removed() const
+	{
+	    return _data == REMOVED;
+	}
+
+    inline bool match(const uint64_t& hash) const
+	{
+	    return (zero_last_bit(_data) == zero_last_bit(hash));
+	}
+
+    inline void remove()
+	{
+	    _data = REMOVED;
+	}
+
+    inline void erase()
+	{
+	    _data = 0;
+	}
+
+    // currently not used
+    const bin_int depth() const
+	{
+	    return 0;
+	}
+
+};
+
+class dpht_el_128
 {
 public:
     uint64_t _hash;
@@ -99,6 +149,15 @@ public:
     int16_t _permanence;
     int16_t _unused; //align to 128 bit.
 
+    inline void set(uint64_t hash, int16_t feasible, int16_t permanence)
+	{
+	    _hash = hash;
+	    _feasible = feasible;
+	    _permanence = permanence;
+	    _empty_bins = 0;
+	    _unused = 0;
+	}
+    
     inline bin_int value() const
 	{
 	    return _feasible;
@@ -110,6 +169,11 @@ public:
     inline bool empty() const
 	{
 	    return _hash == 0;
+	}
+
+    inline bool match(const uint64_t& hash) const
+	{
+	    return (_hash == hash);
 	}
     inline bool removed() const
 	{
@@ -126,6 +190,10 @@ public:
 	    _hash = 0;
 	}
 };
+
+// typedef dpht_el_128 dpht_el;
+typedef dpht_el_64 dpht_el;
+// typedef dpht_el_64dangerous dpht_el;
 
 // generic hash table (for configurations)
 std::atomic<conf_el> *ht = NULL;

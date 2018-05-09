@@ -44,7 +44,7 @@ const bin_int S = 14;
 // target goal of the online bin stretching problem
 const bin_int R = 19;
 // Change this number for the selected number of bins.
-const bin_int BINS = 9;
+const bin_int BINS = 8;
 
 // If you want to generate a specific lower bound, you can create an initial bin configuration here.
 // You can also insert an initial sequence here.
@@ -54,7 +54,7 @@ const std::vector<bin_int> INITIAL_ITEMS = {};
 //const std::vector<bin_int> INITIAL_ITEMS = {7,0,0,0,1};
 // You can also insert an initial sequence here, and the adversary will use it as a predefined start.
 
-const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1,1,1};
+const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1,1};
 //const std::vector<bin_int> INITIAL_SEQUENCE = {5};
 //const std::vector<bin_int> INITIAL_SEQUENCE = {};
 
@@ -128,9 +128,9 @@ const int TERMINATING = 3;
 const int OVERDUE = 4;
 const int IRRELEVANT = 5;
 
+// Change: we do not use UNKNOWN anymore.
 const bin_int FEASIBLE = 1;
-const bin_int UNKNOWN = 0;
-const bin_int INFEASIBLE = -1; // this is -1 so it can be returned with dynprog_max()
+const bin_int INFEASIBLE = 0;
 
 const int GENERATING = 1;
 const int EXPLORING = 2;

@@ -86,7 +86,6 @@ void receive_measurements()
 void send_terminations()
 {
     MPI_Request blankreq;
-    int irrel = 0;
 
 // workers may actively wait on various messages, so we send termination on several channels
     for (int i = 1; i < world_size; i++)
@@ -424,9 +423,7 @@ void send_out_tasks()
 {
     int request_pending = 0;
     MPI_Status stat;
-    MPI_Request blankreq;
     int irrel = 0;
-    bool got_task = false;
     MPI_Iprobe(MPI_ANY_SOURCE, REQUEST, MPI_COMM_WORLD, &request_pending, &stat);
 
     while (request_pending)

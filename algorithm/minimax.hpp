@@ -139,10 +139,12 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
     
     if (MODE == EXPLORING && !DISABLE_CACHE)
     {
-	int conf_in_hashtable = is_conf_hashed(b, tat);
+	bool found_conf = false;
+	int conf_in_hashtable = is_conf_hashed(b, tat, found_conf);
 	
-	if (conf_in_hashtable != -1)
+	if (found_conf)
 	{
+	    assert(conf_in_hashtable >= 0 && conf_in_hashtable <= 1);
 	    return conf_in_hashtable;
 	}
     }

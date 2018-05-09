@@ -162,17 +162,7 @@ void overseer()
     MPI_Get_processor_name(processor_name, &name_len);
     printf("Overseer reporting for duty: %s, rank %d out of %d instances\n",
 	   processor_name, world_rank, world_size);
-    int irrel = 1;
-    int flag = 0;
-    int terminate_flag = 0;
-    int mon_change_flag = 0;
-    bool request_sent = false;
     bool wait_for_monotonicity = true;
-    MPI_Status stat;
-    MPI_Request blankreq;
-    int taskcounter = 0;
-    int exp = 0;
-    int current_task_id = 0;
 
     // lower and upper limit of the interval for this particular overseer
     int ov_interval_lb = 0;
@@ -201,8 +191,6 @@ void overseer()
 	    
 	    monotonicity = receive_monotonicity();
 	    // fprintf(stderr, "Worker %d received new monotonicity.\n", world_rank);
-	    taskcounter = 0;
-	    current_task_id = thread_rank;
 
     
 	    //fprintf(stderr, "Worker %d: switch to monotonicity %d.\n", world_rank, monotonicity);

@@ -20,13 +20,12 @@ bin_int maximum_feasible(binconf *b, const int depth, const bin_int cannot_send_
     print_binconf<DEBUG>(b);
     print<DEBUG>("\n"); 
 
-    bin_int data;
+    bool data_found = false;
+    bin_int data = 0;
 
     bin_int lb = onlineloads_bestfit(tat->ol); // definitely can pack at least lb
     bin_int ub = std::min((bin_int) ((S*BINS) - b->totalload()), initial_ub); // definitely cannot semore than ub
 
-    // debug flag
-    int reason = -1; 
     // consistency check
     if (lb > ub)
     {
@@ -52,18 +51,19 @@ bin_int maximum_feasible(binconf *b, const int depth, const bin_int cannot_send_
 	// query lb first
 	if (!DISABLE_DP_CACHE)
 	{
-	    data = pack_and_query(b,lb,tat);
-	} else {
-	    data = UNKNOWN;
-	}
-
-	if (data == FEASIBLE)
-	{
-	    lb_certainly_feasible = true;
-	} else if (data == INFEASIBLE)
-	{
-	    // nothing is feasible
-	    return INFEASIBLE;
+	    data = pack_and_query(b,lb,tat, data_found);
+	    if (data_found)
+	    {
+		if (data == FEASIBLE)
+		{
+		    lb_certainly_feasible = true;
+		} else // if (data == INFEASIBLE)
+		{
+		    // nothing is feasible
+		    assert(data == INFEASIBLE);
+		    return INFEASIBLE;
+		}
+	    }
 	}
     }
 	
@@ -77,24 +77,26 @@ bin_int maximum_feasible(binconf *b, const int depth, const bin_int cannot_send_
     bool bestfit_needed = false;
     while (lb < ub)
     {
-	if (DISABLE_DP_CACHE)
+	if (!DISABLE_DP_CACHE)
 	{
-	    data = UNKNOWN;
-	} else {
-	    data = pack_and_query(b,mid,tat);
+	    data = pack_and_query(b,mid,tat, data_found);
 	}
 	
-	if (data == FEASIBLE)
+	if (data_found)
 	{
-	    lb = mid;
-	    lb_certainly_feasible = true;
-	} else if (data == INFEASIBLE) {
-	    ub = mid-1;
+	    if (data == FEASIBLE)
+	    {
+		lb = mid;
+		lb_certainly_feasible = true;
+	    } else // (data == INFEASIBLE)
+	    {
+		assert(data == INFEASIBLE);
+		ub = mid-1;
+	    }
 	} else {
 	    bestfit_needed = true;
 	    break;
 	}
-	
 	mid = (lb+ub+1)/2;
     }
     
@@ -117,7 +119,7 @@ bin_int maximum_feasible(binconf *b, const int depth, const bin_int cannot_send_
 	fprintf(stderr, "dphash %" PRIu64 ", pack_and_query [%" PRIi16 ", %" PRIi16 "]:", b->dphash(), ub, initial_ub);
 	for (bin_int dbug = ub; dbug <= initial_ub; dbug++)
 	{
-	    fprintf(stderr, "%d,", pack_and_query(b,dbug,tat));
+	    fprintf(stderr, "%d,", pack_and_query(b,dbug,tat, data_found));
 	}
 	fprintf(stderr, "\nhashes: [");
 	for (bin_int dbug = ub; dbug <= initial_ub; dbug++)
@@ -159,20 +161,23 @@ bin_int maximum_feasible(binconf *b, const int depth, const bin_int cannot_send_
     bool dynprog_needed = false;
     while (lb < ub)
     {
-	if (DISABLE_DP_CACHE)
+	if (!DISABLE_DP_CACHE)
 	{
-	    data = UNKNOWN;
-	} else {
-	    data = pack_and_query(b,mid,tat);
+	    data = pack_and_query(b,mid,tat, data_found);
 	}
-	
-	if (data == FEASIBLE)
+
+	if (data_found)
+	{ 
+	    if (data == FEASIBLE)
+	    {
+		lb = mid;
+		lb_certainly_feasible = true;
+	    } else
+	    { // (data == INFEASIBLE)
+		ub = mid-1;
+	    }
+	} else
 	{
-	    lb = mid;
-	    lb_certainly_feasible = true;
-	} else if (data == INFEASIBLE) {
-	    ub = mid-1;
-	} else {
 	    dynprog_needed = true;
 	    break;
 	}
@@ -196,7 +201,7 @@ bin_int maximum_feasible(binconf *b, const int depth, const bin_int cannot_send_
 	fprintf(stderr, "dphash %" PRIu64 ", pack_and_query [%" PRIi16 ", %" PRIi16 "]:", b->dphash(), ub, initial_ub);
 	for (bin_int dbug = ub; dbug <= initial_ub; dbug++)
 	{
-	    fprintf(stderr, "%d,", pack_and_query(b,dbug,tat));
+	    fprintf(stderr, "%d,", pack_and_query(b,dbug,tat, data_found));
 	}
 	fprintf(stderr, "\nhashes: [");
 	for (bin_int dbug = ub; dbug <= initial_ub; dbug++)
