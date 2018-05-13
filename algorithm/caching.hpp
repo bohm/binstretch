@@ -49,7 +49,7 @@ bin_int is_hashed(uint64_t hash, uint64_t logpart, thread_attr *tat, bool& found
 		continue;
 	    }
 	    
-	    if (candidate.hash() == hash)
+	    if (candidate.match(hash))
 	    {
 		posvalue = candidate.value();
 		found = true;
@@ -89,7 +89,7 @@ int hashpush(const conf_el& new_el, uint64_t logpart, thread_attr *tat)
 		ht[logpart + i].store(new_el, std::memory_order_release);
 		return INSERTED;
 	    }
-	    else if (candidate.hash() == new_el.hash())
+	    else if (candidate.match(new_el.hash()))
 	    {
 		int ret;
 		if (candidate.value() == 2)

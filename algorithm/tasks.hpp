@@ -8,22 +8,79 @@ queue update code. */
 #include <vector>
 #include <algorithm>
 
+#include <mpi.h>
+
 #include "common.hpp"
 #include "tree.hpp"
 
-// a strictly size-based tasker
-struct task
+// task but in a flat form; used for MPI
+struct flat_task
 {
+    bin_int shorts[BINS+1+S+1+4];
+    uint64_t longs[2];
+};
+
+
+// a strictly size-based tasker
+class task
+{
+public:
     binconf bc;
     int last_item = 1;
     int expansion_depth = 0;
 
+
+    void load(const flat_task& ft)
+	{
+
+	    // copy task
+	    last_item = ft.shorts[0];
+	    expansion_depth = ft.shorts[1];
+	    bc._totalload = ft.shorts[2];
+	    bc._itemcount = ft.shorts[3];
+    
+	    bc.loadhash = ft.longs[0];
+	    bc.itemhash = ft.longs[1];
+	    
+	    for (int i = 0; i <= BINS; i++)
+	    {
+		bc.loads[i] = ft.shorts[4+i];
+	    }
+
+	    for (int i = 0; i <= S; i++)
+	    {
+		bc.items[i] = ft.shorts[5+BINS+i];
+	    }
+	}
+
+    flat_task flatten()
+	{
+	    flat_task ret;
+	    ret.shorts[0] = last_item;
+	    ret.shorts[1] = expansion_depth;
+	    ret.shorts[2] = bc._totalload;
+	    ret.shorts[3] = bc._itemcount;
+	    ret.longs[1] = bc.loadhash;
+	    ret.longs[2] = bc.itemhash;
+	    
+	    for (int i = 0; i <= BINS; i++)
+	    {
+		ret.shorts[4+i] = bc.loads[i];
+	    }
+
+	    for (int i = 0; i <= S; i++)
+	    {
+		ret.shorts[5+BINS+i] = bc.items[i];
+	    }
+
+	    return ret;
+	}
+    
     /* returns the struct as a serialized object of size sizeof(task) */
     char* serialize()
 	{
 	    return static_cast<char*>(static_cast<void*>(this));
 	}
-
 };
 
 // semi-atomic queue: one pusher, one puller, no resize
@@ -124,6 +181,10 @@ void init_tstatus()
 {
     assert(tcount > 0);
     tstatus = new std::atomic<int>[tcount];
+    for (int i = 0; i < tcount; i++)
+    {
+	tstatus[i].store(TASK_AVAILABLE);
+    }
 }
 
 // call before tstatus is permuted
@@ -322,7 +383,7 @@ template <int MODE> void remove_task(llu hash)
 	
 	if (MODE == UPDATING)
 	{
-	    tstatus[tmap[hash]].store(TASK_PRUNED);
+	    tstatus[tmap[hash]].store(TASK_PRUNED, std::memory_order_release);
 	    // add task to irrelevant task queue
 	    irrel_taskq.push(tmap[hash]);
 	}
@@ -346,6 +407,32 @@ void print_tasks()
     for(int i = 0; i < tcount; i++)
     {
 	print_binconf_stream(stderr, &tarray[i].bc);
+    }
+}
+
+// -- batching --
+int taskpointer = 0;
+void compose_batch(int *batch)
+{
+    int i = 0;
+    while(i < BATCH_SIZE)
+    {
+	if (taskpointer >= tcount)
+	{
+	    // no more tasks to send out
+	    batch[i] = -1;
+	} else
+	{
+	    if (tstatus[taskpointer].load(std::memory_order_acquire) == TASK_AVAILABLE)
+	    {
+		batch[i] = taskpointer++;
+	    } else {
+		taskpointer++;
+		continue;
+	    }
+	}
+	assert(batch[i] >= -1 && batch[i] < tcount);
+	i++;
     }
 }
 

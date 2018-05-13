@@ -25,20 +25,28 @@ const int SENDING_TASK = 2;
 const int SENDING_IRRELEVANT = 3;
 const int TERMINATE = 4;
 const int SOLUTION = 5;
-const int CHANGE_MONOTONICITY = 6;
+const int STARTING_SIGNAL = 6;
 const int ZOBRIST_ITEMS = 8;
 const int ZOBRIST_LOADS = 9;
 const int MEASUREMENTS = 10;
 const int ROOT_SOLVED = 11;
 const int THREAD_COUNT = 12;
 const int THREAD_RANK = 13;
+const int SENDING_BATCH = 14;
+const int RUNNING_LOW = 15;
 
 // ----
+const int SYNCHRO_SLEEP = 20;
+
+
+// Starting signal: either "change monotonicity" or "terminate".
 const int TERMINATION_SIGNAL = -1;
+
+// Ending signal: always "root solved", does not terminate.
+// The only case we send "root unsolved" is after generation, if there are tasks to be sent out.
 const int ROOT_SOLVED_SIGNAL = -2;
 const int ROOT_UNSOLVED_SIGNAL = -3;
 
-const int SYNCHRO_SLEEP = 20;
 
 // just an alias for MPI_Barrier
 void sync_up()
@@ -83,40 +91,37 @@ void receive_measurements()
     }
 }
 
+
+/* MPI_Request irrel_req;
 void send_terminations()
 {
-    MPI_Request blankreq;
-
-// workers may actively wait on various messages, so we send termination on several channels
     for (int i = 1; i < world_size; i++)
     {
-	MPI_Isend(&TERMINATION_SIGNAL, 1, MPI_INT, i, TERMINATE, MPI_COMM_WORLD, &blankreq);
+	MPI_Isend(&TERMINATION_SIGNAL, 1, MPI_INT, i, TERMINATE, MPI_COMM_WORLD, &irrel_req);
     }
 
-    for (int i = 1; i < world_size; i++)
+        for (int i = 1; i < world_size; i++)
     {
-	MPI_Isend(&TERMINATION_SIGNAL, 1, MPI_INT, i, CHANGE_MONOTONICITY, MPI_COMM_WORLD, &blankreq);
+	MPI_Isend(&TERMINATION_SIGNAL, 1, MPI_INT, i, CHANGE_MONOTONICITY, MPI_COMM_WORLD, &irrel_req);
     }
 
-    for (int i = 1; i < world_size; i++)
-    {
-	MPI_Isend(&TERMINATION_SIGNAL, 1, MPI_INT, i, SENDING_TASK, MPI_COMM_WORLD, &blankreq);
-    }
 }
+*/
 
 void send_root_solved()
 {
     for (int i = 1; i < world_size; i++)
     {
+	print<true>("Queen: Sending root solved to overseer %d.\n", i);
 	MPI_Send(&ROOT_SOLVED_SIGNAL, 1, MPI_INT, i, ROOT_SOLVED, MPI_COMM_WORLD);
     }
 }
 
-void send_root_solved_via_task()
+void send_root_unsolved()
 {
     for (int i = 1; i < world_size; i++)
     {
-	MPI_Send(&ROOT_SOLVED_SIGNAL, 1, MPI_INT, i, SENDING_TASK, MPI_COMM_WORLD);
+	MPI_Send(&ROOT_UNSOLVED_SIGNAL, 1, MPI_INT, i, ROOT_SOLVED, MPI_COMM_WORLD);
     }
 }
 
@@ -203,7 +208,6 @@ void transmit_irrelevant_task(int taskno)
     // MPI_Request blankreq;
     int target_overseer = overseer_map[taskno/chunk];
     // print<DEBUG>("Transmitting task %d as irrelevant.\n", taskno);
-   // MPI_Isend(&taskno, 1, MPI_INT, target_overseer, SENDING_IRRELEVANT, MPI_COMM_WORLD, &blankreq);
     MPI_Send(&taskno, 1, MPI_INT, target_overseer, SENDING_IRRELEVANT, MPI_COMM_WORLD);
 }
 
@@ -258,14 +262,6 @@ void ignore_additional_signals()
 	MPI_Iprobe(QUEEN, SENDING_TASK, MPI_COMM_WORLD, &signal_present, &stat);
     }
 
-    MPI_Iprobe(QUEEN, ROOT_SOLVED, MPI_COMM_WORLD, &signal_present, &stat);
-    while (signal_present)
-    {
-	signal_present = 0;
-	MPI_Recv(&irrel, 1, MPI_INT, QUEEN, ROOT_SOLVED, MPI_COMM_WORLD, &stat);
-	MPI_Iprobe(QUEEN, ROOT_SOLVED, MPI_COMM_WORLD, &signal_present, &stat);
-    }
-    
     MPI_Iprobe(QUEEN, SENDING_IRRELEVANT, MPI_COMM_WORLD, &signal_present, &stat);
     while (signal_present)
     {
@@ -274,8 +270,15 @@ void ignore_additional_signals()
 	MPI_Iprobe(QUEEN, SENDING_IRRELEVANT, MPI_COMM_WORLD, &signal_present, &stat);
     }
 
-
-
+    // ignore any incoming batches
+    MPI_Iprobe(QUEEN, SENDING_BATCH, MPI_COMM_WORLD, &signal_present, &stat);
+    while (signal_present)
+    {
+	int irrel_batch[BATCH_SIZE];
+	MPI_Recv(irrel_batch, BATCH_SIZE, MPI_INT, QUEEN, SENDING_BATCH, MPI_COMM_WORLD, &stat);
+	MPI_Iprobe(QUEEN, SENDING_BATCH, MPI_COMM_WORLD, &signal_present, &stat);
+    }
+ 
 }
 
 // Queen fetches and ignores the remaining tasks from the previous iteration.
@@ -292,31 +295,21 @@ void ignore_additional_solutions()
 	MPI_Recv(solution_pair, 2, MPI_INT, sender, SOLUTION, MPI_COMM_WORLD, &stat);
 	MPI_Iprobe(MPI_ANY_SOURCE, SOLUTION, MPI_COMM_WORLD, &solution_received, &stat);
     }
-
-}
-
-void send_root_unsolved()
-{
-    for (int i = 1; i < world_size; i++)
-    {
-	MPI_Send(&ROOT_UNSOLVED_SIGNAL, 1, MPI_INT, i, ROOT_SOLVED, MPI_COMM_WORLD);
-    }
-}
-
-
-void check_termination()
-{
-    MPI_Status stat;
-    int termination_flag = 0;
+    
+    int running_low_received = 0;
     int irrel = 0;
-    MPI_Iprobe(QUEEN, TERMINATE, MPI_COMM_WORLD, &termination_flag, &stat);
-    if(termination_flag)
+    MPI_Iprobe(MPI_ANY_SOURCE, RUNNING_LOW, MPI_COMM_WORLD, &running_low_received, &stat);
+    while(running_low_received)
     {
-	MPI_Recv(&irrel, 1, MPI_INT, QUEEN, TERMINATE, MPI_COMM_WORLD, &stat);
-	// set global root solved flag
-	worker_terminate.store(true);
+	running_low_received = 0;
+	int sender = stat.MPI_SOURCE;
+	MPI_Recv(&irrel, 1, MPI_INT, sender, RUNNING_LOW, MPI_COMM_WORLD, &stat);
+	MPI_Iprobe(MPI_ANY_SOURCE, RUNNING_LOW, MPI_COMM_WORLD, &running_low_received, &stat);
     }
+
+
 }
+
 
 void check_root_solved()
 {
@@ -330,11 +323,25 @@ void check_root_solved()
 	// set global root solved flag
 	if (r_s == ROOT_SOLVED_SIGNAL)
 	{
+	    fprintf(stderr, "Overseer %d: received root solved.\n", world_rank);
 	    root_solved.store(true);
 	}
     }
 }
 
+void broadcast_after_generation(int generated_value)
+{
+    assert(BEING_QUEEN);
+    MPI_Bcast(&generated_value, 1, MPI_INT, QUEEN, MPI_COMM_WORLD);
+}
+
+int broadcast_after_generation()
+{
+    assert(BEING_WORKER);
+    int value_from_queen = POSTPONED;
+    MPI_Bcast(&value_from_queen, 1, MPI_INT, QUEEN, MPI_COMM_WORLD);
+    return value_from_queen;
+}
 
 void blocking_check_root_solved()
 {
@@ -348,13 +355,23 @@ void blocking_check_root_solved()
     }
 }
 
-void transmit_monotonicity(int m)
+void broadcast_initial_signal(int signal)
 {
-    for(int i = 1; i < world_size; i++)
+    assert(BEING_QUEEN);
+    MPI_Bcast(&signal, 1, MPI_INT, QUEEN, MPI_COMM_WORLD);
+}
+
+int broadcast_initial_signal()
+{
+    assert(BEING_WORKER);
+    int m = -1;
+    MPI_Bcast(&m, 1, MPI_INT, QUEEN, MPI_COMM_WORLD);
+    if (m == -1)
     {
-	// we block here to make sure we are in sync with everyone
-	MPI_Send(&m, 1, MPI_INT, i, CHANGE_MONOTONICITY, MPI_COMM_WORLD);
+	termination_signal.store(true);
     }
+    return m;
+
 }
 
 void broadcast_tarray_tstatus()
@@ -368,24 +385,54 @@ void broadcast_tarray_tstatus()
 
     if (BEING_WORKER)
     {
+	print<true>("Received tcount %d.\n", tcount);
 	init_tarray();
 	init_tstatus();
     }
 
     for (int i = 0; i < tcount; i++)
     {
-	MPI_Bcast(tarray[i].serialize(), sizeof(task), MPI_CHAR, QUEEN, MPI_COMM_WORLD);
+	flat_task transport;
+	if (BEING_QUEEN)
+	{
+	    transport = tarray[i].flatten();
+	}
+	MPI_Bcast(transport.shorts, BINS+S+6, MPI_SHORT, QUEEN, MPI_COMM_WORLD);
+	MPI_Bcast(transport.longs, 2, MPI_UNSIGNED_LONG, QUEEN, MPI_COMM_WORLD);
+
+	if (BEING_WORKER)
+	{
+	    tarray[i].load(transport);
+	}
+
+
+	// we work around passing an atomic<int> array
+	int tstatus_i = TASK_AVAILABLE;
+	if (BEING_QUEEN)
+	{
+	    tstatus_i = tstatus[i].load();
+	}
+	
+	MPI_Bcast(&tstatus_i, 1, MPI_INT, QUEEN, MPI_COMM_WORLD);
+
+	if (BEING_WORKER)
+	{
+	    tstatus[i].store(tstatus_i);
+	}
     }
 
-    
-    MPI_Bcast(tstatus, tcount, MPI_INT, QUEEN, MPI_COMM_WORLD);
+    if (BEING_WORKER)
+    {
+	print<true>("Overseer %d: tarray and tstatus synchronized.\n", world_rank);
+    }
+
 
     if (BEING_QUEEN)
     {
 	print<PROGRESS>("Tasks synchronized.\n");
-	// print_binconf<PROGRESS>(&tarray[0].bc);
+	print_binconf<PROGRESS>(&tarray[0].bc);
     } else {
-	// print_binconf<PROGRESS>(&tarray[0].bc);
+	print_binconf<PROGRESS>(&tarray[0].bc);
     }
 
 
@@ -410,14 +457,19 @@ void collect_worker_tasks()
         // add it to the collected set of the queen
 	if (solution_pair[1] != IRRELEVANT)
 	{
+	    if (tstatus[solution_pair[0]].load(std::memory_order_acquire) == TASK_PRUNED)
+	    {
+		g_meas.pruned_collision++;
+	    }
 	    tstatus[solution_pair[0]].store(solution_pair[1], std::memory_order_release);
 	    // transmit the solution_pair[0] as solved
-	    transmit_irrelevant_task(solution_pair[0]);
+	    // transmit_irrelevant_task(solution_pair[0]);
 	}
 	
 	MPI_Iprobe(MPI_ANY_SOURCE, SOLUTION, MPI_COMM_WORLD, &solution_received, &stat);
     }
 }
+
 
 void send_out_tasks()
 {
@@ -461,5 +513,92 @@ void send_out_tasks()
     }
 }
 
+// batching model
+bool *running_low;
+
+void init_running_lows()
+{
+    running_low = new bool[world_size];
+}
+
+void reset_running_lows()
+{
+    for (int i = 0; i < world_size; i++)
+    {
+	running_low[i] = false;
+    }
+}
+
+void delete_running_lows()
+{
+    delete[] running_low;
+}
+
+void request_new_batch()
+{
+    int irrel = 0;
+    print<true>("Overseer %d requests a new batch.\n", world_rank);
+    MPI_Send(&irrel, 1, MPI_INT, QUEEN, RUNNING_LOW, MPI_COMM_WORLD);
+}
+
+void collect_running_lows()
+{
+    int running_low_received = 0;
+    MPI_Status stat;
+    int irrel;
+    MPI_Iprobe(MPI_ANY_SOURCE, RUNNING_LOW, MPI_COMM_WORLD, &running_low_received, &stat);
+    while(running_low_received)
+    {
+	running_low_received = 0;
+	int sender = stat.MPI_SOURCE;
+	MPI_Recv(&irrel, 1, MPI_INT, sender, RUNNING_LOW, MPI_COMM_WORLD, &stat);
+	running_low[sender] = true;
+	MPI_Iprobe(MPI_ANY_SOURCE, RUNNING_LOW, MPI_COMM_WORLD, &running_low_received, &stat);
+    }
+}
+
+void transmit_batch(int *batch, int overseer)
+{
+    MPI_Send(batch, BATCH_SIZE, MPI_INT, overseer, SENDING_BATCH, MPI_COMM_WORLD);
+}
+
+void receive_batch(int *current_batch)
+{
+    MPI_Status stat;
+    print<COMM_DEBUG>("Overseer %d receives the new batch.\n", world_rank);
+    MPI_Recv(current_batch, BATCH_SIZE, MPI_INT, QUEEN, SENDING_BATCH, MPI_COMM_WORLD, &stat);
+}
+
+
+bool try_receiving_batch(int *current_batch)
+{
+    int batch_incoming = 0;
+    MPI_Status stat;
+    MPI_Iprobe(QUEEN, SENDING_BATCH, MPI_COMM_WORLD, &batch_incoming, &stat);
+    if (batch_incoming)
+    {
+	print<COMM_DEBUG>("Overseer %d receives the new batch.\n", world_rank);
+	MPI_Recv(current_batch, BATCH_SIZE, MPI_INT, QUEEN, SENDING_BATCH, MPI_COMM_WORLD, &stat);
+	return true;
+    } else
+    {
+	return false;
+    }
+}
+
+
+void send_out_batches()
+{
+    int batch[BATCH_SIZE];
+    for (int overseer = 1; overseer < world_size; overseer++)
+    {
+	if (running_low[overseer])
+	{
+	    compose_batch(batch);
+	    transmit_batch(batch, overseer);
+	    running_low[overseer] = false;
+	}
+    }
+}
 
 #endif

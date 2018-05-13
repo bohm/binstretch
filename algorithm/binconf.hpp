@@ -341,6 +341,18 @@ public:
 	{
 	    return (loadhash ^ itemhash);
 	}
+
+    void consistency_check() const
+	{
+	    assert(_itemcount == itemcount_explicit());
+	    assert(_totalload == totalload_explicit());
+	    bin_int totalload_items = 0;
+	    for (int i =1; i <= S; i++)
+	    {
+		totalload_items += i*items[i];
+	    }
+	    assert(totalload_items == _totalload);
+	}
 };
 
 void duplicate(binconf *t, const binconf *s) {

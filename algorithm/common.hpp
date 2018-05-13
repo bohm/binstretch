@@ -37,14 +37,21 @@ const bool ONLY_ONE_PASS = false;
 
 // log tasks which run at least some amount of time
 const bool TASKLOG = false;
-const long double TASKLOG_THRESHOLD = 5.0; // in seconds
+const long double TASKLOG_THRESHOLD = 10.0; // in seconds
+
+// constants related to the logging of solved saplings
+const bool SEQUENCE_SAPLINGS = false; // whether to compute initial sequencing (or load it from files)
+const bool WRITE_SEQUENCE = false;
+const bool LOAD_SAPLINGS = true; // whether to load saplings from files or use the sequenced ones
+const bool WRITE_SOLUTIONS = true;
+const bool TERMINATE_AFTER_SEQUENCING = false; // if true, only do the sequencing, then terminate
 
 // maximum load of a bin in the optimal offline setting
 const bin_int S = 14;
 // target goal of the online bin stretching problem
 const bin_int R = 19;
-// Change this number for the selected number of bins.
-const bin_int BINS = 8;
+// Change this number or the selected number of bins.
+const bin_int BINS = 9;
 
 // If you want to generate a specific lower bound, you can create an initial bin configuration here.
 // You can also insert an initial sequence here.
@@ -54,12 +61,12 @@ const std::vector<bin_int> INITIAL_ITEMS = {};
 //const std::vector<bin_int> INITIAL_ITEMS = {7,0,0,0,1};
 // You can also insert an initial sequence here, and the adversary will use it as a predefined start.
 
-const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1,1};
+const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1,1,1,1};
+//const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1,1,1,1,1};
 //const std::vector<bin_int> INITIAL_SEQUENCE = {5};
 //const std::vector<bin_int> INITIAL_SEQUENCE = {};
 
 const int FIRST_PASS = 0;
-
 // constants used for good situations
 const int RMOD = (R-1);
 const int ALPHA = (RMOD-S);
@@ -74,24 +81,25 @@ uint64_t dpht_size = 0;
 
 const unsigned int LOADLOG = 13;
 
+// batching constants
+const int BATCH_SIZE = 500;
+// const int BATCH_THRESHOLD = 50;
+
 // sizes of the hash tables
 const llu LOADSIZE = (1ULL<<LOADLOG);
 
 // linear probing limit
-const int LINPROBE_LIMIT = 8;
+const int LINPROBE_LIMIT = 4;
 
 const int DEFAULT_DP_SIZE = 100000;
 const int BESTFIT_THRESHOLD = (1*S)/10;
 
 // a bound on total load of a configuration before we split it into a task
-const int TASK_LOAD = 16;
-// const int TASK_DEPTH = 2;
-const int TASK_DEPTH = S > 41 ? 2 : 3;
+const int TASK_LOAD = 21;
+const int TASK_DEPTH = 3;
+//const int TASK_DEPTH = S > 41 ? 3 : 4;
+//const int TASK_DEPTH = S > 41 ? 2 : 3;
 #define POSSIBLE_TASK possible_task_mixed
-
-// size of batches of tasks sent to workers
-const int BATCH_SIZE = 20;
-
 
 const int EXPANSION_DEPTH = 3;
 const int TASK_LARGEST_ITEM = 5;
@@ -101,10 +109,8 @@ const int TICK_UPDATE = 100;
 // how many tasks are sufficient for the updater to run the main updater routine
 const int TICK_TASKS = 50;
 // the number of completed tasks after which the exploring thread reports progress
-const int PROGRESS_AFTER = 100;
+const int PROGRESS_AFTER = 500;
 
-// a threshold for a task becoming overdue
-const std::chrono::seconds THRESHOLD = std::chrono::seconds(90);
 const int MAX_EXPANSION = 1;
 
 // ------------------------------------------------
@@ -112,6 +118,7 @@ const int MAX_EXPANSION = 1;
 
 const bool VERBOSE = false;
 const bool DEBUG = false;
+const bool COMM_DEBUG = false;
 
 // completely disable dynamic programming or binconf cache
 // (useful to debug soundness of cache algs)
@@ -148,7 +155,8 @@ int shm_rank = 0;
 int shm_size = 0;
 uint64_t shm_log = 0;
 std::atomic<bool> root_solved{false};
-std::atomic<bool> worker_terminate{false};
+std::atomic<bool> termination_signal{false};
+
 bool generating_tasks;
 uint64_t *Zi; // Zobrist table for items
 uint64_t *Zl; // Zobrist table for loads

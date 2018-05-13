@@ -7,18 +7,13 @@
 #include "networking.hpp"
 #include "server_properties.hpp"
 
-int receive_monotonicity()
-{
-    int m;
-    MPI_Status stat;
-    MPI_Recv(&m, 1, MPI_INT, QUEEN, CHANGE_MONOTONICITY, MPI_COMM_WORLD, &stat);
-    return m;
-}
-
 std::atomic<int> shared_tid;
 semiatomic_q* finished_tasks;
 int task_begin = 0;
 int task_end = 0;
+
+int working_batch[BATCH_SIZE];
+std::atomic<int> batchpointer;
 
 void process_finished_tasks()
 {
@@ -48,6 +43,36 @@ void process_finished_tasks()
     }
 }
 
+// Receives a new task (in this case, from the batch). Must be thread-safe.
+const int NO_MORE_TASKS = -1;
+const int WAIT_FOR_TASK = 0;
+const int TASK_RECEIVED = 1;
+
+std::pair<int, int> get_task()
+{
+    if (batchpointer.load() >= BATCH_SIZE)
+    {
+	return std::make_pair(0, WAIT_FOR_TASK);
+    } else
+    {
+	int potential_task = batchpointer++;
+	// we have to do the batch_size test again, because we loaded
+	// the batchpointer non-atomically
+	if (potential_task >= BATCH_SIZE)
+	{
+	    return std::make_pair(0, WAIT_FOR_TASK);
+	}
+
+	if (working_batch[potential_task] == -1)
+	{
+	    return std::make_pair(0, NO_MORE_TASKS);
+	} else
+	{
+	    // normal task
+	    return std::make_pair(working_batch[potential_task], TASK_RECEIVED);
+	}
+    }
+}
 
 int worker_solve(const task *t, const int& task_id)
 {
@@ -78,40 +103,39 @@ int worker_solve(const task *t, const int& task_id)
 // Selects new tasks until they run out.
 // It assumes tarray, tstatus etc are constructed (by the networking thread).
 // Terminates with root_solved.
-void worker(int thread_id)
+void worker(int thread_id, std::atomic<bool>* worker_finished)
 {
-    task* current_task = NULL;
-    bool tasks_all_solved = false;
+    task current_task;
     std::chrono::time_point<std::chrono::system_clock>	processing_start, processing_end;
    
-    printf("Worker reporting for duty: %s, rank %d out of %d instances\n",
-	   processor_name, thread_rank + thread_id, thread_rank_size);
+    //printf("Worker reporting for duty: %s, rank %d out of %d instances\n",
+//	   processor_name, thread_rank + thread_id, thread_rank_size);
 
-   
-    // compute the interval of tasks that belong to this overseer
-    // int chunk = tcount / thread_rank_size;
-    // if (tcount % thread_rank_size != 0) { chunk++; }
-    // chunk is a global variable now
-    int worker_rank = thread_rank + thread_id;
-    int interval_begin = worker_rank * chunk;
-    int interval_end = (worker_rank+1) * chunk;
-    if (worker_rank == thread_rank_size -1)
+    worker_finished[thread_id].store(false);
+    int signal, current_task_id;
+    while(!root_solved)
     {
-	interval_end = std::min(interval_end, tcount);
-    }
 
-    print<true>("Worker %d has task interval from %d to %d.\n", worker_rank, interval_begin, interval_end);
-
-    int current_task_id = interval_begin;
-    while(!tasks_all_solved && !root_solved && !worker_terminate)
-    {
-	if (current_task_id >= interval_end)
+	std::tie(current_task_id, signal) = get_task();
+	if (signal == NO_MORE_TASKS)
 	{
-	    tasks_all_solved = true;
+	    break;
 	}
 
-	current_task = &tarray[current_task_id];
-	current_task->bc.hash_loads_init();
+	if (signal == WAIT_FOR_TASK)
+	{
+	    std::this_thread::sleep_for(std::chrono::milliseconds(TICK_SLEEP));
+	    continue;
+	}
+
+	if (root_solved)
+	{
+	    break;
+	}
+	// Now signal == TASK_RECEIVED.
+	assert(current_task_id >= 0 && current_task_id < tcount);
+	current_task = tarray[current_task_id];
+	// current_task.bc.hash_loads_init(); // should not be necessary
 	
 	if (TASKLOG)
 	{
@@ -122,7 +146,7 @@ void worker(int thread_id)
 	if  (tstatus[current_task_id].load() != TASK_PRUNED)
 	{
 	    // print<true>("Worker %d processing task %d.\n", thread_rank + thread_id, current_task_id);
-	    solution = worker_solve(current_task, current_task_id);
+	    solution = worker_solve(&current_task, current_task_id);
 	} else {
 	    // print<true>("Worker %d skipping task %d, irrelevant.\n", thread_rank + thread_id, current_task_id);
 	}
@@ -135,7 +159,7 @@ void worker(int thread_id)
 	    if (processing_time.count() >= TASKLOG_THRESHOLD)
 	    {
 		fprintf(stderr, "%Lfs: ", processing_time.count());
-		print_binconf_stream(stderr, &(current_task->bc));
+		print_binconf_stream(stderr, &(current_task.bc));
 	    }
 	}
 
@@ -153,6 +177,28 @@ void worker(int thread_id)
 
 	current_task_id++;
     }
+    print<PROGRESS>("Worker %d (on %s) finished all tasks and terminates.\n", thread_rank + thread_id, processor_name);
+    worker_finished[thread_id].store(true);
+}
+
+
+void wait_for_workers_to_terminate(std::atomic<bool>* worker_finished, int wcount)
+{
+    bool stop = false;
+    while(!stop)
+    {
+	stop = true;
+	for (int i =0; i < wcount; i++)
+	{
+	    if (worker_finished[i].load() == false)
+	    {
+		stop = false;
+		break;
+	    }
+	}
+	
+	std::this_thread::sleep_for(std::chrono::milliseconds(TICK_SLEEP));
+    }
 }
 
 void overseer()
@@ -162,7 +208,7 @@ void overseer()
     MPI_Get_processor_name(processor_name, &name_len);
     printf("Overseer reporting for duty: %s, rank %d out of %d instances\n",
 	   processor_name, world_rank, world_size);
-    bool wait_for_monotonicity = true;
+    bool wait_for_initial_signal = true;
 
     // lower and upper limit of the interval for this particular overseer
     int ov_interval_lb = 0;
@@ -176,96 +222,125 @@ void overseer()
     dplog = std::get<1>(settings);
     dpht_size = 1LLU << dplog;
     worker_count = std::get<2>(settings);
+
+    std::atomic<bool>* worker_finished = new std::atomic<bool>[worker_count];
     print<true>("Overseer %d at server %s: conflog %d, dplog %d, worker_count %d\n", world_rank, processor_name,
 		conflog, dplog, worker_count);
     broadcast_zobrist();
     compute_thread_ranks();
     finished_tasks = new semiatomic_q[worker_count];
+    std::thread* threads = new std::thread[worker_count];
     init_worker_memory();
     sync_up();
-    
+    bool batch_requested = false; 
     while(true)
     {
-	if (wait_for_monotonicity)
+	if (wait_for_initial_signal)
 	{
-	    
-	    monotonicity = receive_monotonicity();
-	    // fprintf(stderr, "Worker %d received new monotonicity.\n", world_rank);
+
+	    print<COMM_DEBUG>("Overseer %d waits for monotonicity.\n", world_rank);
+	    monotonicity = broadcast_initial_signal();
+	    if (termination_signal)
+	    {
+		break;
+	    }
+	    print<COMM_DEBUG>("Overseer %d received new monotonicity: %d.\n", world_rank, monotonicity);
 
     
 	    //fprintf(stderr, "Worker %d: switch to monotonicity %d.\n", world_rank, monotonicity);
 	    // clear caches, as monotonicity invalidates some situations
 	    clear_cache_of_ones();
 
-	    if (monotonicity == TERMINATION_SIGNAL)
-	    {
-		break;
-	    }
-	    
-	    sync_up(); // Monotonicity.
+	    // sync_up(); // Monotonicity.
 
 	    // TODO: make sure all worker processes are finished
-	    wait_for_monotonicity = false;
-	    root_solved = false;
-  
-	    blocking_check_root_solved();
-	    
-	    if (root_solved)
+	    wait_for_initial_signal = false;
+	    root_solved.store(false);
+
+	    int queen_value = broadcast_after_generation();
+	    if (queen_value != POSTPONED)
 	    {
-		fprintf(stderr, "Root_solved; worker %d switching to new monotonicity.\n", world_rank);
-		wait_for_monotonicity = true;
-		ignore_additional_signals();
-		sync_up(); // Root solved.
+		print<COMM_DEBUG>("Root_solved; overseer %d switching to new monotonicity.\n", world_rank);
+		wait_for_initial_signal = true;
 		continue;
+	    } else {
+		print<COMM_DEBUG>("Root unsolved; overseer %d waits for tarray.\n", world_rank);
 	    }
 			       
 	    // receive (new) task array
 	    broadcast_tarray_tstatus();
-	    broadcast_task_partitioning();
-	    ov_interval_lb = thread_rank * chunk;
-	    ov_interval_ub = std::min(tcount+1, (thread_rank + worker_count)*chunk);
-	    
+	    print<COMM_DEBUG>("Tarray + tstatus initialized.\n");
+
+	    // broadcast_task_partitioning();
+	    // ov_interval_lb = thread_rank * chunk;
+	    // ov_interval_ub = std::min(tcount+1, (thread_rank + worker_count)*chunk);
+
+	    // fetch first batch
+	    request_new_batch();
+	    receive_batch(working_batch);
+	    batch_requested = false;
+	    batchpointer.store(0);
+    
 	    // finally, spawn solver processes
 	    for (int i = 0; i < worker_count; i++)
 	    {
 		finished_tasks[i].init(tcount);
-		std::thread t(worker, i);
-		t.detach();
+		threads[i] = std::thread(worker, i, worker_finished);
+		// t.detach();
 	    }
 	}
 
-	process_finished_tasks();
-	fetch_irrelevant_tasks(ov_interval_lb, ov_interval_ub);
 	check_root_solved();
-	check_termination();
-	
+	// check_termination();
+
 	if (root_solved)
 	{
-	    wait_for_monotonicity = true;
-	    ignore_additional_signals();
+	    wait_for_initial_signal = true;
+	    for (int i =0; i < worker_count; i++)
+	    {
+		threads[i].join();
+		print<DEBUG>("Worker %d joined back.\n", i);
+	    }
+	    
+	    print<COMM_DEBUG>("Tarray + tstatus destroyed by root_solved.\n");
+	    assert(tarray != NULL && tstatus != NULL);
 	    destroy_tarray();
 	    destroy_tstatus();
 	    for (int p = 0; p < worker_count; p++) { finished_tasks[p].clear(); }
 	    sync_up(); // Root solved.
+	    ignore_additional_signals();
 	    continue;
 	}
 	
-	if (worker_terminate)
+	// last time we checked, root_solved == false
+	process_finished_tasks();
+
+	// if running low, get new batch
+	// if (BATCH_SIZE - batchpointer <= BATCH_THRESHOLD)
+	if (!batch_requested && batchpointer.load() >= BATCH_SIZE)
 	{
-	    destroy_tarray();
-	    destroy_tstatus();
-	    for (int p = 0; p < worker_count; p++) { finished_tasks[p].clear(); }
-	    break;
+	    request_new_batch();
+	    batch_requested = true;
+	}
+
+	if (batch_requested)
+	{
+	    bool batch_received = try_receiving_batch(working_batch);
+	    if (batch_received)
+	    {
+		batch_requested = false;
+		batchpointer.store(0);
+	    }
 	}
 
 	std::this_thread::sleep_for(std::chrono::milliseconds(TICK_SLEEP));
-
     }
 
     sync_up();
     transmit_measurements();
     free_worker_memory();
     delete[] finished_tasks;
+    delete[] worker_finished;
     sync_up();
 }
 

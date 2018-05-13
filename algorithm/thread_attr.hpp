@@ -46,7 +46,7 @@ struct measure_attr
     uint64_t tub = 0;
     uint64_t large_item_hit = 0;
     uint64_t large_item_miss = 0;
-
+    uint64_t pruned_collision = 0; // only used by the queen
 
     void add(const measure_attr &other)
 	{

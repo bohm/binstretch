@@ -63,6 +63,12 @@ public:
 	{
 	    return zero_last_two_bits(_data);
 	}
+
+    inline bool match(const uint64_t& hash) const
+	{
+	    return (zero_last_two_bits(_data) == zero_last_two_bits(hash));
+	}
+	
     inline bool empty() const
 	{
 	    return _data == 0;

@@ -30,7 +30,7 @@ int check_messages(thread_attr *tat)
     // check_root_solved();
     // check_termination();
     // fetch_irrelevant_tasks();
-    if (root_solved || worker_terminate)
+    if (root_solved)
     {
 	return IRRELEVANT;
     }
@@ -445,6 +445,8 @@ int generate(binconf *start, thread_attr *tat, adversary_vertex *start_vert)
     //std::vector<uint64_t> first_pass;
     //dynprog_one_pass_init(start, &first_pass);
     //tat->previous_pass = &first_pass;
+    print<true>("Calling adversary for binconf: ");
+    print_binconf<true>(start);
     int ret = adversary<GENERATING>(start, start_vert->depth, tat, outat);
     delete outat;
     return ret;

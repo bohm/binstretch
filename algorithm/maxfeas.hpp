@@ -24,7 +24,7 @@ bin_int maximum_feasible(binconf *b, const int depth, const bin_int cannot_send_
     bin_int data = 0;
 
     bin_int lb = onlineloads_bestfit(tat->ol); // definitely can pack at least lb
-    bin_int ub = std::min((bin_int) ((S*BINS) - b->totalload()), initial_ub); // definitely cannot semore than ub
+    bin_int ub = std::min((bin_int) ((S*BINS) - b->totalload()), initial_ub); // definitely cannot send more than ub
 
     // consistency check
     if (lb > ub)
