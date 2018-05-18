@@ -53,13 +53,6 @@ int update(adversary_vertex *v)
 	//fprintf(stderr, "Completion check:");
 	//print_binconf_stream(stderr, v->bc);
         //fprintf(stderr, "Completion check result: %d\n", result);
-
-	if (result == OVERDUE)
-	{
-	    //fprintf(stderr, "Overdue task found during update.\n");
-	    result = expand(v);
-	}
-	
     } else {
 	std::list<adv_outedge*>::iterator it = v->out.begin();
 	while ( it != v->out.end())
@@ -171,18 +164,18 @@ int update(algorithm_vertex *v)
 // After the tree is evaluated, goes down and runs "generate" on the vertices
 // which were tasks and remain in the tree
 
-void regrow_recursive(algorithm_vertex *v);
-void regrow_recursive(adversary_vertex *v);
+void regrow_recursive(algorithm_vertex *v, int regrow_level);
+void regrow_recursive(adversary_vertex *v, int regrow_level);
 
 
-void regrow(adversary_vertex *v)
+void regrow(sapling previous)
 {
     clear_visited_bits();
-    regrow_recursive(v);
+    regrow_recursive(previous.root, previous.regrow_level+1);
 }
 
 // again, algorithm's vertices are never tasks, just pass down
-void regrow_recursive(algorithm_vertex *v)
+void regrow_recursive(algorithm_vertex *v, int regrow_level)
 {
     if (v->visited)
     {
@@ -191,11 +184,11 @@ void regrow_recursive(algorithm_vertex *v)
     v->visited = true;
     
     for (auto&& n: v->out) {
-	regrow_recursive(n->to);
+	regrow_recursive(n->to, regrow_level);
     }
 }
 
-void regrow_recursive(adversary_vertex *v)
+void regrow_recursive(adversary_vertex *v, int regrow_level)
 {
     if (v->visited)
     {
@@ -206,12 +199,14 @@ void regrow_recursive(adversary_vertex *v)
     if (v->task)
     {
 	assert(v->value == 0);
-	sapling_queue.push(v);
+	sapling newsap;
+	newsap.root = v; newsap.regrow_level = regrow_level;
+	regrow_queue.push(newsap);
     } else
     {
 	for (auto&& n: v->out)
 	{
-	    regrow_recursive(n->to);
+	    regrow_recursive(n->to, regrow_level);
 	}
     }
 

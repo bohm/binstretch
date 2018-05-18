@@ -6,7 +6,9 @@
 #include "updater.hpp"
 #include "sequencing.hpp"
 #include "tasks.hpp"
-#include "filestorage.hpp"
+#include "server_properties.hpp"
+
+// #include "filestorage.hpp"
 /*
 
 Message sequence:
@@ -52,11 +54,7 @@ void queen_updater(adversary_vertex* sapling)
 		fprintf(stderr, "We have evaluated the tree: %d\n", updater_result.load(std::memory_order_acquire));
 		print<MEASURE>("Prune/receive collisions: %" PRIu64 ".\n", g_meas.pruned_collision);
 		g_meas.pruned_collision = 0;
-	    } else {
-		// print<PROGRESS>("Updated tree, still POSTPONED.\n");
 	    }
-	} else {
-	    // print<PROGRESS>("Update not done.\n");
 	}
     }
 }
@@ -78,11 +76,17 @@ int queen()
     compute_thread_ranks();
     init_running_lows();
 
+    std::tuple<unsigned int, unsigned int, unsigned int> settings = server_properties(processor_name);
+    // out of the settings, queen does not spawn workers or use ht, only dpht
+    dplog = std::get<1>(settings);
+    dpht_size = 1LLU << dplog;
+    init_queen_memory();
+    
     // even though the queen does not use the database, it needs to synchronize with others.
     sync_up();
 
     binconf root = {INITIAL_LOADS, INITIAL_ITEMS};
-    adversary_vertex* root_vertex = new adversary_vertex(&root, 0, 1);
+    root_vertex = new adversary_vertex(&root, 0, 1);
     generated_graph.clear();
     generated_graph[root_vertex->bc->loadhash ^ root_vertex->bc->itemhash] = root_vertex;
  
@@ -93,10 +97,12 @@ int queen()
 	fprintf(stderr, "Only some good situations will be applied.\n");
     }
 
+    // temporarily turning off load and write
+    
     if (SEQUENCE_SAPLINGS)
     {
 	sequencing(INITIAL_SEQUENCE, root, root_vertex);
-	if (WRITE_SEQUENCE)
+	/* if (WRITE_SEQUENCE)
 	{
 	    fprintf(stderr, "Clearing ./sap/.\n");
 	    for (auto& old_sapling : fs::directory_iterator("./sap/"))
@@ -105,32 +111,35 @@ int queen()
 	    }
 	
 	    write_sapling_queue();
-	}
+	    }*/
     }
 
     if (TERMINATE_AFTER_SEQUENCING) { return 0; }
-    
+
+    /*
     if (LOAD_SAPLINGS)
     {
 	// if sequencing was done, it clears the sequencing queue and handles it separately.
-	while(!sapling_queue.empty())
+	while(!sapling_stack.empty())
 	{
-	    sapling_queue.pop();
+	    sapling_stack.pop();
 	}
 	
 	adversary_vertex* loaded_sapling = load_sapling();
 	if (loaded_sapling != NULL)
 	{
 	    loaded_sapling->bc->consistency_check();
-	    sapling_queue.push(loaded_sapling);
+	    sapling_stack.push(loaded_sapling);
 	}
     }
+    */
     
-    while (!sapling_queue.empty())
+    while (!sapling_stack.empty())
     {
-	adversary_vertex* sapling = sapling_queue.top();
-	sapling_queue.pop();
+	sapling current_sapling = sapling_stack.top();
+	sapling_stack.pop();
 
+	/* 
 	// if the sapling is loaded from a file, we need to make it the root of the generated graph
 	if (LOAD_SAPLINGS)
 	{
@@ -141,146 +150,154 @@ int queen()
 	    print_binconf_stream(stderr, sapling->bc);
 
 	} else {
-	    print<PROGRESS>("Queen: sapling queue size: %zu, current sapling of depth %d:\n", sapling_queue.size(), sapling->depth);
+	    print<PROGRESS>("Queen: sapling queue size: %zu, current sapling of depth %d:\n", sapling_stack.size(), sapling->depth);
 	    print_binconf_stream(stderr, sapling->bc);
 	}
-
-	// temporarily isolate sapling (detach it from its parent, set depth to 0)
-        int orig_value = sapling->value;
-	sapling->task = false;
-	sapling->value = POSTPONED;
-	computation_root = sapling;
-	// compute the sapling using the parallel minimax algorithm
-
-	thread_attr tat;
-	dynprog_attr_init(&tat);
+	*/
 	
-	// We create a copy of the sapling's bin configuration
-	// which will be used as in-place memory for the algorithm.
-	binconf sapling_bc;  
-	duplicate(&sapling_bc, sapling->bc);
-	
-        if (PROGRESS) { scheduler_start = std::chrono::system_clock::now(); }
-	monotonicity = FIRST_PASS;
-	for (; monotonicity <= S-1; monotonicity++)
+	regrow_queue.push(current_sapling);
+
+	while (!regrow_queue.empty())
 	{
-	    fprintf(stderr, "Queen: switch to monotonicity %d.\n", monotonicity);
-	    // queen sends the current monotonicity to the workers
-	    broadcast_initial_signal(monotonicity);
-	    // sync_up();
+	    sapling currently_growing = regrow_queue.front();
+	    computation_root = currently_growing.root;
+	    regrow_queue.pop();
+	    print<PROGRESS>("Queen: sapling stack size: %zu, regrow queue size: %zu, current sapling of depth %d and regrow level %d:\n",
+			    sapling_stack.size(), regrow_queue.size(), computation_root->depth, currently_growing.regrow_level);
+	    print_binconf<PROGRESS>(computation_root->bc);
+
+
+	    // temporarily isolate sapling (detach it from its parent, set depth to 0)
+	    int orig_value = currently_growing.root->value;
+	    computation_root->task = false;
+	    computation_root->value = POSTPONED;
+
+	    thread_attr tat;
 	    
-	    if (PROGRESS) { iteration_start = std::chrono::system_clock::now(); }
-	    
-	    clear_visited_bits();
-	    purge_sapling(sapling);
-	    reset_running_lows();
-
-// generates tasks for workers
-	    clear_visited_bits();
-	    removed_task_count = 0;
-	    updater_result = generate(&sapling_bc, &tat, sapling);
-
-	    sapling->value = updater_result.load(std::memory_order_acquire);
-	    broadcast_after_generation(sapling->value);
-
-	    if(sapling->value != POSTPONED)
+	    if (PROGRESS) { scheduler_start = std::chrono::system_clock::now(); }
+	    monotonicity = FIRST_PASS;
+	    for (; monotonicity <= S-1; monotonicity++)
 	    {
-		fprintf(stderr, "Queen: We have evaluated the tree: %d\n", sapling->value);
-		if (sapling->value == 0)
+		fprintf(stderr, "Queen: switch to monotonicity %d.\n", monotonicity);
+		// queen sends the current monotonicity to the workers
+		broadcast_initial_signal(monotonicity);
+		// sync_up();
+		
+		if (PROGRESS) { iteration_start = std::chrono::system_clock::now(); }
+		
+		clear_visited_bits();
+		purge_sapling(computation_root);
+		reset_running_lows();
+		
+// generates tasks for workers
+		clear_visited_bits();
+		removed_task_count = 0;
+		updater_result = generate(currently_growing, &tat);
+		
+		computation_root->value = updater_result.load(std::memory_order_acquire);
+		broadcast_after_generation(computation_root->value);
+
+		if(computation_root->value != POSTPONED)
+		{
+		    fprintf(stderr, "Queen: We have evaluated the tree: %d\n", computation_root->value);
+		    if (computation_root->value == 0)
+		    {
+			break;
+		    } else if (computation_root->value == 1)
+		    {
+			continue;
+		    }
+		}
+
+		init_tstatus(tstatus_temporary); tstatus_temporary.clear();
+		init_tarray(tarray_temporary); tarray_temporary.clear();
+		permute_tarray_tstatus(); // randomly shuffles the tasks 
+		irrel_taskq.init(tcount);
+		// note: do not push into irrel_taskq before permutation is done;
+		// the numbers will not make any sense.
+		
+		print<PROGRESS>("Queen: Generated %d tasks.\n", tcount);
+		broadcast_tarray_tstatus();
+		taskpointer = 0;
+		
+		auto x = std::thread(queen_updater, computation_root);
+		x.detach();
+		
+		// the flag is updated by the other thread
+		while(updater_result == POSTPONED)
+		{
+		    collect_worker_tasks();
+		    collect_running_lows();
+		    send_out_batches();
+		    // no need to transmit irrelevant tasks, because the queen now handles handing out tasks
+		    // via batching
+		    // transmit_all_irrelevant();
+		}
+		
+		// Updater_result is no longer POSTPONED.
+		
+		if (PROGRESS)
+		{
+		    iteration_end = std::chrono::system_clock::now();
+		    std::chrono::duration<long double> iteration_time = iteration_end - iteration_start;
+		    print<PROGRESS>("Iteration time: %Lfs.\n", iteration_time.count());
+		}
+		
+		// Send ROOT_SOLVED signal to workers that wait for tasks and those
+		// that process tasks.
+		send_root_solved();
+		sync_up(); // Root solved.
+		
+		// collect remaining, unnecessary solutions
+		ignore_additional_solutions();
+		
+		destroy_tarray();
+		destroy_tstatus();
+		irrel_taskq.clear();
+		clear_tasks();
+	    
+		if (updater_result == 0)
 		{
 		    break;
-		} else if (sapling->value == 1)
-		{
-		    continue;
 		}
 	    }
-
- 	    init_tstatus(tstatus_temporary); tstatus_temporary.clear();
-	    init_tarray(tarray_temporary); tarray_temporary.clear();
-	    // permute_tarray_tstatus(); // randomly shuffles the tasks 
-	    irrel_taskq.init(tcount);
-	    // note: do not push into irrel_taskq before permutation is done;
-	    // the numbers will not make any sense.
-    
-	    print<PROGRESS>("Queen: Generated %d tasks.\n", tcount);
-	    broadcast_tarray_tstatus();
-	    taskpointer = 0;
-
-	    auto x = std::thread(queen_updater, sapling);
-	    x.detach();
-
-	    // the flag is updated by the other thread
-	    while(updater_result == POSTPONED)
-	    {
-		collect_worker_tasks();
-		collect_running_lows();
-		send_out_batches();
-		// no need to transmit irrelevant tasks, because the queen now handles handing out tasks
-		// via batching
-		// transmit_all_irrelevant();
-	    }
-
-	    // Updater_result is no longer POSTPONED.
-
+	    // either updater_result == 0 or tested all monotonicities
+	    
 	    if (PROGRESS)
 	    {
-		iteration_end = std::chrono::system_clock::now();
-		std::chrono::duration<long double> iteration_time = iteration_end - iteration_start;
-		print<PROGRESS>("Iteration time: %Lfs.\n", iteration_time.count());
+		scheduler_end = std::chrono::system_clock::now();
+		std::chrono::duration<long double> scheduler_time = scheduler_end - scheduler_start;
+		print<PROGRESS>("Full evaluation time: %Lfs.\n", scheduler_time.count());
 	    }
 	    
-	    // Send ROOT_SOLVED signal to workers that wait for tasks and those
-	    // that process tasks.
-	    send_root_solved();
-	    sync_up(); // Root solved.
-
-	    // collect remaining, unnecessary solutions
-	    ignore_additional_solutions();
-
-	    destroy_tarray();
-	    destroy_tstatus();
-	    irrel_taskq.clear();
-	    clear_tasks();
-    
-	    if (updater_result == 0)
+	    /* 
+	    if (LOAD_SAPLINGS)
 	    {
+		adversary_vertex* loaded_sapling = load_sapling();
+		if (loaded_sapling != NULL)
+		{
+		    sapling_stack.push(loaded_sapling);
+		} 
+	    }
+	    */
+	    
+	    assert(orig_value == POSTPONED || orig_value == updater_result);
+	    if (updater_result == 1)
+	    {
+		ret = 1;
 		break;
 	    }
-	}
-	// either updater_result == 0 or tested all monotonicities
-	dynprog_attr_free(&tat);
 
-	if (PROGRESS)
-	{
-	    scheduler_end = std::chrono::system_clock::now();
-	    std::chrono::duration<long double> scheduler_time = scheduler_end - scheduler_start;
-	    print<PROGRESS>("Full evaluation time: %Lfs.\n", scheduler_time.count());
+	    REGROW_ONLY(regrow(currently_growing));
 	}
 
+	/* 
 	if (WRITE_SOLUTIONS)
 	{
 	    // also erases the old file
 	    write_solution(sapling, updater_result, monotonicity); 
 	}
-
-	if (LOAD_SAPLINGS)
-	{
-	    adversary_vertex* loaded_sapling = load_sapling();
-	    if (loaded_sapling != NULL)
-	    {
-		sapling_queue.push(loaded_sapling);
-	    } 
-	}
-	
-	assert(orig_value == POSTPONED || orig_value == updater_result);
-	if (updater_result == 1)
-	{
-	    ret = 1;
-	    break;
-	}
-
-	// TODO: make regrow work again
-	// REGROW_ONLY(regrow(sapling));
+	*/
     }
 
     broadcast_initial_signal(TERMINATION_SIGNAL);
@@ -289,6 +306,7 @@ int queen()
     sync_up();
     g_meas.print();
     delete_running_lows();
+    free_queen_memory();
     return ret;
 }
 

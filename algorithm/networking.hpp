@@ -112,7 +112,7 @@ void send_root_solved()
 {
     for (int i = 1; i < world_size; i++)
     {
-	print<true>("Queen: Sending root solved to overseer %d.\n", i);
+	print<COMM_DEBUG>("Queen: Sending root solved to overseer %d.\n", i);
 	MPI_Send(&ROOT_SOLVED_SIGNAL, 1, MPI_INT, i, ROOT_SOLVED, MPI_COMM_WORLD);
     }
 }
@@ -132,7 +132,7 @@ int* overseer_map = NULL; // a quick map from workers to overseer
 void compute_thread_ranks()
 {
     MPI_Status stat;
-    if (BEING_WORKER)
+    if (BEING_OVERSEER)
     {
 	MPI_Send(&worker_count, 1, MPI_INT, QUEEN, THREAD_COUNT, MPI_COMM_WORLD);
 	MPI_Recv(&thread_rank, 1, MPI_INT, QUEEN, THREAD_RANK, MPI_COMM_WORLD, &stat);
@@ -192,7 +192,7 @@ void compute_thread_ranks()
 int chunk = 0;
 void broadcast_task_partitioning()
 {
-    if (BEING_WORKER)
+    if (BEING_OVERSEER)
     {
 	MPI_Bcast(&chunk, 1, MPI_INT, QUEEN, MPI_COMM_WORLD);
     } else {
@@ -337,7 +337,7 @@ void broadcast_after_generation(int generated_value)
 
 int broadcast_after_generation()
 {
-    assert(BEING_WORKER);
+    assert(BEING_OVERSEER);
     int value_from_queen = POSTPONED;
     MPI_Bcast(&value_from_queen, 1, MPI_INT, QUEEN, MPI_COMM_WORLD);
     return value_from_queen;
@@ -363,7 +363,7 @@ void broadcast_initial_signal(int signal)
 
 int broadcast_initial_signal()
 {
-    assert(BEING_WORKER);
+    assert(BEING_OVERSEER);
     int m = -1;
     MPI_Bcast(&m, 1, MPI_INT, QUEEN, MPI_COMM_WORLD);
     if (m == -1)
@@ -383,9 +383,9 @@ void broadcast_tarray_tstatus()
     
     MPI_Bcast(&tcount, 1, MPI_INT, QUEEN, MPI_COMM_WORLD);
 
-    if (BEING_WORKER)
+    if (BEING_OVERSEER)
     {
-	print<true>("Received tcount %d.\n", tcount);
+	print<COMM_DEBUG>("Received tcount %d.\n", tcount);
 	init_tarray();
 	init_tstatus();
     }
@@ -400,7 +400,7 @@ void broadcast_tarray_tstatus()
 	MPI_Bcast(transport.shorts, BINS+S+6, MPI_SHORT, QUEEN, MPI_COMM_WORLD);
 	MPI_Bcast(transport.longs, 2, MPI_UNSIGNED_LONG, QUEEN, MPI_COMM_WORLD);
 
-	if (BEING_WORKER)
+	if (BEING_OVERSEER)
 	{
 	    tarray[i].load(transport);
 	}
@@ -415,28 +415,22 @@ void broadcast_tarray_tstatus()
 	
 	MPI_Bcast(&tstatus_i, 1, MPI_INT, QUEEN, MPI_COMM_WORLD);
 
-	if (BEING_WORKER)
+	if (BEING_OVERSEER)
 	{
 	    tstatus[i].store(tstatus_i);
 	}
     }
 
-    if (BEING_WORKER)
+    if (BEING_OVERSEER)
     {
-	print<true>("Overseer %d: tarray and tstatus synchronized.\n", world_rank);
+	print<COMM_DEBUG>("Overseer %d: tarray and tstatus synchronized.\n", world_rank);
     }
 
 
     if (BEING_QUEEN)
     {
 	print<PROGRESS>("Tasks synchronized.\n");
-	print_binconf<PROGRESS>(&tarray[0].bc);
-    } else {
-	print_binconf<PROGRESS>(&tarray[0].bc);
     }
-
-
-
 }
 
 void collect_worker_tasks()
@@ -537,7 +531,7 @@ void delete_running_lows()
 void request_new_batch()
 {
     int irrel = 0;
-    print<true>("Overseer %d requests a new batch.\n", world_rank);
+    print<COMM_DEBUG>("Overseer %d requests a new batch.\n", world_rank);
     MPI_Send(&irrel, 1, MPI_INT, QUEEN, RUNNING_LOW, MPI_COMM_WORLD);
 }
 

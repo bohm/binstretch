@@ -50,20 +50,22 @@ const int TASK_RECEIVED = 1;
 
 std::pair<int, int> get_task()
 {
+    // we do these tests first to make sure we do not increment any further
     if (batchpointer.load() >= BATCH_SIZE)
     {
 	return std::make_pair(0, WAIT_FOR_TASK);
+    } else if (working_batch[batchpointer.load()] == -1)
+    {
+	return std::make_pair(0, NO_MORE_TASKS);
     } else
     {
 	int potential_task = batchpointer++;
-	// we have to do the batch_size test again, because we loaded
+	// we have to do the above tests again, because we loaded
 	// the batchpointer non-atomically
 	if (potential_task >= BATCH_SIZE)
 	{
 	    return std::make_pair(0, WAIT_FOR_TASK);
-	}
-
-	if (working_batch[potential_task] == -1)
+	} else if (working_batch[potential_task] == -1)
 	{
 	    return std::make_pair(0, NO_MORE_TASKS);
 	} else
@@ -79,7 +81,6 @@ int worker_solve(const task *t, const int& task_id)
     int ret = POSTPONED;
 
     thread_attr tat;
-    dynprog_attr_init(&tat);
     tat.last_item = t->last_item;
     tat.task_id = task_id;
     computation_root = NULL; // we do not run GENERATE or EXPAND on the workers currently
@@ -96,7 +97,6 @@ int worker_solve(const task *t, const int& task_id)
     ret = explore(&task_copy, &tat);
     g_meas.add(tat.meas);
     assert(ret != POSTPONED);
-    dynprog_attr_free(&tat);
     return ret;
 }
 
@@ -181,26 +181,6 @@ void worker(int thread_id, std::atomic<bool>* worker_finished)
     worker_finished[thread_id].store(true);
 }
 
-
-void wait_for_workers_to_terminate(std::atomic<bool>* worker_finished, int wcount)
-{
-    bool stop = false;
-    while(!stop)
-    {
-	stop = true;
-	for (int i =0; i < wcount; i++)
-	{
-	    if (worker_finished[i].load() == false)
-	    {
-		stop = false;
-		break;
-	    }
-	}
-	
-	std::this_thread::sleep_for(std::chrono::milliseconds(TICK_SLEEP));
-    }
-}
-
 void overseer()
 {
 
@@ -211,8 +191,6 @@ void overseer()
     bool wait_for_initial_signal = true;
 
     // lower and upper limit of the interval for this particular overseer
-    int ov_interval_lb = 0;
-    int ov_interval_ub = 0;
     // set global constants used for allocating caches and worker count
     std::tuple<unsigned int, unsigned int, unsigned int> settings;
     settings = server_properties(processor_name);
@@ -246,12 +224,8 @@ void overseer()
 	    }
 	    print<COMM_DEBUG>("Overseer %d received new monotonicity: %d.\n", world_rank, monotonicity);
 
-    
-	    //fprintf(stderr, "Worker %d: switch to monotonicity %d.\n", world_rank, monotonicity);
 	    // clear caches, as monotonicity invalidates some situations
 	    clear_cache_of_ones();
-
-	    // sync_up(); // Monotonicity.
 
 	    // TODO: make sure all worker processes are finished
 	    wait_for_initial_signal = false;
@@ -271,10 +245,6 @@ void overseer()
 	    broadcast_tarray_tstatus();
 	    print<COMM_DEBUG>("Tarray + tstatus initialized.\n");
 
-	    // broadcast_task_partitioning();
-	    // ov_interval_lb = thread_rank * chunk;
-	    // ov_interval_ub = std::min(tcount+1, (thread_rank + worker_count)*chunk);
-
 	    // fetch first batch
 	    request_new_batch();
 	    receive_batch(working_batch);
@@ -286,13 +256,10 @@ void overseer()
 	    {
 		finished_tasks[i].init(tcount);
 		threads[i] = std::thread(worker, i, worker_finished);
-		// t.detach();
 	    }
 	}
 
 	check_root_solved();
-	// check_termination();
-
 	if (root_solved)
 	{
 	    wait_for_initial_signal = true;

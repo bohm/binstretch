@@ -38,7 +38,9 @@ std::tuple<unsigned int, unsigned int, unsigned int> server_properties(char *ser
     } else if (strcmp(server_name, "lomikamen") == 0)
     {
 	// has *many* more cores but they are occupied right now
-	return std::make_tuple(31, 31, 16);
+	// return std::make_tuple(31, 31, 16);
+	return std::make_tuple(31, 31, 64);
+
     } else {
 	return std::make_tuple(28, 28, 4);
     }

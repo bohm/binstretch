@@ -367,7 +367,6 @@ void duplicate(binconf *t, const binconf *s) {
     t->_itemcount = s->_itemcount;
 }
 
-
 // returns true if two binconfs are item-wise and load-wise equal
 bool binconf_equal(const binconf *a, const binconf *b)
 {
@@ -386,6 +385,11 @@ bool binconf_equal(const binconf *a, const binconf *b)
 	    return false;
 	}
     }
+
+    if (a->loadhash != b->loadhash) { return false; }
+    if (a->itemhash != b->itemhash) { return false; }
+    if (a->_totalload != b->_totalload) { return false; }
+    if (a->_itemcount != b->_itemcount) { return false; }
 
     return true;
 }

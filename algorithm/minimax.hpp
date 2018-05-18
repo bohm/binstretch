@@ -72,40 +72,69 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
     }
 
     // a much weaker variant of large item heuristic, but takes O(1) time
+
+
     if (b->totalload() <= S && b->loads[2] >= R-S)
     {
-	if(MODE == GENERATING || MODE == EXPANDING)
+	if(MODE == GENERATING)
 	{
 	    outat->last_adv_v->value = 0;
 	    outat->last_adv_v->heuristic = true;
+	    outat->last_adv_v->heuristic_type = LARGE_ITEM;
 	    outat->last_adv_v->heuristic_item = S;
+	    outat->last_adv_v->heuristic_multi = BINS-1;
 	}
 	return 0;
     }
 
-    if (MODE == GENERATING || MODE == EXPANDING)
+    // one heuristic specific for 19/14
+    if (S == 14 && R == 19 && (MODE == GENERATING || FIVE_NINE_ACTIVE_EVERYWHERE))
     {
-	std::pair<bool, int> p;
-	p = large_item_heuristic(b, tat);
-	if (p.first)
+	bool fnh = five_nine_heuristic(b,tat);
+	tat->meas.five_nine_calls++;
+	if (fnh)
 	{
+	    tat->meas.five_nine_hits++;
+	    if(MODE == GENERATING)
 	    {
 		outat->last_adv_v->value = 0;
 		outat->last_adv_v->heuristic = true;
-		outat->last_adv_v->heuristic_item = p.second;
+		outat->last_adv_v->heuristic_type = FIVE_NINE;
 	    }
 	    return 0;
-
 	}
     }
-    
-    if (MODE == GENERATING || MODE == EXPANDING)
+
+    //if (true)
+    if (MODE == GENERATING || LARGE_ITEM_ACTIVE_EVERYWHERE)
+    {
+	bin_int lih, mul;
+	tat->meas.large_item_calls++;
+
+	std::tie(lih,mul) = large_item_heuristic(b, tat);
+	if (lih != MAX_INFEASIBLE)
+	{
+	    tat->meas.large_item_hits++;
+
+	    if (MODE == GENERATING) {
+		outat->last_adv_v->value = 0;
+		outat->last_adv_v->heuristic = true;
+		outat->last_adv_v->heuristic_type = LARGE_ITEM;
+		outat->last_adv_v->heuristic_item = lih;
+		outat->last_adv_v->heuristic_multi = mul;
+	    }
+	    return 0;
+	}
+    }
+
+
+    if (MODE == GENERATING)
     {
 	current_adversary = outat->last_adv_v;
 	previous_algorithm = outat->last_alg_v;
 
-	// if(possible_task_depth<MODE>(current_adversary))
-	if (POSSIBLE_TASK<MODE>(current_adversary, tat->largest_since_computation_root))
+	// we now do creation of tasks only until the REGROW_LIMIT is reached
+	if (tat->regrow_level <= REGROW_LIMIT && POSSIBLE_TASK<MODE>(current_adversary, tat->largest_since_computation_root))
 	{
 	    add_task(b, tat);
 	    // mark current adversary vertex (created by algorithm() in previous step) as a task
@@ -154,7 +183,24 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
 
     // finds the maximum feasible item that can be added using dyn. prog.
     bin_int old_max_feasible = tat->prev_max_feasible;
+    // check
+    // binconf bc_check; duplicate(&bc_check, b);
     bin_int dp = MAXIMUM_FEASIBLE(b, depth, lower_bound, old_max_feasible, tat);
+    // assert(binconf_equal(&bc_check, b));
+
+    /* 
+    bin_int value_check = dynprog_max_sorting(b,tat);
+    if (value_check < lower_bound) { value_check = MAX_INFEASIBLE; }
+    if (dp != value_check)
+    {
+	fprintf(stderr, "Maxfeas reports %" PRIi16 ", dynprog_max_safe reports %" PRIi16 ", sorting reports %" PRIi16 ". LB: %d, return point %d):\n",
+		dp, dynprog_max_safe(b,tat), value_check, lower_bound, tat->maxfeas_return_point);
+	print_binconf<true>(b);
+	dp_cache_print(*b,tat);
+	assert(dp == value_check);
+    }
+    */
+
     tat->prev_max_feasible = dp;
     int maximum_feasible = dp; // possibly also INFEASIBLE == -1
     int below = 1;
@@ -167,7 +213,7 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
 	// algorithm's vertex for the next step
 	algorithm_vertex *analyzed_vertex; // used only in the GENERATING mode
 	
-	if (MODE == GENERATING || MODE == EXPANDING)
+	if (MODE == GENERATING)
 	{
 	    analyzed_vertex = new algorithm_vertex(item_size);
 	    // create new edge, 
@@ -188,7 +234,7 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
 	tat->last_item = li;
 	tat->largest_since_computation_root = old_largest;
 
-	if (MODE == GENERATING || MODE == EXPANDING)
+	if (MODE == GENERATING)
 	{
 	    analyzed_vertex->value = below;
 	    // and set it back to the previous value
@@ -205,7 +251,7 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
 	{
 	    r = 0;
 	    
-	    if (MODE == GENERATING || MODE == EXPANDING)
+	    if (MODE == GENERATING)
 	    {
 		// remove all outedges except the right one
 		remove_outedges_except<GENERATING>(current_adversary, item_size);
@@ -213,7 +259,7 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
 	    break;
 	} else if (below == 1)
 	{
-	    if (MODE == GENERATING || MODE == EXPANDING)
+	    if (MODE == GENERATING)
 	    {
 		// no decreasing, but remove this branch of the game tree
 		remove_edge<GENERATING>(new_edge);
@@ -221,7 +267,7 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
 	    }
 	} else if (below == POSTPONED)
 	{
-	    assert(MODE == GENERATING || MODE == EXPANDING);
+	    assert(MODE == GENERATING);
 	    if (r == 1)
 	    {
 		r = POSTPONED;
@@ -236,7 +282,7 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
     }
 
     /* Sanity check. */
-    if ((MODE == GENERATING || MODE == EXPANDING) && r == 1)
+    if ((MODE == GENERATING) && r == 1)
     {
 	assert(current_adversary->out.empty());
     }
@@ -249,7 +295,7 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 
     algorithm_vertex* current_algorithm = NULL;
     adversary_vertex* previous_adversary = NULL;
-    if (MODE == GENERATING || MODE == EXPANDING)
+    if (MODE == GENERATING)
     {
 	current_algorithm = outat->last_alg_v;
 	previous_adversary = outat->last_adv_v;
@@ -303,7 +349,7 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 	    adversary_vertex *analyzed_vertex;
 	    bool already_generated = false;
 
-	    if (MODE == GENERATING || MODE == EXPANDING)
+	    if (MODE == GENERATING)
 	    {
 		/* Check vertex cache if this adversarial vertex is already present */
 		std::map<llu, adversary_vertex*>::iterator it;
@@ -311,10 +357,6 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 		if (it == generated_graph.end())
 		{
 		    analyzed_vertex = new adversary_vertex(b, depth, tat->last_item);
-		    if (MODE == EXPANDING)
-		    {
-			analyzed_vertex->expansion_depth = tat->expansion_depth;
-		    }
 		    // create new edge
 		    new alg_outedge(current_algorithm, analyzed_vertex);
 		    // add to generated_graph
@@ -332,7 +374,7 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 	    
 	    if (!already_generated)
 	    {
-		if (MODE == GENERATING || MODE == EXPANDING)
+		if (MODE == GENERATING)
 		{
 		    // set the current adversary vertex to be the analyzed vertex
 		    outat->last_adv_v = analyzed_vertex;
@@ -347,7 +389,7 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 		}
 		
 
-		if (MODE == GENERATING || MODE == EXPANDING)
+		if (MODE == GENERATING)
 		{
 		    analyzed_vertex->value = below;
 		    // and set it back to the previous value
@@ -365,7 +407,7 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 	    if (below == 1)
 	    {
 		r = below;
-		if (MODE == GENERATING || MODE == EXPANDING)
+		if (MODE == GENERATING)
 		{
 		    // delete all edges from the current algorithmic vertex
 		    // which should also delete the adversary vertex
@@ -381,7 +423,7 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 		// nothing needs to be currently done, the edge is already created
 	    } else if (below == POSTPONED)
 	    {
- 		assert(MODE == GENERATING || MODE == EXPANDING); // should not happen during anything else but GENERATING
+ 		assert(MODE == GENERATING); // should not happen during anything else but GENERATING
 		// insert analyzed_vertex into algorithm's "next" list
 		if (r == 0)
 		{
@@ -431,52 +473,26 @@ int explore(binconf *b, thread_attr *tat)
 }
 
 // wrapper for generation
-int generate(binconf *start, thread_attr *tat, adversary_vertex *start_vert)
+int generate(sapling start_sapling, thread_attr *tat)
 {
-    start->hashinit();
-    onlineloads_init(tat->ol, start);
+    binconf inplace_bc;
+    duplicate(&inplace_bc, start_sapling.root->bc);
+    inplace_bc.hashinit();
+    onlineloads_init(tat->ol, &inplace_bc);
 
+    tat->regrow_level = start_sapling.regrow_level;
     //assert(tat->ol.loadsum() == start->totalload());
     
     tree_attr *outat = new tree_attr;
-    outat->last_adv_v = start_vert;
+    outat->last_adv_v = start_sapling.root;
     outat->last_alg_v = NULL;
 
     //std::vector<uint64_t> first_pass;
     //dynprog_one_pass_init(start, &first_pass);
     //tat->previous_pass = &first_pass;
-    print<true>("Calling adversary for binconf: ");
-    print_binconf<true>(start);
-    int ret = adversary<GENERATING>(start, start_vert->depth, tat, outat);
+    int ret = adversary<GENERATING>(&inplace_bc, start_sapling.root->depth, tat, outat);
     delete outat;
     return ret;
 }
 
-// wrapper for expansion of a task into multiple tasks
-int expand(adversary_vertex *overdue_task)
-{
-    //fprintf(stderr, "Expanding task: " );
-    //print_binconf_stream(stderr, overdue_task->bc);
-
-    assert(overdue_task->task);
-    overdue_task->task = false;
-    overdue_task->expansion_depth++;
-    expansion_root = overdue_task;
-
-    //fprintf(stderr, "Current taskmap depth: %d,  size: %lu\n", overdue_task->expansion_depth, tm.size());
-
-
-    thread_attr tat; 
-    tree_attr outat;
-    dynprog_attr_init(&tat);
-    outat.last_adv_v = overdue_task;
-    outat.last_alg_v = NULL;
-    tat.last_item = overdue_task->last_item;
-    tat.expansion_depth = overdue_task->expansion_depth;
-
-    int ret = adversary<EXPANDING>(expansion_root->bc, expansion_root->depth, &tat, &outat);
-    //fprintf(stderr, "New taskmap size: %lu\n", tm.size());
-    dynprog_attr_free(&tat);
-    return ret;
-}
 #endif // _MINIMAX_HPP

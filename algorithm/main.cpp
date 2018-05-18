@@ -28,19 +28,17 @@ int main(void)
     if (QUEEN_ONLY)
     {
 	return -1;
-	// ret = lonely_queen();
     } else {
 	if(world_rank != 0)
 	{
 	    overseer();
-//	    dummy_worker();
 	} else {
 	    // queen is now by default two-threaded
 	    ret = queen();
 	}
     }
 
-    if (world_rank == 0)
+    if (BEING_QUEEN)
     {
 	assert(ret == 0 || ret == 1);
 	if(ret == 0)
@@ -49,6 +47,20 @@ int main(void)
 		    R,S,BINS,monotonicity);
 	    print_sequence(stdout, INITIAL_SEQUENCE);
 	    // TODO: make sure that OUTPUT works with MPI.
+	    if (OUTPUT)
+	    {
+		char buffer[50];
+		sprintf(buffer, "%d_%d_%dbins.dot", R,S,BINS);
+		FILE* out = fopen( buffer, "w");
+		fprintf(stdout, "Printing to file: %s.\n", buffer);
+		assert(out != NULL);
+		fprintf(out, "strict digraph lowerbound {\n");
+		fprintf(out, "overlap = none;\n");
+		//print_gametree(out, root_vertex);
+		print_compact(out, root_vertex);
+		fprintf(out, "}\n");
+		fclose(out);
+	    }
 	} else {
 	    fprintf(stdout, "Algorithm wins %d/%d Bin Stretching on %d bins with sequence:\n", R,S,BINS);
 	    print_sequence(stdout, INITIAL_SEQUENCE);

@@ -38,7 +38,7 @@ bin_int get_last_two_bits(const uint64_t& n)
     return ((n & 3));
 }
 
-inline bin_int get_last_bit(uint64_t n)
+inline bool get_last_bit(uint64_t n)
 {
     return ((n & 1) == 1);
 }
@@ -88,7 +88,7 @@ public:
 	    _data = 0;
 	}
 
-    const bin_int depth() const
+    bin_int depth() const
 	{
 	    return 0;
 	}
@@ -101,12 +101,12 @@ public:
     uint64_t _data;
 
     // 64-bit dpht_el does not make use of permanence.
-    inline void set(uint64_t hash, uint16_t feasible, uint16_t permanence)
+    inline void set(uint64_t hash, uint8_t feasible, uint16_t permanence)
 	{
 	    assert(feasible == 0 || feasible == 1);
 	    _data = (zero_last_bit(hash) | feasible);
 	}
-    inline bin_int value() const
+    inline bool value() const
 	{
 	    return get_last_bit(_data);
 	}
@@ -139,7 +139,7 @@ public:
 	}
 
     // currently not used
-    const bin_int depth() const
+    bin_int depth() const
 	{
 	    return 0;
 	}
@@ -246,7 +246,7 @@ void zobrist_init()
 
 uint64_t quicklog(uint64_t x)
 {
-    uint64_t ret;
+    uint64_t ret = 0;
     while(x >>= 1)
     {
 	ret++;
@@ -254,12 +254,32 @@ uint64_t quicklog(uint64_t x)
     return ret;
 }
 
+// initializes the queen's memory. The queen uses dynamic programming cache but not the main solved cache.
+void init_queen_memory()
+{
+    dpht = new std::atomic<dpht_el>[dpht_size];
+    ht = NULL;
+    assert(dpht != NULL);
+    
+    dpht_el x{0};
+
+    for (uint64_t i =0; i < dpht_size; i++)
+    {
+	std::atomic_init(&dpht[i],x);
+    }
+   
+}
+
+void free_queen_memory()
+{
+    delete[] dpht; dpht = NULL;
+}
+
 // Initializes hashtables.
 // Call by overseer, not by workers.
 
 void init_worker_memory()
 {
-    // TODO: make this dependent on the machine
     ht = new std::atomic<conf_el>[ht_size];
     dpht = new std::atomic<dpht_el>[dpht_size];
 
@@ -267,7 +287,6 @@ void init_worker_memory()
     dpht_el x{0};
     assert(ht != NULL && dpht != NULL);
     
-    // initialize only your own part of the shared memory
     for (uint64_t i = 0; i < ht_size; i++)
     {
 	std::atomic_init(&ht[i], y);

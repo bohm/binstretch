@@ -118,7 +118,7 @@ int hashpush(const conf_el& new_el, uint64_t logpart, thread_attr *tat)
 	return INSERTED_RANDOMLY;
 }
 
-dpht_el is_dp_hashed(uint64_t hash, uint64_t logpart, thread_attr *tat, bool& found)
+maybebool is_dp_hashed(uint64_t hash, uint64_t logpart, thread_attr *tat)
 {
     //fprintf(stderr, "Bchash %" PRIu64 ", zero_last_bit %" PRIu64 " get_last_bit %" PRId8 " \n", bchash, zero_last_bit(bchash), get_last_bit(bchash));
 
@@ -132,8 +132,7 @@ dpht_el is_dp_hashed(uint64_t hash, uint64_t logpart, thread_attr *tat, bool& fo
 	if (candidate.hash() == 0)
 	{
 	    MEASURE_ONLY(tat->meas.dp_partial_nf++);
-	    found = false;
-	    return candidate;
+	    return MB_NOT_CACHED;
 	}
 	
 	// we have to continue in this case, because it might be stored after this element
@@ -144,8 +143,7 @@ dpht_el is_dp_hashed(uint64_t hash, uint64_t logpart, thread_attr *tat, bool& fo
 	if (candidate.match(hash))
 	{
 	    MEASURE_ONLY(tat->meas.dp_hit++);
-	    found = true;
-	    return candidate;
+	    return candidate.value();
 	}
 	
 	if (i == LINPROBE_LIMIT - 1)
@@ -160,9 +158,7 @@ dpht_el is_dp_hashed(uint64_t hash, uint64_t logpart, thread_attr *tat, bool& fo
 	    break;
 	}
     }
-
-    found = false;
-    return candidate;
+    return MB_NOT_CACHED;
 }
 
 template <int MODE> int hashpush_dp(uint64_t hash, const dpht_el& data, uint64_t logpart, thread_attr *tat)
@@ -290,6 +286,16 @@ void loadconf_hashpush(uint64_t loadhash, thread_attr *tat)
     tat->loadht[loadlogpart(loadhash)] = loadhash;
 }
 
+void dp_encache(const binconf &d, const bool feasibility, thread_attr *tat)
+{
+    MEASURE_ONLY(tat->meas.dp_insertions++);
+    uint64_t hash = d.dphash();
+    dpht_el ins;
+    ins.set(hash, feasibility, PERMANENT);
+    hashpush_dp<PERMANENT>(hash, ins, dplogpart(hash), tat);
+   
+}
+
 void dp_hashpush_feasible(const binconf *d, thread_attr *tat)
 {
     MEASURE_ONLY(tat->meas.dp_insertions++);
@@ -311,12 +317,20 @@ void dp_hashpush_infeasible(const binconf *d, thread_attr *tat)
     hashpush_dp<PERMANENT>(hash, ins, dplogpart(hash), tat);
 }
 
-dpht_el is_dp_hashed(const binconf *d, thread_attr *tat, bool &found)
+/*
+maybebool is_dp_cached(const binconf &d, thread_attr *tat)
 {
-    uint64_t hash = d->dphash();
-    dpht_el query;
-    query = is_dp_hashed(hash, dplogpart(hash), tat, found);
-    return query;
+    uint64_t hash = d.dphash();
+    return is_dp_hashed(hash, dplogpart(hash), tat);
 }
+*/
+
+maybebool dp_query(const binconf &d, thread_attr *tat)
+{
+    uint64_t hash = d.dphash();
+    return is_dp_hashed(hash, dplogpart(hash), tat);
+
+}
+
 
 #endif // _CACHING_HPP

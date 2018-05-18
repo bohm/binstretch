@@ -136,6 +136,19 @@ public:
 	}
 };
 
+// A sapling is an adversary vertex which will be processed by the parallel
+// minimax algorithm (its tree will be expanded).
+struct sapling
+{
+    adversary_vertex *root;
+    int regrow_level = 0;
+    std::string filename;
+};
+
+// stack for processing the saplings
+std::stack<sapling> sapling_stack;
+// a queue where one sapling can put its own tasks
+std::queue<sapling> regrow_queue;
 
 std::atomic<int> *tstatus;
 std::vector<int> tstatus_temporary;
@@ -322,13 +335,13 @@ template<int MODE> bool possible_task_mixed(adversary_vertex *v, int largest_ite
 {
 
     int target_depth = 0;
-    if (largest_item >= 3)
+    if (largest_item >= 5)
     {
 	target_depth = computation_root->depth + TASK_DEPTH;
 	// } else if (largest_item >= 3) {
 	//target_depth = computation_root->depth + TASK_DEPTH + 1;
     } else {
-	if (v->bc->totalload() >= TASK_LOAD)
+	if (v->bc->totalload() - computation_root->bc->totalload() >= TASK_LOAD)
 	{
 	    return true;
 	} else {

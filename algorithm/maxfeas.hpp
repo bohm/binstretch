@@ -20,8 +20,8 @@ bin_int maximum_feasible(binconf *b, const int depth, const bin_int cannot_send_
     print_binconf<DEBUG>(b);
     print<DEBUG>("\n"); 
 
-    bool data_found = false;
-    bin_int data = 0;
+    maybebool data = MB_NOT_CACHED;
+    tat->maxfeas_return_point = -1;
 
     bin_int lb = onlineloads_bestfit(tat->ol); // definitely can pack at least lb
     bin_int ub = std::min((bin_int) ((S*BINS) - b->totalload()), initial_ub); // definitely cannot send more than ub
@@ -36,7 +36,8 @@ bin_int maximum_feasible(binconf *b, const int depth, const bin_int cannot_send_
  
     if(cannot_send_less > ub)
     {
-	return INFEASIBLE;
+	tat->maxfeas_return_point = 0;
+	return MAX_INFEASIBLE;
     }
 
     // we would like to set lb = cannot_send_less, but our algorithm assumes
@@ -51,17 +52,19 @@ bin_int maximum_feasible(binconf *b, const int depth, const bin_int cannot_send_
 	// query lb first
 	if (!DISABLE_DP_CACHE)
 	{
-	    data = pack_and_query(b,lb,tat, data_found);
-	    if (data_found)
+	    data = pack_and_query(*b,lb,tat);
+	    if (!(data == MB_NOT_CACHED))
 	    {
-		if (data == FEASIBLE)
+		if (data == MB_FEASIBLE)
 		{
 		    lb_certainly_feasible = true;
-		} else // if (data == INFEASIBLE)
+		} else
 		{
 		    // nothing is feasible
-		    assert(data == INFEASIBLE);
-		    return INFEASIBLE;
+		    assert(data == MB_INFEASIBLE);
+		    tat->maxfeas_return_point = 1;
+
+		    return MAX_INFEASIBLE;
 		}
 	    }
 	}
@@ -70,6 +73,7 @@ bin_int maximum_feasible(binconf *b, const int depth, const bin_int cannot_send_
     if (lb == ub && lb_certainly_feasible)
     {
 	MEASURE_ONLY(tat->meas.onlinefit_sufficient++);
+	tat->maxfeas_return_point = 2;
 	return lb;
     }
 
@@ -79,18 +83,18 @@ bin_int maximum_feasible(binconf *b, const int depth, const bin_int cannot_send_
     {
 	if (!DISABLE_DP_CACHE)
 	{
-	    data = pack_and_query(b,mid,tat, data_found);
+	    data = pack_and_query(*b,mid,tat);
 	}
 	
-	if (data_found)
+	if (!(data == MB_NOT_CACHED))
 	{
-	    if (data == FEASIBLE)
+	    if (data == MB_FEASIBLE)
 	    {
 		lb = mid;
 		lb_certainly_feasible = true;
 	    } else // (data == INFEASIBLE)
 	    {
-		assert(data == INFEASIBLE);
+		assert(data == MB_INFEASIBLE);
 		ub = mid-1;
 	    }
 	} else {
@@ -102,6 +106,8 @@ bin_int maximum_feasible(binconf *b, const int depth, const bin_int cannot_send_
     
     if (!bestfit_needed && lb_certainly_feasible)
     {
+	tat->maxfeas_return_point = 3;
+	assert(lb == ub);
 	return lb; // lb == ub
     }
 
@@ -119,7 +125,7 @@ bin_int maximum_feasible(binconf *b, const int depth, const bin_int cannot_send_
 	fprintf(stderr, "dphash %" PRIu64 ", pack_and_query [%" PRIi16 ", %" PRIi16 "]:", b->dphash(), ub, initial_ub);
 	for (bin_int dbug = ub; dbug <= initial_ub; dbug++)
 	{
-	    fprintf(stderr, "%d,", pack_and_query(b,dbug,tat, data_found));
+	    fprintf(stderr, "%d,", pack_and_query(*b,dbug,tat));
 	}
 	fprintf(stderr, "\nhashes: [");
 	for (bin_int dbug = ub; dbug <= initial_ub; dbug++)
@@ -141,7 +147,7 @@ bin_int maximum_feasible(binconf *b, const int depth, const bin_int cannot_send_
 	    for(bin_int x = lb; x <= bestfit; x++)
 	    {
 		// disabling information about empty bins
-		pack_and_hash<PERMANENT>(b,x,0,FEASIBLE,tat);
+		pack_and_encache(*b,x,true,tat);
 		//pack_and_hash<PERMANENT>(b, x, empty_by_bestfit, FEASIBLE, tat);
 	    }
 	}
@@ -152,6 +158,7 @@ bin_int maximum_feasible(binconf *b, const int depth, const bin_int cannot_send_
     if (lb == ub && lb_certainly_feasible)
     {
 	MEASURE_ONLY(tat->meas.bestfit_sufficient++);
+	tat->maxfeas_return_point = 4;
 	return lb;
     }
 
@@ -163,17 +170,18 @@ bin_int maximum_feasible(binconf *b, const int depth, const bin_int cannot_send_
     {
 	if (!DISABLE_DP_CACHE)
 	{
-	    data = pack_and_query(b,mid,tat, data_found);
+	    data = pack_and_query(*b,mid,tat);
 	}
 
-	if (data_found)
+	if (! (data == MB_NOT_CACHED))
 	{ 
-	    if (data == FEASIBLE)
+	    if (data == MB_FEASIBLE)
 	    {
 		lb = mid;
 		lb_certainly_feasible = true;
 	    } else
 	    { // (data == INFEASIBLE)
+		assert(data == MB_INFEASIBLE);
 		ub = mid-1;
 	    }
 	} else
@@ -186,6 +194,7 @@ bin_int maximum_feasible(binconf *b, const int depth, const bin_int cannot_send_
 
     if (!dynprog_needed && lb_certainly_feasible)
     {
+	tat->maxfeas_return_point = 5;
 	return lb;
     }
 
@@ -193,7 +202,8 @@ bin_int maximum_feasible(binconf *b, const int depth, const bin_int cannot_send_
     // DISABLED: passing ub so that dynprog_max_dangerous takes care of pushing into the cache
     // DISABLED: maximum_feasible = dynprog_max_dangerous(b,lb,ub,tat);
     bin_int maximum_feasible = dynprog_max_safe(b,tat);
-    if (maximum_feasible == INFEASIBLE)
+   
+    if (maximum_feasible == MAX_INFEASIBLE)
     {
 	fprintf(stderr, "Maxfeas reports INFEASIBLE, sorting reports %" PRIi16 ":\n", dynprog_max_sorting(b,tat) );
 	print_binconf_stream(stderr, b);
@@ -201,7 +211,7 @@ bin_int maximum_feasible(binconf *b, const int depth, const bin_int cannot_send_
 	fprintf(stderr, "dphash %" PRIu64 ", pack_and_query [%" PRIi16 ", %" PRIi16 "]:", b->dphash(), ub, initial_ub);
 	for (bin_int dbug = ub; dbug <= initial_ub; dbug++)
 	{
-	    fprintf(stderr, "%d,", pack_and_query(b,dbug,tat, data_found));
+	    fprintf(stderr, "%d,", pack_and_query(*b,dbug,tat));
 	}
 	fprintf(stderr, "\nhashes: [");
 	for (bin_int dbug = ub; dbug <= initial_ub; dbug++)
@@ -213,7 +223,7 @@ bin_int maximum_feasible(binconf *b, const int depth, const bin_int cannot_send_
 
 	fprintf(stderr, "].\n");
 
-	assert(maximum_feasible != INFEASIBLE);
+	assert(maximum_feasible != MAX_INFEASIBLE);
     }
     // DEBUG
     /*  bin_int check = dynprog_max_sorting(b,tat);
@@ -246,20 +256,22 @@ bin_int maximum_feasible(binconf *b, const int depth, const bin_int cannot_send_
 	    }
 */
 
-	    pack_and_hash<PERMANENT>(b,i,0,INFEASIBLE,tat);
+	    pack_and_encache(*b,i,false,tat);
 	}
 		
 	for (bin_int i = lb; i <= maximum_feasible; i++)
 	{
-	    pack_and_hash<PERMANENT>(b,i,0,FEASIBLE,tat);
+	    pack_and_encache(*b,i,true,tat);
 	}
     }
 
     if (maximum_feasible < lb)
     {
-	return INFEASIBLE;
+	tat->maxfeas_return_point = 6;
+	return MAX_INFEASIBLE;
     }
  
+    tat->maxfeas_return_point = 7;
     return maximum_feasible;
 }
 

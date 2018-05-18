@@ -44,8 +44,11 @@ struct measure_attr
     uint64_t gsheurhit = 0;
     uint64_t gsheurmiss = 0;
     uint64_t tub = 0;
-    uint64_t large_item_hit = 0;
-    uint64_t large_item_miss = 0;
+    uint64_t large_item_hits = 0;
+    uint64_t large_item_calls = 0;
+    uint64_t five_nine_hits = 0;
+    uint64_t five_nine_calls = 0;
+
     uint64_t pruned_collision = 0; // only used by the queen
 
     void add(const measure_attr &other)
@@ -75,8 +78,8 @@ struct measure_attr
 	    gsheurhit += other.gsheurhit;
 	    gsheurmiss += other.gsheurmiss;
 	    //    uint64_t tub = 0;
-	    large_item_hit += other.large_item_hit;
-	    large_item_miss += other.large_item_miss;
+	    //large_item_hit += other.large_item_hit;
+	    //large_item_miss += other.large_item_miss;
 
 	    for (int i = 0; i < SITUATIONS; i++)
 	    {
@@ -127,9 +130,9 @@ struct measure_attr
 measure_attr g_meas;
 
 /* dynprog global variables and other attributes separate for each thread */
-struct thread_attr
+class thread_attr
 {
-
+public:
     // --- persistent thread attributes ---
     int monotonicity = 0;
 
@@ -161,10 +164,29 @@ struct thread_attr
     bool overdue_printed = false;
     bool current_overdue = false;
     uint64_t overdue_tasks = 0;
+    int regrow_level = 0;
 
     // --- measure attributes ---
     measure_attr meas; // measurements for one computation
     measure_attr g_meas; // persistent measurements per process
+
+    // --- debug ---
+    int maxfeas_return_point = -1;
+    thread_attr()
+	{
+	    oldloadqueue = new std::vector<loadconf>();
+	    oldloadqueue->reserve(LOADSIZE);
+	    newloadqueue = new std::vector<loadconf>();
+	    newloadqueue->reserve(LOADSIZE);
+	    loadht = new uint64_t[LOADSIZE];
+	}
+
+    ~thread_attr()
+	{
+	    delete oldloadqueue;
+	    delete newloadqueue;
+	    delete[] loadht;
+	}
 };
 
 #endif

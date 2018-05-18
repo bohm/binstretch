@@ -110,10 +110,11 @@ void write_solution(adversary_vertex *sapling, int solution, int monotonicity)
 }
 
 
+/
 // populates the directory with saplings from sequencing 
 void write_sapling_queue()
 {
-    std::stack<adversary_vertex *> sapling_copy = sapling_queue;
+    std::stack<sapling> sapling_copy = sapling_stack;
     assert(fs::is_directory("./sap/"));
     int counter = 0;
     char filename[20] = {0};

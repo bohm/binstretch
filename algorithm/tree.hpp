@@ -45,6 +45,9 @@ public:
     }
 };
 
+const int LARGE_ITEM = 1;
+const int FIVE_NINE = 2;
+
 class adversary_vertex
 {
 public:
@@ -56,7 +59,9 @@ public:
     bool task;
     bool visited; // we use this temporarily for DFS (e.g. for printing)
     bool heuristic = false;
-    int heuristic_item = 0;
+    bin_int heuristic_item = 0;
+    bin_int heuristic_multi = 0;
+    int heuristic_type = 0;
     int last_item = 1;
     int value;
     uint64_t id;
@@ -152,6 +157,8 @@ bool is_root(const binconf *b)
 // global map of all (adversary) vertices generated;
 std::map<llu, adversary_vertex*> generated_graph;
 
+// global root vertex
+adversary_vertex *root_vertex;
 
 /* tree variables (currently used in main thread only) */
 
@@ -160,10 +167,6 @@ struct tree_attr {
     algorithm_vertex *last_alg_v;
     adversary_vertex *last_adv_v;
 };
-
-// A sapling is an adversary vertex which will be processed by the parallel
-// minimax algorithm (its tree will be expanded).
-std::stack<adversary_vertex*> sapling_queue;
 
 /* Initialize the game tree with the information in the parameters. */
 
@@ -280,7 +283,13 @@ void print_compact_subtree(FILE* stream, adversary_vertex *v)
 	fprintf(stream, "task\"];\n");
     } else if(v->heuristic)
     {
-	fprintf(stream, "h:%d\"];\n", v->heuristic_item);
+	if (v->heuristic_type == LARGE_ITEM)
+	{
+	    fprintf(stream, "h:(%hd,%hd)\"];\n", v->heuristic_item, v->heuristic_multi);
+	} else if (v->heuristic_type == FIVE_NINE)
+	{
+	    fprintf(stream, "h:F/N\"];\n");
+	}
     } else 
     {
 	// print_compact_subtree currently works for only DAGs with outdegree 1 on alg vertices
@@ -401,7 +410,7 @@ template <int MODE> void remove_edge(adv_outedge *e)
 // Remove all outedges except the right path.
 template <int MODE> void remove_outedges_except(adversary_vertex *v, int right_item)
 {
-    adv_outedge *right_edge;
+    adv_outedge *right_edge = NULL;
     for (auto&& e: v->out)
     {
 	if (e->item != right_item)
@@ -413,6 +422,7 @@ template <int MODE> void remove_outedges_except(adversary_vertex *v, int right_i
 	}
     }
 
+    assert(right_edge != NULL);
     v->out.clear();
     v->out.push_back(right_edge);
     //v->out.remove_if( [right_item](adv_outedge *e){ return (e->item != right_item); } );
