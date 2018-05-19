@@ -43,7 +43,7 @@ bin_int bestfitalg(const binconf *orig)
 
 	    if (!packed)
 	    {
-		return INFEASIBLE;
+		return MAX_INFEASIBLE;
 	    }
 	}
     }
@@ -96,7 +96,7 @@ std::pair<bin_int, bin_int> bestfit_cut_interval(const binconf *orig)
 
 	    if (!packed)
 	    {
-		return std::make_pair(INFEASIBLE,0);
+		return std::make_pair(MAX_INFEASIBLE,0);
 	    }
 	}
     }

@@ -183,12 +183,12 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
 
     // finds the maximum feasible item that can be added using dyn. prog.
     bin_int old_max_feasible = tat->prev_max_feasible;
-    // check
-    // binconf bc_check; duplicate(&bc_check, b);
+    // checks
+    //binconf bc_check; duplicate(&bc_check, b);
     bin_int dp = MAXIMUM_FEASIBLE(b, depth, lower_bound, old_max_feasible, tat);
-    // assert(binconf_equal(&bc_check, b));
 
-    /* 
+    /*
+    assert(binconf_equal(&bc_check, b));
     bin_int value_check = dynprog_max_sorting(b,tat);
     if (value_check < lower_bound) { value_check = MAX_INFEASIBLE; }
     if (dp != value_check)
@@ -200,7 +200,7 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
 	assert(dp == value_check);
     }
     */
-
+    
     tat->prev_max_feasible = dp;
     int maximum_feasible = dp; // possibly also INFEASIBLE == -1
     int below = 1;

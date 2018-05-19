@@ -8,6 +8,79 @@
 
 #define MAXIMUM_FEASIBLE maximum_feasible
 
+// improves lb and ub via querying the cache
+std::tuple<bin_int, bin_int, bool> improve_bounds(binconf *b, bin_int lb, bin_int ub, thread_attr *tat, bool lb_certainly_feasible)
+{
+    if (DISABLE_DP_CACHE)
+    {
+	return std::make_tuple(lb, ub, lb_certainly_feasible);
+    }
+
+    maybebool data;
+    
+    for (bin_int q = ub; q >= lb; q--)
+    {
+	data = pack_and_query(*b,q,tat);
+	if (data != MB_NOT_CACHED)
+	{
+	    if (data == MB_FEASIBLE)
+	    {
+		lb = q;
+		lb_certainly_feasible = true;
+		break;
+	    } else // (data == INFEASIBLE)
+	    {
+		assert(data == MB_INFEASIBLE);
+		ub = q-1;
+	    }
+	}
+    }
+	
+    return std::make_tuple(lb,ub, lb_certainly_feasible);
+}
+
+// improves lb and ub via querying the cache
+std::tuple<bin_int, bin_int, bool> improve_bounds_binary(binconf *b, bin_int lb, bin_int ub, thread_attr *tat, bool lb_certainly_feasible)
+{
+
+    if (DISABLE_DP_CACHE)
+    {
+	return std::make_tuple(lb, ub, lb_certainly_feasible);
+    }
+
+    bin_int mid = (lb+ub+1)/2;
+    maybebool data;
+    while (lb <= ub)
+    {
+	data = pack_and_query(*b,mid,tat);
+	if (data != MB_NOT_CACHED)
+	{
+	    if (data == MB_FEASIBLE)
+	    {
+		lb = mid;
+		lb_certainly_feasible = true;
+
+		if (lb == ub)
+		{
+		    break;
+		}
+		
+	    } else
+	    {
+		assert(data == MB_INFEASIBLE);
+		ub = mid-1;
+	    }
+	} else
+	{
+	    // bestfit_needed = true;
+	    break;
+	}
+	mid = (lb+ub+1)/2;
+    }
+    return std::make_tuple(lb,ub,lb_certainly_feasible);
+}
+
+
 // uses onlinefit, bestfit and dynprog
 // initial_ub -- upper bound from above (previously maximum feasible item)
 // cannot_send_less -- a "lower" bound on what can be sent
@@ -77,42 +150,25 @@ bin_int maximum_feasible(binconf *b, const int depth, const bin_int cannot_send_
 	return lb;
     }
 
-    bin_int mid = (lb+ub+1)/2;
-    bool bestfit_needed = false;
-    while (lb < ub)
-    {
-	if (!DISABLE_DP_CACHE)
-	{
-	    data = pack_and_query(*b,mid,tat);
-	}
-	
-	if (!(data == MB_NOT_CACHED))
-	{
-	    if (data == MB_FEASIBLE)
-	    {
-		lb = mid;
-		lb_certainly_feasible = true;
-	    } else // (data == INFEASIBLE)
-	    {
-		assert(data == MB_INFEASIBLE);
-		ub = mid-1;
-	    }
-	} else {
-	    bestfit_needed = true;
-	    break;
-	}
-	mid = (lb+ub+1)/2;
-    }
-    
-    if (!bestfit_needed && lb_certainly_feasible)
+
+    std::tie(lb,ub,lb_certainly_feasible) =
+// 	improve_bounds_binary(b,lb,ub,tat, lb_certainly_feasible);
+	improve_bounds(b,lb,ub,tat,lb_certainly_feasible);
+
+    if (lb > ub)
     {
 	tat->maxfeas_return_point = 3;
-	assert(lb == ub);
-	return lb; // lb == ub
+	return MAX_INFEASIBLE;
     }
 
-    // still not solved:
+    if (lb == ub && lb_certainly_feasible)
+    {
+	tat->maxfeas_return_point = 8;
+	return lb;
+    }
 
+    // not solved yet, bestfit is needed:
+   
     bin_int bestfit;
     bestfit = bestfitalg(b);
     MEASURE_ONLY(tat->meas.bestfit_calls++);
@@ -163,40 +219,6 @@ bin_int maximum_feasible(binconf *b, const int depth, const bin_int cannot_send_
     }
 
     assert(lb <= ub);
-    
-    mid = (lb+ub+1)/2;
-    bool dynprog_needed = false;
-    while (lb < ub)
-    {
-	if (!DISABLE_DP_CACHE)
-	{
-	    data = pack_and_query(*b,mid,tat);
-	}
-
-	if (! (data == MB_NOT_CACHED))
-	{ 
-	    if (data == MB_FEASIBLE)
-	    {
-		lb = mid;
-		lb_certainly_feasible = true;
-	    } else
-	    { // (data == INFEASIBLE)
-		assert(data == MB_INFEASIBLE);
-		ub = mid-1;
-	    }
-	} else
-	{
-	    dynprog_needed = true;
-	    break;
-	}
-	mid = (lb+ub+1)/2;
-    }
-
-    if (!dynprog_needed && lb_certainly_feasible)
-    {
-	tat->maxfeas_return_point = 5;
-	return lb;
-    }
 
     MEASURE_ONLY(tat->meas.dynprog_calls++);
     // DISABLED: passing ub so that dynprog_max_dangerous takes care of pushing into the cache

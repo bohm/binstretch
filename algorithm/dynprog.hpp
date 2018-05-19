@@ -472,7 +472,7 @@ std::pair<bool, bin_int> dynprog_max_vector(const binconf *conf, const std::vect
 
 // --- Packing procedures. ---
 
-void add_item_inplace(binconf& h, const bin_int item, const bin_int multiplicity)
+void add_item_inplace(binconf& h, const bin_int item, const bin_int multiplicity = 1)
 {
     	h.dp_changehash(item, h.items[item], h.items[item] + multiplicity);
 	h.items[item] += multiplicity; // in some sense, it is an inconsistent state, since "item" is not packed in "h"
@@ -480,22 +480,12 @@ void add_item_inplace(binconf& h, const bin_int item, const bin_int multiplicity
 	h._totalload += multiplicity*item;
 }
 
-void add_item_inplace(binconf&h, const bin_int item)
-{
-    add_item_inplace(h,item,1);
-}
-
-void remove_item_inplace(binconf& h, const bin_int item, const bin_int multiplicity)
+void remove_item_inplace(binconf& h, const bin_int item, const bin_int multiplicity = 1)
 {
     	h._totalload -= multiplicity*item;
 	h._itemcount -= multiplicity;
 	h.items[item] -= multiplicity;
 	h.dp_changehash(item, h.items[item]+multiplicity, h.items[item]);
-}
-
-void remove_item_inplace(binconf&h, const bin_int item)
-{
-    remove_item_inplace(h,item,1);
 }
 
 bool compute_feasibility(const binconf &h, thread_attr *tat)
@@ -505,54 +495,22 @@ bool compute_feasibility(const binconf &h, thread_attr *tat)
 
 // dp_encache in caching.hpp
 
-
-void pack_and_encache(binconf &h, const bin_int item, const bool feasibility, thread_attr *tat)
-{
-    add_item_inplace(h,item);
-    dp_encache(h,feasibility,tat);
-    remove_item_inplace(h,item);
-}
-
-void pack_and_encache(binconf &h, const bin_int item, const bin_int multiplicity, const bool feasibility, thread_attr *tat)
+void pack_and_encache(binconf &h, const bin_int item, const bool feasibility, thread_attr *tat, const bin_int multiplicity = 1)
 {
     add_item_inplace(h,item,multiplicity);
     dp_encache(h,feasibility,tat);
     remove_item_inplace(h,item,multiplicity);
 }
 
-maybebool pack_and_query(binconf &h, const bin_int item, thread_attr *tat)
+maybebool pack_and_query(binconf &h, const bin_int item, thread_attr *tat, const bin_int multiplicity = 1)
 {
-    add_item_inplace(h,item);
+    add_item_inplace(h,item, multiplicity);
     maybebool ret = dp_query(h,tat);
-    remove_item_inplace(h,item);
+    remove_item_inplace(h,item, multiplicity);
     return ret;
 }
 
-maybebool pack_and_query(binconf &h, const bin_int item, const bin_int multiplicity, thread_attr *tat)
-{
-    add_item_inplace(h, item, multiplicity);
-    maybebool ret = dp_query(h,tat);
-    remove_item_inplace(h, item, multiplicity);
-    return ret;
-}
-
-bool pack_query_compute(binconf &h, const bin_int item, thread_attr *tat)
-{
-    add_item_inplace(h,item);
-    maybebool q = dp_query(h,tat);
-    bool ret;
-    if (q == MB_NOT_CACHED)
-    {
-	ret = compute_feasibility(h,tat);
-	dp_encache(h,ret,tat);
-    } else { // ret == FEASIBLE/INFEASIBLE
-        ret = q;
-    }
-    remove_item_inplace(h,item);
-    return ret;
-}
-
-bool pack_query_compute(binconf &h, const bin_int item, const bin_int multiplicity, thread_attr *tat)
+bool pack_query_compute(binconf &h, const bin_int item, thread_attr *tat, const bin_int multiplicity = 1)
 {
     add_item_inplace(h,item, multiplicity);
     maybebool q = dp_query(h,tat);
@@ -623,7 +581,7 @@ std::pair<bin_int,bin_int> large_item_heuristic(binconf *b, thread_attr *tat)
     
     for (std::pair<bin_int, bin_int>& el : required_items)
     {
-	query = pack_and_query(*b, el.first, el.second, tat);
+	query = pack_and_query(*b, el.first, tat, el.second);
 	if (query == MB_FEASIBLE)
 	{
 	    return el;
@@ -653,7 +611,7 @@ std::pair<bin_int,bin_int> large_item_heuristic(binconf *b, thread_attr *tat)
 		ret = required_items[i];
 		// do not break as we want to encache all computed results
 	    }
-	    pack_and_encache(*b, required_items[i].first, required_items[i].second, feasibilities[i], tat);
+	    pack_and_encache(*b, required_items[i].first, feasibilities[i], tat, required_items[i].second);
 	}
     }
 
@@ -673,7 +631,7 @@ bool five_nine_heuristic(binconf *b, thread_attr *tat)
     // uint64_t loadhash_start = b->loadhash;
     // uint64_t itemhash_start = b->itemhash;
 
-    bool nines_feasible = pack_query_compute(*b,9,BINS, tat);
+    bool nines_feasible = pack_query_compute(*b,9, tat, BINS);
     bool fourteen_feasible = false;
     if (nines_feasible)
     {
@@ -693,7 +651,7 @@ bool five_nine_heuristic(binconf *b, thread_attr *tat)
 	int fourteen_count = BINS - last_bin_five;
 	while (nines_feasible && fourteen_count >= 1 && last_bin_five <= BINS)
 	{
-	    fourteen_feasible = pack_query_compute(*b,14,fourteen_count, tat);
+	    fourteen_feasible = pack_query_compute(*b,14,tat,fourteen_count);
 	    //print<true>("Itemhash after pack 14: %" PRIu64 ".\n", b->itemhash);
 
 	    if (fourteen_feasible)
@@ -708,7 +666,7 @@ bool five_nine_heuristic(binconf *b, thread_attr *tat)
 	    add_item_inplace(*b,5);
 	    fives++;
 
-	    nines_feasible = pack_query_compute(*b,9,BINS, tat);
+	    nines_feasible = pack_query_compute(*b,9,tat,BINS);
 	}
 
 	// return b to normal

@@ -296,35 +296,6 @@ void dp_encache(const binconf &d, const bool feasibility, thread_attr *tat)
    
 }
 
-void dp_hashpush_feasible(const binconf *d, thread_attr *tat)
-{
-    MEASURE_ONLY(tat->meas.dp_insertions++);
-
-    uint64_t hash = d->dphash();
-    dpht_el ins;
-    ins.set(hash, FEASIBLE, PERMANENT);
-    hashpush_dp<PERMANENT>(hash, ins, dplogpart(hash), tat);
-}
-
-void dp_hashpush_infeasible(const binconf *d, thread_attr *tat)
-{
-    MEASURE_ONLY(tat->meas.dp_insertions++);
-
-    // we currently do not use 1's and S'es in the feasibility queries
-    uint64_t hash = d->dphash();
-    dpht_el ins;
-    ins.set(hash, INFEASIBLE, PERMANENT);
-    hashpush_dp<PERMANENT>(hash, ins, dplogpart(hash), tat);
-}
-
-/*
-maybebool is_dp_cached(const binconf &d, thread_attr *tat)
-{
-    uint64_t hash = d.dphash();
-    return is_dp_hashed(hash, dplogpart(hash), tat);
-}
-*/
-
 maybebool dp_query(const binconf &d, thread_attr *tat)
 {
     uint64_t hash = d.dphash();

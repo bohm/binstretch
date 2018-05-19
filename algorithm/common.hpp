@@ -30,15 +30,15 @@ typedef int16_t bin_int;
 const bool PROGRESS = true; // print progress
 const bool MEASURE = true; // collect and print measurements
 
-const bool REGROW = true;
+const bool REGROW = false;
 const int REGROW_LIMIT = 1;
 
-const bool OUTPUT = true;
+const bool OUTPUT = false;
 const bool ONLY_ONE_PASS = false;
 
 // log tasks which run at least some amount of time
-const bool TASKLOG = false;
-const long double TASKLOG_THRESHOLD = 10.0; // in seconds
+const bool TASKLOG = true;
+const long double TASKLOG_THRESHOLD = 30.0; // in seconds
 
 // constants related to the logging of solved saplings
 const bool SEQUENCE_SAPLINGS = true; // whether to compute initial sequencing (or load it from files)
@@ -52,20 +52,20 @@ const bin_int S = 14;
 // target goal of the online bin stretching problem
 const bin_int R = 19;
 // Change this number or the selected number of bins.
-const bin_int BINS = 6;
+const bin_int BINS = 9;
 
 // If you want to generate a specific lower bound, you can create an initial bin configuration here.
 // You can also insert an initial sequence here.
-const std::vector<bin_int> INITIAL_LOADS = {};
-const std::vector<bin_int> INITIAL_ITEMS = {};
-//const std::vector<bin_int> INITIAL_LOADS = {8,1,1,1,1,};
-//const std::vector<bin_int> INITIAL_ITEMS = {7,0,0,0,1};
+//const std::vector<bin_int> INITIAL_LOADS = {};
+//const std::vector<bin_int> INITIAL_ITEMS = {};
+const std::vector<bin_int> INITIAL_LOADS = {8,1,1,1,1,};
+const std::vector<bin_int> INITIAL_ITEMS = {7,0,0,0,1};
 // You can also insert an initial sequence here, and the adversary will use it as a predefined start.
 
-const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1};
+//const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1,1,1};
 //const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1,1,1,1,1};
 //const std::vector<bin_int> INITIAL_SEQUENCE = {5};
-//const std::vector<bin_int> INITIAL_SEQUENCE = {};
+const std::vector<bin_int> INITIAL_SEQUENCE = {};
 
 const int FIRST_PASS = 0;
 // constants used for good situations
@@ -74,8 +74,8 @@ const int ALPHA = (RMOD-S);
 
 
 // secondary booleans, controlling some heuristics
-const bool LARGE_ITEM_ACTIVE_EVERYWHERE = true;
-const bool FIVE_NINE_ACTIVE_EVERYWHERE = true;
+const bool LARGE_ITEM_ACTIVE_EVERYWHERE = false;
+const bool FIVE_NINE_ACTIVE_EVERYWHERE = false;
 // Dplog, conflog -- bitwise length of indices of hash tables and lock tables.
 // ht_size = 2^conflog, dpht_size = 2^dplog.
 // Dplog, conflog, dpsize and confsize are now set at runtime.
@@ -100,8 +100,8 @@ const int DEFAULT_DP_SIZE = 100000;
 const int BESTFIT_THRESHOLD = (1*S)/10;
 
 // a bound on total load of a configuration before we split it into a task
-const int TASK_LOAD = 5;
-const int TASK_DEPTH = 3;
+const int TASK_LOAD = 14;
+const int TASK_DEPTH = 4;
 //const int TASK_DEPTH = S > 41 ? 3 : 4;
 //const int TASK_DEPTH = S > 41 ? 2 : 3;
 #define POSSIBLE_TASK possible_task_mixed
@@ -139,12 +139,6 @@ const int POSTPONED = 2;
 const int TERMINATING = 3;
 const int OVERDUE = 4;
 const int IRRELEVANT = 5;
-
-// Change: we do not use UNKNOWN anymore.
-const bin_int FEASIBLE = 1;
-const bin_int INFEASIBLE = 0;
-
-const bin_int MAX_INFEASIBLE = -1;
 
 const int GENERATING = 1;
 const int EXPLORING = 2;
@@ -191,6 +185,9 @@ typedef int8_t maybebool;
 const maybebool MB_INFEASIBLE = 0;
 const maybebool MB_FEASIBLE = 1;
 const maybebool MB_NOT_CACHED = 2;
+
+// if a maximalization procedure gets an infeasible configuration, it returns MAX_INFEASIBLE.
+const bin_int MAX_INFEASIBLE = -1;
 
 
 // aliases for measurements of good situations
