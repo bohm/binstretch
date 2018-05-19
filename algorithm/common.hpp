@@ -38,7 +38,7 @@ const bool ONLY_ONE_PASS = false;
 
 // log tasks which run at least some amount of time
 const bool TASKLOG = true;
-const long double TASKLOG_THRESHOLD = 30.0; // in seconds
+const long double TASKLOG_THRESHOLD = 60.0; // in seconds
 
 // constants related to the logging of solved saplings
 const bool SEQUENCE_SAPLINGS = true; // whether to compute initial sequencing (or load it from files)
@@ -67,7 +67,7 @@ const std::vector<bin_int> INITIAL_ITEMS = {7,0,0,0,1};
 //const std::vector<bin_int> INITIAL_SEQUENCE = {5};
 const std::vector<bin_int> INITIAL_SEQUENCE = {};
 
-const int FIRST_PASS = 0;
+const int FIRST_PASS = 1;
 // constants used for good situations
 const int RMOD = (R-1);
 const int ALPHA = (RMOD-S);
@@ -188,6 +188,8 @@ const maybebool MB_NOT_CACHED = 2;
 
 // if a maximalization procedure gets an infeasible configuration, it returns MAX_INFEASIBLE.
 const bin_int MAX_INFEASIBLE = -1;
+// when a heuristic is unable to pack (but the configuration still may be feasible)
+const bin_int MAX_UNABLE_TO_PACK = -2;
 
 
 // aliases for measurements of good situations

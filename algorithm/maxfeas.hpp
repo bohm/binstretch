@@ -151,10 +151,14 @@ bin_int maximum_feasible(binconf *b, const int depth, const bin_int cannot_send_
     }
 
 
-    std::tie(lb,ub,lb_certainly_feasible) =
+    bin_int cache_lb, cache_ub;
+    std::tie(cache_lb,cache_ub,lb_certainly_feasible) =
 // 	improve_bounds_binary(b,lb,ub,tat, lb_certainly_feasible);
 	improve_bounds(b,lb,ub,tat,lb_certainly_feasible);
 
+    // lb may change further but we store the cache results so that we push into
+    // the cache the new results we have learned
+    lb = cache_lb; ub = cache_ub; 
     if (lb > ub)
     {
 	tat->maxfeas_return_point = 3;
@@ -225,63 +229,14 @@ bin_int maximum_feasible(binconf *b, const int depth, const bin_int cannot_send_
     // DISABLED: maximum_feasible = dynprog_max_dangerous(b,lb,ub,tat);
     bin_int maximum_feasible = dynprog_max_safe(b,tat);
    
-    if (maximum_feasible == MAX_INFEASIBLE)
-    {
-	fprintf(stderr, "Maxfeas reports INFEASIBLE, sorting reports %" PRIi16 ":\n", dynprog_max_sorting(b,tat) );
-	print_binconf_stream(stderr, b);
-	fprintf(stderr, "lb %" PRIi16 ", ub %" PRIi16 ", bestfit: %" PRIi16 ", maxfeas: %" PRIi16 ", initial_ub %" PRIi16".\n", lb, ub, bestfit, dynprog_max_safe(b,tat), initial_ub);
-	fprintf(stderr, "dphash %" PRIu64 ", pack_and_query [%" PRIi16 ", %" PRIi16 "]:", b->dphash(), ub, initial_ub);
-	for (bin_int dbug = ub; dbug <= initial_ub; dbug++)
-	{
-	    fprintf(stderr, "%d,", pack_and_query(*b,dbug,tat));
-	}
-	fprintf(stderr, "\nhashes: [");
-	for (bin_int dbug = ub; dbug <= initial_ub; dbug++)
-	{
-	    bin_int dbug_items = b->items[dbug];
-	    // print itemhash as if there was one more item of type dbug
-	    fprintf(stderr, "%" PRIu64 ", ", b->dphash() ^ Zi[dbug*(MAX_ITEMS+1) + dbug_items] ^  Zi[dbug*(MAX_ITEMS+1) + dbug_items+1]);
-	}
-
-	fprintf(stderr, "].\n");
-
-	assert(maximum_feasible != MAX_INFEASIBLE);
-    }
-    // DEBUG
-    /*  bin_int check = dynprog_max_sorting(b,tat);
-
-    if(check != maximum_feasible)
-    {
-	fprintf(stderr, "Sorting %" PRIi16 " and safe %" PRIi16 " disagree:", check, maximum_feasible);
-	print_binconf_stream(stderr, b);
-	assert(check == maximum_feasible);
-    }
-    */
-    
     if(!DISABLE_DP_CACHE)
     {
-	for (bin_int i = maximum_feasible+1; i <= ub; i++)
+	for (bin_int i = maximum_feasible+1; i <= cache_ub; i++)
 	{
-/*	    const uint64_t suspect_hash = 7654491068870699107LLU;
-	    bin_int dbug_items = b->items[i];
-	    if (b->dphash() ^ Zi[i*(MAX_ITEMS+1) + dbug_items] ^  Zi[i*(MAX_ITEMS+1) + dbug_items+1] == suspect_hash)
-	    {
-		fprintf(stderr, "Suspect hash pushed into cache as infeasible with item %" PRIi16 ", initial and binconf:", i);
-		print_binconf_stream(stderr, b);
-		fprintf(stderr, "\nlb %" PRIi16 ", ub %" PRIi16 ", bestfit: %" PRIi16 ", maxfeas: %" PRIi16 ", initial_ub %" PRIi16".\n", lb, ub, bestfit, dynprog_max_safe(b,tat), initial_ub);
-		fprintf(stderr, "dphash %" PRIu64 ", pack_and_query [%" PRIi16 ", %" PRIi16 "]:", b->dphash(), ub, initial_ub);
-		for (bin_int dbug = ub; dbug <= initial_ub; dbug++)
-		{
-		    fprintf(stderr, "%d,", pack_and_query(b,dbug,tat));
-		}
-		fprintf(stderr, "\n");
-	    }
-*/
-
 	    pack_and_encache(*b,i,false,tat);
 	}
 		
-	for (bin_int i = lb; i <= maximum_feasible; i++)
+	for (bin_int i = cache_lb; i <= maximum_feasible; i++)
 	{
 	    pack_and_encache(*b,i,true,tat);
 	}

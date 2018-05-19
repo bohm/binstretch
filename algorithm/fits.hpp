@@ -43,7 +43,7 @@ bin_int bestfitalg(const binconf *orig)
 
 	    if (!packed)
 	    {
-		return MAX_INFEASIBLE;
+		return MAX_UNABLE_TO_PACK;
 	    }
 	}
     }

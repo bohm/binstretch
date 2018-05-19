@@ -56,14 +56,15 @@ public:
     std::list<alg_outedge*> in; // previous algorithmic states
 
     int depth; // depth increases only in adversary steps
-    bool task;
-    bool visited; // we use this temporarily for DFS (e.g. for printing)
+    bool task = false;
+    // bool sapling = false;
+    bool visited = false; // we use this temporarily for DFS (e.g. for printing)
     bool heuristic = false;
     bin_int heuristic_item = 0;
     bin_int heuristic_multi = 0;
     int heuristic_type = 0;
     int last_item = 1;
-    int value;
+    int value = POSTPONED;
     uint64_t id;
     int expansion_depth = 0;
     
@@ -71,12 +72,8 @@ public:
     {
 	this->bc = new binconf;
 	assert(this->bc != NULL);
-	//init(this->bc);
-	this->task = false;
-	this->visited = false;
 	this->id = ++global_vertex_counter;
 	this->depth = depth;
-	this->value = POSTPONED;
 	this->last_item = last_item;
 	duplicate(this->bc, b);
 	//print<DEBUG>("Vertex %" PRIu64 "created.\n", this->id);
@@ -441,4 +438,4 @@ void purge_sapling(adversary_vertex *sapling)
     sapling->last_item = 1; // TODO: it doesn't clearly state that last item should be ignored.
     remove_outedges<CLEANUP>(sapling);
 }
-#endif
+#end
