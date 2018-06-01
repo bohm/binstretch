@@ -75,17 +75,19 @@ int sequencing_adversary(binconf *b, unsigned int depth, thread_attr *tat, tree_
 
 
     // one heuristic specific for 19/14
+    /*
     if (S == 14 && R == 19 && five_nine_heuristic(b,tat))
     {
 	outat->last_adv_v->value = 0;
 	outat->last_adv_v->heuristic = true;
 	outat->last_adv_v->heuristic_type = FIVE_NINE;
 	return 0;
-    }
-
+	}*/
+    
 /* Large items heuristic: if 2nd or later bin is at least R-S, check if enough large items
        can be sent so that this bin (or some other) hits R. */
 
+    /*
     bin_int lih, mul;
     std::tie(lih,mul) = large_item_heuristic(b, tat);
     if (lih != MAX_INFEASIBLE)
@@ -99,7 +101,7 @@ int sequencing_adversary(binconf *b, unsigned int depth, thread_attr *tat, tree_
 	}
 	return 0;
     }
-
+    */
    
     current_adversary = outat->last_adv_v;
     previous_algorithm = outat->last_alg_v;

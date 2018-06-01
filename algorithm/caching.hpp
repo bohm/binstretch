@@ -118,7 +118,9 @@ int hashpush(const conf_el& new_el, uint64_t logpart, thread_attr *tat)
 	return INSERTED_RANDOMLY;
 }
 
-maybebool is_dp_hashed(uint64_t hash, uint64_t logpart, thread_attr *tat)
+const dpht_el DPHT_NOT_FOUND = {0};
+
+dpht_el is_dp_hashed(uint64_t hash, uint64_t logpart, thread_attr *tat)
 {
     //fprintf(stderr, "Bchash %" PRIu64 ", zero_last_bit %" PRIu64 " get_last_bit %" PRId8 " \n", bchash, zero_last_bit(bchash), get_last_bit(bchash));
 
@@ -132,7 +134,7 @@ maybebool is_dp_hashed(uint64_t hash, uint64_t logpart, thread_attr *tat)
 	if (candidate.hash() == 0)
 	{
 	    MEASURE_ONLY(tat->meas.dp_partial_nf++);
-	    return MB_NOT_CACHED;
+	    return DPHT_NOT_FOUND;
 	}
 	
 	// we have to continue in this case, because it might be stored after this element
@@ -143,7 +145,7 @@ maybebool is_dp_hashed(uint64_t hash, uint64_t logpart, thread_attr *tat)
 	if (candidate.match(hash))
 	{
 	    MEASURE_ONLY(tat->meas.dp_hit++);
-	    return candidate.value();
+	    return DPHT_NOT_FOUND;
 	}
 	
 	if (i == LINPROBE_LIMIT - 1)
@@ -158,10 +160,10 @@ maybebool is_dp_hashed(uint64_t hash, uint64_t logpart, thread_attr *tat)
 	    break;
 	}
     }
-    return MB_NOT_CACHED;
+    return DPHT_NOT_FOUND;
 }
 
-template <int MODE> int hashpush_dp(uint64_t hash, const dpht_el& data, uint64_t logpart, thread_attr *tat)
+int hashpush_dp(uint64_t hash, const dpht_el& data, uint64_t logpart, thread_attr *tat)
 {
 	dpht_el candidate;
 	for (int i = 0; i< LINPROBE_LIMIT; i++)
@@ -286,22 +288,46 @@ void loadconf_hashpush(uint64_t loadhash, thread_attr *tat)
     tat->loadht[loadlogpart(loadhash)] = loadhash;
 }
 
-void dp_encache(const binconf &d, const bool feasibility, thread_attr *tat)
+
+// Note: a configuration can be infeasible even when 1's and S'es are ignored;
+// in the same sense a configuration can become infeasible once they are filled in.
+
+void dp_encache(const binconf &d, const int16_t most_empty, thread_attr *tat)
 {
     MEASURE_ONLY(tat->meas.dp_insertions++);
-    uint64_t hash = d.dphash();
+    uint64_t hash = d.dp_shorthash();
     dpht_el ins;
-    ins.set(hash, feasibility, PERMANENT);
-    hashpush_dp<PERMANENT>(hash, ins, dplogpart(hash), tat);
-   
+    if (most_empty == DPHT_INFEASIBLE)
+    {
+	ins.set_infeasible(hash);
+    } else
+    {
+	ins.set(hash, most_empty);
+    }
+    hashpush_dp(hash, ins, dplogpart(hash), tat);
 }
 
+
+dpht_el dp_query(const binconf &d, thread_attr *tat)
+{
+     uint64_t hash = d.dp_shorthash();
+     return is_dp_hashed(hash, dplogpart(hash, tat));
+}
+
+/*
 maybebool dp_query(const binconf &d, thread_attr *tat)
 {
     uint64_t hash = d.dphash();
-    return is_dp_hashed(hash, dplogpart(hash), tat);
+    maybebool ret;
+    if (is_dp_hashed(hash, dplogpart(hash), tat).hash() == 0)
+    {
+	return MB_NOT_CACHED;
+    } else
+    {
+	return dpht_el.value();
+    }
 
 }
-
+*/
 
 #endif // _CACHING_HPP

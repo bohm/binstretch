@@ -40,7 +40,7 @@ std::tuple<bin_int, bin_int, bool> improve_bounds(binconf *b, bin_int lb, bin_in
 }
 
 // improves lb and ub via querying the cache
-std::tuple<bin_int, bin_int, bool> improve_bounds_binary(binconf *b, bin_int lb, bin_int ub, thread_attr *tat, bool lb_certainly_feasible)
+/* std::tuple<bin_int, bin_int, bool> improve_bounds_binary(binconf *b, bin_int lb, bin_int ub, thread_attr *tat, bool lb_certainly_feasible)
 {
 
     if (DISABLE_DP_CACHE)
@@ -79,7 +79,7 @@ std::tuple<bin_int, bin_int, bool> improve_bounds_binary(binconf *b, bin_int lb,
     }
     return std::make_tuple(lb,ub,lb_certainly_feasible);
 }
-
+*/
 
 // uses onlinefit, bestfit and dynprog
 // initial_ub -- upper bound from above (previously maximum feasible item)
@@ -202,6 +202,8 @@ bin_int maximum_feasible(binconf *b, const int depth, const bin_int cannot_send_
     
     if (bestfit >= lb)
     {
+	// temporarily disabling, as bestfit cannot push things into the cache now
+	/*
 	if (!DISABLE_DP_CACHE)
 	{
 	    for(bin_int x = lb; x <= bestfit; x++)
@@ -211,6 +213,8 @@ bin_int maximum_feasible(binconf *b, const int depth, const bin_int cannot_send_
 		//pack_and_hash<PERMANENT>(b, x, empty_by_bestfit, FEASIBLE, tat);
 	    }
 	}
+	*/
+	
 	lb = bestfit;
 	lb_certainly_feasible = true;
     }
@@ -225,22 +229,25 @@ bin_int maximum_feasible(binconf *b, const int depth, const bin_int cannot_send_
     assert(lb <= ub);
 
     MEASURE_ONLY(tat->meas.dynprog_calls++);
-    // DISABLED: passing ub so that dynprog_max_dangerous takes care of pushing into the cache
-    // DISABLED: maximum_feasible = dynprog_max_dangerous(b,lb,ub,tat);
-    bin_int maximum_feasible = dynprog_max_safe(b,tat);
-   
+    // DISABLED: bin_int maximum_feasible = dynprog_max_safe(b,tat);
+    bin_int most_empty, associated_max;
+    std::tie(most_empty, associated_max) = dynprog_max_shortened(*b,tat);
+
     if(!DISABLE_DP_CACHE)
     {
 	for (bin_int i = maximum_feasible+1; i <= cache_ub; i++)
 	{
-	    pack_and_encache(*b,i,false,tat);
+	    pack_and_encache(*b, i, most_empty, associated_max, tat);
 	}
 		
 	for (bin_int i = cache_lb; i <= maximum_feasible; i++)
 	{
-	    pack_and_encache(*b,i,true,tat);
+	    pack_and_encache(*b, i, most_empty, associated_max, tat);
 	}
     }
+
+
+    bin_int maximum_feasible = finalize_and_max(*b,most_empty, associated_max);
 
     if (maximum_feasible < lb)
     {

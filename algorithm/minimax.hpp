@@ -88,6 +88,7 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
     }
 
     // one heuristic specific for 19/14
+    /*
     if (S == 14 && R == 19 && (MODE == GENERATING || FIVE_NINE_ACTIVE_EVERYWHERE))
     {
 	bool fnh = five_nine_heuristic(b,tat);
@@ -104,8 +105,10 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
 	    return 0;
 	}
     }
-
+    */
+    
     //if (true)
+    /*
     if (MODE == GENERATING || LARGE_ITEM_ACTIVE_EVERYWHERE)
     {
 	bin_int lih, mul;
@@ -126,8 +129,8 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
 	    return 0;
 	}
     }
-
-
+    */
+    
     if (MODE == GENERATING)
     {
 	current_adversary = outat->last_adv_v;

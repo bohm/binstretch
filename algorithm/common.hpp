@@ -67,7 +67,7 @@ const std::vector<bin_int> INITIAL_ITEMS = {7,0,0,0,1};
 //const std::vector<bin_int> INITIAL_SEQUENCE = {5};
 const std::vector<bin_int> INITIAL_SEQUENCE = {};
 
-const int FIRST_PASS = 1;
+const int FIRST_PASS = 0;
 // constants used for good situations
 const int RMOD = (R-1);
 const int ALPHA = (RMOD-S);
@@ -190,7 +190,8 @@ const maybebool MB_NOT_CACHED = 2;
 const bin_int MAX_INFEASIBLE = -1;
 // when a heuristic is unable to pack (but the configuration still may be feasible)
 const bin_int MAX_UNABLE_TO_PACK = -2;
-
+const bin_int MAX_NOT_CACHED = -3;
+const bin_int DPHT_INFEASIBLE = -1;
 
 // aliases for measurements of good situations
 const int SITUATIONS = 10;

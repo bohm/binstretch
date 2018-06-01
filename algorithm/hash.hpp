@@ -146,40 +146,53 @@ public:
 
 };
 
-class dpht_el_128
+// does not store 
+class dpht_el_shortened
 {
 public:
     uint64_t _hash;
-    int16_t _feasible;
     int16_t _empty_bins;
     int16_t _permanence;
-    int16_t _unused; //align to 128 bit.
+    int32_t _unused; // align to 128 bit.
 
-    inline void set(uint64_t hash, int16_t feasible, int16_t permanence)
+    inline void set(uint64_t hash, int16_t empty_bins)
 	{
 	    _hash = hash;
-	    _feasible = feasible;
-	    _permanence = permanence;
-	    _empty_bins = 0;
-	    _unused = 0;
+	    _permanence = 0;
+	    _empty_bins = empty_bins;
+	    // _unused = 0;
+	}
+
+    inline void set_infeasible(uint64_t hash)
+	{
+	    _hash = hash;
+	    _empty_bins = -1;
+	    _permanence = 0;
+	    // _unused = 0;
+	}
+
+    inline bool feasible() const
+	{
+	    return (_emptybins != -1);
 	}
     
-    inline bin_int value() const
-	{
-	    return _feasible;
-	}
     inline uint64_t hash() const
 	{
 	    return _hash;
 	}
     inline bool empty() const
 	{
-	    return _hash == 0;
+	    return (_hash == 0);
 	}
 
     inline bool match(const uint64_t& hash) const
 	{
 	    return (_hash == hash);
+	}
+
+    inline bool empty() const
+	{
+	    return _hash == 0;
 	}
     inline bool removed() const
 	{
@@ -193,18 +206,16 @@ public:
 
     inline void erase()
 	{
-	    _hash = 0;
+	    _hash = 0; _empty_bins = 0;
 	}
 };
 
-// typedef dpht_el_128 dpht_el;
-typedef dpht_el_64 dpht_el;
-// typedef dpht_el_64dangerous dpht_el;
+typedef dpht_el_shortened dpht_el;
+// typedef dpht_el_64 dpht_el;
 
 // generic hash table (for configurations)
 std::atomic<conf_el> *ht = NULL;
-std::atomic<dpht_el> *dpht = NULL; // = new std::atomic<dpht_el_extended>[BC_HASHSIZE];
-//void *baseptr, *dpbaseptr;
+std::atomic<dpht_el> *dpht = NULL;
 
 // DEBUG: Mersenne twister
 

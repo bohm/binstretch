@@ -366,6 +366,146 @@ bin_int dynprog_max_safe(const binconf *conf, thread_attr *tat)
     return dynprog_max_safe(*conf, tat);
 }
 
+maybebool finalize_and_check(const binconf &conf, const dpht_el entry)
+{
+    if (entry.empty())
+    {
+	return MB_NOT_CACHED;
+    }
+
+    if (!entry.feasible())
+    {
+	return false;
+    }
+	
+    if (conf.items[S] > entry._empty_bins)
+    {
+	return false;
+    }
+
+    return (conf.totalload() <= S*BINS); // should be true almost all the time
+}
+
+// Dynprog_max which does not pack items of size S and 1.
+// Returns: 1) max # of empty bins; equal to DPHT_INFEASIBLE (-1) when infeasible.
+//          2) largest item in a non-empty bin for a conf. of that many empty bins.
+
+std::pair<bin_int, bin_int> dynprog_max_shortened(const binconf &conf, thread_attr *tat)
+{
+    tat->newloadqueue->clear();
+    tat->oldloadqueue->clear();
+    std::vector<loadconf> *poldq = tat->oldloadqueue;
+    std::vector<loadconf> *pnewq = tat->newloadqueue;
+    memset(tat->loadht, 0, LOADSIZE*8);
+
+    uint64_t salt = rand_64bit();
+    int phase = 0;
+    bin_int most_empty_bins = DPHT_INFEASIBLE;
+    bin_int associated_max = 0;
+    bin_int smallest_item = 0;
+
+    if (conf.itemcount() - conf.items[S] - conf.items[1] == 0)
+    {
+	return std::make_pair(BINS,0);
+    }
+    
+    for (int i = 2; i <= S-1; i++)
+    {
+	if (conf.items[i] > 0)
+	{
+	    smallest_item = i;
+	    break;
+	}
+    }
+
+    // smallest_item is now non-empty by definition
+    
+    for (bin_int size=S-1; size>=2; size--)
+    {
+	bin_int k = conf.items[size];
+	while (k > 0)
+	{
+	    phase++;
+	    if (phase == 1) {
+
+		loadconf first;
+		for (int i = 1; i <= BINS; i++)
+		{
+		    first.loads[i] = 0;
+		}	
+		first.hashinit();
+		first.assign_and_rehash(size, 1);
+		pnewq->push_back(first);
+
+		if(size == smallest_item && k == 1)
+		{
+		    return std::make_pair(BINS-1, S - first.loads[0]);
+		}
+	    } else {
+		MEASURE_ONLY(tat->meas.largest_queue_observed = std::max(tat->meas.largest_queue_observed, poldq->size()));
+		for (loadconf& tuple: *poldq)
+		{
+		    for (int i = BINS; i >= 1; i--)
+		    {
+			// same as with Algorithm, we can skip when sequential bins have the same load
+			if (i < BINS && tuple.loads[i] == tuple.loads[i + 1])
+			{
+			    continue;
+			}
+			
+			if (tuple.loads[i] + size > S) {
+			    break;
+			}
+
+			int newpos = tuple.assign_and_rehash(size, i);
+			
+			if(! loadconf_hashfind(tuple.loadhash ^ salt, tat))
+			{
+			    if(size == smallest_item && k == 1)
+			    {
+				// this can be improved by sorting
+				int first_nonempty = BINS;
+				for (; first_nonempty >= 1; first_nonempty--)
+				{
+				    if (conf.loads[first_nonempty] > 0)
+				    {
+					break;
+				    }
+				}
+				if (BINS-first_nonempty > most_empty_bins)
+				{
+				    most_empty_bins = BINS-first_nonempty;
+				    associated_max = S - conf.loads[first_nonempty];
+				} else if (BINS-first_nonempty == most_empty_bins)
+				{
+				    associated_max = std::max(associated_max,
+							      (bin_int) (S - conf.loads[first_nonempty]));
+				}
+			    }
+
+			    pnewq->push_back(tuple);
+			    loadconf_hashpush(tuple.loadhash ^ salt, tat);
+			}
+
+		        tuple.unassign_and_rehash(size, newpos);
+		    }
+		}
+		if (pnewq->size() == 0)
+		{
+		    return std::make_pair(DPHT_INFEASIBLE, 0);
+		}
+	    }
+
+	    std::swap(poldq, pnewq);
+	    pnewq->clear();
+	    k--;
+	}
+    }
+    
+    return std::make_pair(most_empty_bins, associated_max);
+}
+
+
 // check if any of the choices in the vector is feasible while doing dynamic programming
 // first index of vector -- size of item, second index -- count of items
 std::pair<bool, bin_int> dynprog_max_vector(const binconf *conf, const std::vector<std::pair<bin_int,bin_int> >& vec,
@@ -488,24 +628,41 @@ void remove_item_inplace(binconf& h, const bin_int item, const bin_int multiplic
 	h.dp_changehash(item, h.items[item]+multiplicity, h.items[item]);
 }
 
-bool compute_feasibility(const binconf &h, thread_attr *tat)
-{
-    return (dynprog_max_safe(h,tat) != MAX_INFEASIBLE);
-}
 
 // dp_encache in caching.hpp
 
-void pack_and_encache(binconf &h, const bin_int item, const bool feasibility, thread_attr *tat, const bin_int multiplicity = 1)
+// packs an item and inserts feasibility (or infeasibility) into the cache.
+// can only be called after max shortened, because otherwise we might not be sure
+// whether the packing is feasible.
+
+void pack_and_encache(binconf &h, const bin_int item, const bin_int most_empty, const bin_int associated_max, thread_attr *tat, const bin_int multiplicity = 1)
 {
     add_item_inplace(h,item,multiplicity);
-    dp_encache(h,feasibility,tat);
+
+    // if the item fits into the associated max, then the whole situation is feasible
+    // with the same amount of empty bins.
+    if (item <= associated_max)
+    {
+	dp_encache(h, most_empty, tat);
+    } else
+    {
+	// and if it does not, then either it is feasible with one less empty bin
+	// or is infeasible
+	if (most_empty >= 1)
+	{
+	    dp_encache(h, most_empty-1 , tat);
+	} else {
+	    dp_encache(h, DPHT_INFEASIBLE, tat);
+	}
+    }
     remove_item_inplace(h,item,multiplicity);
 }
 
 maybebool pack_and_query(binconf &h, const bin_int item, thread_attr *tat, const bin_int multiplicity = 1)
 {
     add_item_inplace(h,item, multiplicity);
-    maybebool ret = dp_query(h,tat);
+    dpht_el q = dp_query(h,tat);
+    maybebool ret = finalize_and_check(h,q);
     remove_item_inplace(h,item, multiplicity);
     return ret;
 }
@@ -513,17 +670,21 @@ maybebool pack_and_query(binconf &h, const bin_int item, thread_attr *tat, const
 bool pack_query_compute(binconf &h, const bin_int item, thread_attr *tat, const bin_int multiplicity = 1)
 {
     add_item_inplace(h,item, multiplicity);
-    maybebool q = dp_query(h,tat);
-    bool ret;
+    dpht_el entry = dp_query(h,tat);
+    maybebool q = finalize_and_check(h,entry);
+    bool feasibility;
+    bin_int max_empty = 0;
+    bin_int associated_size = 0;
+    
     if (q == MB_NOT_CACHED)
     {
-	ret = compute_feasibility(h,tat);
-	dp_encache(h,ret,tat);
-    } else { // ret == FEASIBLE/INFEASIBLE
-        ret = q;
+	std::tie(max_empty, associated_size) = dynprog_max_shortened(h,tat);
+	dp_encache(h, max_empty, associated_size, tat);
+    } else { // q == FEASIBLE/INFEASIBLE
+        feasibility = q;
     }
     remove_item_inplace(h,item, multiplicity);
-    return ret;
+    return feasibility;
 }
 
 
@@ -556,6 +717,9 @@ bin_int dynprog_max_sorting(binconf *conf, thread_attr *tat)
 
 // --- Heuristics. ---
 
+// temporarily turned off (will be moved to new code once the basics are working)
+
+/*
 std::pair<bin_int,bin_int> large_item_heuristic(binconf *b, thread_attr *tat)
 {
     std::vector<std::pair<bin_int, bin_int> > required_items;
@@ -675,8 +839,9 @@ bool five_nine_heuristic(binconf *b, thread_attr *tat)
  
     return false;
 }
+*/
 
-void dp_cache_print(binconf &h, thread_attr *tat)
+/* void dp_cache_print(binconf &h, thread_attr *tat)
 {
     fprintf(stderr, "Cache print: %hd", dp_query(h,tat));
     for (int i = 1; i <= S; i++)
@@ -686,6 +851,6 @@ void dp_cache_print(binconf &h, thread_attr *tat)
 	remove_item_inplace(h,i);
     }
     fprintf(stderr, "\n");
-	    
 }
+*/
 #endif // _DYNPROG_HPP

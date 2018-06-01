@@ -335,6 +335,11 @@ public:
 	    return itemhash;
 	}
 
+    uint64_t dp_shorthash() const
+	{
+	   return (itemhash ^ Zi[1*(MAX_ITEMS+1) + items[1]] ^ Zi[S*(MAX_ITEMS+1) + items[S]]);
+	}
+    
     // Returns (main cache) binconf hash, assuming hash is consistent,
     // which it should be, if we are assigning properly.
     uint64_t hash() const

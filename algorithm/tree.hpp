@@ -438,4 +438,4 @@ void purge_sapling(adversary_vertex *sapling)
     sapling->last_item = 1; // TODO: it doesn't clearly state that last item should be ignored.
     remove_outedges<CLEANUP>(sapling);
 }
-#end
+#endif
