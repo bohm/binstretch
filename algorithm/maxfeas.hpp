@@ -229,18 +229,13 @@ bin_int maximum_feasible(binconf *b, const int depth, const bin_int cannot_send_
     assert(lb <= ub);
 
     MEASURE_ONLY(tat->meas.dynprog_calls++);
-    // DISABLED: bin_int maximum_feasible = dynprog_max_safe(b,tat);
     bin_int most_empty, associated_max;
     std::tie(most_empty, associated_max) = dynprog_max_shortened(*b,tat);
-
+    // DISABLED: bin_int maximum_feasible = dynprog_max_safe(b,tat);
+    
     if(!DISABLE_DP_CACHE)
     {
-	for (bin_int i = maximum_feasible+1; i <= cache_ub; i++)
-	{
-	    pack_and_encache(*b, i, most_empty, associated_max, tat);
-	}
-		
-	for (bin_int i = cache_lb; i <= maximum_feasible; i++)
+	for (bin_int i = cache_lb+1; i <= cache_ub; i++)
 	{
 	    pack_and_encache(*b, i, most_empty, associated_max, tat);
 	}

@@ -386,6 +386,38 @@ maybebool finalize_and_check(const binconf &conf, const dpht_el entry)
     return (conf.totalload() <= S*BINS); // should be true almost all the time
 }
 
+bin_int finalize_and_max(const binconf &conf, const bin_int most_empty, const bin_int associated_max)
+{
+    if (most_empty == DPHT_INFEASIBLE)
+    {
+	return MAX_INFEASIBLE;
+    }
+
+    if (conf.items[S] > most_empty)
+    {
+	return MAX_INFEASIBLE;
+    }
+
+    if (conf.totalload() > BINS*S)
+    {
+	return MAX_INFEASIBLE;
+    }
+    
+    bin_int largest_free_capacity = 0;
+    if (conf.items[S] == most_empty)
+    {
+	largest_free_capacity = associated_max;
+    } else
+    {
+	largest_free_capacity = S;
+    }
+
+    assert(largest_free_capacity - std::max(conf.totalload() + largest_free_capacity - BINS*S,0)
+	   >= 0);
+    return largest_free_capacity - std::max(conf.totalload() + largest_free_capacity - BINS*S,0);
+
+}
+
 // Dynprog_max which does not pack items of size S and 1.
 // Returns: 1) max # of empty bins; equal to DPHT_INFEASIBLE (-1) when infeasible.
 //          2) largest item in a non-empty bin for a conf. of that many empty bins.
@@ -667,6 +699,7 @@ maybebool pack_and_query(binconf &h, const bin_int item, thread_attr *tat, const
     return ret;
 }
 
+/*
 bool pack_query_compute(binconf &h, const bin_int item, thread_attr *tat, const bin_int multiplicity = 1)
 {
     add_item_inplace(h,item, multiplicity);
@@ -679,14 +712,14 @@ bool pack_query_compute(binconf &h, const bin_int item, thread_attr *tat, const 
     if (q == MB_NOT_CACHED)
     {
 	std::tie(max_empty, associated_size) = dynprog_max_shortened(h,tat);
-	dp_encache(h, max_empty, associated_size, tat);
+	dp_encache(h, max_empty, tat);
     } else { // q == FEASIBLE/INFEASIBLE
         feasibility = q;
     }
     remove_item_inplace(h,item, multiplicity);
     return feasibility;
 }
-
+*/
 
 // --- dynprog_max_sorting uses inplace packing, so it is here. ---
 

@@ -173,7 +173,7 @@ public:
 
     inline bool feasible() const
 	{
-	    return (_emptybins != -1);
+	    return (_empty_bins != -1);
 	}
     
     inline uint64_t hash() const
@@ -190,10 +190,6 @@ public:
 	    return (_hash == hash);
 	}
 
-    inline bool empty() const
-	{
-	    return _hash == 0;
-	}
     inline bool removed() const
 	{
 	    return _hash == REMOVED;

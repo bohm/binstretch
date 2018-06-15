@@ -48,26 +48,26 @@ const bool WRITE_SOLUTIONS = false;
 const bool TERMINATE_AFTER_SEQUENCING = false; // if true, only do the sequencing, then terminate
 
 // maximum load of a bin in the optimal offline setting
-const bin_int S = 14;
+const bin_int S = 41;
 // target goal of the online bin stretching problem
-const bin_int R = 19;
+const bin_int R = 56;
 // Change this number or the selected number of bins.
-const bin_int BINS = 9;
+const bin_int BINS = 3;
 
 // If you want to generate a specific lower bound, you can create an initial bin configuration here.
 // You can also insert an initial sequence here.
-//const std::vector<bin_int> INITIAL_LOADS = {};
-//const std::vector<bin_int> INITIAL_ITEMS = {};
-const std::vector<bin_int> INITIAL_LOADS = {8,1,1,1,1,};
-const std::vector<bin_int> INITIAL_ITEMS = {7,0,0,0,1};
+const std::vector<bin_int> INITIAL_LOADS = {};
+const std::vector<bin_int> INITIAL_ITEMS = {};
+//const std::vector<bin_int> INITIAL_LOADS = {8,1,1,1,1,};
+//const std::vector<bin_int> INITIAL_ITEMS = {7,0,0,0,1};
 // You can also insert an initial sequence here, and the adversary will use it as a predefined start.
 
-//const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1,1,1};
+//const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1};
 //const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1,1,1,1,1};
 //const std::vector<bin_int> INITIAL_SEQUENCE = {5};
 const std::vector<bin_int> INITIAL_SEQUENCE = {};
 
-const int FIRST_PASS = 0;
+const int FIRST_PASS = 40;
 // constants used for good situations
 const int RMOD = (R-1);
 const int ALPHA = (RMOD-S);
@@ -104,7 +104,8 @@ const int TASK_LOAD = 14;
 const int TASK_DEPTH = 4;
 //const int TASK_DEPTH = S > 41 ? 3 : 4;
 //const int TASK_DEPTH = S > 41 ? 2 : 3;
-#define POSSIBLE_TASK possible_task_mixed
+#define POSSIBLE_TASK possible_task_depth
+// #define POSSIBLE_TASK possible_task_mixed
 
 const int EXPANSION_DEPTH = 3;
 const int TASK_LARGEST_ITEM = 5;

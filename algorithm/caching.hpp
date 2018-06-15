@@ -311,7 +311,7 @@ void dp_encache(const binconf &d, const int16_t most_empty, thread_attr *tat)
 dpht_el dp_query(const binconf &d, thread_attr *tat)
 {
      uint64_t hash = d.dp_shorthash();
-     return is_dp_hashed(hash, dplogpart(hash, tat));
+     return is_dp_hashed(hash, dplogpart(hash), tat);
 }
 
 /*
