@@ -4,6 +4,7 @@
 //#define NDEBUG  // turns off all asserts
 #include <cstdio>
 #include <cstdlib>
+#include <cstdarg>
 #include <cassert>
 #include <cstdint>
 #include <mutex>
@@ -16,102 +17,123 @@
 #include <array>
 #include <unordered_set>
 #include <numeric>
+#include <mpi.h>
 
 typedef unsigned long long int llu;
 typedef signed char tiny;
+
+// Use this type for values of loads and items.
+// Reasonable settings are either int8_t or int16_t, depending on whether a bin can contain more
+// than 127 items or not. We allow it to go negative for signalling -1/-2.
 typedef int16_t bin_int;
 
-// verbosity of the program
-//#define VERBOSE 1
-//#define DEBUG 1
-//#define DEEP_DEBUG 1
-//#define THOROUGH_HASH_CHECKING 1
-#define PROGRESS 1
-//#define REGROW 1
-//#define OUTPUT 1
-#define MEASURE 1
-//#define TICKER 1
-//#define GOOD_MOVES 1
-#define ONLY_ONE_PASS 1
-//#define OVERDUES 1
+const bool PROGRESS = true; // print progress
+const bool MEASURE = true; // collect and print measurements
+
+const bool REGROW = false;
+const int REGROW_LIMIT = 1;
+
+const bool OUTPUT = false;
+const bool ONLY_ONE_PASS = false;
+
+// log tasks which run at least some amount of time
+const bool TASKLOG = true;
+const long double TASKLOG_THRESHOLD = 60.0; // in seconds
+
+// constants related to the logging of solved saplings
+const bool SEQUENCE_SAPLINGS = true; // whether to compute initial sequencing (or load it from files)
+const bool WRITE_SEQUENCE = false;
+const bool LOAD_SAPLINGS = false; // whether to load saplings from files or use the sequenced ones
+const bool WRITE_SOLUTIONS = false;
+const bool TERMINATE_AFTER_SEQUENCING = false; // if true, only do the sequencing, then terminate
 
 // maximum load of a bin in the optimal offline setting
-const int S = 14;
+const bin_int S = 14;
 // target goal of the online bin stretching problem
-const int R = 19;
-// Change this number for the selected number of bins.
-const int BINS = 8;
+const bin_int R = 19;
+// Change this number or the selected number of bins.
+const bin_int BINS = 9;
 
 // If you want to generate a specific lower bound, you can create an initial bin configuration here.
 // You can also insert an initial sequence here.
-const std::vector<bin_int> INITIAL_LOADS = {5,1,1};
-const std::vector<bin_int> INITIAL_ITEMS = {2,0,0,0,1};
-//const std::vector<bin_int> INITIAL_LOADS = {5};
-//const std::vector<bin_int> INITIAL_ITEMS = {0,0,0,0,1};
+//const std::vector<bin_int> INITIAL_LOADS = {};
+//const std::vector<bin_int> INITIAL_ITEMS = {};
+const std::vector<bin_int> INITIAL_LOADS = {8,1,1,1,1,};
+const std::vector<bin_int> INITIAL_ITEMS = {7,0,0,0,1};
 // You can also insert an initial sequence here, and the adversary will use it as a predefined start.
+
+//const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1,1,1};
+//const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1,1,1,1,1};
+//const std::vector<bin_int> INITIAL_SEQUENCE = {5};
 const std::vector<bin_int> INITIAL_SEQUENCE = {};
-//const std::vector<bin_int> INITIAL_SEQUENCE = {};
 
-
-#ifdef ONLY_ONE_PASS
-const int PASS = 1;
-#else
-const int FIRST_PASS = 0;
-#endif
-
+const int FIRST_PASS = 1;
 // constants used for good situations
 const int RMOD = (R-1);
 const int ALPHA = (RMOD-S);
 
-// bitwise length of indices of hash tables and lock tables
-const unsigned int HASHLOG = 29;
-const unsigned int BCLOG = 28;
-const unsigned int BUCKETLOG = 7;
-const unsigned int BESTMOVELOG = 25;
+
+// secondary booleans, controlling some heuristics
+const bool LARGE_ITEM_ACTIVE_EVERYWHERE = false;
+const bool FIVE_NINE_ACTIVE_EVERYWHERE = false;
+// Dplog, conflog -- bitwise length of indices of hash tables and lock tables.
+// ht_size = 2^conflog, dpht_size = 2^dplog.
+// Dplog, conflog, dpsize and confsize are now set at runtime.
+unsigned int conflog = 0;
+unsigned int dplog = 0;
+uint64_t ht_size = 0;
+uint64_t dpht_size = 0;
+
 const unsigned int LOADLOG = 13;
 
-// experimental: caching of largest feasible item that can be sent
-const unsigned int LFEASLOG = 10;
-// size of the hash table
+// batching constants
+const int BATCH_SIZE = 500;
+// const int BATCH_THRESHOLD = 50;
 
-const llu HASHSIZE = (1ULL<<HASHLOG);
-const llu BC_HASHSIZE = (1ULL<<BCLOG);
-const llu BESTMOVESIZE = (1ULL<<BESTMOVELOG);
+// sizes of the hash tables
 const llu LOADSIZE = (1ULL<<LOADLOG);
 
-const llu LFEASSIZE = (1ULL<<LFEASLOG);
-
-// size of buckets -- how many locks there are (each lock serves a group of hashes)
-const llu BUCKETSIZE = (1ULL<<BUCKETLOG);
-
 // linear probing limit
-const int LINPROBE_LIMIT = 8;
-const int BMC_LIMIT = 2;
+const int LINPROBE_LIMIT = 4;
 
 const int DEFAULT_DP_SIZE = 100000;
-
 const int BESTFIT_THRESHOLD = (1*S)/10;
 
-// the number of threads
-const int THREADS = 8;
 // a bound on total load of a configuration before we split it into a task
-const int TASK_LOAD = 18;
-const int TASK_DEPTH = 3;
-const int EXPANSION_DEPTH = 3;
-const int TASK_LARGEST_ITEM = 3;
-// how much the updater thread sleeps (in milliseconds)
-const int TICK_SLEEP = 200;
-// how many tasks are sufficient for the updater to run the main updater routine
-const int TICK_TASKS = 100;
-// the number of completed tasks after which the exploring thread reports progress
-const int PROGRESS_AFTER = 100;
+const int TASK_LOAD = 14;
+const int TASK_DEPTH = 4;
+//const int TASK_DEPTH = S > 41 ? 3 : 4;
+//const int TASK_DEPTH = S > 41 ? 2 : 3;
+#define POSSIBLE_TASK possible_task_mixed
 
-// a threshold for a task becoming overdue
-const std::chrono::seconds THRESHOLD = std::chrono::seconds(90);
+const int EXPANSION_DEPTH = 3;
+const int TASK_LARGEST_ITEM = 5;
+// how much the updater thread sleeps (in milliseconds)
+const int TICK_SLEEP = 100;
+const int TICK_UPDATE = 100;
+// how many tasks are sufficient for the updater to run the main updater routine
+const int TICK_TASKS = 50;
+// the number of completed tasks after which the exploring thread reports progress
+const int PROGRESS_AFTER = 500;
+
 const int MAX_EXPANSION = 1;
 
-// end of configuration constants
 // ------------------------------------------------
+// debug constants
+
+const bool VERBOSE = false;
+const bool DEBUG = false;
+const bool COMM_DEBUG = false;
+
+// completely disable dynamic programming or binconf cache
+// (useful to debug soundness of cache algs)
+const bool DISABLE_CACHE = false;
+const bool DISABLE_DP_CACHE = false;
+
+// ------------------------------------------------
+// system constants and global variables (no need to change)
+
+const bin_int MAX_ITEMS = S*BINS;
 
 // maximum number of items
 const bin_int MAX_ITEMS = S*BINS;
@@ -119,27 +141,40 @@ const bin_int MAX_ITEMS = S*BINS;
 const int POSTPONED = 2;
 const int TERMINATING = 3;
 const int OVERDUE = 4;
+const int IRRELEVANT = 5;
 
-#define GENERATING 1
-#define EXPLORING 2
-#define EXPANDING 3
+const int GENERATING = 1;
+const int EXPLORING = 2;
+const int EXPANDING = 3;
+const int UPDATING = 4;
+const int SEQUENCING = 5;
+const int CLEANUP = 6;
 
-#define FULL 1
-#define MONOTONE 2
-#define MIXED 3
+// MPI-related globals
+int world_size = 0;
+int world_rank = 0;
+char processor_name[MPI_MAX_PROCESSOR_NAME];
+MPI_Comm shmcomm; // shared memory communicator
+int shm_rank = 0;
+int shm_size = 0;
+uint64_t shm_log = 0;
+std::atomic<bool> root_solved{false};
+std::atomic<bool> termination_signal{false};
 
 bool generating_tasks;
-
 uint64_t *Zi; // Zobrist table for items
 uint64_t *Zl; // Zobrist table for loads
 uint64_t *Ai; // Zobrist table for next item to pack (used for the algorithm's best move table)
 
-// use this type for values of loads and items
-// reasonable settings are either int8_t or int16_t, depending on whether a bin can contain more
-// than 127 items or not.
-// we allow it to go negative for signalling -1/-2.
 
-//static_assert(BINS*S <= 127, "S is bigger than 127, fix bin_int in transposition tables.");
+// thread rank idea:
+// if worker has thread rank 3 and reported thread count 5, it is assigned worker ranks 3,4,5,6,7.
+//
+int worker_count = 0;
+int thread_rank = 0;
+int thread_rank_size = 0;
+
+
 // A bin configuration consisting of three loads and a list of items that have arrived so far.
 // The same DS is also used in the hash as an element.
 
@@ -147,32 +182,18 @@ uint64_t *Ai; // Zobrist table for next item to pack (used for the algorithm's b
 class binconf;
 class loadconf; 
 
-// defined in task.hpp
-class task;
 
-// defined in tree.hpp
-typedef struct adversary_vertex adversary_vertex;
-typedef struct algorithm_vertex algorithm_vertex;
-class adv_outedge;
-class alg_outedge;
+typedef int8_t maybebool;
 
+const maybebool MB_INFEASIBLE = 0;
+const maybebool MB_FEASIBLE = 1;
+const maybebool MB_NOT_CACHED = 2;
 
-struct dp_hash_item {
-    int8_t feasible;
-    llu itemhash;
-};
+// if a maximalization procedure gets an infeasible configuration, it returns MAX_INFEASIBLE.
+const bin_int MAX_INFEASIBLE = -1;
+// when a heuristic is unable to pack (but the configuration still may be feasible)
+const bin_int MAX_UNABLE_TO_PACK = -2;
 
-typedef struct dp_hash_item dp_hash_item;
-
-// dynprog_result is data point about a particular configuration
-class dynprog_result
-{
-public:
-    bool feasible = false;
-    // largest_sendable[i] -- largest item sendable BINS-i times
-    // std::array<uint8_t, BINS> largest_sendable = {};
-    uint64_t hash = 0;
-};
 
 // aliases for measurements of good situations
 const int SITUATIONS = 10;
@@ -194,36 +215,14 @@ const std::array<std::string, SITUATIONS> gsnames = {"GS1", "GS1MOD", "GS2", "GS
 
 const bin_int IN_PROGRESS = 2;
 
-// global task map indexed by binconf hashes
-std::map<llu, task> tm;
+// modes for pushing into dynprog cache
+const int HEURISTIC = 0;
+const int PERMANENT = 1;
 
-
-//pthread_mutex_t taskq_lock;
-std::mutex taskq_lock;
-std::shared_timed_mutex running_and_removed_lock;
-std::mutex collection_lock[THREADS];
-std::atomic_bool global_terminate_flag(false);
-std::mutex thread_progress_lock;
-
-std::mutex in_progress_mutex;
-std::condition_variable cv;
-
-//std::shared_lock running_and_removed_lock;
-// global hash-like map of completed tasks (and their parents up to
-// the root)
-std::map<uint64_t, int> winning_tasks;
-std::map<uint64_t, int> losing_tasks;
-std::map<uint64_t, int> overdue_tasks;
-
-std::unordered_set<uint64_t> running_and_removed;
-
-
-// hash-like map of completed tasks, serving as output map for each
-// thread separately
-std::map<uint64_t, int> completed_tasks[THREADS];
-
-// counter of finished threads
-bool thread_finished[THREADS];
+// a test for queen being the only process working
+#define QUEEN_ONLY (world_size == 1)
+#define BEING_OVERSEER (world_rank != 0)
+#define BEING_QUEEN (world_rank == 0)
 
 // monotonicity 0: monotonely non-decreasing lower bound
 // monotonicity S: equivalent to full generality lower bound
@@ -236,64 +235,28 @@ uint64_t global_edge_counter = 0;
 std::chrono::duration<long double> time_spent;
 
 
-/* helper macros for debug, verbose, and measure output */
+void print_sequence(FILE *stream, const std::vector<bin_int>& seq)
+{
+    for (const bin_int& i: seq)
+    {
+	fprintf(stream, "%" PRIi16 " ", i); 
+    }
+    fprintf(stream, "\n");
+}
 
-#ifdef DEBUG
-#define DEBUG_PRINT(...) fprintf(stderr, __VA_ARGS__ )
-#define DEBUG_PRINT_BINCONF(x) print_binconf_stream(stderr,x)
-#else
-#define DEBUG_PRINT(format,...)
-#define DEBUG_PRINT_BINCONF(x)
-#endif
 
-#ifdef DEEP_DEBUG
-#define DEEP_DEBUG_PRINT(...) fprintf(stderr, __VA_ARGS__ )
-#define DEEP_DEBUG_PRINT_BINCONF(x) print_binconf_stream(stderr,x)
-#else
-#define DEEP_DEBUG_PRINT(format,...)
-#define DEEP_DEBUG_PRINT_BINCONF(x)
-#endif
+template <bool PARAM> void print(const char *format, ...)
+{
+    if (PARAM)
+    {
+	va_list argptr;
+	va_start(argptr, format);
+	vfprintf(stderr, format, argptr);
+	va_end(argptr);
+    }
+}
 
-#ifdef MEASURE
-#define MEASURE_PRINT(...) fprintf(stderr,  __VA_ARGS__ )
-#define MEASURE_PRINT_BINCONF(x) print_binconf_stream(stderr, x)
-#define MEASURE_ONLY(x) x
-#else
-#define MEASURE_PRINT(format,...)
-#define MEASURE_PRINT_BINCONF(x)
-#define MEASURE_ONLY(x)
-#endif
-
-#ifdef VERBOSE
-#define VERBOSE_PRINT(...) fprintf(stderr, __VA_ARGS__ )
-#define VERBOSE_PRINT_BINCONF(x) print_binconf_stream(stderr, x)
-#else
-#define VERBOSE_PRINT(format,...)
-#define VERBOSE_PRINT_BINCONF(x)
-#endif
-
-#ifdef PROGRESS
-#define PROGRESS_PRINT(...) fprintf(stderr, __VA_ARGS__ )
-#define PROGRESS_PRINT_BINCONF(x) print_binconf_stream(stderr, x)
-#else
-#define PROGRESS_PRINT(format,...)
-#define PROGRESS_PRINT_BINCONF(x)
-#endif
-
-#ifdef GOOD_MOVES
-#define GOOD_MOVES_PRINT(...) fprintf(stderr,  __VA_ARGS__ )
-#define GOOD_MOVES_PRINT_BINCONF(x) print_binconf_stream(stderr, x)
-#else
-#define GOOD_MOVES_PRINT(format,...)
-#define GOOD_MOVES_PRINT_BINCONF(x)
-#endif
-
-#ifdef LF
-#define LFPRINT(...) fprintf(stderr,  __VA_ARGS__ )
-#define LFPRINT_BINCONF(x) print_binconf_stream(stderr, x)
-#else
-#define LFPRINT(format,...)
-#define LFPRINT_BINCONF(x)
-#endif
+#define MEASURE_ONLY(x) if (MEASURE) {x;}
+#define REGROW_ONLY(x) if (REGROW) {x;}
 
 #endif // _COMMON_HPP

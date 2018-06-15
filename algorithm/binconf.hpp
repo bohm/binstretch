@@ -234,6 +234,21 @@ public:
 	return total;
     }
 
+    void blank()
+	{
+	    for (int i = 0; i <= BINS; i++)
+	    {
+		loads[i] = 0;
+	    }
+	    for (int i = 0; i <= S; i++)
+	    {
+		items[i] = 0;
+	    }
+	    _totalload = 0;
+	    _itemcount = 0;
+	    hashinit();
+	}
+    
     void hashinit()
 	{
 	    loadconf::hashinit();
@@ -245,6 +260,13 @@ public:
 	    }
 	}
 
+    
+    void hash_loads_init()
+	{
+	    _totalload = totalload_explicit();
+	    _itemcount = itemcount_explicit();
+	    hashinit();
+	}
     int assign_item(int item, int bin);
     void unassign_item(int item, int bin);
     int assign_multiple(int item, int bin, int count);
@@ -282,8 +304,55 @@ public:
 	    itemhash ^= Zi[item*(MAX_ITEMS+1) + items[item]];
 	}
 
+    void dp_changehash(int dynitem, int old_count, int new_count)
+	{
+	    itemhash ^= Zi[dynitem*(MAX_ITEMS+1) + old_count];
+	    itemhash ^= Zi[dynitem*(MAX_ITEMS+1) + new_count];
+	}
+    
+// rehash for dynamic programming purposes, assuming we have added
+// one item of size "dynitem"
+    void dp_rehash(int dynitem)
+	{
+	    itemhash ^= Zi[dynitem*(MAX_ITEMS+1) + items[dynitem] -1];
+	    itemhash ^= Zi[dynitem*(MAX_ITEMS+1) + items[dynitem]];
+	    
+	}
+    
+// opposite of dp_rehash -- rehashes after removing one item "dynitem"
+    void dp_unhash(int dynitem)
+	{
+	    itemhash ^= Zi[dynitem*(MAX_ITEMS+1) + items[dynitem] + 1];
+	    itemhash ^= Zi[dynitem*(MAX_ITEMS+1) + items[dynitem]];
+	}
+    
 
+    // computes the dynamic programming hash, which is
+    // as if items[1] == 0 and items[S] == 0.
+    uint64_t dphash() const
+	{
+	    // DISABLED: return (itemhash ^ Zi[1*(MAX_ITEMS+1) + items[1]] ^ Zi[S*(MAX_ITEMS+1) + items[S]]);
+	    return itemhash;
+	}
 
+    // Returns (main cache) binconf hash, assuming hash is consistent,
+    // which it should be, if we are assigning properly.
+    uint64_t hash() const
+	{
+	    return (loadhash ^ itemhash);
+	}
+
+    void consistency_check() const
+	{
+	    assert(_itemcount == itemcount_explicit());
+	    assert(_totalload == totalload_explicit());
+	    bin_int totalload_items = 0;
+	    for (int i =1; i <= S; i++)
+	    {
+		totalload_items += i*items[i];
+	    }
+	    assert(totalload_items == _totalload);
+	}
 };
 
 void duplicate(binconf *t, const binconf *s) {
@@ -295,8 +364,8 @@ void duplicate(binconf *t, const binconf *s) {
     t->loadhash = s->loadhash;
     t->itemhash = s->itemhash;
     t->_totalload = s->_totalload;
+    t->_itemcount = s->_itemcount;
 }
-
 
 // returns true if two binconfs are item-wise and load-wise equal
 bool binconf_equal(const binconf *a, const binconf *b)
@@ -317,6 +386,11 @@ bool binconf_equal(const binconf *a, const binconf *b)
 	}
     }
 
+    if (a->loadhash != b->loadhash) { return false; }
+    if (a->itemhash != b->itemhash) { return false; }
+    if (a->_totalload != b->_totalload) { return false; }
+    if (a->_itemcount != b->_itemcount) { return false; }
+
     return true;
 }
 
@@ -324,14 +398,44 @@ bool binconf_equal(const binconf *a, const binconf *b)
 // debug function for printing bin configurations (into stderr or log files)
 void print_binconf_stream(FILE* stream, const binconf* b)
 {
-    for (int i=1; i<=BINS; i++) {
-	fprintf(stream, "%d-", b->loads[i]);
+    bool first = true;
+    for (int i=1; i<=BINS; i++)
+    {
+	if(first)
+	{
+	    first = false;
+	    fprintf(stream, "%d", b->loads[i]);
+	} else {
+	    fprintf(stream, "-%d", b->loads[i]);
+	}
     }
-    fprintf(stream, " ");
-    for (int j=1; j<=S; j++) {
-	fprintf(stream, "%d", b->items[j]);
+    fprintf(stream, " (");
+    first = true;
+    for (int j=1; j<=S; j++)
+    {
+	if (first)
+	{
+	    fprintf(stream, "%d", b->items[j]);
+	    first = false;
+	} else {
+	    if (j%10 == 1)
+	    {
+		fprintf(stream, "|%d", b->items[j]);
+	    } else {
+		fprintf(stream, ",%d", b->items[j]);
+	    }
+	}
     }
-    fprintf(stream, "\n");
+    
+    fprintf(stream, ")\n");
+}
+
+template <bool MODE> void print_binconf(const binconf *b)
+{
+    if (MODE)
+    {
+	print_binconf_stream(stderr, b);
+    }
 }
 
 int binconf::assign_item(int item, int bin)

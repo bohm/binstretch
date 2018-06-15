@@ -19,48 +19,28 @@
 #include "maxfeas.hpp"
 #include "gs.hpp"
 #include "tasks.hpp"
+#include "networking.hpp"
 
 /* declarations */
 template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_attr *outat);
 template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat, tree_attr *outat);
 
-int time_stats(thread_attr *tat)
+int check_messages(thread_attr *tat)
 {
-    int ret = 0;
-
-    std::chrono::time_point<std::chrono::system_clock> cur = std::chrono::system_clock::now();
-    auto iter_time = cur - tat->eval_start;
-    if (!tat->overdue_printed && iter_time >= THRESHOLD)
+    // check_root_solved();
+    // check_termination();
+    // fetch_irrelevant_tasks();
+    if (root_solved)
     {
-	MEASURE_PRINT("Task is at least %ld s overdue: ", THRESHOLD.count());
-	MEASURE_PRINT_BINCONF(tat->explore_root);
-	tat->overdue_printed = true;
+	return IRRELEVANT;
     }
-   
-#ifdef OVERDUES
-    if (!tat->current_overdue)
-    {
 
-	if (iter_time >= THRESHOLD && tat->expansion_depth <= (MAX_EXPANSION-1))
-	{
-	    //fprintf(stderr, "Setting overdue to true with depth %d\n", tat->expansion_depth);
-	    tat->overdue_tasks++;
-	    tat->current_overdue = true;
-	}
-    }
-#endif
-
-    // I wonder if there is a penalty for repeatedly constructing the lock
-    std::shared_lock<std::shared_timed_mutex> l(running_and_removed_lock);
-    //l.lock();
-    auto it = running_and_removed.find(tat->explore_roothash);
-    if(it != running_and_removed.end())
+    if (tstatus[tat->task_id].load() == TASK_PRUNED)
     {
-	ret = TERMINATING;
+	//print<true>("Worker %d works on an irrelevant thread.\n", world_rank);
+	return IRRELEVANT;
     }
-    l.unlock();
-    // pthread_rwlock_unlock(&running_and_removed_lock);
-    return ret;
+    return 0;
 }
 
 /* return values: 0: player 1 cannot pack the sequence starting with binconf b
@@ -92,24 +72,69 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
     }
 
     // a much weaker variant of large item heuristic, but takes O(1) time
+
+
     if (b->totalload() <= S && b->loads[2] >= R-S)
     {
-	if(MODE == GENERATING || MODE == EXPANDING)
+	if(MODE == GENERATING)
 	{
 	    outat->last_adv_v->value = 0;
 	    outat->last_adv_v->heuristic = true;
+	    outat->last_adv_v->heuristic_type = LARGE_ITEM;
 	    outat->last_adv_v->heuristic_item = S;
+	    outat->last_adv_v->heuristic_multi = BINS-1;
 	}
 	return 0;
     }
 
-   
-    if (MODE == GENERATING || MODE == EXPANDING)
+    // one heuristic specific for 19/14
+    if (S == 14 && R == 19 && (MODE == GENERATING || FIVE_NINE_ACTIVE_EVERYWHERE))
+    {
+	bool fnh = five_nine_heuristic(b,tat);
+	tat->meas.five_nine_calls++;
+	if (fnh)
+	{
+	    tat->meas.five_nine_hits++;
+	    if(MODE == GENERATING)
+	    {
+		outat->last_adv_v->value = 0;
+		outat->last_adv_v->heuristic = true;
+		outat->last_adv_v->heuristic_type = FIVE_NINE;
+	    }
+	    return 0;
+	}
+    }
+
+    //if (true)
+    if (MODE == GENERATING || LARGE_ITEM_ACTIVE_EVERYWHERE)
+    {
+	bin_int lih, mul;
+	tat->meas.large_item_calls++;
+
+	std::tie(lih,mul) = large_item_heuristic(b, tat);
+	if (lih != MAX_INFEASIBLE)
+	{
+	    tat->meas.large_item_hits++;
+
+	    if (MODE == GENERATING) {
+		outat->last_adv_v->value = 0;
+		outat->last_adv_v->heuristic = true;
+		outat->last_adv_v->heuristic_type = LARGE_ITEM;
+		outat->last_adv_v->heuristic_item = lih;
+		outat->last_adv_v->heuristic_multi = mul;
+	    }
+	    return 0;
+	}
+    }
+
+
+    if (MODE == GENERATING)
     {
 	current_adversary = outat->last_adv_v;
 	previous_algorithm = outat->last_alg_v;
 
-	if (POSSIBLE_TASK<MODE>(current_adversary))
+	// we now do creation of tasks only until the REGROW_LIMIT is reached
+	if (tat->regrow_level <= REGROW_LIMIT && POSSIBLE_TASK<MODE>(current_adversary, tat->largest_since_computation_root))
 	{
 	    add_task(b, tat);
 	    // mark current adversary vertex (created by algorithm() in previous step) as a task
@@ -125,24 +150,14 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
 	tat->iterations++;
 	if (tat->iterations % 100 == 0)
 	{
-#ifdef MEASURE
-	    int recommendation = time_stats(tat);
-	    if (recommendation == TERMINATING)
+	    if (MEASURE)
 	    {
-		fprintf(stderr, "We got advice to terminate.\n");
-		return TERMINATING;
-	    }
-	    
-#endif
-#ifdef OVERDUES
-	    if (tat->current_overdue)
-	    {
-		return OVERDUE;
-	    }
-#endif
-	    if (global_terminate_flag)
-	    {
-		return TERMINATING;
+		int recommendation = check_messages(tat);
+		if (recommendation == TERMINATING || recommendation == IRRELEVANT)
+		{
+		    //fprintf(stderr, "We got advice to terminate.\n");
+		    return recommendation;
+		}
 	    }
 	}
     }
@@ -151,45 +166,54 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
     // We only do this in exploration mode; while this could be also done
     // when generating we want the whole lower bound tree to be generated.
     
-    if (MODE == EXPLORING)
+    if (MODE == EXPLORING && !DISABLE_CACHE)
     {
-	int conf_in_hashtable = is_conf_hashed(b, tat);
-	/* if (conf_in_hashtable == IN_PROGRESS)
+	bool found_conf = false;
+	int conf_in_hashtable = is_conf_hashed(b, tat, found_conf);
+	
+	if (found_conf)
 	{
-	    //MEASURE_PRINT("Thread %d waits for binconf.\n", tat->id);
-	    std::unique_lock<std::mutex> lk(in_progress_mutex);
-	    cv.wait(lk, [&]{ return (is_conf_hashed(b, tat) != IN_PROGRESS) && (global_terminate_flag == false); });
-	    conf_in_hashtable = is_conf_hashed(b, tat);
-	    //MEASURE_PRINT("Thread %d continues.\n", tat->id);
-	}*/
-
-	if (conf_in_hashtable != -1)
-	{
+	    assert(conf_in_hashtable >= 0 && conf_in_hashtable <= 1);
 	    return conf_in_hashtable;
-	}/* else {
-	    conf_hashpush(b, IN_PROGRESS, tat);
-	    }*/
+	}
     }
- 
-    // finds the maximum feasible item that can be added using dyn. prog.
-    bin_int old_max_feasible = tat->prev_max_feasible;
-    bin_int dp = MAXIMUM_FEASIBLE(b, depth, tat);
-    tat->prev_max_feasible = dp;
-    int maximum_feasible = dp;
-    int below = 1;
-    int r = 1;
-    DEEP_DEBUG_PRINT("Trying player zero choices, with maxload starting at %d\n", maximum_feasible);
 
     // idea: start with monotonicity 0 (full monotone), and move towards S (full generality)
     int lower_bound = std::max(1, tat->last_item - monotonicity);
+
+    // finds the maximum feasible item that can be added using dyn. prog.
+    bin_int old_max_feasible = tat->prev_max_feasible;
+    // checks
+    //binconf bc_check; duplicate(&bc_check, b);
+    bin_int dp = MAXIMUM_FEASIBLE(b, depth, lower_bound, old_max_feasible, tat);
+
+    /*
+    assert(binconf_equal(&bc_check, b));
+    bin_int value_check = dynprog_max_sorting(b,tat);
+    if (value_check < lower_bound) { value_check = MAX_INFEASIBLE; }
+    if (dp != value_check)
+    {
+	fprintf(stderr, "Maxfeas reports %" PRIi16 ", dynprog_max_safe reports %" PRIi16 ", sorting reports %" PRIi16 ". LB: %d, return point %d):\n",
+		dp, dynprog_max_safe(b,tat), value_check, lower_bound, tat->maxfeas_return_point);
+	print_binconf<true>(b);
+	dp_cache_print(*b,tat);
+	assert(dp == value_check);
+    }
+    */
     
+    tat->prev_max_feasible = dp;
+    int maximum_feasible = dp; // possibly also INFEASIBLE == -1
+    int below = 1;
+    int r = 1;
+    print<DEBUG>("Trying player zero choices, with maxload starting at %d\n", maximum_feasible);
+
     for (int item_size = maximum_feasible; item_size>=lower_bound; item_size--)
     {
-        DEEP_DEBUG_PRINT("Sending item %d to algorithm.\n", item_size);
+        print<DEBUG>("Sending item %d to algorithm.\n", item_size);
 	// algorithm's vertex for the next step
 	algorithm_vertex *analyzed_vertex; // used only in the GENERATING mode
 	
-	if (MODE == GENERATING || MODE == EXPANDING)
+	if (MODE == GENERATING)
 	{
 	    analyzed_vertex = new algorithm_vertex(item_size);
 	    // create new edge, 
@@ -200,14 +224,17 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
 
 	
 	int li = tat->last_item;
+	int old_largest = tat->largest_since_computation_root; 
 
 	tat->last_item = item_size;
+	tat->largest_since_computation_root = std::max(item_size, tat->largest_since_computation_root);
 	
 	below = algorithm<MODE>(b, item_size, depth+1, tat, outat);
 
 	tat->last_item = li;
-	
-	if (MODE == GENERATING || MODE == EXPANDING)
+	tat->largest_since_computation_root = old_largest;
+
+	if (MODE == GENERATING)
 	{
 	    analyzed_vertex->value = below;
 	    // and set it back to the previous value
@@ -215,7 +242,7 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
 	}
 
 	// send signal that we should terminate immediately upwards
-	if (below == TERMINATING || below == OVERDUE)
+	if (below == TERMINATING || below == IRRELEVANT)
 	{
 	    return below;
 	}
@@ -224,23 +251,23 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
 	{
 	    r = 0;
 	    
-	    if (MODE == GENERATING || MODE == EXPANDING)
+	    if (MODE == GENERATING)
 	    {
 		// remove all outedges except the right one
-		remove_outedges_except(current_adversary, item_size);
+		remove_outedges_except<GENERATING>(current_adversary, item_size);
 	    }
 	    break;
 	} else if (below == 1)
 	{
-	    if (MODE == GENERATING || MODE == EXPANDING)
+	    if (MODE == GENERATING)
 	    {
 		// no decreasing, but remove this branch of the game tree
-		remove_edge(new_edge);
+		remove_edge<GENERATING>(new_edge);
 		// assert(new_edge == NULL); // TODO: make a better assertion
 	    }
 	} else if (below == POSTPONED)
 	{
-	    assert(MODE == GENERATING || MODE == EXPANDING);
+	    assert(MODE == GENERATING);
 	    if (r == 1)
 	    {
 		r = POSTPONED;
@@ -248,16 +275,14 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
 	}
     }
 
-    
-    if (MODE == EXPLORING)
+
+    if (MODE == EXPLORING && !DISABLE_CACHE)
     {
-	//std::lock_guard<std::mutex> lg(in_progress_mutex);
 	conf_hashpush(b, r, tat);
-	//cv.notify_all();
     }
 
     /* Sanity check. */
-    if ((MODE == GENERATING || MODE == EXPANDING) && r == 1)
+    if ((MODE == GENERATING) && r == 1)
     {
 	assert(current_adversary->out.empty());
     }
@@ -270,7 +295,7 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 
     algorithm_vertex* current_algorithm = NULL;
     adversary_vertex* previous_adversary = NULL;
-    if (MODE == GENERATING || MODE == EXPANDING)
+    if (MODE == GENERATING)
     {
 	current_algorithm = outat->last_alg_v;
 	previous_adversary = outat->last_adv_v;
@@ -283,25 +308,14 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 
 	if (tat->iterations % 100 == 0)
 	{
-#ifdef MEASURE
-	    int recommendation = time_stats(tat);
-	    if (recommendation == TERMINATING)
+	    if (MEASURE)
 	    {
-		fprintf(stderr, "We got advice to terminate.\n");
-		return TERMINATING;
-	    }
-	    
-
-#endif
-#ifdef OVERDUE
-	    if (tat->current_overdue)
-	    {
-		return OVERDUE;
-	    }
-#endif
-	    if (global_terminate_flag)
-	    {
-		return TERMINATING;
+		int recommendation = check_messages(tat);
+		if (recommendation == TERMINATING || recommendation == IRRELEVANT)
+		{
+		    //fprintf(stderr, "We got advice to terminate.\n");
+		    return recommendation;
+		}
 	    }
 	}
     }
@@ -312,48 +326,12 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 	return 1;
     }
 
-#ifdef GOOD_MOVES
-    // check best move cache
-    int8_t previously_good_move = -1;
-    bool good_move_first = false;
-    bool good_move_eliminated = false;
-
-    if (MODE == EXPLORING)
-    {
-	previously_good_move = is_move_hashed(b,k,tat);
-	if (previously_good_move != -1)
-	{
-	    //fprintf(stderr, "Previously good move is %" PRIi8 ".\n", previously_good_move);
-	    assert(previously_good_move != 1);
-	    good_move_first = true;
-	}
-    }
-#endif
-
-#ifdef GOOD_MOVES
-    int8_t first_feasible = 0;
-#endif
-   
     int r = 0;
     int below = 0;
     int8_t i = 1;
     
     while(i <= BINS)
     {
-
-#ifdef GOOD_MOVES
-	// we do previously_good_move first, so we skip it on any subsequent run
-	if ((MODE == EXPLORING) && (i == previously_good_move))
-	{
-
-	    if( i == 1)
-	    {
-		fprintf(stderr, "%d %d", previously_good_move, i);
-	    }
-	    assert(i != 1);
-	    i++; continue;
-	}
-#endif	
 	// simply skip a step where two bins have the same load
 	// any such bins are sequential if we assume loads are sorted (and they should be)
 	if (i > 1 && b->loads[i] == b->loads[i-1])
@@ -361,25 +339,8 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 	    i++; continue;
 	}
 
-#ifdef GOOD_MOVES
-	// set i to be the good move for the first run of the while cycle
-	if (MODE == EXPLORING && good_move_first)
-	{
-	    assert(i == 1);
-	    i = previously_good_move;
-	}
-
-#endif	
-
 	if ((b->loads[i] + k < R))
 	{
-#ifdef GOOD_MOVES
-	    if (first_feasible == 0)
-	    {
-		first_feasible = i;
-	    }
-#endif
-
 	    // editing binconf in place -- undoing changes later
 	    
 	    int from = b->assign_and_rehash(k,i);
@@ -388,7 +349,7 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 	    adversary_vertex *analyzed_vertex;
 	    bool already_generated = false;
 
-	    if (MODE == GENERATING || MODE == EXPANDING)
+	    if (MODE == GENERATING)
 	    {
 		/* Check vertex cache if this adversarial vertex is already present */
 		std::map<llu, adversary_vertex*>::iterator it;
@@ -396,10 +357,6 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 		if (it == generated_graph.end())
 		{
 		    analyzed_vertex = new adversary_vertex(b, depth, tat->last_item);
-		    if (MODE == EXPANDING)
-		    {
-			analyzed_vertex->expansion_depth = tat->expansion_depth;
-		    }
 		    // create new edge
 		    new alg_outedge(current_algorithm, analyzed_vertex);
 		    // add to generated_graph
@@ -417,7 +374,7 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 	    
 	    if (!already_generated)
 	    {
-		if (MODE == GENERATING || MODE == EXPANDING)
+		if (MODE == GENERATING)
 		{
 		    // set the current adversary vertex to be the analyzed vertex
 		    outat->last_adv_v = analyzed_vertex;
@@ -426,21 +383,21 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 		below = adversary<MODE>(b, depth, tat, outat);
 
 		// send signal that we should terminate immediately upwards
-		if (below == TERMINATING)
+		if (below == TERMINATING || below == IRRELEVANT)
 		{
-		    return TERMINATING;
+		    return below;
 		}
 		
 
-		if (MODE == GENERATING || MODE == EXPANDING)
+		if (MODE == GENERATING)
 		{
 		    analyzed_vertex->value = below;
 		    // and set it back to the previous value
 		    outat->last_adv_v = previous_adversary;
 		}
 		
-		DEEP_DEBUG_PRINT("We have calculated the following position, result is %d\n", below);
-		DEEP_DEBUG_PRINT_BINCONF(b);
+		print<DEBUG>("We have calculated the following position, result is %d\n", below);
+		print_binconf<DEBUG>(b);
 
 	    }
 
@@ -450,50 +407,23 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 	    if (below == 1)
 	    {
 		r = below;
-		VERBOSE_PRINT("Winning position for algorithm, returning 1.\n");
-		if (MODE == GENERATING || MODE == EXPANDING)
+		if (MODE == GENERATING)
 		{
 		    // delete all edges from the current algorithmic vertex
 		    // which should also delete the adversary vertex
-		    remove_outedges(current_algorithm);
+		    remove_outedges<GENERATING>(current_algorithm);
 		    // assert(current_algorithm == NULL); // sanity check
 		}
 
-#ifdef GOOD_MOVES
-		if (MODE == EXPLORING)
-		{
-
-		    if (good_move_first)
-		    {
-			tat->good_move_hit++;
-		    }
-		    
-                    // do not cache if the winning move is the first one -- we will try it first anyway
-		    if (i != 1 && i != first_feasible && !good_move_first)
-		    {
-			bmc_hashpush(b, k, i, tat);
-		    }
-		}
-#endif
 		
 		return r;
 		
 	    } else if (below == 0)
 	    {
-
-#ifdef GOOD_MOVES
-		// good move turned out to be bad
-		if (MODE == EXPLORING && good_move_first)
-		{
-		    bmc_remove(b,k,tat);
-		    good_move_eliminated = true;
-		    tat->good_move_miss++;
-		}
-#endif		
 		// nothing needs to be currently done, the edge is already created
 	    } else if (below == POSTPONED)
 	    {
- 		assert(MODE == GENERATING || MODE == EXPANDING); // should not happen during anything else but GENERATING
+ 		assert(MODE == GENERATING); // should not happen during anything else but GENERATING
 		// insert analyzed_vertex into algorithm's "next" list
 		if (r == 0)
 		{
@@ -511,25 +441,7 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
     // nothing to be done in exploration mode
 	    // currently nothing done in generating mode either
 	}
-
-#ifdef GOOD_MOVES
-        // if we ran the good_move_first, we come back and try from the start
-	if (MODE == EXPLORING && good_move_first)
-	{
-	    if(!good_move_eliminated)
-	    {
-		tat->good_move_miss++;
-		bmc_remove(b,k,tat);
-		good_move_eliminated = true;
-	    }
-	    good_move_first = false;
-	    i = 1;
-	} else {
-	    i++;
-	}
-#else
 	i++;
-#endif
     }
 
     return r;
@@ -540,11 +452,10 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 
 int explore(binconf *b, thread_attr *tat)
 {
-    hashinit(b);
+    b->hashinit();
     binconf root_copy = *b;
     
     onlineloads_init(tat->ol, b);
-    //tat->oc.init(*b);
     //assert(tat->ol.loadsum() == b->totalload());
 
     tree_attr *outat = NULL;
@@ -562,51 +473,26 @@ int explore(binconf *b, thread_attr *tat)
 }
 
 // wrapper for generation
-int generate(binconf *start, thread_attr *tat, adversary_vertex *start_vert)
+int generate(sapling start_sapling, thread_attr *tat)
 {
-    hashinit(start);
-    onlineloads_init(tat->ol, start);
-    //tat->oc.init(*start);
+    binconf inplace_bc;
+    duplicate(&inplace_bc, start_sapling.root->bc);
+    inplace_bc.hashinit();
+    onlineloads_init(tat->ol, &inplace_bc);
 
+    tat->regrow_level = start_sapling.regrow_level;
     //assert(tat->ol.loadsum() == start->totalload());
     
     tree_attr *outat = new tree_attr;
-    outat->last_adv_v = start_vert;
+    outat->last_adv_v = start_sapling.root;
     outat->last_alg_v = NULL;
 
     //std::vector<uint64_t> first_pass;
     //dynprog_one_pass_init(start, &first_pass);
     //tat->previous_pass = &first_pass;
-    int ret = adversary<GENERATING>(start, start_vert->depth, tat, outat);
+    int ret = adversary<GENERATING>(&inplace_bc, start_sapling.root->depth, tat, outat);
     delete outat;
     return ret;
 }
 
-// wrapper for expansion of a task into multiple tasks
-int expand(adversary_vertex *overdue_task)
-{
-    //fprintf(stderr, "Expanding task: " );
-    //print_binconf_stream(stderr, overdue_task->bc);
-
-    assert(overdue_task->task);
-    overdue_task->task = false;
-    overdue_task->expansion_depth++;
-    expansion_root = overdue_task;
-
-    //fprintf(stderr, "Current taskmap depth: %d,  size: %lu\n", overdue_task->expansion_depth, tm.size());
-
-
-    thread_attr tat; 
-    tree_attr outat;
-    dynprog_attr_init(&tat);
-    outat.last_adv_v = overdue_task;
-    outat.last_alg_v = NULL;
-    tat.last_item = overdue_task->last_item;
-    tat.expansion_depth = overdue_task->expansion_depth;
-
-    int ret = adversary<EXPANDING>(expansion_root->bc, expansion_root->depth, &tat, &outat);
-    //fprintf(stderr, "New taskmap size: %lu\n", tm.size());
-    dynprog_attr_free(&tat);
-    return ret;
-}
 #endif // _MINIMAX_HPP

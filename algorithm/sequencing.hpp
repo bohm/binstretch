@@ -24,7 +24,8 @@ int sequencing_algorithm(binconf *b, int k, unsigned int depth, thread_attr *tat
 
 void add_sapling(adversary_vertex* v)
 {
-    sapling_queue.push(v);
+    sapling s; s.root = v; s.regrow_level = 0;
+    sapling_stack.push(s);
 }
 
 
@@ -41,8 +42,9 @@ int sequencing(const std::vector<bin_int>& seq, binconf& root, adversary_vertex*
 
     if (seq.empty())
     {
-	   sapling_queue.push(root_vertex);
-	   return POSTPONED;
+	sapling just_root; just_root.root = root_vertex; just_root.regrow_level = 0;
+	sapling_stack.push(just_root);
+	return POSTPONED;
     } else {
 	int ret = sequencing_adversary(&root, root_vertex->depth, &tat, &outat, seq);
 	return ret;
@@ -64,24 +66,39 @@ int sequencing_adversary(binconf *b, unsigned int depth, thread_attr *tat, tree_
     // a much weaker variant of large item heuristic, but takes O(1) time
     if (b->totalload() <= S && b->loads[2] >= R-S)
     {
+	outat->last_adv_v->value = 0;
+	outat->last_adv_v->heuristic = true;
+	outat->last_adv_v->heuristic_item = S;
+	outat->last_adv_v->heuristic_type = LARGE_ITEM;
 	return 0;
     }
 
-    /* Large items heuristic: if 2nd or later bin is at least R-S, check if enough large items
+
+    // one heuristic specific for 19/14
+    if (S == 14 && R == 19 && five_nine_heuristic(b,tat))
+    {
+	outat->last_adv_v->value = 0;
+	outat->last_adv_v->heuristic = true;
+	outat->last_adv_v->heuristic_type = FIVE_NINE;
+	return 0;
+    }
+
+/* Large items heuristic: if 2nd or later bin is at least R-S, check if enough large items
        can be sent so that this bin (or some other) hits R. */
 
-    /* TODO: fix this, temporarily disabled as it segfaults
-    std::pair<bool, int> p;
-    p = large_item_heuristic(b, tat);
-    if (p.first)
+    bin_int lih, mul;
+    std::tie(lih,mul) = large_item_heuristic(b, tat);
+    if (lih != MAX_INFEASIBLE)
     {
 	{
 	    outat->last_adv_v->value = 0;
 	    outat->last_adv_v->heuristic = true;
-	    outat->last_adv_v->heuristic_item = p.second;
-	    }
+	    outat->last_adv_v->heuristic_item = lih;
+	    outat->last_adv_v->heuristic_type = LARGE_ITEM;
+	    outat->last_adv_v->heuristic_multi = mul;
+	}
 	return 0;
-	}*/
+    }
 
    
     current_adversary = outat->last_adv_v;
@@ -100,8 +117,8 @@ int sequencing_adversary(binconf *b, unsigned int depth, thread_attr *tat, tree_
     int item_size = seq[depth];
     int below = 1;
     int r = 1;
-    DEEP_DEBUG_PRINT("Trying player zero choices, with maxload starting at %d\n", maximum_feasible);
-    DEEP_DEBUG_PRINT("Sending item %d to algorithm.\n", item_size);
+    print<DEBUG>("Trying player zero choices, with maxload starting at %d\n", maximum_feasible);
+    print<DEBUG>("Sending item %d to algorithm.\n", item_size);
     // algorithm's vertex for the next step
     algorithm_vertex *analyzed_vertex; // used only in the GENERATING mode
     
@@ -128,10 +145,10 @@ int sequencing_adversary(binconf *b, unsigned int depth, thread_attr *tat, tree_
     {
 	r = 0;
 	
-	remove_outedges_except(current_adversary, item_size);
+	remove_outedges_except<SEQUENCING>(current_adversary, item_size);
     } else if (below == 1)
     {
-	remove_edge(new_edge);
+	remove_edge<SEQUENCING>(new_edge);
     } else if (below == POSTPONED)
     {
 	if (r == 1)
@@ -213,8 +230,8 @@ int sequencing_algorithm(binconf *b, int k, unsigned int depth, thread_attr *tat
 		// and set it back to the previous value
 		outat->last_adv_v = previous_adversary;
 		
-		DEEP_DEBUG_PRINT("We have calculated the following position, result is %d\n", below);
-		DEEP_DEBUG_PRINT_BINCONF(b);
+		print<DEBUG>("We have calculated the following position, result is %d\n", below);
+		print_binconf<DEBUG>(b);
 	    }
 	    
 	    // return b to original form
@@ -224,8 +241,7 @@ int sequencing_algorithm(binconf *b, int k, unsigned int depth, thread_attr *tat
 	    if (below == 1)
 	    {
 		r = below;
-		VERBOSE_PRINT("Winning position for algorithm, returning 1.\n");
-		remove_outedges(current_algorithm);
+		remove_outedges<SEQUENCING>(current_algorithm);
 		return r;
 	    } else if (below == 0)
 	    {

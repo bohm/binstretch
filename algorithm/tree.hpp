@@ -10,10 +10,16 @@
 #include <atomic>
 #include <chrono>
 #include <queue>
+#include <stack>
 #include "common.hpp"
 
 // a game tree (actually a DAG) used for outputting the resulting
 // strategy if the result is positive.
+
+// Full declaration below.
+class adv_outedge;
+class alg_outedge;
+
 
 class algorithm_vertex
 {
@@ -29,15 +35,18 @@ public:
 	this->id = ++global_vertex_counter;
 	this->value = POSTPONED;
 	this->visited = false;
-	//DEBUG_PRINT("Vertex %" PRIu64 "created.\n", this->id);
+	//print<DEBUG>("Vertex %" PRIu64 "created.\n", this->id);
 
     }
 
     ~algorithm_vertex()
     {
-	//DEBUG_PRINT("Vertex %" PRIu64 "destroyed.\n", this->id);
+	//print<DEBUG>("Vertex %" PRIu64 "destroyed.\n", this->id);
     }
 };
+
+const int LARGE_ITEM = 1;
+const int FIVE_NINE = 2;
 
 class adversary_vertex
 {
@@ -47,12 +56,15 @@ public:
     std::list<alg_outedge*> in; // previous algorithmic states
 
     int depth; // depth increases only in adversary steps
-    bool task;
-    bool visited; // we use this temporarily for DFS (e.g. for printing)
+    bool task = false;
+    // bool sapling = false;
+    bool visited = false; // we use this temporarily for DFS (e.g. for printing)
     bool heuristic = false;
-    int heuristic_item = 0;
+    bin_int heuristic_item = 0;
+    bin_int heuristic_multi = 0;
+    int heuristic_type = 0;
     int last_item = 1;
-    int value;
+    int value = POSTPONED;
     uint64_t id;
     int expansion_depth = 0;
     
@@ -60,22 +72,18 @@ public:
     {
 	this->bc = new binconf;
 	assert(this->bc != NULL);
-	//init(this->bc);
-	this->task = false;
-	this->visited = false;
 	this->id = ++global_vertex_counter;
 	this->depth = depth;
-	this->value = POSTPONED;
 	this->last_item = last_item;
 	duplicate(this->bc, b);
-	//DEBUG_PRINT("Vertex %" PRIu64 "created.\n", this->id);
+	//print<DEBUG>("Vertex %" PRIu64 "created.\n", this->id);
 
     }
 
     ~adversary_vertex()
     {
 	delete this->bc;
-	//DEBUG_PRINT("Vertex %" PRIu64 "destroyed.\n", this->id);
+	//print<DEBUG>("Vertex %" PRIu64 "destroyed.\n", this->id);
     }
 
 };
@@ -96,12 +104,12 @@ public:
 	this->pos = from->out.insert(from->out.begin(), this);
 	this->pos_child = to->in.insert(to->in.begin(), this);
 	this->id = ++global_edge_counter;
-	//DEBUG_PRINT("Edge %" PRIu64 " created. \n", this->id);
+	//print<DEBUG>("Edge %" PRIu64 " created. \n", this->id);
     }
 
     ~adv_outedge()
     {
-	//DEBUG_PRINT("Edge %" PRIu64 " destroyed.\n", this->id);
+	//print<DEBUG>("Edge %" PRIu64 " destroyed.\n", this->id);
     }
 };
 
@@ -119,12 +127,12 @@ public:
 	this->pos = from->out.insert(from->out.begin(), this);
 	this->pos_child = to->in.insert(to->in.begin(), this);
 	this->id = ++global_edge_counter;
-	//DEBUG_PRINT("Edge %" PRIu64 " created.\n", this->id);
+	//print<DEBUG>("Edge %" PRIu64 " created.\n", this->id);
 
     }
     ~alg_outedge()
     {
-	//DEBUG_PRINT("Edge %" PRIu64 " destroyed.\n", this->id);
+	//print<DEBUG>("Edge %" PRIu64 " destroyed.\n", this->id);
     }
 };
 
@@ -146,6 +154,8 @@ bool is_root(const binconf *b)
 // global map of all (adversary) vertices generated;
 std::map<llu, adversary_vertex*> generated_graph;
 
+// global root vertex
+adversary_vertex *root_vertex;
 
 /* tree variables (currently used in main thread only) */
 
@@ -154,10 +164,6 @@ struct tree_attr {
     algorithm_vertex *last_alg_v;
     adversary_vertex *last_adv_v;
 };
-
-// A sapling is an adversary vertex which will be processed by the parallel
-// minimax algorithm (its tree will be expanded).
-std::queue<adversary_vertex*> sapling_queue;
 
 /* Initialize the game tree with the information in the parameters. */
 
@@ -274,7 +280,13 @@ void print_compact_subtree(FILE* stream, adversary_vertex *v)
 	fprintf(stream, "task\"];\n");
     } else if(v->heuristic)
     {
-	fprintf(stream, "h:%d\"];\n", v->heuristic_item);
+	if (v->heuristic_type == LARGE_ITEM)
+	{
+	    fprintf(stream, "h:(%hd,%hd)\"];\n", v->heuristic_item, v->heuristic_multi);
+	} else if (v->heuristic_type == FIVE_NINE)
+	{
+	    fprintf(stream, "h:F/N\"];\n");
+	}
     } else 
     {
 	// print_compact_subtree currently works for only DAGs with outdegree 1 on alg vertices
@@ -315,37 +327,37 @@ void print_compact(FILE* stream, adversary_vertex *v)
 
 /* remove_inedge removes the edge from the list of the incoming edges,
    but does not touch the outgoing edge list. */
-void remove_inedge(alg_outedge *e);
-void remove_inedge(adv_outedge *e);
+template <int MODE> void remove_inedge(alg_outedge *e);
+template <int MODE> void remove_inedge(adv_outedge *e);
 
-void remove_outedges(algorithm_vertex *v);
-void remove_outedges(adversary_vertex *v);
+template <int MODE> void remove_outedges(algorithm_vertex *v);
+template <int MODE> void remove_outedges(adversary_vertex *v);
 
 /* Forward declaration of remove_task for inclusion purposes. */
-void remove_task(llu hash);
+template <int MODE> void remove_task(llu hash);
 
-void remove_inedge(adv_outedge *e)
+template <int MODE> void remove_inedge(adv_outedge *e)
 {
     e->to->in.erase(e->pos_child);
 
     /* The vertex is no longer reachable, delete it. */
     if (e->to->in.empty())
     {
-	remove_outedges(e->to);
+	remove_outedges<MODE>(e->to);
 	delete e->to;
     }
 }
 
-void remove_inedge(alg_outedge *e)
+template <int MODE> void remove_inedge(alg_outedge *e)
 {
     e->to->in.erase(e->pos_child);
     if (e->to->in.empty())
     {
-	remove_outedges(e->to);
+	remove_outedges<MODE>(e->to);
 	// if e->to is task, remove it from the queue
 	if (e->to->task && e->to->value == POSTPONED)
 	{
-	    remove_task(e->to->bc->loadhash ^ e->to->bc->itemhash);
+	    remove_task<MODE>(e->to->bc->loadhash ^ e->to->bc->itemhash);
 	}
 	// remove it from the generated graph
 	generated_graph.erase(e->to->bc->loadhash ^ e->to->bc->itemhash);
@@ -355,22 +367,22 @@ void remove_inedge(alg_outedge *e)
 
 /* Removes all outgoing edges (including from the inedge lists).
    In order to preserve incoming edges, leaves the vertex be. */
-void remove_outedges(algorithm_vertex *v)
+template <int MODE> void remove_outedges(algorithm_vertex *v)
 {
     for (auto&& e: v->out)
     {
-	remove_inedge(e);
+	remove_inedge<MODE>(e);
 	delete e;
     }
 
     v->out.clear();
 }
 
-void remove_outedges(adversary_vertex *v)
+template <int MODE> void remove_outedges(adversary_vertex *v)
 {
     for (auto&& e: v->out)
     {
-	remove_inedge(e);
+	remove_inedge<MODE>(e);
 	delete e;
     }
 
@@ -378,35 +390,36 @@ void remove_outedges(adversary_vertex *v)
 }
 
 // removes both the outedge and the inedge
-void remove_edge(alg_outedge *e)
+template <int MODE> void remove_edge(alg_outedge *e)
 {
-    remove_inedge(e);
+    remove_inedge<MODE>(e);
     e->from->out.erase(e->pos);
     delete e;
 }
 
-void remove_edge(adv_outedge *e)
+template <int MODE> void remove_edge(adv_outedge *e)
 {
-    remove_inedge(e);
+    remove_inedge<MODE>(e);
     e->from->out.erase(e->pos);
     delete e;
 }
 
 // Remove all outedges except the right path.
-void remove_outedges_except(adversary_vertex *v, int right_item)
+template <int MODE> void remove_outedges_except(adversary_vertex *v, int right_item)
 {
-    adv_outedge *right_edge;
+    adv_outedge *right_edge = NULL;
     for (auto&& e: v->out)
     {
 	if (e->item != right_item)
 	{
-	    remove_inedge(e);
+	    remove_inedge<MODE>(e);
 	    delete e;
 	} else {
 	    right_edge = e;
 	}
     }
 
+    assert(right_edge != NULL);
     v->out.clear();
     v->out.push_back(right_edge);
     //v->out.remove_if( [right_item](adv_outedge *e){ return (e->item != right_item); } );
@@ -415,13 +428,14 @@ void remove_outedges_except(adversary_vertex *v, int right_item)
 
 void graph_cleanup(adversary_vertex *root)
 {
-    remove_outedges(root); // should delete root
+    remove_outedges<CLEANUP>(root); // should delete root
     generated_graph.clear();
 }
 
 void purge_sapling(adversary_vertex *sapling)
 {
     sapling->value = POSTPONED;
-    remove_outedges(sapling);
+    sapling->last_item = 1; // TODO: it doesn't clearly state that last item should be ignored.
+    remove_outedges<CLEANUP>(sapling);
 }
-#endif
+#end

@@ -1,11 +1,12 @@
+#ifndef _HASH_HPP
+#define _HASH_HPP 1
+
 #include <cstdio>
 #include <cstdlib>
 #include <cassert>
 #include <random>
 #include <limits>
-
-#ifndef _HASH_HPP
-#define _HASH_HPP 1
+#include <mpi.h>
 
 #include "common.hpp"
 #include "binconf.hpp"
@@ -18,6 +19,7 @@ value of the item. */
 
 /* As a result, thorough hash checking is currently not possible. */
 
+const uint64_t DPHT_BYTES = 16;
 const uint64_t REMOVED = std::numeric_limits<uint64_t>::max();
 
 // zeroes last bit of a number -- useful to check hashes
@@ -36,7 +38,7 @@ bin_int get_last_two_bits(const uint64_t& n)
     return ((n & 3));
 }
 
-inline bin_int get_last_bit(uint64_t n)
+inline bool get_last_bit(uint64_t n)
 {
     return ((n & 1) == 1);
 }
@@ -45,28 +47,28 @@ inline bin_int get_last_bit(uint64_t n)
 class conf_el
 {
 public:
-    std::atomic<uint64_t> _data;
+    uint64_t _data;
 
-    conf_el()
+    inline void set(uint64_t hash, uint64_t val)
 	{
+	    assert(val == 0 || val == 1);
+	    _data = (zero_last_two_bits(hash) | val);
 	}
-    
-    conf_el(uint64_t d)
-	{
-	    _data = d;
-	}
-    conf_el(uint64_t hash, uint64_t posvalue)
-	{
-	    _data = (zero_last_bit(hash) | posvalue);
-	}
+
     inline bin_int value() const
 	{
-	    return get_last_bit(_data);
+	    return get_last_two_bits(_data);
 	}
     inline uint64_t hash() const
 	{
-	    return zero_last_bit(_data);
+	    return zero_last_two_bits(_data);
 	}
+
+    inline bool match(const uint64_t& hash) const
+	{
+	    return (zero_last_two_bits(_data) == zero_last_two_bits(hash));
+	}
+	
     inline bool empty() const
 	{
 	    return _data == 0;
@@ -86,37 +88,25 @@ public:
 	    _data = 0;
 	}
 
-    const bin_int depth() const
+    bin_int depth() const
 	{
 	    return 0;
 	}
 };
 
 
-// An extended variant of conf_el which stores the depth of the configuration
-// being stored. This allows for more complicated cache replacement algorithms.
-
-class conf_el_extended
+class dpht_el_64
 {
 public:
-    std::atomic<uint64_t> _data;
-    std::atomic<bin_int> _depth;
+    uint64_t _data;
 
-    conf_el_extended()
+    // 64-bit dpht_el does not make use of permanence.
+    inline void set(uint64_t hash, uint8_t feasible, uint16_t permanence)
 	{
+	    assert(feasible == 0 || feasible == 1);
+	    _data = (zero_last_bit(hash) | feasible);
 	}
-    
-    conf_el_extended(uint64_t d)
-	{
-	    _data = d;
-	}
-    conf_el_extended(uint64_t hash, uint64_t posvalue, bin_int depth)
-	{
-	    _data = (zero_last_bit(hash) | posvalue);
-	    _depth = depth;
-	}
-
-    inline bin_int value() const
+    inline bool value() const
 	{
 	    return get_last_bit(_data);
 	}
@@ -133,46 +123,50 @@ public:
 	    return _data == REMOVED;
 	}
 
+    inline bool match(const uint64_t& hash) const
+	{
+	    return (zero_last_bit(_data) == zero_last_bit(hash));
+	}
+
     inline void remove()
 	{
-	    _data = REMOVED; _depth = 0;
+	    _data = REMOVED;
 	}
 
     inline void erase()
 	{
-	    _data = 0; _depth = 0;
+	    _data = 0;
 	}
 
+    // currently not used
     bin_int depth() const
 	{
-	    return _depth;
+	    return 0;
 	}
+
 };
 
-class lf_el
+class dpht_el_128
 {
 public:
     uint64_t _hash;
-    bin_int _lf;
-    bin_int _depth;
-    
-    lf_el()
-	{
-	}
-    
-    lf_el(uint64_t d)
-	{
-	    _hash = d;
-	}
-    lf_el(uint64_t hash, bin_int lf, bin_int depth)
+    int16_t _feasible;
+    int16_t _empty_bins;
+    int16_t _permanence;
+    int16_t _unused; //align to 128 bit.
+
+    inline void set(uint64_t hash, int16_t feasible, int16_t permanence)
 	{
 	    _hash = hash;
-	    _lf = lf;
-	    _depth = depth;
+	    _feasible = feasible;
+	    _permanence = permanence;
+	    _empty_bins = 0;
+	    _unused = 0;
 	}
+    
     inline bin_int value() const
 	{
-	    return _lf;
+	    return _feasible;
 	}
     inline uint64_t hash() const
 	{
@@ -182,57 +176,10 @@ public:
 	{
 	    return _hash == 0;
 	}
-    inline bool removed() const
-	{
-	    return _hash == REMOVED;
-	}
 
-    inline void remove()
+    inline bool match(const uint64_t& hash) const
 	{
-	    _hash = REMOVED; _depth = 0; _lf = 0;
-	}
-
-    inline void erase()
-	{
-	    _hash = 0; _depth = 0; _lf = 0;
-	}
-
-    bin_int depth() const
-	{
-	    return _depth;
-	}
-};
-
-// item for the best move cache
-class best_move_el
-{
-public:
-    uint64_t _hash;
-    bin_int _move;
-
-    best_move_el()
-	{
-	}
-    
-    best_move_el(uint64_t hash, bin_int move)
-	{
-	    _hash = hash;
-	    _move = move;
-	}
-   
-    inline bin_int value() const
-	{
-	    return _move;
-	}
-
-    inline uint64_t hash() const
-	{
-	    return _hash;
-	}
-
-     inline bool empty() const
-	{
-	    return _hash == 0;
+	    return (_hash == hash);
 	}
     inline bool removed() const
 	{
@@ -246,37 +193,18 @@ public:
 
     inline void erase()
 	{
-	    _hash = 0; _move = 0;
-	}
-
-    const bin_int depth() const
-	{
-	    return 0;
+	    _hash = 0;
 	}
 };
 
-typedef conf_el dpht_el;
-
+// typedef dpht_el_128 dpht_el;
+typedef dpht_el_64 dpht_el;
+// typedef dpht_el_64dangerous dpht_el;
 
 // generic hash table (for configurations)
-conf_el *ht;
-// hash table for dynamic programming calls / feasibility checks
-dpht_el *dpht;
-
-
-std::array<std::shared_timed_mutex, BUCKETSIZE> bucketlock;
-std::array<std::shared_timed_mutex, BUCKETSIZE> dpbucketlock;
-
-#ifdef GOOD_MOVES
-// a hash table for best moves for the algorithm (so far)
-best_move_el *bmc;
-std::array<std::shared_timed_mutex, BUCKETSIZE> bestmovelock;
-#endif
-
-#ifdef LF
-lf_el *lfht;
-std::array<std::shared_timed_mutex, BUCKETSIZE> lflock;
-#endif
+std::atomic<conf_el> *ht = NULL;
+std::atomic<dpht_el> *dpht = NULL; // = new std::atomic<dpht_el_extended>[BC_HASHSIZE];
+//void *baseptr, *dpbaseptr;
 
 // DEBUG: Mersenne twister
 
@@ -288,10 +216,9 @@ uint64_t rand_64bit()
     return r;
 }
 
-/* Initializes the Zobrist hash table.
-   Adding Zl[i][0] and Zi[i][0] enables us
-   to "unhash" zero.
- */
+// Initializes the Zobrist hash table.
+// Adding Zl[i][0] and Zi[i][0] enables us to "unhash" zero.
+
 void zobrist_init()
 {
     // seeded, non-random
@@ -299,13 +226,18 @@ void zobrist_init()
     Zi = new uint64_t[(S+1)*(MAX_ITEMS+1)];
     Zl = new uint64_t[(BINS+1)*(R+1)];
 
-    Ai = new uint64_t[S+1];
 
+<<<<<<< HEAD
     for (int i=0; i<=S; i++) {
 	for (int j=0; j<=MAX_ITEMS; j++) {
+=======
+    for (int i=0; i<=S; i++)
+    {
+	for (int j=0; j<=MAX_ITEMS; j++)
+	{
+>>>>>>> origin/temp
 	    Zi[i*(MAX_ITEMS+1)+j] = rand_64bit();
 	}
-	Ai[i] = rand_64bit();
     }
 
     for (int i=0; i<=BINS; i++)
@@ -317,42 +249,89 @@ void zobrist_init()
     }
 }
 
-void hashtable_init()
+uint64_t quicklog(uint64_t x)
 {
-    ht = new conf_el[HASHSIZE];
-    for (uint64_t i =0; i < HASHSIZE; i++)
+    uint64_t ret = 0;
+    while(x >>= 1)
     {
-	ht[i]._data = 0;
+	ret++;
     }
-
-    dpht = new dpht_el[BC_HASHSIZE];
-    for (uint64_t i =0; i < BC_HASHSIZE; i++)
-    {
-	dpht[i]._data = 0;
-    }
-
-#ifdef GOOD_MOVES
-    bmc = new best_move_el[BESTMOVESIZE];
-    for (uint64_t i =0; i < BESTMOVESIZE; i++)
-    {
-	bmc[i]._hash = 0;
-	bmc[i]._move = 0;
-    }
-#endif
-
-#ifdef LF
-    lfht = new lf_el[LFEASSIZE];
-    for (uint64_t i =0; i < LFEASSIZE; i++)
-    {
-	lfht[i]._hash = 0;
-	lfht[i]._depth = 0;
-	lfht[i]._lf = -1;
-    }
-#endif
-
-    zobrist_init();
+    return ret;
 }
 
+// initializes the queen's memory. The queen uses dynamic programming cache but not the main solved cache.
+void init_queen_memory()
+{
+    dpht = new std::atomic<dpht_el>[dpht_size];
+    ht = NULL;
+    assert(dpht != NULL);
+    
+    dpht_el x{0};
+
+    for (uint64_t i =0; i < dpht_size; i++)
+    {
+	std::atomic_init(&dpht[i],x);
+    }
+   
+}
+
+void free_queen_memory()
+{
+    delete[] dpht; dpht = NULL;
+}
+
+// Initializes hashtables.
+// Call by overseer, not by workers.
+
+void init_worker_memory()
+{
+    ht = new std::atomic<conf_el>[ht_size];
+    dpht = new std::atomic<dpht_el>[dpht_size];
+
+    conf_el y{0};
+    dpht_el x{0};
+    assert(ht != NULL && dpht != NULL);
+    
+    for (uint64_t i = 0; i < ht_size; i++)
+    {
+	std::atomic_init(&ht[i], y);
+    }
+
+    for (uint64_t i =0; i < dpht_size; i++)
+    {
+	std::atomic_init(&dpht[i],x);
+    }
+}
+
+void free_worker_memory()
+{
+    delete[] ht; ht = NULL;
+    delete[] dpht; dpht = NULL;
+}
+
+void clear_cache_of_ones()
+{
+    uint64_t kept = 0, erased = 0;
+    conf_el empty{0};
+    
+    for (uint64_t i =0; i < ht_size; i++)
+    {
+	conf_el field = ht[i];
+	if (!field.empty() && !field.removed())
+	{
+	    bin_int last_bit = field.value();
+	    if (last_bit != 0)
+	    {
+		ht[i].store(empty);
+		erased++;
+	    } else {
+		kept++;
+	    }
+	}
+    }
+}
+
+/*
 void cache_measurements()
 {
 
@@ -422,44 +401,34 @@ void clear_cache_of_ones()
 	}
     }
 
-    MEASURE_PRINT("Hashtable size: %llu, kept: %" PRIu64 ", erased: %" PRIu64 "\n", HASHSIZE, kept, erased);
+    //MEASURE_PRINT("Hashtable size: %llu, kept: %" PRIu64 ", erased: %" PRIu64 "\n", HASHSIZE, kept, erased);
 }
-void dynprog_hashtable_clear()
+*/
+
+// watch out to avoid overwriting all data
+void hashtable_clear()
 {
-    for (uint64_t i =0; i < BC_HASHSIZE; i++)
+    dpht_el x = {0};
+    conf_el y = {0};
+    
+    for (uint64_t i = 0; i < dpht_size; i++)
     {
-	dpht[i]._data = 0;
+	dpht[i].store(x);
     }
 
-}
-
-void bc_hashtable_clear()
-{
-    for (uint64_t i =0; i < HASHSIZE; i++)
+    for (uint64_t i = 0; i < ht_size; i++)
     {
-	ht[i]._data = 0;
+	ht[i].store(y);
     }
+
 }
 
 void hashtable_cleanup()
 {
 
-    delete Zl;
-    delete Zi;
-    
-    delete dpht;
-    delete Ai;
-
-    //hashtable cleanup
-    delete ht;
-#ifdef GOOD_MOVES
-    delete bmc;
-#endif
-
-#ifdef LF
-    delete lfht;
-#endif
-
+    delete[] Zl;
+    delete[] Zi;
+    delete[] Ai;
 }
 
 void printBits32(unsigned int num)
@@ -482,113 +451,26 @@ void printBits64(llu num)
    fprintf(stderr, "\n");
 }
 
-uint64_t lowerpart(llu x)
-{
-    uint64_t mask,y;
-    mask = (HASHSIZE) - 1;
-    y = (x) & mask;
-    return y;
-}
-
-inline uint64_t bmhash(const binconf* b, bin_int next_item)
-{
-    //assert(next_item >= 1 && next_item <= S);
-    return b->loadhash ^ b->itemhash ^ Ai[next_item];
-}
-
-/*
-// returns upper HASHLOG bits of a 64-bit number
-uint64_t hashlogpart(uint64_t x)
-{
-    return x >> (64 - HASHLOG);
-}
-
-// returns upper BCLOG bits of a 64-bit number
-uint64_t bclogpart(uint64_t x)
-{
-    return x >> (64 - BCLOG);
-}
-
-
-// returns upper BUCKETLOG bits of a 64-bit number
-uint64_t bucketlockpart(uint64_t x)
-{
-    return x >> (64 - BUCKETLOG);
-}
-*/
+// template logpart
 
 template<unsigned int LOG> inline uint64_t logpart(uint64_t x)
 {
     return x >> (64 - LOG); 
 }
 
-const auto bucketlockpart = logpart<BUCKETLOG>;
-const auto dplogpart = logpart<BCLOG>;
-const auto hashlogpart = logpart<HASHLOG>;
+// with some memory allocated dynamically, we also need a dynamic logpart
 
+inline uint64_t conflogpart(uint64_t x)
+{
+    return x >> (64 - conflog);
+}
+
+inline uint64_t dplogpart(uint64_t x)
+{
+    return x >> (64 - dplog);
+}
+
+// const auto shared_conflogpart = logpart<SHARED_CONFLOG>;
+// const auto shared_dplogpart = logpart<SHARED_DPLOG>;
 const auto loadlogpart = logpart<LOADLOG>;
-
-const auto lflogpart = logpart<LFEASLOG>;
-// (re)calculates the hash of b completely.
-void hashinit(binconf *d)
-{
-    d->loadhash=0;
-    d->itemhash=0;
-    
-    for(int i=1; i<=BINS; i++)
-    {
-	d->loadhash ^= Zl[i*(R+1) + d->loads[i]];
-    }
-    for(int j=1; j<=S; j++)
-    {
-	d->itemhash ^= Zi[j*(MAX_ITEMS+1) + d->items[j]];
-    }
-}
-
-/* Assuming binconf d is created by adding an element item to an
-   arbitrary bin, we update the hash. Since we are sorting the
-   bins, the hashes of all loads may change.
-
-   Assume that both *prev and *d have sorted loads in decreasing
-   order.
-*/
-void rehash(binconf *d, const binconf *prev, int item)
-{
-    
-    //assert(d->loads[bin] <= R);
-    //assert(formerload <= R);
-
-    // rehash loads
-    for(int bin=1; bin<= BINS; bin++)
-    {
-	d->loadhash ^= Zl[bin*(R+1) + prev->loads[bin]];
-	d->loadhash ^= Zl[bin*(R+1) + d->loads[bin]];
-    }
-
-    // rehash item lists
-    d->itemhash ^= Zi[item*(MAX_ITEMS+1) + prev->items[item]];
-    d->itemhash ^= Zi[item*(MAX_ITEMS+1) + d->items[item]];
-}
-
-void dp_changehash(binconf *d, int dynitem, int old_count, int new_count)
-{
-    d->itemhash ^= Zi[dynitem*(MAX_ITEMS+1) + old_count];
-    d->itemhash ^= Zi[dynitem*(MAX_ITEMS+1) + new_count];
-}
-// rehash for dynamic programming purposes, assuming we have added
-// one item of size "dynitem"
-void dp_rehash(binconf *d, int dynitem)
-{
-    d->itemhash ^= Zi[dynitem*(MAX_ITEMS+1) + d->items[dynitem] -1];
-    d->itemhash ^= Zi[dynitem*(MAX_ITEMS+1) + d->items[dynitem]];
-
-}
-
-// opposite of dp_rehash -- rehashes after removing one item "dynitem"
-void dp_unhash(binconf *d, int dynitem)
-{
-    d->itemhash ^= Zi[dynitem*(MAX_ITEMS+1) + d->items[dynitem] + 1];
-    d->itemhash ^= Zi[dynitem*(MAX_ITEMS+1) + d->items[dynitem]];
-}
-
 #endif // _HASH_HPP

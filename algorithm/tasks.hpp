@@ -1,26 +1,292 @@
-#include <cstdio>
-
-#include "common.hpp"
-#include "tree.hpp"
-
 /* This header file contains the task generation code and the task
 queue update code. */
 
 #ifndef _TASKS_HPP
 #define _TASKS_HPP 1
 
+#include <cstdio>
+#include <vector>
+#include <algorithm>
+
+#include <mpi.h>
+
+#include "common.hpp"
+#include "tree.hpp"
+
+// task but in a flat form; used for MPI
+struct flat_task
+{
+    bin_int shorts[BINS+1+S+1+4];
+    uint64_t longs[2];
+};
+
+
 // a strictly size-based tasker
-
-#define POSSIBLE_TASK possible_task_depth
-
 class task
 {
 public:
     binconf bc;
     int last_item = 1;
     int expansion_depth = 0;
+
+
+    void load(const flat_task& ft)
+	{
+
+	    // copy task
+	    last_item = ft.shorts[0];
+	    expansion_depth = ft.shorts[1];
+	    bc._totalload = ft.shorts[2];
+	    bc._itemcount = ft.shorts[3];
+    
+	    bc.loadhash = ft.longs[0];
+	    bc.itemhash = ft.longs[1];
+	    
+	    for (int i = 0; i <= BINS; i++)
+	    {
+		bc.loads[i] = ft.shorts[4+i];
+	    }
+
+	    for (int i = 0; i <= S; i++)
+	    {
+		bc.items[i] = ft.shorts[5+BINS+i];
+	    }
+	}
+
+    flat_task flatten()
+	{
+	    flat_task ret;
+	    ret.shorts[0] = last_item;
+	    ret.shorts[1] = expansion_depth;
+	    ret.shorts[2] = bc._totalload;
+	    ret.shorts[3] = bc._itemcount;
+	    ret.longs[1] = bc.loadhash;
+	    ret.longs[2] = bc.itemhash;
+	    
+	    for (int i = 0; i <= BINS; i++)
+	    {
+		ret.shorts[4+i] = bc.loads[i];
+	    }
+
+	    for (int i = 0; i <= S; i++)
+	    {
+		ret.shorts[5+BINS+i] = bc.items[i];
+	    }
+
+	    return ret;
+	}
+    
+    /* returns the struct as a serialized object of size sizeof(task) */
+    char* serialize()
+	{
+	    return static_cast<char*>(static_cast<void*>(this));
+	}
 };
 
+// semi-atomic queue: one pusher, one puller, no resize
+class semiatomic_q
+{
+//private:
+public:
+    int *data = NULL;
+    std::atomic<int> qsize{0};
+    int reserve = 0;
+    std::atomic<int> qhead{0};
+    
+public:
+    ~semiatomic_q()
+	{
+	    if(data != NULL)
+	    {
+		delete[] data;
+	    }
+	}
+
+    void init(const int& r)
+	{
+	    data = new int[r];
+	    reserve = r;
+	}
+
+
+    void push(const int& n)
+	{
+	    assert(qsize < reserve);
+	    data[qsize] = n;
+	    qsize++;
+	}
+
+    int pop_if_able()
+	{
+	    if (qhead >= qsize)
+	    {
+		return -1;
+	    } else {
+		return data[qhead++];
+	    }
+	}
+
+    void clear()
+	{
+	    qsize.store(0);
+	    qhead.store(0);
+	    reserve = 0;
+	    delete[] data;
+	    data = NULL;
+	}
+};
+
+// A sapling is an adversary vertex which will be processed by the parallel
+// minimax algorithm (its tree will be expanded).
+struct sapling
+{
+    adversary_vertex *root;
+    int regrow_level = 0;
+    std::string filename;
+};
+
+// stack for processing the saplings
+std::stack<sapling> sapling_stack;
+// a queue where one sapling can put its own tasks
+std::queue<sapling> regrow_queue;
+
+std::atomic<int> *tstatus;
+std::vector<int> tstatus_temporary;
+
+std::vector<task> tarray_temporary; // temporary array used for building
+task* tarray; // tarray used after we know the size
+
+semiatomic_q irrel_taskq;
+int tcount = 0;
+int thead = 0; // head of the tarray queue which queen uses to send tasks
+int tpruned = 0; // number of tasks which are pruned
+
+// global measure of queen's collected tasks
+std::atomic<unsigned int> collected_cumulative{0};
+std::atomic<unsigned int> collected_now{0};
+
+const int TASK_AVAILABLE = 2;
+const int TASK_IN_PROGRESS = 3;
+const int TASK_PRUNED = 4;
+
+void init_tarray()
+{
+    assert(tcount > 0);
+    tarray = new task[tcount];
+}
+
+void init_tarray(const std::vector<task>& taq)
+{
+    tcount = taq.size();
+    init_tarray();
+    for (int i = 0; i < tcount; i++)
+    {
+	tarray[i] = taq[i];
+    }
+}
+
+void destroy_tarray()
+{
+    delete[] tarray; tarray = NULL;
+}
+
+void init_tstatus()
+{
+    assert(tcount > 0);
+    tstatus = new std::atomic<int>[tcount];
+    for (int i = 0; i < tcount; i++)
+    {
+	tstatus[i].store(TASK_AVAILABLE);
+    }
+}
+
+// call before tstatus is permuted
+void init_tstatus(const std::vector<int>& tstatus_temp)
+{
+    init_tstatus();
+    for (int i = 0; i < tcount; i++)
+    {
+	tstatus[i].store(tstatus_temp[i]);
+    }
+}
+
+void destroy_tstatus()
+{
+    delete[] tstatus; tstatus = NULL;
+
+    if (BEING_QUEEN)
+    {
+	tstatus_temporary.clear();
+    }
+}
+
+// Mapping from hashes to status indices.
+std::map<llu, int> tmap;
+
+// builds an inverse task map after all tasks are inserted into the task array.
+void rebuild_tmap()
+{
+    tmap.clear();
+    for (int i = 0; i < tcount; i++)
+    {
+	tmap.insert(std::make_pair(tarray[i].bc.loadhash ^ tarray[i].bc.itemhash, i));
+    }
+   
+}
+
+
+
+// permutes tarray and tstatus (with the same permutation), rebuilds tmap.
+void permute_tarray_tstatus()
+{
+    assert(tcount > 0);
+    std::vector<int> perm;
+
+    for (int i = 0; i < tcount; i++)
+    {
+        perm.push_back(i);
+    }
+    
+    // permutes the tasks 
+    std::random_shuffle(perm.begin(), perm.end());
+    task *tarray_new = new task[tcount];
+    std::atomic<int> *tstatus_new = new std::atomic<int>[tcount];
+    for (int i = 0; i < tcount; i++)
+    {
+	tarray_new[perm[i]] = tarray[i];
+	tstatus_new[perm[i]].store(tstatus[i]);
+    }
+
+    delete[] tarray;
+    delete[] tstatus;
+    tarray = tarray_new;
+    tstatus = tstatus_new;
+
+    rebuild_tmap();
+}
+
+
+
+template<int MODE> bool possible_task_advanced(adversary_vertex *v, int largest_item)
+{
+    int target_depth = 0;
+    if (largest_item >= S/4)
+    {
+	target_depth = computation_root->depth + TASK_DEPTH;
+    } else if (largest_item >= 3)
+    {
+	target_depth = computation_root->depth + TASK_DEPTH + 1;
+    } else {
+	target_depth = computation_root->depth + TASK_DEPTH + 3;
+    }
+
+    if (target_depth - v->depth <= 0)
+    {
+	return true;
+    } else {
+	return false;
+    }
+}
 
 template<int MODE> bool possible_task_size(adversary_vertex *v)
 {
@@ -35,14 +301,18 @@ template<int MODE> bool possible_task_size(adversary_vertex *v)
 // computation. Now works in two modes: GENERATING (starting generation) and EXPANDING
 // (expanding an overdue task).
 
-template<int MODE> bool possible_task_depth(adversary_vertex *v)
+template<int MODE> bool possible_task_depth(adversary_vertex *v, int largest_item)
 {
 
     int target_depth;
     if (MODE == GENERATING)
     {
 	target_depth = computation_root->depth + TASK_DEPTH;
-	
+
+	/*if (world_rank != 0)
+	{
+	    target_depth--;
+	}*/
 	/*if (computation_root->depth >= 5)
 	{
 	    target_depth--;
@@ -61,142 +331,122 @@ template<int MODE> bool possible_task_depth(adversary_vertex *v)
     return false;
 }
 
-template<int MODE> bool possible_task_mixed(adversary_vertex *v)
+template<int MODE> bool possible_task_mixed(adversary_vertex *v, int largest_item)
 {
 
-    // compute the largest item seen so far
-    bin_int largest_item = 0;
-    for (int i =1; i <= S; i++)
+    int target_depth = 0;
+    if (largest_item >= 5)
     {
-	if (v->bc->items[i] > 0)
+	target_depth = computation_root->depth + TASK_DEPTH;
+	// } else if (largest_item >= 3) {
+	//target_depth = computation_root->depth + TASK_DEPTH + 1;
+    } else {
+	if (v->bc->totalload() - computation_root->bc->totalload() >= TASK_LOAD)
 	{
-	    largest_item = i;
+	    return true;
+	} else {
+	    return false;
 	}
     }
 
-    if (largest_item >= TASK_LARGEST_ITEM)
+    if (target_depth - v->depth <= 0)
     {
-	return possible_task_depth<MODE>(v);
+	return true;
     } else {
-	return possible_task_size<MODE>(v);
+	return false;
     }
-    
+
 }
 
 
-// Adds a task to the global task queue.
-void add_task(const binconf *x, thread_attr *tat) {
+// Adds a task to the task array.
+void add_task(const binconf *x, thread_attr *tat)
+{
     task_count++;
     task newtask;
     duplicate(&(newtask.bc), x);
     newtask.last_item = tat->last_item;
     newtask.expansion_depth = tat->expansion_depth; 
-    //pthread_mutex_lock(&taskq_lock); // LOCK
-    std::unique_lock<std::mutex> l(taskq_lock);
-    //taskq_lock.lock();
-    tm.insert(std::pair<llu, task>((x->loadhash ^ x->itemhash), newtask));
-    l.unlock();
-    //pthread_mutex_unlock(&taskq_lock); // UNLOCK
+    tmap.insert(std::make_pair(newtask.bc.loadhash ^ newtask.bc.itemhash, tarray_temporary.size()));
+    tarray_temporary.push_back(newtask);
+    tstatus_temporary.push_back(TASK_AVAILABLE);
+    tcount++;
 }
 
-// Removes a task from the global task map. If the task is not
-// present, it just silently does nothing.
-void remove_task(llu hash)
+void clear_tasks()
 {
-    removed_task_count++; // no race condition here, variable only used in the UPDATING thread
-
-    //pthread_mutex_lock(&taskq_lock); // LOCK
-    std::unique_lock<std::mutex> l(taskq_lock);
-    //taskq_lock.lock();
-    auto it = tm.find(hash);
-    if (it != tm.end()) {
-	DEBUG_PRINT("Erasing task: ");
-	DEBUG_PRINT_BINCONF(&(it->second.bc));
-	tm.erase(it);
-    } else {
-	// pthread_rwlock_wrlock(&running_and_removed_lock);
-	std::unique_lock<std::shared_timed_mutex> rl(running_and_removed_lock);
-	//l.lock();
-	running_and_removed.insert(hash);
-	rl.unlock();
-	// pthread_rwlock_unlock(&running_and_removed_lock);
-    }
-    l.unlock();
-    //pthread_mutex_unlock(&taskq_lock); // UNLOCK
+    tcount = 0;
+    thead = 0;
+    tstatus_temporary.clear();
+    tarray_temporary.clear();
+    tmap.clear();
 }
 
-/* Check if a given task is complete, return its value. 
+// Does not actually remove a task, just marks it as completed.
+template <int MODE> void remove_task(llu hash)
+{
 
-   Since we store the completed tasks in a secondary stucture
-   (map), we incur an O(log n) penalty for checking completion,
-   where n is the number of tasks.
-*/
+    if (MODE == GENERATING || MODE == UPDATING)
+    {
+	removed_task_count++;
+	if (MODE == GENERATING)
+	{
+	    tstatus_temporary[tmap[hash]] = TASK_PRUNED;
+	}
+	
+	if (MODE == UPDATING)
+	{
+	    tstatus[tmap[hash]].store(TASK_PRUNED, std::memory_order_release);
+	    // add task to irrelevant task queue
+	    irrel_taskq.push(tmap[hash]);
+	}
+    }
+}
 
+// Check if a given task is complete, return its value. 
 int completion_check(llu hash)
 {
-    auto fin = losing_tasks.find(hash);
-
-    int ret = POSTPONED;
-    if (fin != losing_tasks.end())
+    int query = tstatus[tmap[hash]].load(std::memory_order_acquire);
+    if (query == 0 || query == 1)
     {
-	ret = fin->second;
-	assert(ret == 1);
+	return query;
     }
-
-    auto fin2 = winning_tasks.find(hash);
-    if (fin2 != winning_tasks.end())
-    {
-	ret = fin2->second;
-	assert(ret == 0);
-    }
-
-    auto fin3 = overdue_tasks.find(hash);
-    if (fin3 != overdue_tasks.end())
-    {
-	ret = fin3->second;
-	assert(ret == OVERDUE);
-    }
-
-    return ret;
+    return POSTPONED;
 }
 
-// called by the updater, collects tasks from other threads
-unsigned int collect_tasks()
-{
-    unsigned int collected = 0;
-    for (int i =0; i < THREADS; i++)
-    {
-	std::unique_lock<std::mutex> l(collection_lock[i]);
-	//pthread_mutex_lock(&collection_lock[i]);
-
-	for (auto &kv: completed_tasks[i])
-	{
-
-	    if (kv.second == 0)
-	    {
-		winning_tasks.insert(kv);
-	    } else if (kv.second == 1) {
-		losing_tasks.insert(kv);
-	    } else if (kv.second == OVERDUE)
-	    {
-		overdue_tasks.insert(kv);
-	    }
-	    collected++;
-	}
-
-	completed_tasks[i].clear();
-	l.unlock();
-	//pthread_mutex_unlock(&collection_lock[i]);
-    }
-    return collected;
-}
-
-/* A debug function for printing out the global task map. */
+// A debug function for printing out the global task map. 
 void print_tasks()
 {
-    for(auto it = tm.begin(); it != tm.end(); ++it)
+    for(int i = 0; i < tcount; i++)
     {
-        DEBUG_PRINT_BINCONF(&(it->second.bc));
+	print_binconf_stream(stderr, &tarray[i].bc);
     }
 }
+
+// -- batching --
+int taskpointer = 0;
+void compose_batch(int *batch)
+{
+    int i = 0;
+    while(i < BATCH_SIZE)
+    {
+	if (taskpointer >= tcount)
+	{
+	    // no more tasks to send out
+	    batch[i] = -1;
+	} else
+	{
+	    if (tstatus[taskpointer].load(std::memory_order_acquire) == TASK_AVAILABLE)
+	    {
+		batch[i] = taskpointer++;
+	    } else {
+		taskpointer++;
+		continue;
+	    }
+	}
+	assert(batch[i] >= -1 && batch[i] < tcount);
+	i++;
+    }
+}
+
 #endif

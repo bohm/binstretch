@@ -2,78 +2,79 @@
 #include <cstdlib>
 #include <inttypes.h>
 
+#include <mpi.h>
+
 #include "common.hpp"
 #include "binconf.hpp"
 #include "hash.hpp"
 #include "minimax.hpp"
-#include "scheduler.hpp"
-#include "sequencing.hpp"
+#include "queen.hpp"
+#include "worker.hpp"
 
-void print_sequence(FILE *stream, const std::vector<bin_int>& seq)
-{
-    for (const bin_int& i: seq)
-    {
-	fprintf(stream, "%" PRIi16 " ", i); 
-    }
-    fprintf(stream, "\n");
-}
 int main(void)
 {
+    int provided = 0;
+    MPI_Init_thread(NULL, NULL, MPI_THREAD_FUNNELED, &provided);
+    assert(provided == MPI_THREAD_FUNNELED);
+    MPI_Comm_size(MPI_COMM_WORLD, &world_size);
+    MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
 
-    hashtable_init();
-    binconf root = {INITIAL_LOADS, INITIAL_ITEMS};
-    adversary_vertex* root_vertex = new adversary_vertex(&root, 0, 1);
-    generated_graph.clear();
-    generated_graph[root_vertex->bc->loadhash ^ root_vertex->bc->itemhash] = root_vertex;
- 
-    if (BINS == 3 && 3*ALPHA >= S)
+    MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, 0, MPI_INFO_NULL, &shmcomm);
+    MPI_Comm_size(shmcomm, &shm_size);
+    MPI_Comm_rank(shmcomm, &shm_rank);
+    shm_log = quicklog(shm_size);
+    
+    int ret = -1;
+    if (QUEEN_ONLY)
     {
-	fprintf(stderr, "All good situation heuristics will be applied.\n");
+	return -1;
     } else {
-	fprintf(stderr, "Only some good situations will be applied.\n");
+	if(world_rank != 0)
+	{
+	    overseer();
+	} else {
+	    // queen is now by default two-threaded
+	    ret = queen();
+	}
     }
 
-    sequencing(INITIAL_SEQUENCE, root, root_vertex);
-    int ret = solve();
-    assert(ret == 0 || ret == 1);
-    if(ret == 0)
+    if (BEING_QUEEN)
     {
-	fprintf(stdout, "Lower bound for %d/%d Bin Stretching on %d bins with monotonicity %d and starting seq: ", R,S,BINS, monotonicity);
-	print_sequence(stdout, INITIAL_SEQUENCE);
-#ifdef OUTPUT
-	char buffer[50];
-	sprintf(buffer, "%d_%d_%dbins.dot", R,S,BINS);
-	FILE* out = fopen( buffer, "w");
-	fprintf(stdout, "Printing to file: %s.\n", buffer);
-	assert(out != NULL);
-	fprintf(out, "strict digraph lowerbound {\n");
-	fprintf(out, "overlap = none;\n");
-//	print_gametree(sout, root_vertex);
-	print_compact(out, root_vertex);
-	fprintf(out, "}\n");
-	fclose(out);
-#endif
-    } else {
-	fprintf(stdout, "Algorithm wins %d/%d Bin Stretching on %d bins with sequence:\n", R,S,BINS);
-	print_sequence(stdout, INITIAL_SEQUENCE);
+	assert(ret == 0 || ret == 1);
+	if(ret == 0)
+	{
+	    fprintf(stdout, "Lower bound for %d/%d Bin Stretching on %d bins with monotonicity %d and starting seq: ",
+		    R,S,BINS,monotonicity);
+	    print_sequence(stdout, INITIAL_SEQUENCE);
+	    // TODO: make sure that OUTPUT works with MPI.
+	    if (OUTPUT)
+	    {
+		char buffer[50];
+		sprintf(buffer, "%d_%d_%dbins.dot", R,S,BINS);
+		FILE* out = fopen( buffer, "w");
+		fprintf(stdout, "Printing to file: %s.\n", buffer);
+		assert(out != NULL);
+		fprintf(out, "strict digraph lowerbound {\n");
+		fprintf(out, "overlap = none;\n");
+		//print_gametree(out, root_vertex);
+		print_compact(out, root_vertex);
+		fprintf(out, "}\n");
+		fclose(out);
+	    }
+	} else {
+	    fprintf(stdout, "Algorithm wins %d/%d Bin Stretching on %d bins with sequence:\n", R,S,BINS);
+	    print_sequence(stdout, INITIAL_SEQUENCE);
+	}
+	
+	
+	fprintf(stderr, "Number of tasks: %d, collected tasks: %u,  pruned tasks %" PRIu64 ".\n,",
+		tcount, collected_cumulative.load(), removed_task_count);
+	fprintf(stderr, "Pruned & transmitted tasks: %" PRIu64 "\n", irrel_transmitted_count);
+
+	hashtable_cleanup();
+	//graph_cleanup(root_vertex); // TODO: fix this
     }
-
-    fprintf(stderr, "Number of tasks: %" PRIu64 ", completed tasks: %" PRIu64 ", pruned tasks %" PRIu64 ".\n,",
-	    task_count, finished_task_count, removed_task_count);
-
-    //MEASURE_ONLY(long double ratio = (long double) total_dynprog_calls / (long double) total_inner_loop);
-    MEASURE_PRINT("Total time (all threads): %Lfs.\n", time_spent.count());
-#ifdef OVERDUES
-    MEASURE_PRINT("Overdue tasks: %" PRIu64 "\n", total_overdue_tasks);
-#endif
-    GOOD_MOVES_PRINT("Total good move hit: %" PRIu64 ", miss: %" PRIu64 "\n", total_good_move_hit, total_good_move_miss);
-    MEASURE_ONLY(print_caching());
-    MEASURE_ONLY(print_gsheur(stderr));
-    MEASURE_ONLY(print_dynprog_measurements());
-    MEASURE_PRINT("Large item hit %" PRIu64 ", miss: %" PRIu64 "\n", total_large_item_hit, total_large_item_miss);
-    //MEASURE_PRINT("Type upper bound successfully decreased the interval: %" PRIu64 "\n", total_tub);
-    hashtable_cleanup();
-    DEBUG_PRINT("Graph cleanup started.\n");
-    //graph_cleanup(root_vertex); // TODO: fix this
+   
+    MPI_Finalize();
     return 0;
 }

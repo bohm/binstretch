@@ -11,7 +11,7 @@
 // Heuristics for bypassing dynamic programming. Currently only
 // best fit decreasing.
 
-int bestfitalg(const binconf *orig)
+bin_int bestfitalg(const binconf *orig)
 {
     loadconf b;
     // a quick trick: keep track of totalload and terminate when it is 0
@@ -43,80 +43,82 @@ int bestfitalg(const binconf *orig)
 
 	    if (!packed)
 	    {
-		return 0;
+		return MAX_UNABLE_TO_PACK;
 	    }
 	}
     }
-    // return the largest item that would fit on the smallest bin
+
     return S - b.loads[BINS];
 }
 
-// an experiment that doesn't work
-int bestfitalg_otherway(const binconf *orig)
+std::pair<bin_int, bin_int> bestfit_cut_interval(const binconf *orig)
 {
     loadconf b;
-    std::array<bin_int, S+1> items;
-    std::copy(orig->items.begin(), orig->items.end(), items.begin());
-    /*for (int i =1; i <= BINS; i++)
-    {
-	b.loads[i] = 0;
-    }
-    */
-    fprintf(stderr, "Trying the other way.\n");
-    print_binconf_stream(stderr, orig);
-    
     // a quick trick: keep track of totalload and terminate when it is 0
-    int tl = orig->totalload();
-    int size, largest_unchecked = S;
-    //int k;
-    int maxspace = 0;
-    for(int i = 1; i <= BINS; i++)
+    int tl = orig->totalload() - S*orig->items[S] - orig->items[1]; 
+    for(int size=S-1; size>1; size--)
     {
-	fprintf(stderr, "Bin %d starts with item %d\n", i, largest_unchecked);
-	size = largest_unchecked;
-	while (size >= 1)
+	int k = orig->items[size];
+	while (k > 0)
 	{
-	    // k = items[size];
-	    while (items[size] > 0)
+	    bool packed = false;
+	    for (int i=1; i<=BINS; i++)
 	    {
 		if (b.loads[i] + size <= S)
 		{
-		    b.loads[i] += size;
-		    tl -= size;
-		    items[size]--;
-		} else {
-		    size = S - b.loads[i];
+		    // compact-pack
+		    int items_to_pack = std::min(k, (S-b.loads[i])/size);
+		    packed = true;
+		    b.assign_multiple(size,i,items_to_pack);
+		    k -= items_to_pack;
+		    tl -= items_to_pack*size;
+
+		    if (tl == 0)
+		    {
+			int first_empty = 1;
+			for (; first_empty <= BINS; first_empty++)
+			{
+			    if (b.loads[first_empty] == 0)
+			    {
+				break;
+			    }
+			}
+
+			if (first_empty == 1)
+			{
+			    assert(false); // bestfit called on 0 items, this shouldn't happen
+			}
+			return std::make_pair(S - b.loads[first_empty-1], BINS-first_empty+1);
+		    }
 		    break;
-		} 
+		}
 	    }
 
-	    if (items[size] == 0)
+	    if (!packed)
 	    {
-		if (size == largest_unchecked)
-		{
-		    largest_unchecked--;
-		}
-		size--;
-	    }
-	    
-	    if (tl == 0)
-	    {
-		//return S - b.loads[BINS];
-		return std::max(maxspace, S - b.loads[BINS]);
+		return std::make_pair(MAX_INFEASIBLE,0);
 	    }
 	}
-	// we are done with bin i, update minload
-	maxspace = std::max(maxspace, S-b.loads[i]);
     }
 
-    // return the largest item that would fit on the smallest bin
-    if (tl == 0)
+    int first_empty = 1;
+    for (; first_empty <= BINS; first_empty++)
     {
-	return maxspace;
-    } else {
-	return 0;
+	if (b.loads[first_empty] == 0)
+	{
+	    break;
+	}
     }
+// return the largest item that would fit on the smallest bin
+    if (first_empty == 1)
+    {
+	assert(false); // bestfit called on 0 items, this shouldn't happen
+    }
+    return std::make_pair(S - b.loads[first_empty-1], BINS-first_empty+1);
+    
+
 }
+
 
 // init the online loads (essentially BFD)
 void onlineloads_init(loadconf &ol, const binconf *bc)
@@ -173,7 +175,7 @@ void onlineloads_unassign(loadconf& ol, int item, int bin)
     ol.unassign_without_hash(item, bin);
 }
 
-int onlineloads_bestfit(const loadconf& ol)
+bin_int onlineloads_bestfit(const loadconf& ol)
 {
     // if best fit was not able to legally pack it, return 0
     if(ol.loads[1] > S)
