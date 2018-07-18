@@ -30,21 +30,24 @@ typedef int16_t bin_int;
 const bool PROGRESS = true; // print progress
 const bool MEASURE = true; // collect and print measurements
 
-const bool REGROW = false;
+const bool REGROW = true;
 const int REGROW_LIMIT = 1;
 
-const bool OUTPUT = false;
+const bool OUTPUT = true;
+// whether to print the output as a single tree or as multiple trees
+const bool SINGLE_TREE = false;
+
 const bool ONLY_ONE_PASS = false;
 
 // log tasks which run at least some amount of time
-const bool TASKLOG = true;
+const bool TASKLOG = false;
 const long double TASKLOG_THRESHOLD = 60.0; // in seconds
 
 // constants related to the logging of solved saplings
 const bool SEQUENCE_SAPLINGS = true; // whether to compute initial sequencing (or load it from files)
 const bool WRITE_SEQUENCE = false;
 const bool LOAD_SAPLINGS = false; // whether to load saplings from files or use the sequenced ones
-const bool WRITE_SOLUTIONS = false;
+const bool WRITE_SOLUTIONS = true;
 const bool TERMINATE_AFTER_SEQUENCING = false; // if true, only do the sequencing, then terminate
 
 // maximum load of a bin in the optimal offline setting
@@ -56,18 +59,27 @@ const bin_int BINS = 9;
 
 // If you want to generate a specific lower bound, you can create an initial bin configuration here.
 // You can also insert an initial sequence here.
-//const std::vector<bin_int> INITIAL_LOADS = {};
-//const std::vector<bin_int> INITIAL_ITEMS = {};
-const std::vector<bin_int> INITIAL_LOADS = {8,1,1,1,1,};
-const std::vector<bin_int> INITIAL_ITEMS = {7,0,0,0,1};
+//const std::vector<bin_int> INITIAL_LOADS = {4,4,0};
+//const std::vector<bin_int> INITIAL_LOADS = {8,0,0};
+//const std::vector<bin_int> INITIAL_LOADS = {2,2,0};
+//const std::vector<bin_int> INITIAL_ITEMS = {0,2,0,0};
+//const std::vector<bin_int> INITIAL_LOADS = {8,1,1,1,1,};
+//const std::vector<bin_int> INITIAL_ITEMS = {7,0,0,0,1};
+const std::vector<bin_int> INITIAL_LOADS = {};
+const std::vector<bin_int> INITIAL_ITEMS = {};
+
 // You can also insert an initial sequence here, and the adversary will use it as a predefined start.
 
-//const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1,1,1};
-//const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1,1,1,1,1};
+//const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1};
+const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1,1,1,1};
 //const std::vector<bin_int> INITIAL_SEQUENCE = {5};
-const std::vector<bin_int> INITIAL_SEQUENCE = {};
+//const std::vector<bin_int> INITIAL_SEQUENCE = {1};
+//const std::vector<bin_int> INITIAL_SEQUENCE = {2,2};
+//const std::vector<bin_int> INITIAL_SEQUENCE = {};
 
-const int FIRST_PASS = 1;
+const int FIRST_PASS = 0;
+//const int FIRST_PASS = 8;
+
 // constants used for good situations
 const int RMOD = (R-1);
 const int ALPHA = (RMOD-S);
@@ -84,7 +96,7 @@ unsigned int dplog = 0;
 uint64_t ht_size = 0;
 uint64_t dpht_size = 0;
 
-const unsigned int LOADLOG = 13;
+const unsigned int LOADLOG = 11;
 
 // batching constants
 const int BATCH_SIZE = 500;
@@ -100,11 +112,12 @@ const int DEFAULT_DP_SIZE = 100000;
 const int BESTFIT_THRESHOLD = (1*S)/10;
 
 // a bound on total load of a configuration before we split it into a task
-const int TASK_LOAD = 14;
-const int TASK_DEPTH = 4;
+const int TASK_LOAD = 10;
+const int TASK_DEPTH = 7;
 //const int TASK_DEPTH = S > 41 ? 3 : 4;
 //const int TASK_DEPTH = S > 41 ? 2 : 3;
 #define POSSIBLE_TASK possible_task_mixed
+//#define POSSIBLE_TASK possible_task_depth
 
 const int EXPANSION_DEPTH = 3;
 const int TASK_LARGEST_ITEM = 5;
@@ -133,8 +146,6 @@ const bool DISABLE_DP_CACHE = false;
 // ------------------------------------------------
 // system constants and global variables (no need to change)
 
-const bin_int MAX_ITEMS = S*BINS;
-
 // maximum number of items
 const bin_int MAX_ITEMS = S*BINS;
 
@@ -150,6 +161,7 @@ const int UPDATING = 4;
 const int SEQUENCING = 5;
 const int CLEANUP = 6;
 
+char outfile[50];
 // MPI-related globals
 int world_size = 0;
 int world_rank = 0;

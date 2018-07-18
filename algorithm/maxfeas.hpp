@@ -181,7 +181,7 @@ bin_int maximum_feasible(binconf *b, const int depth, const bin_int cannot_send_
     if (bestfit > ub)
     {
 	print_binconf_stream(stderr, b);
-	fprintf(stderr, "lb %" PRIi16 ", ub %" PRIi16 ", bestfit: %" PRIi16 ", maxfeas: %" PRIi16 ", initial_ub %" PRIi16".\n", lb, ub, bestfit, dynprog_max_safe(b,tat), initial_ub);
+	fprintf(stderr, "lb %" PRIi16 ", ub %" PRIi16 ", bestfit: %" PRIi16 ", maxfeas: %" PRIi16 ", initial_ub %" PRIi16".\n", lb, ub, bestfit, dynprog_max(b,tat), initial_ub);
 	fprintf(stderr, "dphash %" PRIu64 ", pack_and_query [%" PRIi16 ", %" PRIi16 "]:", b->dphash(), ub, initial_ub);
 	for (bin_int dbug = ub; dbug <= initial_ub; dbug++)
 	{
@@ -227,8 +227,15 @@ bin_int maximum_feasible(binconf *b, const int depth, const bin_int cannot_send_
     MEASURE_ONLY(tat->meas.dynprog_calls++);
     // DISABLED: passing ub so that dynprog_max_dangerous takes care of pushing into the cache
     // DISABLED: maximum_feasible = dynprog_max_dangerous(b,lb,ub,tat);
-    bin_int maximum_feasible = dynprog_max_safe(b,tat);
-   
+    bin_int maximum_feasible = dynprog_max(b,tat);
+    /* bin_int check = dynprog_max_safe(*b,tat);
+    if (maximum_feasible != check)
+    {
+	print_binconf<true>(b);
+	print<true>("dynprog_max: %" PRIi16 "; safe value: % " PRIi16 ".\n", maximum_feasible, check);
+	assert(maximum_feasible == check);
+    } */
+    
     if(!DISABLE_DP_CACHE)
     {
 	for (bin_int i = maximum_feasible+1; i <= cache_ub; i++)

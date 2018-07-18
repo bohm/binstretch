@@ -188,7 +188,6 @@ void overseer()
     MPI_Get_processor_name(processor_name, &name_len);
     printf("Overseer reporting for duty: %s, rank %d out of %d instances\n",
 	   processor_name, world_rank, world_size);
-    bool wait_for_initial_signal = true;
 
     // lower and upper limit of the interval for this particular overseer
     // set global constants used for allocating caches and worker count
@@ -209,47 +208,35 @@ void overseer()
     finished_tasks = new semiatomic_q[worker_count];
     std::thread* threads = new std::thread[worker_count];
     init_worker_memory();
-    sync_up();
-    bool batch_requested = false; 
+    sync_up(); // Sync before any rounds start.
+    bool batch_requested = false;
+    bool final_round = false;
     while(true)
     {
-	if (wait_for_initial_signal)
-	{
+	print<COMM_DEBUG>("Overseer %d: waiting for round start.\n", world_rank);
+	// wait for the start of the round
+	final_round = round_start_and_finality();
 
+	if (!final_round)
+	{
 	    print<COMM_DEBUG>("Overseer %d waits for monotonicity.\n", world_rank);
-	    monotonicity = broadcast_initial_signal();
-	    if (termination_signal)
-	    {
-		break;
-	    }
+	    monotonicity = broadcast_monotonicity();
 	    print<COMM_DEBUG>("Overseer %d received new monotonicity: %d.\n", world_rank, monotonicity);
 
 	    // clear caches, as monotonicity invalidates some situations
 	    clear_cache_of_ones();
-
-	    // TODO: make sure all worker processes are finished
-	    wait_for_initial_signal = false;
 	    root_solved.store(false);
-
-	    int queen_value = broadcast_after_generation();
-	    if (queen_value != POSTPONED)
-	    {
-		print<COMM_DEBUG>("Root_solved; overseer %d switching to new monotonicity.\n", world_rank);
-		wait_for_initial_signal = true;
-		continue;
-	    } else {
-		print<COMM_DEBUG>("Root unsolved; overseer %d waits for tarray.\n", world_rank);
-	    }
-			       
-	    // receive (new) task array
+// receive (new) task array
 	    broadcast_tarray_tstatus();
 	    print<COMM_DEBUG>("Tarray + tstatus initialized.\n");
 
-	    // fetch first batch
-	    request_new_batch();
-	    receive_batch(working_batch);
+	    // set batch pointer as if the last batch is completed;
+	    // this will cause the processing loop to ask for a new batch.
+	    // If we just wait for the batch without Irecv, it can cause synchronization
+	    // trouble.
+	    
 	    batch_requested = false;
-	    batchpointer.store(0);
+	    batchpointer.store(BATCH_SIZE);
     
 	    // finally, spawn solver processes
 	    for (int i = 0; i < worker_count; i++)
@@ -257,58 +244,62 @@ void overseer()
 		finished_tasks[i].init(tcount);
 		threads[i] = std::thread(worker, i, worker_finished);
 	    }
-	}
 
-	check_root_solved();
-	if (root_solved)
-	{
-	    wait_for_initial_signal = true;
-	    for (int i =0; i < worker_count; i++)
+	    // processing loop for the overseer
+	    while(true)
 	    {
-		threads[i].join();
-		print<DEBUG>("Worker %d joined back.\n", i);
-	    }
+		check_root_solved();
+		if (root_solved)
+		{
+		    for (int i =0; i < worker_count; i++)
+		    {
+			threads[i].join();
+			print<DEBUG>("Worker %d joined back.\n", i);
+		    }
 	    
-	    print<COMM_DEBUG>("Tarray + tstatus destroyed by root_solved.\n");
-	    assert(tarray != NULL && tstatus != NULL);
-	    destroy_tarray();
-	    destroy_tstatus();
-	    for (int p = 0; p < worker_count; p++) { finished_tasks[p].clear(); }
-	    sync_up(); // Root solved.
-	    ignore_additional_signals();
-	    continue;
-	}
-	
-	// last time we checked, root_solved == false
-	process_finished_tasks();
+		    print<COMM_DEBUG>("Tarray + tstatus destroyed by root_solved.\n");
+		    assert(tarray != NULL && tstatus != NULL);
+		    destroy_tarray();
+		    destroy_tstatus();
 
-	// if running low, get new batch
-	// if (BATCH_SIZE - batchpointer <= BATCH_THRESHOLD)
-	if (!batch_requested && batchpointer.load() >= BATCH_SIZE)
-	{
-	    request_new_batch();
-	    batch_requested = true;
-	}
+		    for (int p = 0; p < worker_count; p++) { finished_tasks[p].clear(); }
+		    ignore_additional_signals();
+		    break;
+		} else {
+		    // last time we checked, root_solved == false
+		    process_finished_tasks();
 
-	if (batch_requested)
-	{
-	    bool batch_received = try_receiving_batch(working_batch);
-	    if (batch_received)
-	    {
-		batch_requested = false;
-		batchpointer.store(0);
-	    }
-	}
+		    // if running low, get new batch
+		    // if (BATCH_SIZE - batchpointer <= BATCH_THRESHOLD)
+		    if (!batch_requested && batchpointer.load() >= BATCH_SIZE)
+		    {
+			request_new_batch();
+			batch_requested = true;
+		    }
 
-	std::this_thread::sleep_for(std::chrono::milliseconds(TICK_SLEEP));
+		    if (batch_requested)
+		    {
+			bool batch_received = try_receiving_batch(working_batch);
+			if (batch_received)
+			{
+			    batch_requested = false;
+			    batchpointer.store(0);
+			}
+		    }
+		}
+		std::this_thread::sleep_for(std::chrono::milliseconds(TICK_SLEEP));
+	    } // end of the processing loop for overseer
+	    round_end(); 
+	} else { // final_round == true
+	    print<COMM_DEBUG>("Overseer %d: received final round, terminating.\n", world_rank);
+	    transmit_measurements();
+	    free_worker_memory();
+	    delete[] finished_tasks;
+	    delete[] worker_finished;
+	    round_end();
+	    break;
+	}
     }
-
-    sync_up();
-    transmit_measurements();
-    free_worker_memory();
-    delete[] finished_tasks;
-    delete[] worker_finished;
-    sync_up();
 }
 
 #endif // WORKER

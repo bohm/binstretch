@@ -30,7 +30,7 @@ std::tuple<unsigned int, unsigned int, unsigned int> server_properties(char *ser
 	return std::make_tuple(29,29,7);
     } else if (strcmp(server_name, "kamenolom") == 0)
     {
-	return std::make_tuple(30,30,16);
+	return std::make_tuple(27,27,14);
     } else if (strcmp(server_name, "kaminka") == 0)
     {
 	// has more cores but they are occupied right now
@@ -38,12 +38,27 @@ std::tuple<unsigned int, unsigned int, unsigned int> server_properties(char *ser
     } else if (strcmp(server_name, "lomikamen") == 0)
     {
 	// has *many* more cores but they are occupied right now
-	return std::make_tuple(31, 31, 16);
+	return std::make_tuple(29, 29, 40);
 	// return std::make_tuple(31, 31, 64);
-
-    } else {
+    } else if (strcmp(server_name, "kamenozrout") == 0)
+    {
+	return std::make_tuple(31, 31, 32);
+    } else if (strcmp(server_name, "kamenina") == 0) {
+	return std::make_tuple(28, 28, 6);
+    }
+    else if (strcmp(server_name, "hippocampus") == 0) {
+	return std::make_tuple(28, 28, 7);
+    }
+    else if (strcmp(server_name, "kamoku") == 0) {
+	return std::make_tuple(28, 28, 8);
+    }
+    else if (strcmp(server_name, "kampanila") == 0) {
+	return std::make_tuple(28, 28, 16);
+    }
+    else {
 	return std::make_tuple(28, 28, 4);
     }
+
 }
 
 

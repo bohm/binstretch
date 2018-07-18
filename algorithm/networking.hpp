@@ -74,6 +74,35 @@ void broadcast_zobrist()
     // fprintf(stderr, "Process %d Zi[1]: %" PRIu64 "\n", world_rank, Zi[1]);
 }
 
+/* Communication states:
+0) Initial synchronization (broadcasting zobrist).
+1) Queen broadcasts round start (if it needs help).
+2) Queen broadcasts whether the round is final.
+3) If round not final: processing.
+4) At some point, root is solved; queen transmits that to all.
+5) Queen broadcasts round end.
+*/
+
+// function that waits for round start (called by overseers)
+bool round_start_and_finality()
+{
+    int final_flag_int;
+    MPI_Bcast(&final_flag_int, 1, MPI_INT, QUEEN, MPI_COMM_WORLD);
+    return (bool) final_flag_int;
+}
+
+// function that starts the round (called by queen, finality set to true when round is final)
+void round_start_and_finality(bool finality)
+{
+    int final_flag_int = finality;
+    MPI_Bcast(&final_flag_int, 1, MPI_INT, QUEEN, MPI_COMM_WORLD);
+}
+
+void round_end()
+{
+    MPI_Barrier(MPI_COMM_WORLD);
+}
+
 void transmit_measurements()
 {
     MPI_Send(g_meas.serialize(),sizeof(measure_attr), MPI_CHAR, QUEEN, MEASUREMENTS, MPI_COMM_WORLD);
@@ -355,21 +384,17 @@ void blocking_check_root_solved()
     }
 }
 
-void broadcast_initial_signal(int signal)
+void broadcast_monotonicity(int m)
 {
     assert(BEING_QUEEN);
-    MPI_Bcast(&signal, 1, MPI_INT, QUEEN, MPI_COMM_WORLD);
+    MPI_Bcast(&m, 1, MPI_INT, QUEEN, MPI_COMM_WORLD);
 }
 
-int broadcast_initial_signal()
+int broadcast_monotonicity()
 {
     assert(BEING_OVERSEER);
-    int m = -1;
+    int m = 0;
     MPI_Bcast(&m, 1, MPI_INT, QUEEN, MPI_COMM_WORLD);
-    if (m == -1)
-    {
-	termination_signal.store(true);
-    }
     return m;
 
 }

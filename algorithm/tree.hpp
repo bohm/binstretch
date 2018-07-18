@@ -57,7 +57,7 @@ public:
 
     int depth; // depth increases only in adversary steps
     bool task = false;
-    // bool sapling = false;
+    bool sapling = false;
     bool visited = false; // we use this temporarily for DFS (e.g. for printing)
     bool heuristic = false;
     bin_int heuristic_item = 0;
@@ -261,7 +261,7 @@ void print_partial_gametree(FILE* stream, algorithm_vertex *v)
     }
 }
 
-void print_compact_subtree(FILE* stream, adversary_vertex *v)
+void print_compact_subtree(FILE* stream, bool stop_on_saplings, adversary_vertex *v)
 {
     if (v->visited)
     {
@@ -278,6 +278,9 @@ void print_compact_subtree(FILE* stream, adversary_vertex *v)
     if (v->task)
     {
 	fprintf(stream, "task\"];\n");
+    } else if (v->sapling && stop_on_saplings)
+    {
+	fprintf(stream, "sapling\"];\n");
     } else if(v->heuristic)
     {
 	if (v->heuristic_type == LARGE_ITEM)
@@ -307,7 +310,7 @@ void print_compact_subtree(FILE* stream, adversary_vertex *v)
 	
 	for (auto&& next: right_edge->to->out)
 	{
-	    print_compact_subtree(stream, next->to);
+	    print_compact_subtree(stream, stop_on_saplings, next->to);
 	}
 
     }
@@ -315,10 +318,17 @@ void print_compact_subtree(FILE* stream, adversary_vertex *v)
 }
 
 
+// a wrapper around print_compact_subtree that sets the stop_on_saplings to true
+void print_treetop(FILE* stream, adversary_vertex *v)
+{
+    clear_visited_bits();
+    print_compact_subtree(stream, true, v);
+}
+
 void print_compact(FILE* stream, adversary_vertex *v)
 {
     clear_visited_bits();
-    print_compact_subtree(stream, v);
+    print_compact_subtree(stream, false, v);
 }
 
 /* Slightly clunky implementation due to the inability to do
@@ -438,4 +448,4 @@ void purge_sapling(adversary_vertex *sapling)
     sapling->last_item = 1; // TODO: it doesn't clearly state that last item should be ignored.
     remove_outedges<CLEANUP>(sapling);
 }
-#end
+#endif

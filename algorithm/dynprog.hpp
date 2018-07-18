@@ -329,7 +329,7 @@ bin_int dynprog_max_safe(const binconf &conf, thread_attr *tat)
 
 			uint64_t debug_loadhash = tuple.loadhash;
 			int newpos = tuple.assign_and_rehash(size, i);
-			
+	
 			if(! loadconf_hashfind(tuple.loadhash ^ salt, tat))
 			{
 			    if(size == smallest_item && k == 1)
@@ -361,9 +361,163 @@ bin_int dynprog_max_safe(const binconf &conf, thread_attr *tat)
     return max_overall;
 }
 
-bin_int dynprog_max_safe(const binconf *conf, thread_attr *tat)
+bin_int dynprog_max(const binconf &conf, thread_attr *tat)
 {
-    return dynprog_max_safe(*conf, tat);
+    tat->newloadqueue->clear();
+    tat->oldloadqueue->clear();
+    std::vector<loadconf> *poldq = tat->oldloadqueue;
+    std::vector<loadconf> *pnewq = tat->newloadqueue;
+    memset(tat->loadht, 0, LOADSIZE*8);
+
+    uint64_t salt = rand_64bit();
+    bool initial_phase = true;
+    bin_int max_overall = MAX_INFEASIBLE;
+    bin_int smallest_item = -1;
+    for (int i = 1; i <= S; i++)
+    {
+	if (conf.items[i] > 0)
+	{
+	    smallest_item = i;
+	    break;
+	}
+    }
+
+    // handle items of size S separately
+    if (conf.items[S] > 0)
+    {
+	if (conf.items[S] > BINS)
+	{
+	    return MAX_INFEASIBLE;
+	}
+
+	if (smallest_item == S)
+	{
+	    if (conf.items[S] == BINS)
+	    {
+		return 0; // feasible, but nothing can be sent
+	    } else {
+		return S; // at least one bin completely empty
+	    }
+	}
+
+	loadconf first;
+	for (int i = 1; i <= conf.items[S]; i++)
+	{
+	    first.loads[i] = S;
+	}
+
+	for (int i = conf.items[S] +1; i <= BINS; i++)
+	{
+	    first.loads[i] = 0;
+	}
+	
+	first.hashinit();
+	pnewq->push_back(first);
+
+	initial_phase = false;
+	std::swap(poldq, pnewq);
+	pnewq->clear();
+    }
+    
+    for (bin_int size=S-1; size>=2; size--)
+    {
+	bin_int k = conf.items[size];
+	while (k > 0)
+	{
+	    if (initial_phase)
+	    {
+		loadconf first;
+		for (int i = 1; i <= BINS; i++)
+		{
+		    first.loads[i] = 0;
+		}	
+		first.hashinit();
+		first.assign_and_rehash(size, 1);
+		pnewq->push_back(first);
+
+		initial_phase = false;
+
+		if(size == smallest_item && k == 1)
+		{
+		    return S;
+		}
+	    } else {
+		MEASURE_ONLY(tat->meas.largest_queue_observed = std::max(tat->meas.largest_queue_observed, poldq->size()));
+		for (loadconf& tuple: *poldq)
+		{
+		    for (int i=BINS; i >= 1; i--)
+		    {
+			// same as with Algorithm, we can skip when sequential bins have the same load
+			if (i < BINS && tuple.loads[i] == tuple.loads[i + 1])
+			{
+			    continue;
+			}
+			
+			if (tuple.loads[i] + size > S) {
+			    break;
+			}
+
+			uint64_t debug_loadhash = tuple.loadhash;
+			int newpos = tuple.assign_and_rehash(size, i);
+	
+			if(! loadconf_hashfind(tuple.loadhash ^ salt, tat))
+			{
+			    if(size == smallest_item && k == 1)
+			    {
+				// this can be improved by sorting
+				max_overall = std::max((bin_int) (S - tuple.loads[BINS]), max_overall);
+			    }
+
+			    pnewq->push_back(tuple);
+			    loadconf_hashpush(tuple.loadhash ^ salt, tat);
+			}
+
+		        tuple.unassign_and_rehash(size, newpos);
+			assert(tuple.loadhash == debug_loadhash);
+		    }
+		}
+		if (pnewq->size() == 0)
+		{
+		    return MAX_INFEASIBLE;
+		}
+	    }
+
+	    std::swap(poldq, pnewq);
+	    pnewq->clear();
+	    k--;
+	}
+    }
+
+    // handle items of size one separately
+
+    if (conf.items[1] > 0)
+    {
+	bin_int free_volume = S*BINS - conf.totalload();
+
+	if (free_volume < 0)
+	{
+	    return MAX_INFEASIBLE;
+	}
+
+	if (free_volume == 0)
+	{
+	    return 0;
+	}
+
+	for (loadconf& tuple: *poldq)
+	{
+	    bin_int empty_space_on_last = std::min((bin_int) (S - tuple.loads[BINS]), free_volume);
+	    max_overall = std::max(empty_space_on_last, max_overall);
+	}
+    }
+    
+    return max_overall;
+}
+
+
+bin_int dynprog_max(const binconf *conf, thread_attr *tat)
+{
+    return dynprog_max(*conf, tat);
 }
 
 // check if any of the choices in the vector is feasible while doing dynamic programming
@@ -490,7 +644,7 @@ void remove_item_inplace(binconf& h, const bin_int item, const bin_int multiplic
 
 bool compute_feasibility(const binconf &h, thread_attr *tat)
 {
-    return (dynprog_max_safe(h,tat) != MAX_INFEASIBLE);
+    return (dynprog_max(h,tat) != MAX_INFEASIBLE);
 }
 
 // dp_encache in caching.hpp

@@ -13,6 +13,8 @@
 
 int main(void)
 {
+    // create output file name
+    sprintf(outfile, "%d_%d_%dbins.dot", R,S,BINS);
     int provided = 0;
     MPI_Init_thread(NULL, NULL, MPI_THREAD_FUNNELED, &provided);
     assert(provided == MPI_THREAD_FUNNELED);
@@ -46,13 +48,10 @@ int main(void)
 	    fprintf(stdout, "Lower bound for %d/%d Bin Stretching on %d bins with monotonicity %d and starting seq: ",
 		    R,S,BINS,monotonicity);
 	    print_sequence(stdout, INITIAL_SEQUENCE);
-	    // TODO: make sure that OUTPUT works with MPI.
-	    if (OUTPUT)
+	    if (OUTPUT && SINGLE_TREE)
 	    {
-		char buffer[50];
-		sprintf(buffer, "%d_%d_%dbins.dot", R,S,BINS);
-		FILE* out = fopen( buffer, "w");
-		fprintf(stdout, "Printing to file: %s.\n", buffer);
+		FILE* out = fopen(outfile, "w");
+		fprintf(stdout, "Printing to file: %s.\n", outfile);
 		assert(out != NULL);
 		fprintf(out, "strict digraph lowerbound {\n");
 		fprintf(out, "overlap = none;\n");

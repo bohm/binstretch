@@ -108,7 +108,7 @@ int sequencing_adversary(binconf *b, unsigned int depth, thread_attr *tat, tree_
     {
 	add_sapling(current_adversary);
 	// mark current adversary vertex (created by algorithm() in previous step) as a task
-	//current_adversary->sapling = true;
+	current_adversary->sapling = true;
 	current_adversary->value = POSTPONED;
 	return POSTPONED;
     }

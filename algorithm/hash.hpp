@@ -227,17 +227,12 @@ void zobrist_init()
     Zl = new uint64_t[(BINS+1)*(R+1)];
 
 
-<<<<<<< HEAD
-    for (int i=0; i<=S; i++) {
-	for (int j=0; j<=MAX_ITEMS; j++) {
-=======
     for (int i=0; i<=S; i++)
     {
-	for (int j=0; j<=MAX_ITEMS; j++)
-	{
->>>>>>> origin/temp
+	    for (int j=0; j<=MAX_ITEMS; j++)
+	    {
 	    Zi[i*(MAX_ITEMS+1)+j] = rand_64bit();
-	}
+	    }
     }
 
     for (int i=0; i<=BINS; i++)

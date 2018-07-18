@@ -63,14 +63,13 @@ int queen()
 {
     std::chrono::time_point<std::chrono::system_clock> iteration_start, iteration_end,
 	scheduler_start, scheduler_end;
-
     int name_len;
+    int sapling_no = 0;
+    int ret = 0;
+    
     MPI_Get_processor_name(processor_name, &name_len);
     fprintf(stderr, "Queen Two Threads reporting for duty: %s, rank %d out of %d instances\n",
 	    processor_name, world_rank, world_size);
-
-
-    int ret = 0;
     zobrist_init();
     broadcast_zobrist();
     compute_thread_ranks();
@@ -82,8 +81,7 @@ int queen()
     dpht_size = 1LLU << dplog;
     init_queen_memory();
     
-    // even though the queen does not use the database, it needs to synchronize with others.
-    sync_up();
+    sync_up(); // Sync before any rounds start.
 
     binconf root = {INITIAL_LOADS, INITIAL_ITEMS};
     root_vertex = new adversary_vertex(&root, 0, 1);
@@ -112,6 +110,18 @@ int queen()
 	
 	    write_sapling_queue();
 	    }*/
+
+
+	if (OUTPUT && !SINGLE_TREE)
+	{
+	    FILE* out = fopen(outfile, "w");
+	    assert(out != NULL);
+	    fprintf(out, "strict digraph treetop {\n");
+	    fprintf(out, "overlap = none;\n");
+	    print_treetop(out, root_vertex);
+	    fprintf(out, "}\n");
+	    fclose(out);
+	}
     }
 
     if (TERMINATE_AFTER_SEQUENCING) { return 0; }
@@ -133,7 +143,7 @@ int queen()
 	}
     }
     */
-    
+
     while (!sapling_stack.empty())
     {
 	sapling current_sapling = sapling_stack.top();
@@ -178,10 +188,6 @@ int queen()
 	    monotonicity = FIRST_PASS;
 	    for (; monotonicity <= S-1; monotonicity++)
 	    {
-		fprintf(stderr, "Queen: switch to monotonicity %d.\n", monotonicity);
-		// queen sends the current monotonicity to the workers
-		broadcast_initial_signal(monotonicity);
-		// sync_up();
 		
 		if (PROGRESS) { iteration_start = std::chrono::system_clock::now(); }
 		
@@ -195,7 +201,7 @@ int queen()
 		updater_result = generate(currently_growing, &tat);
 		
 		computation_root->value = updater_result.load(std::memory_order_acquire);
-		broadcast_after_generation(computation_root->value);
+		//broadcast_after_generation(computation_root->value);
 
 		if(computation_root->value != POSTPONED)
 		{
@@ -207,34 +213,50 @@ int queen()
 		    {
 			continue;
 		    }
-		}
+		} else {
+		    // queen needs to start the round
+		    print<COMM_DEBUG>("Queen: Starting the round.\n");
+		    round_start_and_finality(false);
+		    print<PROGRESS>("Queen: switch to monotonicity %d.\n", monotonicity);
+		    // queen sends the current monotonicity to the workers
+		    broadcast_monotonicity(monotonicity);
 
-		init_tstatus(tstatus_temporary); tstatus_temporary.clear();
-		init_tarray(tarray_temporary); tarray_temporary.clear();
-		permute_tarray_tstatus(); // randomly shuffles the tasks 
-		irrel_taskq.init(tcount);
-		// note: do not push into irrel_taskq before permutation is done;
-		// the numbers will not make any sense.
+		    init_tstatus(tstatus_temporary); tstatus_temporary.clear();
+		    init_tarray(tarray_temporary); tarray_temporary.clear();
+		    permute_tarray_tstatus(); // randomly shuffles the tasks 
+		    irrel_taskq.init(tcount);
+		    // note: do not push into irrel_taskq before permutation is done;
+		    // the numbers will not make any sense.
 		
-		print<PROGRESS>("Queen: Generated %d tasks.\n", tcount);
-		broadcast_tarray_tstatus();
-		taskpointer = 0;
+		    print<PROGRESS>("Queen: Generated %d tasks.\n", tcount);
+		    broadcast_tarray_tstatus();
+		    taskpointer = 0;
 		
-		auto x = std::thread(queen_updater, computation_root);
-		x.detach();
+		    auto x = std::thread(queen_updater, computation_root);
 		
-		// the flag is updated by the other thread
-		while(updater_result == POSTPONED)
-		{
-		    collect_worker_tasks();
-		    collect_running_lows();
-		    send_out_batches();
-		    // no need to transmit irrelevant tasks, because the queen now handles handing out tasks
-		    // via batching
-		    // transmit_all_irrelevant();
+		    // the flag is updated by the other thread
+		    while(updater_result == POSTPONED)
+		    {
+			collect_worker_tasks();
+			collect_running_lows();
+			send_out_batches();
+			std::this_thread::sleep_for(std::chrono::milliseconds(TICK_SLEEP));
+		    }
+
+		    x.join();
+
+		    // Updater_result is no longer POSTPONED; end the round.
+		    // Send ROOT_SOLVED signal to workers that wait for tasks and those
+		    // that process tasks.
+		    send_root_solved();
+		    // collect remaining, unnecessary solutions
+		    destroy_tarray();
+		    destroy_tstatus();
+		    irrel_taskq.clear();
+		    clear_tasks();
+		    round_end();
+		    ignore_additional_solutions();
 		}
-		
-		// Updater_result is no longer POSTPONED.
 		
 		if (PROGRESS)
 		{
@@ -243,26 +265,13 @@ int queen()
 		    print<PROGRESS>("Iteration time: %Lfs.\n", iteration_time.count());
 		}
 		
-		// Send ROOT_SOLVED signal to workers that wait for tasks and those
-		// that process tasks.
-		send_root_solved();
-		sync_up(); // Root solved.
-		
-		// collect remaining, unnecessary solutions
-		ignore_additional_solutions();
-		
-		destroy_tarray();
-		destroy_tstatus();
-		irrel_taskq.clear();
-		clear_tasks();
-	    
 		if (updater_result == 0)
 		{
 		    break;
 		}
 	    }
-	    // either updater_result == 0 or tested all monotonicities
 	    
+	    // either updater_result == 0 or tested all monotonicities
 	    if (PROGRESS)
 	    {
 		scheduler_end = std::chrono::system_clock::now();
@@ -291,6 +300,20 @@ int queen()
 	    REGROW_ONLY(regrow(currently_growing));
 	}
 
+	if (OUTPUT && !SINGLE_TREE)
+	{
+	    char saplingfile[50];
+	    sprintf(saplingfile, "%d_%d_%dbins_sap%d.dot", R,S,BINS, sapling_no);
+	    FILE* out = fopen(saplingfile, "w");
+	    assert(out != NULL);
+	    fprintf(out, "strict digraph sapling%d {\n", sapling_no);
+	    fprintf(out, "overlap = none;\n");
+	    print_compact(out, current_sapling.root);
+	    fprintf(out, "}\n");
+	    fclose(out);
+	}
+
+	sapling_no++;
 	/* 
 	if (WRITE_SOLUTIONS)
 	{
@@ -300,10 +323,13 @@ int queen()
 	*/
     }
 
-    broadcast_initial_signal(TERMINATION_SIGNAL);
-    sync_up();
+    // We are terminating, start final round.
+    print<COMM_DEBUG>("Queen: starting final round.\n");
+    round_start_and_finality(true);
     receive_measurements();
-    sync_up();
+    round_end();
+
+    // Print measurements and clean up.
     g_meas.print();
     delete_running_lows();
     free_queen_memory();
