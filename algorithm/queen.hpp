@@ -68,7 +68,7 @@ int queen()
     int ret = 0;
     
     MPI_Get_processor_name(processor_name, &name_len);
-    fprintf(stderr, "Queen Two Threads reporting for duty: %s, rank %d out of %d instances\n",
+    fprintf(stderr, "Queen: reporting for duty: %s, rank %d out of %d instances\n",
 	    processor_name, world_rank, world_size);
     zobrist_init();
     broadcast_zobrist();
@@ -233,8 +233,9 @@ int queen()
 		    taskpointer = 0;
 		
 		    auto x = std::thread(queen_updater, computation_root);
+		    // wake up updater thread.
 		
-		    // the flag is updated by the other thread
+		    // Main loop of this thread (the variable is updated by the other thread).
 		    while(updater_result == POSTPONED)
 		    {
 			collect_worker_tasks();
@@ -243,6 +244,7 @@ int queen()
 			std::this_thread::sleep_for(std::chrono::milliseconds(TICK_SLEEP));
 		    }
 
+		    // suspend updater thread
 		    x.join();
 
 		    // Updater_result is no longer POSTPONED; end the round.
