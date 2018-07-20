@@ -1,36 +1,38 @@
-#define DEBUG 1
-#include <cstdio>
 #include "verifier.hpp"
 
 using namespace std;
 
 int main(int argc, char **argv)
 {
-    llu main_id, secondary_id;
-    llu line = 1;
-    char control;
+    char control, final_brace, separator;
     FILE *fin;
-    if (argc != 2) {
-	fprintf(stderr, "Usage: ./verifier file.dot\n");
-	fprintf(stderr, "Do not forget to recompile with correct values of R, S and BINS in verifier.hpp.\n");
-	fprintf(stderr, "The current values are %d/%d and %d bins.\n", R,S, BINS);
+    char graph_name[255];
+    int fscanf_ret;
+    uint64_t main_id, secondary_id, root_id, line = 1;
+
+    if (argc != 5)
+    {
+	fprintf(stderr, "Usage: ./verifier file.dot R S BINS \n");
+	fprintf(stderr, "R = stretched bin capacity, S = optimal bin capacity.\n");
 	return -3;
     }
-    
+
     fin = fopen(argv[1], "r");
-    if (fin==NULL) {
+    if (fin == NULL)
+    {
 	ERROR("Unable to open file %s\n", argv[1]);
     }
-    int graph_id;
-    llu root_id;
-    int fscanf_ret;
-    char final_brace;
+
+    sscanf(argv[2], "%u", &R); assert(R >= 1 && S <= 255);
+    sscanf(argv[3], "%u", &S); assert(S >= 1 && S <= 255);
+    sscanf(argv[4], "%u", &BINS); assert(BINS >= 3 && BINS <= 255);
 
     // first line
     
-    fscanf_ret = fscanf(fin, "strict digraph %d {\n", &graph_id);
-    if(fscanf_ret != 1) {
-	ERROR("Error at line %llu\n", line);
+    fscanf_ret = fscanf(fin, "strict digraph %s {\n", graph_name);
+    if (fscanf_ret != 1)
+    {
+	ERROR("Error at line %" PRIu64 "\n", line);
     }
     line++;
 
@@ -38,70 +40,99 @@ int main(int argc, char **argv)
     fscanf(fin, "overlap = none;\n");
     // data incoming now
     
-    while(!feof(fin)) {
-	fscanf_ret = fscanf(fin, " %llu", &main_id);
-	if(fscanf_ret != 1)
+    while (!feof(fin))
+    {
+	fscanf_ret = fscanf(fin, " %" PRIu64 "", &main_id);
+	if (fscanf_ret != 1)
 	{
 	    fscanf_ret = fscanf(fin,"%c",&final_brace); 
-	    if( (fscanf_ret == 1) && (final_brace == '}'))
+	    if ((fscanf_ret == 1) && (final_brace == '}'))
 	    {
 		break; // end of input;
 	    } else {
-		ERROR("Error at line %llu at first number\n", line);
+		ERROR("Error at line %" PRIu64 " at first number\n", line);
 	    }
 	}
 	
 	fscanf(fin, " %c", &control);
 
 	// vertex descriptor
-	if(control == '[') {
-	    Binconf* cc = new Binconf(); // current configuration
+	if (control == '[')
+	{
+	    binconf* cc = new binconf(); // current configuration
 	    int next;
 	    int total = 0;
 	    if (fscanf(fin, "label=\"") != 0) {
-		ERROR("Failed to parse an edge on line %llu\n", line);
+		ERROR("Failed to parse an edge on line %" PRIu64 "\n", line);
 	    }
 	    
 	    for (int i =0; i < BINS; i++) {
-		if (fscanf(fin, "%d\\n", &(cc->loads[i])) != 1) {
-		    ERROR("Failed to parse an edge on line %llu\n", line);
+		if (fscanf(fin, "%d", &(cc->loads[i])) != 1)
+		{
+		    ERROR("Failed to parse a vertex on line %" PRIu64 "\n", line);
 		}
+
+		// two allowed separators -- "\n" and " ".
+		if (fscanf(fin, "%c", &separator) != 1)
+		{
+		    ERROR("Failed to scan a separator on line %" PRIu64 "\n", line);
+		}
+
+		if (separator == '\\' )
+		{
+		    if (fscanf(fin, "%c", &separator) != 1)
+		    {
+			ERROR("Failed to scan a second character of the separator on line %" PRIu64 ".\n", line);
+		    }
+
+		    if (separator != 'n')
+		    {
+			ERROR("Backslash on line %" PRIu64 " is not followed by 'n'.\n", line);
+		
+		    }
+		} else if (separator != ' ')
+		{
+		    ERROR("Separator on line %" PRIu64 " is not one of the valid ones.\n", line);
+		} 
+		
+
+		     
 		total += cc->loads[i];
 	    }
 	    
 	    if (fscanf(fin, "n: %d\"];\n", &next) != 1) {
-		ERROR("Failed to parse an edge on line %llu\n", line);
+		ERROR("Failed to parse an edge on line %" PRIu64 "\n", line);
 	    }
 
 	    // If configuration is (0,0,0,...,0), set it as root.
 	    if (total == 0)
 	    {
-		DEBUG_PRINT("Setting vertex %llu as root.\n", main_id);
+		print<DEBUG>("Setting vertex %" PRIu64 " as root.\n", main_id);
 		root_id = main_id;
 	    }
 
-	    Vertex cv(cc); // current vertex
+	    vertex cv(cc); // current vertex
 	    cv.nextItem = next;
 	    cv.id = main_id;
-	    DEBUG_PRINT("Creating vertex %llu: ", main_id);
-	    DEBUG_PRINT_VERTEX(cv);
-	    DEBUG_PRINT("and next item %d\n", cv.nextItem);
+	    print<DEBUG>("Creating vertex %" PRIu64 ": ", main_id);
+	    print_vertex<DEBUG>(cv);
+	    print<DEBUG>("and next item %d\n", cv.nextItem);
 	    tree.insert(make_pair(main_id, cv));
 	    line++;
 	}
 	
 	// edge descriptor
 	else if (control == '-') {
-	    if (fscanf(fin, "> %llu\n", &secondary_id) != 1)
+	    if (fscanf(fin, "> %" PRIu64 "\n", &secondary_id) != 1)
 	    {
-		ERROR("Failed to parse an edge on line %llu\n", line);
+		ERROR("Failed to parse an edge on line %" PRIu64 "\n", line);
 	    }
 	    try {
-		Vertex& relevant = tree.at(main_id); 
+		vertex& relevant = tree.at(main_id); 
 		relevant.children.push_back(secondary_id);
-		DEBUG_PRINT("Adding edge from %llu to %llu\n", main_id, secondary_id);
+		print<DEBUG>("Adding edge from %" PRIu64 " to %" PRIu64 "\n", main_id, secondary_id);
 	    } catch (exception &e) {
-		ERROR("Failed to find a relevant vertex for the vertex %llu\n", main_id);
+		ERROR("Failed to find a relevant vertex for the vertex %" PRIu64 "\n", main_id);
 	    }
 	    
 	    line++;
@@ -113,11 +144,11 @@ int main(int argc, char **argv)
     }
     fclose(fin);
 
-    DEBUG_PRINT("Recursively computing loads at each vertex.\n");
-    Vertex& root = tree.at(root_id);
+    print<DEBUG>("Recursively computing loads at each vertex.\n");
+    vertex& root = tree.at(root_id);
     root.fill_types();
     
-    DEBUG_PRINT("Starting tree validation.\n");
+    print<DEBUG>("Starting tree validation.\n");
     bool result = root.recursive_validate();
     if (result == true)
     {

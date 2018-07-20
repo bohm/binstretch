@@ -27,8 +27,9 @@ public:
     std::list<alg_outedge*> out; // next adversarial states
     std::list<adv_outedge*> in; // previous adversarial states
     uint64_t id;
-    bool visited;
+    bool visited = false;
     int value;
+    bool fixed = false; // A vertex is fixed when we know for certain it is a part of the lower bound.
 
     algorithm_vertex(int next_item)
     {
@@ -55,11 +56,12 @@ public:
     std::list<adv_outedge*> out; // next algorithmic states
     std::list<alg_outedge*> in; // previous algorithmic states
 
-    int depth; // depth increases only in adversary steps
+    int depth; // Depth increases only in adversary's steps.
     bool task = false;
     bool sapling = false;
-    bool visited = false; // we use this temporarily for DFS (e.g. for printing)
+    bool visited = false; // We use this for DFS (e.g. for printing).
     bool heuristic = false;
+    bool fixed = false; // A vertex is fixed when we know for certain it is a part of the lower bound.
     bin_int heuristic_item = 0;
     bin_int heuristic_multi = 0;
     int heuristic_type = 0;
@@ -440,6 +442,17 @@ void graph_cleanup(adversary_vertex *root)
 {
     remove_outedges<CLEANUP>(root); // should delete root
     generated_graph.clear();
+}
+
+// Checks that the two traversals of the graph (DFS and going through the arrays)
+// contain the same amount of vertices and edges.
+
+void tree_consistency_check(adversary_vertex *root)
+{
+
+    uint64_t foreach_vertices = 0;
+    uint64_t foreach_edges = 0;
+    
 }
 
 void purge_sapling(adversary_vertex *sapling)

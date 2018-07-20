@@ -31,11 +31,13 @@ const bool PROGRESS = true; // print progress
 const bool MEASURE = true; // collect and print measurements
 
 const bool REGROW = true;
-const int REGROW_LIMIT = 2;
+const int REGROW_LIMIT = 1;
 
 const bool OUTPUT = true;
-// whether to print the output as a single tree or as multiple trees
+// whether to print the output as a single tree or as multiple trees.
 const bool SINGLE_TREE = true;
+// Use adversarial heuristics for nicer trees and disable them for machine verification.
+const bool ADVERSARY_HEURISTICS = false;
 
 const bool ONLY_ONE_PASS = false;
 
@@ -96,10 +98,10 @@ unsigned int dplog = 0;
 uint64_t ht_size = 0;
 uint64_t dpht_size = 0;
 
-const unsigned int LOADLOG = 10;
+const unsigned int LOADLOG = 12;
 
 // batching constants
-const int BATCH_SIZE = 500;
+const int BATCH_SIZE = 1000;
 // const int BATCH_THRESHOLD = 50;
 
 // sizes of the hash tables
@@ -112,8 +114,8 @@ const int DEFAULT_DP_SIZE = 100000;
 const int BESTFIT_THRESHOLD = (1*S)/10;
 
 // a bound on total load of a configuration before we split it into a task
-const int TASK_LOAD = 14;
-const int TASK_DEPTH = 3;
+const int TASK_LOAD = 10;
+const int TASK_DEPTH = 4;
 //const int TASK_DEPTH = S > 41 ? 3 : 4;
 //const int TASK_DEPTH = S > 41 ? 2 : 3;
 //#define POSSIBLE_TASK possible_task_mixed

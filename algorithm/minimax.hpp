@@ -74,60 +74,64 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
     // a much weaker variant of large item heuristic, but takes O(1) time
 
 
-    if (b->totalload() <= S && b->loads[2] >= R-S)
+    // Turn off adversary heuristics if convenient (e.g. for machine verification).
+    
+    if (ADVERSARY_HEURISTICS)
     {
-	if(MODE == GENERATING)
+	if (b->totalload() <= S && b->loads[2] >= R-S)
 	{
-	    outat->last_adv_v->value = 0;
-	    outat->last_adv_v->heuristic = true;
-	    outat->last_adv_v->heuristic_type = LARGE_ITEM;
-	    outat->last_adv_v->heuristic_item = S;
-	    outat->last_adv_v->heuristic_multi = BINS-1;
-	}
-	return 0;
-    }
-
-    // one heuristic specific for 19/14
-    if (S == 14 && R == 19 && (MODE == GENERATING || FIVE_NINE_ACTIVE_EVERYWHERE))
-    {
-	bool fnh = five_nine_heuristic(b,tat);
-	tat->meas.five_nine_calls++;
-	if (fnh)
-	{
-	    tat->meas.five_nine_hits++;
 	    if(MODE == GENERATING)
 	    {
 		outat->last_adv_v->value = 0;
 		outat->last_adv_v->heuristic = true;
-		outat->last_adv_v->heuristic_type = FIVE_NINE;
-	    }
-	    return 0;
-	}
-    }
-
-    //if (true)
-    if (MODE == GENERATING || LARGE_ITEM_ACTIVE_EVERYWHERE)
-    {
-	bin_int lih, mul;
-	tat->meas.large_item_calls++;
-
-	std::tie(lih,mul) = large_item_heuristic(b, tat);
-	if (lih != MAX_INFEASIBLE)
-	{
-	    tat->meas.large_item_hits++;
-
-	    if (MODE == GENERATING) {
-		outat->last_adv_v->value = 0;
-		outat->last_adv_v->heuristic = true;
 		outat->last_adv_v->heuristic_type = LARGE_ITEM;
-		outat->last_adv_v->heuristic_item = lih;
-		outat->last_adv_v->heuristic_multi = mul;
+		outat->last_adv_v->heuristic_item = S;
+		outat->last_adv_v->heuristic_multi = BINS-1;
 	    }
 	    return 0;
 	}
+
+	// one heuristic specific for 19/14
+	if (S == 14 && R == 19 && (MODE == GENERATING || FIVE_NINE_ACTIVE_EVERYWHERE))
+	{
+	    bool fnh = five_nine_heuristic(b,tat);
+	    tat->meas.five_nine_calls++;
+	    if (fnh)
+	    {
+		tat->meas.five_nine_hits++;
+		if(MODE == GENERATING)
+		{
+		    outat->last_adv_v->value = 0;
+		    outat->last_adv_v->heuristic = true;
+		    outat->last_adv_v->heuristic_type = FIVE_NINE;
+		}
+		return 0;
+	    }
+	}
+
+	//if (true)
+	if (MODE == GENERATING || LARGE_ITEM_ACTIVE_EVERYWHERE)
+	{
+	    bin_int lih, mul;
+	    tat->meas.large_item_calls++;
+
+	    std::tie(lih,mul) = large_item_heuristic(b, tat);
+	    if (lih != MAX_INFEASIBLE)
+	    {
+		tat->meas.large_item_hits++;
+
+		if (MODE == GENERATING) {
+		    outat->last_adv_v->value = 0;
+		    outat->last_adv_v->heuristic = true;
+		    outat->last_adv_v->heuristic_type = LARGE_ITEM;
+		    outat->last_adv_v->heuristic_item = lih;
+		    outat->last_adv_v->heuristic_multi = mul;
+		}
+		return 0;
+	    }
+	}
     }
-
-
+    
     if (MODE == GENERATING)
     {
 	current_adversary = outat->last_adv_v;

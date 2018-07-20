@@ -143,6 +143,7 @@ struct sapling
     adversary_vertex *root;
     int regrow_level = 0;
     std::string filename;
+    uint64_t binconf_hash; // binconf hash for debug purposes
 };
 
 // stack for processing the saplings
