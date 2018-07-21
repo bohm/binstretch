@@ -64,6 +64,7 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
     adversary_vertex *current_adversary = NULL;
     algorithm_vertex *previous_algorithm = NULL;
     adv_outedge *new_edge = NULL;
+    algorithm_vertex *analyzed_vertex; // used only in the GENERATING mode
 
     /* Everything can be packed into one bin, return 1. */
     if ((b->loads[BINS] + (BINS*S - b->totalload())) < R)
@@ -71,13 +72,11 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
 	return 1;
     }
 
-    // a much weaker variant of large item heuristic, but takes O(1) time
-
-
     // Turn off adversary heuristics if convenient (e.g. for machine verification).
-    
     if (ADVERSARY_HEURISTICS)
     {
+
+	// a much weaker variant of large item heuristic, but takes O(1) time
 	if (b->totalload() <= S && b->loads[2] >= R-S)
 	{
 	    if(MODE == GENERATING)
@@ -142,7 +141,8 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
 	{
 	    add_task(b, tat);
 	    // mark current adversary vertex (created by algorithm() in previous step) as a task
-	    current_adversary->task = true;
+	    assert(current_adversary->state == NORMAL);
+	    current_adversary->state = TASK;
 	    current_adversary->value = POSTPONED;
 	    return POSTPONED;
 	}
@@ -182,7 +182,7 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
 	}
     }
 
-    // idea: start with monotonicity 0 (full monotone), and move towards S (full generality)
+    // Idea: start with monotonicity 0 (non-decreasing), and move towards S (full generality).
     int lower_bound = std::max(1, tat->last_item - monotonicity);
 
     // finds the maximum feasible item that can be added using dyn. prog.
@@ -211,40 +211,59 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, tree_a
     int r = 1;
     print<DEBUG>("Trying player zero choices, with maxload starting at %d\n", maximum_feasible);
 
+    // TODO: re-evaluations
     for (int item_size = maximum_feasible; item_size>=lower_bound; item_size--)
     {
         print<DEBUG>("Sending item %d to algorithm.\n", item_size);
 	// algorithm's vertex for the next step
-	algorithm_vertex *analyzed_vertex; // used only in the GENERATING mode
-	
+
+	bool already_generated = false;
 	if (MODE == GENERATING)
 	{
-	    analyzed_vertex = new algorithm_vertex(item_size);
-	    // create new edge, 
-	    new_edge = new adv_outedge(current_adversary, analyzed_vertex, item_size);
+	    // Check vertex cache if this adversarial vertex is already present.
+	    // std::map<llu, adversary_vertex*>::iterator it;
+	    auto it = generated_graph_alg.find(b->loadhash ^ b->itemhash ^ Zalg[item_size]);
+	    if (it == generated_graph_alg.end())
+	    {
+		analyzed_vertex = new algorithm_vertex(b, item_size);
+		new_edge = new adv_outedge(current_adversary, analyzed_vertex, item_size);
+	    } else {
+		already_generated = true;
+		analyzed_vertex = it->second;
+		// create new edge
+		new_edge = new adv_outedge(current_adversary, analyzed_vertex, item_size);
+		below = it->second->value;
+	    }
+    
             // set the current adversary vertex to be the analyzed vertex
 	    outat->last_alg_v = analyzed_vertex;
 	}
 
+
+	if(!already_generated)
+	{
+	    
+	    int li = tat->last_item;
+	    int old_largest = tat->largest_since_computation_root; 
+	    tat->last_item = item_size;
+	    tat->largest_since_computation_root = std::max(item_size, tat->largest_since_computation_root);
+	    below = algorithm<MODE>(b, item_size, depth+1, tat, outat);
+
+	    tat->last_item = li;
+	    tat->largest_since_computation_root = old_largest;
+
+	    if (MODE == GENERATING)
+	    {
+		analyzed_vertex->value = below;
+	    }
+	}
 	
-	int li = tat->last_item;
-	int old_largest = tat->largest_since_computation_root; 
-
-	tat->last_item = item_size;
-	tat->largest_since_computation_root = std::max(item_size, tat->largest_since_computation_root);
-	
-	below = algorithm<MODE>(b, item_size, depth+1, tat, outat);
-
-	tat->last_item = li;
-	tat->largest_since_computation_root = old_largest;
-
 	if (MODE == GENERATING)
 	{
-	    analyzed_vertex->value = below;
-	    // and set it back to the previous value
+	    // set it back to the previous value
 	    outat->last_alg_v = previous_algorithm;
 	}
-
+	
 	// send signal that we should terminate immediately upwards
 	if (below == TERMINATING || below == IRRELEVANT)
 	{
@@ -355,26 +374,22 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 
 	    if (MODE == GENERATING)
 	    {
-		/* Check vertex cache if this adversarial vertex is already present */
-		std::map<llu, adversary_vertex*>::iterator it;
-		it = generated_graph.find(b->loadhash ^ b->itemhash);
-		if (it == generated_graph.end())
+		// Check vertex cache if this adversarial vertex is already present.
+		// std::map<llu, adversary_vertex*>::iterator it;
+		auto it = generated_graph_adv.find(b->loadhash ^ b->itemhash);
+		if (it == generated_graph_adv.end())
 		{
 		    analyzed_vertex = new adversary_vertex(b, depth, tat->last_item);
 		    // create new edge
 		    new alg_outedge(current_algorithm, analyzed_vertex);
-		    // add to generated_graph
-		    generated_graph[b->loadhash ^ b->itemhash] = analyzed_vertex;
 		} else {
 		    already_generated = true;
 		    analyzed_vertex = it->second;
-		    
 		    // create new edge
     		    new alg_outedge(current_algorithm, analyzed_vertex);
 		    below = it->second->value;
 		}
 	    }
-	    
 	    
 	    if (!already_generated)
 	    {

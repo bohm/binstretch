@@ -19,31 +19,48 @@
 // Full declaration below.
 class adv_outedge;
 class alg_outedge;
+class algorithm_vertex;
+class adversary_vertex;
 
+// Global map of all (adversary) vertices generated.
+std::map<llu, adversary_vertex*> generated_graph_adv;
+std::map<llu, algorithm_vertex*> generated_graph_alg;
+
+// four possible values of a vertex state
+const int NORMAL = 0;
+const int TASK = 1;
+const int EXPAND = 2;
+const int FIXED = 3;
+const int SAPLING = 4;
 
 class algorithm_vertex
 {
 public:
     std::list<alg_outedge*> out; // next adversarial states
     std::list<adv_outedge*> in; // previous adversarial states
+
+    binconf *bc; /* Bin configuration of the previous node. */
+    bin_int next_item;
     uint64_t id;
     bool visited = false;
-    int value;
-    bool fixed = false; // A vertex is fixed when we know for certain it is a part of the lower bound.
+    int value = POSTPONED;
+    int state = NORMAL;
 
-    algorithm_vertex(int next_item)
+    algorithm_vertex(binconf *b, bin_int next_item) : next_item(next_item)
     {
 	this->id = ++global_vertex_counter;
-	this->value = POSTPONED;
-	this->visited = false;
+	this->bc = new binconf;
+	duplicate(this->bc, b);
+	
+	// Sanity check that we are not inserting a duplicate vertex.
+	auto it = generated_graph_alg.find(this->bc->alghash(next_item));
+	assert(it == generated_graph_alg.end());
+	generated_graph_alg[this->bc->alghash(next_item)] = this;
 	//print<DEBUG>("Vertex %" PRIu64 "created.\n", this->id);
-
     }
 
-    ~algorithm_vertex()
-    {
-	//print<DEBUG>("Vertex %" PRIu64 "destroyed.\n", this->id);
-    }
+    void quickremove_outedges();
+    ~algorithm_vertex();
 };
 
 const int LARGE_ITEM = 1;
@@ -57,11 +74,10 @@ public:
     std::list<alg_outedge*> in; // previous algorithmic states
 
     int depth; // Depth increases only in adversary's steps.
-    bool task = false;
-    bool sapling = false;
+    //bool task = false;
+    //bool sapling = false;
     bool visited = false; // We use this for DFS (e.g. for printing).
     bool heuristic = false;
-    bool fixed = false; // A vertex is fixed when we know for certain it is a part of the lower bound.
     bin_int heuristic_item = 0;
     bin_int heuristic_multi = 0;
     int heuristic_type = 0;
@@ -69,7 +85,8 @@ public:
     int value = POSTPONED;
     uint64_t id;
     int expansion_depth = 0;
-    
+    int state = NORMAL;
+   
     adversary_vertex(const binconf *b, int depth, int last_item)
     {
 	this->bc = new binconf;
@@ -78,18 +95,20 @@ public:
 	this->depth = depth;
 	this->last_item = last_item;
 	duplicate(this->bc, b);
+
+	// Sanity check that we are not inserting a duplicate vertex.
+	auto it = generated_graph_adv.find(this->bc->hash());
+	assert(it == generated_graph_adv.end());
+	generated_graph_adv[this->bc->hash()] = this;
+
 	//print<DEBUG>("Vertex %" PRIu64 "created.\n", this->id);
 
     }
 
-    ~adversary_vertex()
-    {
-	delete this->bc;
-	//print<DEBUG>("Vertex %" PRIu64 "destroyed.\n", this->id);
-    }
+    void quickremove_outedges();
+    ~adversary_vertex();
 
 };
-
 
 class adv_outedge {
 public:
@@ -132,11 +151,58 @@ public:
 	//print<DEBUG>("Edge %" PRIu64 " created.\n", this->id);
 
     }
+
     ~alg_outedge()
     {
 	//print<DEBUG>("Edge %" PRIu64 " destroyed.\n", this->id);
     }
 };
+
+// Deletes all outedges. Note: does not care about their endvertices or recursion.
+// Use only when deleting the whole graph by iterating generated_graph or when
+// you are sure there are no remaining outedges.
+void algorithm_vertex::quickremove_outedges()
+{
+    for (auto&& e: out)
+    {
+	delete e;
+    }
+    out.clear();
+}
+ 
+algorithm_vertex::~algorithm_vertex()
+{
+    //quickremove_outedges();
+    
+    // Remove the vertex from the generated graph.
+    auto it = generated_graph_alg.find(this->bc->alghash(next_item));
+    assert(it != generated_graph_alg.end());
+    generated_graph_alg.erase(this->bc->alghash(next_item));
+    delete this->bc;
+}
+
+// Deletes all outedges. Note: does not care about their endvertices or recursion.
+// Use only when deleting the whole graph by iterating generated_graph.
+void adversary_vertex::quickremove_outedges()
+{
+ 	    for (auto&& e: out)
+	    {
+		delete e;
+	    }
+	    out.clear();
+}
+
+adversary_vertex::~adversary_vertex()
+{
+    //quickremove_outedges();
+	
+	auto it = generated_graph_adv.find(this->bc->hash());
+	assert(it != generated_graph_adv.end());
+	generated_graph_adv.erase(this->bc->hash());
+	delete this->bc;
+	//print<DEBUG>("Vertex %" PRIu64 "destroyed.\n", this->id);
+}
+
 
 // the root of the current computation,
 // may differ from the actual root of the graph.
@@ -153,9 +219,6 @@ bool is_root(const binconf *b)
 
 
 
-// global map of all (adversary) vertices generated;
-std::map<llu, adversary_vertex*> generated_graph;
-
 // global root vertex
 adversary_vertex *root_vertex;
 
@@ -169,19 +232,17 @@ struct tree_attr {
 
 /* Initialize the game tree with the information in the parameters. */
 
-/* Go through the generated graph and clear all visited flags. 
-   Since generated_graph contains only adversary's vertices, we assume
-   all algorithmic vertices are reachable as children of these.
-*/
+// Go through the generated graph and clear all visited flags. 
 void clear_visited_bits()
 {
-    for (auto& ent : generated_graph)
+    for (auto& [hash, vert] : generated_graph_adv)
     {
-	ent.second->visited = false;
-	for (auto&& next : (ent.second->out))
-	{
-	    next->to->visited = false; 
-	}
+	vert->visited = false;
+    }
+    
+    for (auto& [hash, vert] : generated_graph_alg)
+    {
+	vert->visited = false;
     }
 }
 
@@ -209,7 +270,7 @@ void print_partial_gametree(FILE* stream, adversary_vertex *v)
     v->visited = true;
 
     fprintf(stream, "ADV vertex %" PRIu64 " depth %d ", v->id, v->depth);
-    if (v->task)
+    if (v->state == TASK)
     {
 	fprintf(stream, "task ");
     }
@@ -222,13 +283,15 @@ void print_partial_gametree(FILE* stream, adversary_vertex *v)
     fprintf(stream,"bc: ");
     print_binconf_stream(stream, v->bc);
 
-    if(!v->task) {
+    if (v->state != TASK)
+    {
 	fprintf(stream,"children: ");
 	for (auto&& n: v->out) {
 	    fprintf(stream,"%" PRIu64 " (%d) ", n->to->id, n->item);
 	}	
         fprintf(stream,"\n");
     }
+    
     for (auto&& n: v->out) {
 	print_partial_gametree(stream, n->to);
     }
@@ -277,10 +340,10 @@ void print_compact_subtree(FILE* stream, bool stop_on_saplings, adversary_vertex
 	fprintf(stream, "%d ", v->bc->loads[i]);
     }
 
-    if (v->task)
+    if (v->state == TASK)
     {
 	fprintf(stream, "task\"];\n");
-    } else if (v->sapling && stop_on_saplings)
+    } else if ((v->state == SAPLING) && stop_on_saplings)
     {
 	fprintf(stream, "sapling\"];\n");
     } else if(v->heuristic)
@@ -367,12 +430,12 @@ template <int MODE> void remove_inedge(alg_outedge *e)
     {
 	remove_outedges<MODE>(e->to);
 	// if e->to is task, remove it from the queue
-	if (e->to->task && e->to->value == POSTPONED)
+	if (e->to->state == TASK && e->to->value == POSTPONED)
 	{
 	    remove_task<MODE>(e->to->bc->loadhash ^ e->to->bc->itemhash);
 	}
 	// remove it from the generated graph
-	generated_graph.erase(e->to->bc->loadhash ^ e->to->bc->itemhash);
+	// generated_graph_adv.erase(e->to->bc->loadhash ^ e->to->bc->itemhash);
 	delete e->to;
     }
 }
@@ -420,7 +483,7 @@ template <int MODE> void remove_edge(adv_outedge *e)
 template <int MODE> void remove_outedges_except(adversary_vertex *v, int right_item)
 {
     adv_outedge *right_edge = NULL;
-    for (auto&& e: v->out)
+    for (auto& e: v->out)
     {
 	if (e->item != right_item)
 	{
@@ -438,10 +501,8 @@ template <int MODE> void remove_outedges_except(adversary_vertex *v, int right_i
     //assert(v->out.size() == 1);
 }
 
-void graph_cleanup(adversary_vertex *root)
+void clear_generated_graph()
 {
-    remove_outedges<CLEANUP>(root); // should delete root
-    generated_graph.clear();
 }
 
 // Checks that the two traversals of the graph (DFS and going through the arrays)

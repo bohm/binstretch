@@ -46,7 +46,7 @@ int update(adversary_vertex *v)
 
     v->visited = true;
 
-    if (v->task)
+    if (v->state == TASK)
     {
 	uint64_t hash = v->bc->itemhash ^ v->bc->loadhash;
 	result = completion_check(hash);
@@ -196,7 +196,7 @@ void regrow_recursive(adversary_vertex *v, int regrow_level)
     }
     v->visited = true;
 
-    if (v->task)
+    if (v->state == TASK)
     {
 	assert(v->value == 0);
 	sapling newsap;

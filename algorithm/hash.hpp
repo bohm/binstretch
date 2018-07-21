@@ -223,13 +223,16 @@ void zobrist_init()
 {
     // seeded, non-random
     srand(182371293);
+    // Zi generates item hashes.
     Zi = new uint64_t[(S+1)*(MAX_ITEMS+1)];
+    // Zl generates load hashes.
     Zl = new uint64_t[(BINS+1)*(R+1)];
+    // Zalg generates "next item" hashes for the output graph.
+    Zalg = new uint64_t[S+1];
 
-
-    for (int i=0; i<=S; i++)
+    for (int i = 0; i <= S; i++)
     {
-	    for (int j=0; j<=MAX_ITEMS; j++)
+	    for (int j = 0; j <= MAX_ITEMS; j++)
 	    {
 	    Zi[i*(MAX_ITEMS+1)+j] = rand_64bit();
 	    }
@@ -241,6 +244,11 @@ void zobrist_init()
 	{
 	    Zl[i*(R+1)+j] = rand_64bit();
 	}
+    }
+
+    for (int i = 0; i <= S; i++)
+    {
+	Zalg[i] = rand_64bit();
     }
 }
 
@@ -423,7 +431,7 @@ void hashtable_cleanup()
 
     delete[] Zl;
     delete[] Zi;
-    delete[] Ai;
+    delete[] Zalg;
 }
 
 void printBits32(unsigned int num)

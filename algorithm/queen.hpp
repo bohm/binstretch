@@ -85,8 +85,6 @@ int queen()
 
     binconf root = {INITIAL_LOADS, INITIAL_ITEMS};
     root_vertex = new adversary_vertex(&root, 0, 1);
-    generated_graph.clear();
-    generated_graph[root_vertex->bc->loadhash ^ root_vertex->bc->itemhash] = root_vertex;
  
     if (BINS == 3 && 3*ALPHA >= S)
     {
@@ -179,7 +177,7 @@ int queen()
 
 	    // temporarily isolate sapling (detach it from its parent, set depth to 0)
 	    int orig_value = currently_growing.root->value;
-	    computation_root->task = false;
+	    computation_root->state = NORMAL;
 	    computation_root->value = POSTPONED;
 
 	    thread_attr tat;

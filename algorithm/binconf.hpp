@@ -342,6 +342,13 @@ public:
 	    return (loadhash ^ itemhash);
 	}
 
+    // Returns a hash that also encodes the next upcoming item. This allows
+    // us to uniquely index algorithm's vertices.
+    uint64_t alghash(bin_int next_item)
+	{
+	    return (loadhash ^ itemhash ^ Zalg[next_item]);
+	}
+    
     void consistency_check() const
 	{
 	    assert(_itemcount == itemcount_explicit());

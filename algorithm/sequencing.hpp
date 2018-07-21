@@ -110,8 +110,7 @@ int sequencing_adversary(binconf *b, unsigned int depth, thread_attr *tat, tree_
     if (depth == seq.size())
     {
 	add_sapling(current_adversary);
-	// mark current adversary vertex (created by algorithm() in previous step) as a task
-	current_adversary->sapling = true;
+	current_adversary->state = SAPLING;
 	current_adversary->value = POSTPONED;
 	return POSTPONED;
     }
@@ -124,24 +123,35 @@ int sequencing_adversary(binconf *b, unsigned int depth, thread_attr *tat, tree_
     print<DEBUG>("Sending item %d to algorithm.\n", item_size);
     // algorithm's vertex for the next step
     algorithm_vertex *analyzed_vertex; // used only in the GENERATING mode
+    // Check vertex cache if this adversarial vertex is already present.
+    // std::map<llu, adversary_vertex*>::iterator it;
+    bool already_generated = false;
+    auto it = generated_graph_alg.find(b->loadhash ^ b->itemhash ^ Zalg[item_size]);
+    if (it == generated_graph_alg.end())
+    {
+	analyzed_vertex = new algorithm_vertex(b, item_size);
+	new_edge = new adv_outedge(current_adversary, analyzed_vertex, item_size);
+    } else {
+	already_generated = true;
+	analyzed_vertex = it->second;
+	// create new edge
+	new_edge = new adv_outedge(current_adversary, analyzed_vertex, item_size);
+	below = it->second->value;
+    }
     
-    analyzed_vertex = new algorithm_vertex(item_size);
-    // create new edge, 
-    new_edge = new adv_outedge(current_adversary, analyzed_vertex, item_size);
     // set the current adversary vertex to be the analyzed vertex
     outat->last_alg_v = analyzed_vertex;
-    
-	
-    int li = tat->last_item;
-    
-    tat->last_item = item_size;
-    
-    below = sequencing_algorithm(b, item_size, depth+1, tat, outat, seq);
 
-    tat->last_item = li;
+    if(!already_generated)
+    {
+	int li = tat->last_item;
+	tat->last_item = item_size;
+	below = sequencing_algorithm(b, item_size, depth+1, tat, outat, seq);
+	tat->last_item = li;
+	analyzed_vertex->value = below;
+    }
     
-    analyzed_vertex->value = below;
-    // and set it back to the previous value
+    // set the current adversary vertex to be the analyzed vertex
     outat->last_alg_v = previous_algorithm;
     
     if (below == 0)
@@ -205,24 +215,20 @@ int sequencing_algorithm(binconf *b, int k, unsigned int depth, thread_attr *tat
 	    bool already_generated = false;
 
 	    /* Check vertex cache if this adversarial vertex is already present */
-	    std::map<llu, adversary_vertex*>::iterator it;
-	    it = generated_graph.find(b->loadhash ^ b->itemhash);
-	    if (it == generated_graph.end())
+	    auto it = generated_graph_adv.find(b->loadhash ^ b->itemhash);
+	    if (it == generated_graph_adv.end())
 	    {
 		analyzed_vertex = new adversary_vertex(b, depth, tat->last_item);
 		// create new edge
 		new alg_outedge(current_algorithm, analyzed_vertex);
-		// add to generated_graph
-		generated_graph[b->loadhash ^ b->itemhash] = analyzed_vertex;
 	    } else {
 		already_generated = true;
 		analyzed_vertex = it->second;
-		
 		// create new edge
 		new alg_outedge(current_algorithm, analyzed_vertex);
 		below = it->second->value;
 	    }
-	
+
 	    if (!already_generated)
 	    {
 		// set the current adversary vertex to be the analyzed vertex

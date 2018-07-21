@@ -30,10 +30,10 @@ typedef int16_t bin_int;
 const bool PROGRESS = true; // print progress
 const bool MEASURE = true; // collect and print measurements
 
-const bool REGROW = true;
+const bool REGROW = false;
 const int REGROW_LIMIT = 1;
 
-const bool OUTPUT = true;
+const bool OUTPUT = false;
 // whether to print the output as a single tree or as multiple trees.
 const bool SINGLE_TREE = true;
 // Use adversarial heuristics for nicer trees and disable them for machine verification.
@@ -178,8 +178,7 @@ std::atomic<bool> termination_signal{false};
 bool generating_tasks;
 uint64_t *Zi; // Zobrist table for items
 uint64_t *Zl; // Zobrist table for loads
-uint64_t *Ai; // Zobrist table for next item to pack (used for the algorithm's best move table)
-
+uint64_t *Zalg;
 
 // thread rank idea:
 // if worker has thread rank 3 and reported thread count 5, it is assigned worker ranks 3,4,5,6,7.
