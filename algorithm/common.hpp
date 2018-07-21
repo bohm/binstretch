@@ -178,6 +178,7 @@ std::atomic<bool> termination_signal{false};
 bool generating_tasks;
 uint64_t *Zi; // Zobrist table for items
 uint64_t *Zl; // Zobrist table for loads
+uint64_t *Zlow; // Zobrist for the lowest sendable item (monotonicity)
 uint64_t *Zalg;
 
 // thread rank idea:
@@ -247,6 +248,10 @@ uint64_t global_edge_counter = 0;
 /* total time spent in all threads */
 std::chrono::duration<long double> time_spent;
 
+bin_int lowest_sendable(bin_int last_item)
+{
+     return std::max(1, last_item - monotonicity);
+}
 
 void print_sequence(FILE *stream, const std::vector<bin_int>& seq)
 {

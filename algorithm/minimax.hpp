@@ -163,14 +163,16 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, advers
 	}
     }
 
+    // Idea: start with monotonicity 0 (non-decreasing), and move towards S (full generality).
+    bin_int lower_bound = lowest_sendable(tat->last_item);
+
     // Check cache here (after we have solved trivial cases).
     // We only do this in exploration mode; while this could be also done
     // when generating we want the whole lower bound tree to be generated.
-    
     if (MODE == EXPLORING && !DISABLE_CACHE)
     {
 	bool found_conf = false;
-	int conf_in_hashtable = is_conf_hashed(b, tat, found_conf);
+	int conf_in_hashtable = is_conf_hashed(b, lower_bound, tat, found_conf);
 	
 	if (found_conf)
 	{
@@ -178,9 +180,6 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, advers
 	    return conf_in_hashtable;
 	}
     }
-
-    // Idea: start with monotonicity 0 (non-decreasing), and move towards S (full generality).
-    int lower_bound = std::max(1, tat->last_item - monotonicity);
 
     // finds the maximum feasible item that can be added using dyn. prog.
     bin_int old_max_feasible = tat->prev_max_feasible;
@@ -201,9 +200,9 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, advers
 	bool already_generated = false;
 	if (MODE == GENERATING)
 	{
-	    // Check vertex cache if this adversarial vertex is already present.
+	    // Check vertex cache if this algorithmic vertex is already present.
 	    // std::map<llu, adversary_vertex*>::iterator it;
-	    auto it = generated_graph_alg.find(b->loadhash ^ b->itemhash ^ Zalg[item_size]);
+	    auto it = generated_graph_alg.find(b->alghash(item_size));
 	    if (it == generated_graph_alg.end())
 	    {
 		upcoming_alg = new algorithm_vertex(b, item_size);
@@ -269,7 +268,7 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, advers
 
     if (MODE == EXPLORING && !DISABLE_CACHE)
     {
-	conf_hashpush(b, r, tat);
+	conf_hashpush(b, lower_bound, r, tat);
     }
 
     // Sanity check.
@@ -344,7 +343,7 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 	    {
 		// Check vertex cache if this adversarial vertex is already present.
 		// std::map<llu, adversary_vertex*>::iterator it;
-		auto it = generated_graph_adv.find(b->loadhash ^ b->itemhash);
+		auto it = generated_graph_adv.find(b->confhash(lowest_sendable(tat->last_item)));
 		if (it == generated_graph_adv.end())
 		{
 		    upcoming_adv = new adversary_vertex(b, depth, tat->last_item);
@@ -432,7 +431,6 @@ int explore(binconf *b, thread_attr *tat)
     tat->explore_root = &root_copy;
     int ret = adversary<EXPLORING>(b, 0, tat, NULL, NULL);
     assert(ret != POSTPONED);
-    
     return ret;
 }
 

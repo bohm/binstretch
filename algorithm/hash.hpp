@@ -206,8 +206,7 @@ std::atomic<conf_el> *ht = NULL;
 std::atomic<dpht_el> *dpht = NULL; // = new std::atomic<dpht_el_extended>[BC_HASHSIZE];
 //void *baseptr, *dpbaseptr;
 
-// DEBUG: Mersenne twister
-
+// Mersenne twister.
 std::mt19937_64 gen(12345);
 
 uint64_t rand_64bit()
@@ -229,6 +228,8 @@ void zobrist_init()
     Zl = new uint64_t[(BINS+1)*(R+1)];
     // Zalg generates "next item" hashes for the output graph.
     Zalg = new uint64_t[S+1];
+    // Zlow represents "lowest item sendable" hashes for monotonicity caching.
+    Zlow = new uint64_t[S+1];
 
     for (int i = 0; i <= S; i++)
     {
@@ -249,6 +250,7 @@ void zobrist_init()
     for (int i = 0; i <= S; i++)
     {
 	Zalg[i] = rand_64bit();
+	Zlow[i] = rand_64bit();
     }
 }
 
@@ -432,6 +434,7 @@ void hashtable_cleanup()
     delete[] Zl;
     delete[] Zi;
     delete[] Zalg;
+    delete[] Zlow;
 }
 
 void printBits32(unsigned int num)

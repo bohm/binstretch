@@ -48,7 +48,7 @@ int update(adversary_vertex *v)
 
     if (v->state == TASK)
     {
-	uint64_t hash = v->bc->itemhash ^ v->bc->loadhash;
+	uint64_t hash = v->bc->confhash(lowest_sendable(v->last_item));
 	result = completion_check(hash);
 	//fprintf(stderr, "Completion check:");
 	//print_binconf_stream(stderr, v->bc);

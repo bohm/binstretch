@@ -97,9 +97,9 @@ public:
 	duplicate(this->bc, b);
 
 	// Sanity check that we are not inserting a duplicate vertex.
-	auto it = generated_graph_adv.find(this->bc->hash());
+	auto it = generated_graph_adv.find(bc->confhash(lowest_sendable(last_item)));
 	assert(it == generated_graph_adv.end());
-	generated_graph_adv[this->bc->hash()] = this;
+	generated_graph_adv[bc->confhash(lowest_sendable(last_item))] = this;
 
 	//print<DEBUG>("Vertex %" PRIu64 "created.\n", this->id);
 
@@ -175,9 +175,9 @@ algorithm_vertex::~algorithm_vertex()
     //quickremove_outedges();
     
     // Remove the vertex from the generated graph.
-    auto it = generated_graph_alg.find(this->bc->alghash(next_item));
+    auto it = generated_graph_alg.find(bc->alghash(next_item));
     assert(it != generated_graph_alg.end());
-    generated_graph_alg.erase(this->bc->alghash(next_item));
+    generated_graph_alg.erase(bc->alghash(next_item));
     delete this->bc;
 }
 
@@ -196,11 +196,11 @@ adversary_vertex::~adversary_vertex()
 {
     //quickremove_outedges();
 	
-	auto it = generated_graph_adv.find(this->bc->hash());
-	assert(it != generated_graph_adv.end());
-	generated_graph_adv.erase(this->bc->hash());
-	delete this->bc;
-	//print<DEBUG>("Vertex %" PRIu64 "destroyed.\n", this->id);
+    auto it = generated_graph_adv.find(bc->confhash(lowest_sendable(last_item)));
+    assert(it != generated_graph_adv.end());
+    generated_graph_adv.erase(bc->confhash(lowest_sendable(last_item)));
+    delete bc;
+    //print<DEBUG>("Vertex %" PRIu64 "destroyed.\n", this->id);
 }
 
 
@@ -233,86 +233,6 @@ void clear_visited_bits()
     for (auto& [hash, vert] : generated_graph_alg)
     {
 	vert->visited = false;
-    }
-}
-
-void print_partial_gametree(FILE* stream, adversary_vertex *v);
-void print_partial_gametree(FILE* stream, algorithm_vertex *v);
-
-void print_gametree(FILE* stream, adversary_vertex *r)
-{
-    clear_visited_bits();
-    print_partial_gametree(stream, r);
-}
-
-
-void print_partial_gametree(FILE* stream, adversary_vertex *v)
-{
-    assert(v!=NULL);
-    assert(v->bc != NULL);
-
-    // since the graph is now a DAG, we use DFS to print
-    if (v->visited)
-    {
-	return;
-    }
-
-    v->visited = true;
-
-    fprintf(stream, "ADV vertex %" PRIu64 " depth %d ", v->id, v->depth);
-    if (v->state == TASK)
-    {
-	fprintf(stream, "task ");
-    }
-
-    if (v->value == 0 || v->value == 1)
-    {
-	fprintf(stream, "value %d ", v->value);
-    }
-    
-    fprintf(stream,"bc: ");
-    print_binconf_stream(stream, v->bc);
-
-    if (v->state != TASK)
-    {
-	fprintf(stream,"children: ");
-	for (auto&& n: v->out) {
-	    fprintf(stream,"%" PRIu64 " (%d) ", n->to->id, n->item);
-	}	
-        fprintf(stream,"\n");
-    }
-    
-    for (auto&& n: v->out) {
-	print_partial_gametree(stream, n->to);
-    }
-}
-
-void print_partial_gametree(FILE* stream, algorithm_vertex *v)
-{
-    assert(v!=NULL);
-
-    if (v->visited)
-    {
-	return;
-    }
-
-    v->visited = true;
-
-    fprintf(stream,"ALG vertex %" PRIu64 " ", v->id);
-
-    if (v->value == 0 || v->value == 1)
-    {
-	fprintf(stream, "value %d ", v->value);
-    }
-
-    fprintf(stream,"children: ");
-    for (auto&& n: v->out) {
-	fprintf(stream,"%" PRIu64 " ", n->to->id);
-    }
-    fprintf(stream,"\n");
-
-    for (auto&& n: v->out) {
-	print_partial_gametree(stream, n->to);
     }
 }
 
@@ -358,20 +278,19 @@ void print_compact_subtree(FILE* stream, bool stop_on_saplings, adversary_vertex
 	int right_item = right_edge->item;
 	fprintf(stream, "n:%d\"];\n", right_item);
 	// print edges first, then print subtrees
-	for (auto&& next: right_edge->to->out)
+	for (auto& next: right_edge->to->out)
 	{
 	    fprintf(stream, "%" PRIu64 " -> %" PRIu64 "\n", v->id, next->to->id);
 	}
 	
-	for (auto&& next: right_edge->to->out)
-	{
+	for (auto& next: right_edge->to->out)
+	
 	    print_compact_subtree(stream, stop_on_saplings, next->to);
 	}
 
     }
     
 }
-
 
 // a wrapper around print_compact_subtree that sets the stop_on_saplings to true
 void print_treetop(FILE* stream, adversary_vertex *v)
@@ -399,7 +318,7 @@ template <int MODE> void remove_outedges(algorithm_vertex *v);
 template <int MODE> void remove_outedges(adversary_vertex *v);
 
 /* Forward declaration of remove_task for inclusion purposes. */
-template <int MODE> void remove_task(llu hash);
+template <int MODE> void remove_task(uint64_t hash);
 
 template <int MODE> void remove_inedge(adv_outedge *e)
 {
@@ -422,10 +341,10 @@ template <int MODE> void remove_inedge(alg_outedge *e)
 	// if e->to is task, remove it from the queue
 	if (e->to->state == TASK && e->to->value == POSTPONED)
 	{
-	    remove_task<MODE>(e->to->bc->loadhash ^ e->to->bc->itemhash);
+	    remove_task<MODE>(e->to->bc->confhash(lowest_sendable(e->to->last_item)));
 	}
-	// remove it from the generated graph
-	// generated_graph_adv.erase(e->to->bc->loadhash ^ e->to->bc->itemhash);
+	
+	// the vertex will be removed from the generated graph by calling delete on it.
 	delete e->to;
     }
 }

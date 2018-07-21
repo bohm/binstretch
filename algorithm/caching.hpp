@@ -208,11 +208,10 @@ template <int MODE> int hashpush_dp(uint64_t hash, const dpht_el& data, uint64_t
 	return INSERTED_RANDOMLY;
 }
 
-void conf_hashpush(const binconf *d, uint64_t posvalue, thread_attr *tat)
+void conf_hashpush(const binconf *d, const bin_int lowest, uint64_t posvalue, thread_attr *tat)
 {
     MEASURE_ONLY(tat->meas.bc_insertions++);
-
-    uint64_t bchash = d->itemhash ^ d->loadhash;
+    uint64_t bchash = d->confhash(lowest);
     assert(posvalue >= 0 && posvalue <= 2);
     conf_el new_item;
     new_item.set(bchash, posvalue);
@@ -248,29 +247,28 @@ void conf_hashpush(const binconf *d, uint64_t posvalue, thread_attr *tat)
     }
 }
 
-bin_int is_conf_hashed(const binconf *d, thread_attr *tat, bool &found)
+bin_int is_conf_hashed(const binconf *d, bin_int lowest, thread_attr *tat, bool &found)
 {
-	uint64_t bchash = zero_last_two_bits(d->itemhash ^ d->loadhash);
+    uint64_t bchash = zero_last_two_bits(d->confhash(lowest));
 
-	bin_int ret;
-	ret = is_hashed(bchash, conflogpart(bchash), tat, found);
-	assert(ret <= 2 && ret >= -2);
+    bin_int ret;
+    ret = is_hashed(bchash, conflogpart(bchash), tat, found);
+    assert(ret <= 2 && ret >= -2);
 
-	if (ret >= 0)
-	{
-		MEASURE_ONLY(tat->meas.bc_hit++);
-	}
-	else if (ret == NOT_FOUND)
-	{
-		MEASURE_ONLY(tat->meas.bc_partial_nf++);
-	}
-	else if (ret == FULL_NOT_FOUND)
-	{
-		MEASURE_ONLY(tat->meas.bc_full_nf++);
-		ret = NOT_FOUND;
-	}
-	return ret;
-
+    if (ret >= 0)
+    {
+	MEASURE_ONLY(tat->meas.bc_hit++);
+    }
+    else if (ret == NOT_FOUND)
+    {
+	MEASURE_ONLY(tat->meas.bc_partial_nf++);
+    }
+    else if (ret == FULL_NOT_FOUND)
+    {
+	MEASURE_ONLY(tat->meas.bc_full_nf++);
+	ret = NOT_FOUND;
+    }
+    return ret;
 }
 
 // checks for a load in the hash table used by dynprog_test_loadhash()

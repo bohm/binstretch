@@ -372,7 +372,7 @@ void clear_tasks()
 }
 
 // Does not actually remove a task, just marks it as completed.
-template <int MODE> void remove_task(llu hash)
+template <int MODE> void remove_task(uint64_t hash)
 {
 
     if (MODE == GENERATING || MODE == UPDATING)
@@ -393,7 +393,7 @@ template <int MODE> void remove_task(llu hash)
 }
 
 // Check if a given task is complete, return its value. 
-int completion_check(llu hash)
+int completion_check(uint64_t hash)
 {
     int query = tstatus[tmap[hash]].load(std::memory_order_acquire);
     if (query == 0 || query == 1)

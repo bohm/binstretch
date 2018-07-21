@@ -59,17 +59,19 @@ void broadcast_zobrist()
 {
     if (BEING_QUEEN)
     {
-	assert(Zi != NULL && Zl != NULL);
+	assert(Zi != NULL && Zl != NULL && Zlow != NULL);
     } else
     {
-	assert(Zi == NULL && Zl == NULL);
+	assert(Zi == NULL && Zl == NULL && Zlow == NULL);
 	Zi = new uint64_t[(S+1)*(MAX_ITEMS+1)];
 	Zl = new uint64_t[(BINS+1)*(R+1)];
+	Zlow = new uint64_t[S+1];
     }
 
     // bcast blocks, no need to synchronize
     MPI_Bcast(Zi, (MAX_ITEMS+1)*(S+1), MPI_UNSIGNED_LONG, QUEEN, MPI_COMM_WORLD);
     MPI_Bcast(Zl, (BINS+1)*(R+1), MPI_UNSIGNED_LONG, QUEEN, MPI_COMM_WORLD);
+    MPI_Bcast(Zlow, S+1, MPI_UNSIGNED_LONG, QUEEN, MPI_COMM_WORLD);
 
     // fprintf(stderr, "Process %d Zi[1]: %" PRIu64 "\n", world_rank, Zi[1]);
 }

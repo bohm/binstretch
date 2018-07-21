@@ -337,9 +337,10 @@ public:
 
     // Returns (main cache) binconf hash, assuming hash is consistent,
     // which it should be, if we are assigning properly.
-    uint64_t hash() const
+    // Parameter lowest -- lowest item that can be sent.
+    uint64_t confhash(bin_int lowest) const
 	{
-	    return (loadhash ^ itemhash);
+	    return (loadhash ^ itemhash ^ Zlow[lowest]);
 	}
 
     // Returns a hash that also encodes the next upcoming item. This allows
