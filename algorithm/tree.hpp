@@ -284,7 +284,7 @@ void print_compact_subtree(FILE* stream, bool stop_on_saplings, adversary_vertex
 	}
 	
 	for (auto& next: right_edge->to->out)
-	
+	{
 	    print_compact_subtree(stream, stop_on_saplings, next->to);
 	}
 

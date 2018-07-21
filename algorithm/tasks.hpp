@@ -230,7 +230,7 @@ void rebuild_tmap()
     tmap.clear();
     for (int i = 0; i < tcount; i++)
     {
-	tmap.insert(std::make_pair(tarray[i].bc.loadhash ^ tarray[i].bc.itemhash, i));
+	tmap.insert(std::make_pair(tarray[i].bc.confhash(lowest_sendable(tarray[i].last_item)), i));
     }
    
 }
@@ -356,7 +356,7 @@ void add_task(const binconf *x, thread_attr *tat)
     duplicate(&(newtask.bc), x);
     newtask.last_item = tat->last_item;
     newtask.expansion_depth = tat->expansion_depth; 
-    tmap.insert(std::make_pair(newtask.bc.loadhash ^ newtask.bc.itemhash, tarray_temporary.size()));
+    tmap.insert(std::make_pair(newtask.bc.confhash(lowest_sendable(newtask.last_item)), tarray_temporary.size()));
     tarray_temporary.push_back(newtask);
     tstatus_temporary.push_back(TASK_AVAILABLE);
     tcount++;

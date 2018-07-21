@@ -151,8 +151,8 @@ int queen()
 	// if the sapling is loaded from a file, we need to make it the root of the generated graph
 	if (LOAD_SAPLINGS)
 	{
-	    generated_graph.clear();
-	    generated_graph[sapling->bc->loadhash ^ sapling->bc->itemhash] = sapling;
+	    // clear generated graph
+            // insert sapling as root
 	    int remaining = remaining_sapling_files();
 	    print<PROGRESS>("Queen: remaining input files: %d, current sapling:\n", remaining);
 	    print_binconf_stream(stderr, sapling->bc);

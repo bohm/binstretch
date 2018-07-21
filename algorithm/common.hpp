@@ -30,10 +30,10 @@ typedef int16_t bin_int;
 const bool PROGRESS = true; // print progress
 const bool MEASURE = true; // collect and print measurements
 
-const bool REGROW = false;
-const int REGROW_LIMIT = 1;
+const bool REGROW = true;
+const int REGROW_LIMIT = 0;
 
-const bool OUTPUT = false;
+const bool OUTPUT = true;
 // whether to print the output as a single tree or as multiple trees.
 const bool SINGLE_TREE = true;
 // Use adversarial heuristics for nicer trees and disable them for machine verification.
@@ -57,7 +57,7 @@ const bin_int S = 14;
 // target goal of the online bin stretching problem
 const bin_int R = 19;
 // Change this number or the selected number of bins.
-const bin_int BINS = 6;
+const bin_int BINS = 4;
 
 // If you want to generate a specific lower bound, you can create an initial bin configuration here.
 // You can also insert an initial sequence here.

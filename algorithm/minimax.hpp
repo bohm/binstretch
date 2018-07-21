@@ -191,8 +191,6 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, advers
     int r = 1;
     print<DEBUG>("Trying player zero choices, with maxload starting at %d\n", maximum_feasible);
 
-    // TODO: re-evaluations -- when doing monotonicity, order actually influences things
-
     for (int item_size = maximum_feasible; item_size>=lower_bound; item_size--)
     {
         print<DEBUG>("Sending item %d to algorithm.\n", item_size);
@@ -427,7 +425,7 @@ int explore(binconf *b, thread_attr *tat)
     //tat->previous_pass = &first_pass;
     tat->eval_start = std::chrono::system_clock::now();
     tat->current_overdue = false;
-    tat->explore_roothash = b->loadhash ^ b->itemhash;
+    tat->explore_roothash = b->confhash(lowest_sendable(tat->last_item));
     tat->explore_root = &root_copy;
     int ret = adversary<EXPLORING>(b, 0, tat, NULL, NULL);
     assert(ret != POSTPONED);

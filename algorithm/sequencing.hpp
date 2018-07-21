@@ -125,7 +125,7 @@ int sequencing_adversary(binconf *b, unsigned int depth, thread_attr *tat,
     // Check vertex cache if this adversarial vertex is already present.
     // std::map<llu, adversary_vertex*>::iterator it;
     bool already_generated = false;
-    auto it = generated_graph_alg.find(b->loadhash ^ b->itemhash ^ Zalg[item_size]);
+    auto it = generated_graph_alg.find(b->alghash(item_size));
     if (it == generated_graph_alg.end())
     {
 	upcoming_alg = new algorithm_vertex(b, item_size);
@@ -205,7 +205,7 @@ int sequencing_algorithm(binconf *b, int k, unsigned int depth, thread_attr *tat
 	    bool already_generated = false;
 
 	    /* Check vertex cache if this adversarial vertex is already present */
-	    auto it = generated_graph_adv.find(b->loadhash ^ b->itemhash);
+	    auto it = generated_graph_adv.find(b->confhash(lowest_sendable(tat->last_item)));
 	    if (it == generated_graph_adv.end())
 	    {
 		upcoming_adv = new adversary_vertex(b, depth, tat->last_item);
