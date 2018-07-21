@@ -222,16 +222,6 @@ bool is_root(const binconf *b)
 // global root vertex
 adversary_vertex *root_vertex;
 
-/* tree variables (currently used in main thread only) */
-
-typedef struct tree_attr tree_attr;
-struct tree_attr {
-    algorithm_vertex *last_alg_v;
-    adversary_vertex *last_adv_v;
-};
-
-/* Initialize the game tree with the information in the parameters. */
-
 // Go through the generated graph and clear all visited flags. 
 void clear_visited_bits()
 {

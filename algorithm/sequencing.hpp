@@ -19,8 +19,13 @@
 #include "gs.hpp"
 #include "tasks.hpp"
 
-int sequencing_adversary(binconf *b, unsigned int depth, thread_attr *tat, tree_attr *outat, const std::vector<bin_int>& seq);
-int sequencing_algorithm(binconf *b, int k, unsigned int depth, thread_attr *tat, tree_attr *outat, const std::vector<bin_int>& seq);
+
+int sequencing_adversary(binconf *b, unsigned int depth, thread_attr *tat,
+			 adversary_vertex *adv_to_evaluate, algorithm_vertex* parent_alg,
+			 const std::vector<bin_int>& seq);
+int sequencing_algorithm(binconf *b, int k, unsigned int depth, thread_attr *tat,
+			 algorithm_vertex *alg_to_evaluate, adversary_vertex *parent_adv,
+			 const std::vector<bin_int>& seq);
 
 void add_sapling(adversary_vertex* v)
 {
@@ -34,9 +39,6 @@ int sequencing(const std::vector<bin_int>& seq, binconf& root, adversary_vertex*
 {
 
     thread_attr tat;
-    tree_attr outat;
-    outat.last_adv_v = root_vertex;
-    outat.last_alg_v = NULL;
 
     onlineloads_init(tat.ol, &root);
 
@@ -46,20 +48,21 @@ int sequencing(const std::vector<bin_int>& seq, binconf& root, adversary_vertex*
 	sapling_stack.push(just_root);
 	return POSTPONED;
     } else {
-	int ret = sequencing_adversary(&root, root_vertex->depth, &tat, &outat, seq);
+	int ret = sequencing_adversary(&root, root_vertex->depth, &tat, root_vertex, NULL, seq);
 	return ret;
     }
 }
-
-int sequencing_adversary(binconf *b, unsigned int depth, thread_attr *tat, tree_attr *outat, const std::vector<bin_int>& seq)
+int sequencing_adversary(binconf *b, unsigned int depth, thread_attr *tat,
+			 adversary_vertex *adv_to_evaluate, algorithm_vertex* parent_alg,
+			 const std::vector<bin_int>& seq)
 {
-    adversary_vertex *current_adversary = NULL;
-    algorithm_vertex *previous_algorithm = NULL;
+    algorithm_vertex *upcoming_alg = NULL;
     adv_outedge *new_edge = NULL;
-
+    
     /* Everything can be packed into one bin, return 1. */
     if ((b->loads[BINS] + (BINS*S - b->totalload())) < R)
     {
+	adv_to_evaluate->value = 1; 
 	return 1;
     }
 
@@ -68,10 +71,10 @@ int sequencing_adversary(binconf *b, unsigned int depth, thread_attr *tat, tree_
 	// a much weaker variant of large item heuristic, but takes O(1) time
 	if (b->totalload() <= S && b->loads[2] >= R-S)
 	{
-	    outat->last_adv_v->value = 0;
-	    outat->last_adv_v->heuristic = true;
-	    outat->last_adv_v->heuristic_item = S;
-	    outat->last_adv_v->heuristic_type = LARGE_ITEM;
+	    adv_to_evaluate->value = 0;
+	    adv_to_evaluate->heuristic = true;
+	    adv_to_evaluate->heuristic_item = S;
+	    adv_to_evaluate->heuristic_type = LARGE_ITEM;
 	    return 0;
 	}
 
@@ -79,9 +82,9 @@ int sequencing_adversary(binconf *b, unsigned int depth, thread_attr *tat, tree_
 	// one heuristic specific for 19/14
 	if (S == 14 && R == 19 && five_nine_heuristic(b,tat))
 	{
-	    outat->last_adv_v->value = 0;
-	    outat->last_adv_v->heuristic = true;
-	    outat->last_adv_v->heuristic_type = FIVE_NINE;
+	    adv_to_evaluate->value = 0;
+	    adv_to_evaluate->heuristic = true;
+	    adv_to_evaluate->heuristic_type = FIVE_NINE;
 	    return 0;
 	}
 
@@ -93,25 +96,22 @@ int sequencing_adversary(binconf *b, unsigned int depth, thread_attr *tat, tree_
 	if (lih != MAX_INFEASIBLE)
 	{
 	    {
-		outat->last_adv_v->value = 0;
-		outat->last_adv_v->heuristic = true;
-		outat->last_adv_v->heuristic_item = lih;
-		outat->last_adv_v->heuristic_type = LARGE_ITEM;
-		outat->last_adv_v->heuristic_multi = mul;
+		adv_to_evaluate->value = 0;
+		adv_to_evaluate->heuristic = true;
+		adv_to_evaluate->heuristic_item = lih;
+		adv_to_evaluate->heuristic_type = LARGE_ITEM;
+		adv_to_evaluate->heuristic_multi = mul;
 	    }
 	    return 0;
 	}
     }
 
    
-    current_adversary = outat->last_adv_v;
-    previous_algorithm = outat->last_alg_v;
-
     if (depth == seq.size())
     {
-	add_sapling(current_adversary);
-	current_adversary->state = SAPLING;
-	current_adversary->value = POSTPONED;
+	add_sapling(adv_to_evaluate);
+	adv_to_evaluate->state = SAPLING;
+	adv_to_evaluate->value = POSTPONED;
 	return POSTPONED;
     }
 
@@ -122,43 +122,34 @@ int sequencing_adversary(binconf *b, unsigned int depth, thread_attr *tat, tree_
     print<DEBUG>("Trying player zero choices, with maxload starting at %d\n", maximum_feasible);
     print<DEBUG>("Sending item %d to algorithm.\n", item_size);
     // algorithm's vertex for the next step
-    algorithm_vertex *analyzed_vertex; // used only in the GENERATING mode
     // Check vertex cache if this adversarial vertex is already present.
     // std::map<llu, adversary_vertex*>::iterator it;
     bool already_generated = false;
     auto it = generated_graph_alg.find(b->loadhash ^ b->itemhash ^ Zalg[item_size]);
     if (it == generated_graph_alg.end())
     {
-	analyzed_vertex = new algorithm_vertex(b, item_size);
-	new_edge = new adv_outedge(current_adversary, analyzed_vertex, item_size);
+	upcoming_alg = new algorithm_vertex(b, item_size);
+	new_edge = new adv_outedge(adv_to_evaluate, upcoming_alg, item_size);
     } else {
 	already_generated = true;
-	analyzed_vertex = it->second;
+	upcoming_alg = it->second;
 	// create new edge
-	new_edge = new adv_outedge(current_adversary, analyzed_vertex, item_size);
+	new_edge = new adv_outedge(adv_to_evaluate, upcoming_alg, item_size);
 	below = it->second->value;
     }
     
-    // set the current adversary vertex to be the analyzed vertex
-    outat->last_alg_v = analyzed_vertex;
-
-    if(!already_generated)
+    if (!already_generated)
     {
 	int li = tat->last_item;
 	tat->last_item = item_size;
-	below = sequencing_algorithm(b, item_size, depth+1, tat, outat, seq);
+	below = sequencing_algorithm(b, item_size, depth+1, tat, upcoming_alg, adv_to_evaluate, seq);
 	tat->last_item = li;
-	analyzed_vertex->value = below;
     }
-    
-    // set the current adversary vertex to be the analyzed vertex
-    outat->last_alg_v = previous_algorithm;
     
     if (below == 0)
     {
 	r = 0;
-	
-	remove_outedges_except<SEQUENCING>(current_adversary, item_size);
+	remove_outedges_except<SEQUENCING>(adv_to_evaluate, item_size);
     } else if (below == 1)
     {
 	remove_edge<SEQUENCING>(new_edge);
@@ -172,22 +163,22 @@ int sequencing_adversary(binconf *b, unsigned int depth, thread_attr *tat, tree_
     
     if (r == 1)
     {
-	assert(current_adversary->out.empty());
+	assert(adv_to_evaluate->out.empty());
     }
-    
+
+    adv_to_evaluate->value = r;
     return r;
 }
 
-int sequencing_algorithm(binconf *b, int k, unsigned int depth, thread_attr *tat, tree_attr *outat, const std::vector<bin_int>& seq)
+int sequencing_algorithm(binconf *b, int k, unsigned int depth, thread_attr *tat,
+			 algorithm_vertex *alg_to_evaluate, adversary_vertex *parent_adv,
+			 const std::vector<bin_int>& seq)
 {
 
-    algorithm_vertex* current_algorithm = NULL;
-    adversary_vertex* previous_adversary = NULL;
-    current_algorithm = outat->last_alg_v;
-    previous_adversary = outat->last_adv_v;
-
+    adversary_vertex* upcoming_adv = NULL;
     if (gsheuristic(b,k, tat) == 1)
     {
+	alg_to_evaluate->value = 1;
 	return 1;
     }
 
@@ -211,34 +202,26 @@ int sequencing_algorithm(binconf *b, int k, unsigned int depth, thread_attr *tat
 	    int from = b->assign_and_rehash(k,i);
 	    int ol_from = onlineloads_assign(tat->ol, k);
 	    // initialize the adversary's next vertex in the tree (corresponding to d)
-	    adversary_vertex *analyzed_vertex;
 	    bool already_generated = false;
 
 	    /* Check vertex cache if this adversarial vertex is already present */
 	    auto it = generated_graph_adv.find(b->loadhash ^ b->itemhash);
 	    if (it == generated_graph_adv.end())
 	    {
-		analyzed_vertex = new adversary_vertex(b, depth, tat->last_item);
+		upcoming_adv = new adversary_vertex(b, depth, tat->last_item);
 		// create new edge
-		new alg_outedge(current_algorithm, analyzed_vertex);
+		new alg_outedge(alg_to_evaluate, upcoming_adv);
 	    } else {
 		already_generated = true;
-		analyzed_vertex = it->second;
+		upcoming_adv = it->second;
 		// create new edge
-		new alg_outedge(current_algorithm, analyzed_vertex);
+		new alg_outedge(alg_to_evaluate, upcoming_adv);
 		below = it->second->value;
 	    }
 
 	    if (!already_generated)
 	    {
-		// set the current adversary vertex to be the analyzed vertex
-		outat->last_adv_v = analyzed_vertex;
-		below = sequencing_adversary(b, depth, tat, outat, seq);
-	    
-		analyzed_vertex->value = below;
-		// and set it back to the previous value
-		outat->last_adv_v = previous_adversary;
-		
+		below = sequencing_adversary(b, depth, tat, upcoming_adv, alg_to_evaluate, seq);
 		print<DEBUG>("We have calculated the following position, result is %d\n", below);
 		print_binconf<DEBUG>(b);
 	    }
@@ -250,14 +233,15 @@ int sequencing_algorithm(binconf *b, int k, unsigned int depth, thread_attr *tat
 	    if (below == 1)
 	    {
 		r = below;
-		remove_outedges<SEQUENCING>(current_algorithm);
+		remove_outedges<SEQUENCING>(alg_to_evaluate);
+		alg_to_evaluate->value = r;
 		return r;
 	    } else if (below == 0)
 	    {
 		// nothing needs to be currently done, the edge is already created
 	    } else if (below == POSTPONED)
 	    {
-		// insert analyzed_vertex into algorithm's "next" list
+		// insert upcoming_adv into algorithm's "next" list
 		if (r == 0)
 		{
 		    r = POSTPONED;
@@ -267,7 +251,8 @@ int sequencing_algorithm(binconf *b, int k, unsigned int depth, thread_attr *tat
 	}
 	i++;
     }
-    
+
+    alg_to_evaluate->value = r;
     return r;
 }
 
