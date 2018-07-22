@@ -86,7 +86,7 @@ int worker_solve(const task *t, const int& task_id)
     int ret = POSTPONED;
 
     thread_attr tat;
-    tat.last_item = t->last_item;
+    //tat.last_item = t->last_item;
     tat.task_id = task_id;
     computation_root = NULL; // we do not run GENERATE or EXPAND on the workers currently
    

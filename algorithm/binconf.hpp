@@ -197,14 +197,17 @@ public:
     // hash related properties
     uint64_t itemhash = 0;
     int _itemcount = 0;
+    bin_int last_item = 1; // last item inserted. Normally this is not needed, but with monotonicity it becomes necessary.
 
     binconf() {}
-    binconf(const std::vector<bin_int>& initial_loads, const std::vector<bin_int>& initial_items)
+    binconf(const std::vector<bin_int>& initial_loads, const std::vector<bin_int>& initial_items, bin_int initial_last_item = 1)
 	{
 	    assert(initial_loads.size() <= BINS);
 	    assert(initial_items.size() <= S);
 	    std::copy(initial_loads.begin(), initial_loads.end(), loads.begin()+1);
 	    std::copy(initial_items.begin(), initial_items.end(), items.begin()+1);
+
+	    last_item = initial_last_item;
 	    _itemcount = itemcount_explicit();
 	    _totalload = totalload_explicit();
 	    bin_int totalload_items = 0;
@@ -268,11 +271,11 @@ public:
 	    hashinit();
 	}
     int assign_item(int item, int bin);
-    void unassign_item(int item, int bin);
+    void unassign_item(int item, int bin, bin_int previously_last_item);
     int assign_multiple(int item, int bin, int count);
 
     int assign_and_rehash(int item, int bin);
-    void unassign_and_rehash(int item, int bin);
+    void unassign_and_rehash(int item, int bin, bin_int previously_last_item);
 
     int itemcount() const
     {
@@ -338,9 +341,9 @@ public:
     // Returns (main cache) binconf hash, assuming hash is consistent,
     // which it should be, if we are assigning properly.
     // Parameter lowest -- lowest item that can be sent.
-    uint64_t confhash(bin_int lowest) const
+    uint64_t confhash() const
 	{
-	    return (loadhash ^ itemhash ^ Zlow[lowest]);
+	    return (loadhash ^ itemhash ^ Zlow[lowest_sendable(last_item)]);
 	}
 
     // Returns a hash that also encodes the next upcoming item. This allows
@@ -369,6 +372,7 @@ void duplicate(binconf *t, const binconf *s) {
     for(int j=1; j<=S; j++)
 	t->items[j] = s->items[j];
 
+    t->last_item = s->last_item;
     t->loadhash = s->loadhash;
     t->itemhash = s->itemhash;
     t->_totalload = s->_totalload;
@@ -404,7 +408,7 @@ bool binconf_equal(const binconf *a, const binconf *b)
 
 
 // debug function for printing bin configurations (into stderr or log files)
-void print_binconf_stream(FILE* stream, const binconf* b)
+void print_binconf_stream(FILE* stream, const binconf* b, bool newline = true)
 {
     bool first = true;
     for (int i=1; i<=BINS; i++)
@@ -412,30 +416,38 @@ void print_binconf_stream(FILE* stream, const binconf* b)
 	if(first)
 	{
 	    first = false;
-	    fprintf(stream, "%d", b->loads[i]);
+	    fprintf(stream, "%02d", b->loads[i]);
 	} else {
-	    fprintf(stream, "-%d", b->loads[i]);
+	    fprintf(stream, "-%02d", b->loads[i]);
 	}
     }
+
+    fprintf(stream, " [l:%02d]", b->last_item);
     fprintf(stream, " (");
     first = true;
     for (int j=1; j<=S; j++)
     {
 	if (first)
 	{
-	    fprintf(stream, "%d", b->items[j]);
+	    fprintf(stream, "%02d", b->items[j]);
 	    first = false;
 	} else {
 	    if (j%10 == 1)
 	    {
-		fprintf(stream, "|%d", b->items[j]);
+		fprintf(stream, "|%02d", b->items[j]);
 	    } else {
-		fprintf(stream, ",%d", b->items[j]);
+		fprintf(stream, ",%02d", b->items[j]);
 	    }
 	}
     }
-    
-    fprintf(stream, ")\n");
+
+    if(newline)
+    {
+	fprintf(stream, ")\n");
+    } else
+    {
+	fprintf(stream, ")");
+    }
 }
 
 template <bool MODE> void print_binconf(const binconf *b)
@@ -446,12 +458,17 @@ template <bool MODE> void print_binconf(const binconf *b)
     }
 }
 
+// Caution: assign_item forgets the last assigned item, so you need
+// to take care of it manually, if you want to unassign later.
 int binconf::assign_item(int item, int bin)
 {
     loads[bin] += item;
     _totalload += item;
     items[item]++;
     _itemcount++;
+
+    last_item = item;
+
     return sortloads_one_increased(bin);
 }
 
@@ -461,16 +478,22 @@ int binconf::assign_multiple(int item, int bin, int count)
     _totalload += count*item;
     items[item] += count;
     _itemcount += count;
+
+    last_item = item;
+
     return sortloads_one_increased(bin);
 }
 
 
-void binconf::unassign_item(int item, int bin)
+void binconf::unassign_item(int item, int bin, bin_int item_before_last)
 {
     loads[bin] -= item;
     _totalload -= item;
     items[item]--;
     _itemcount--;
+
+    last_item = item_before_last;
+    
     sortloads_one_decreased(bin);
 }
 
@@ -482,16 +505,22 @@ int binconf::assign_and_rehash(int item, int bin)
     _itemcount++;
     int from = sortloads_one_increased(bin);
     rehash_increased_range(item,from,bin);
+
+    last_item = item;
+
     return from;
 }
 
-void binconf::unassign_and_rehash(int item, int bin)
+void binconf::unassign_and_rehash(int item, int bin, bin_int item_before_last)
 {
     loads[bin] -= item;
     _totalload -= item;
     items[item]--;
     _itemcount--;
     int from = sortloads_one_decreased(bin);
+
+    last_item = item_before_last;
+    
     rehash_decreased_range(item, bin, from);
 }
 

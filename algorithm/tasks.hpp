@@ -26,7 +26,7 @@ class task
 {
 public:
     binconf bc;
-    int last_item = 1;
+    // int last_item = 1;
     int expansion_depth = 0;
 
 
@@ -34,7 +34,7 @@ public:
 	{
 
 	    // copy task
-	    last_item = ft.shorts[0];
+	    bc.last_item = ft.shorts[0];
 	    expansion_depth = ft.shorts[1];
 	    bc._totalload = ft.shorts[2];
 	    bc._itemcount = ft.shorts[3];
@@ -56,7 +56,7 @@ public:
     flat_task flatten()
 	{
 	    flat_task ret;
-	    ret.shorts[0] = last_item;
+	    ret.shorts[0] = bc.last_item;
 	    ret.shorts[1] = expansion_depth;
 	    ret.shorts[2] = bc._totalload;
 	    ret.shorts[3] = bc._itemcount;
@@ -230,7 +230,7 @@ void rebuild_tmap()
     tmap.clear();
     for (int i = 0; i < tcount; i++)
     {
-	tmap.insert(std::make_pair(tarray[i].bc.confhash(lowest_sendable(tarray[i].last_item)), i));
+	tmap.insert(std::make_pair(tarray[i].bc.confhash(), i));
     }
    
 }
@@ -268,17 +268,17 @@ void permute_tarray_tstatus()
 
 
 
-template<int MODE> bool possible_task_advanced(adversary_vertex *v, int largest_item)
+bool possible_task_advanced(adversary_vertex *v, int largest_item)
 {
     int target_depth = 0;
     if (largest_item >= S/4)
     {
-	target_depth = computation_root->depth + TASK_DEPTH;
+	target_depth = computation_root->depth + task_depth;
     } else if (largest_item >= 3)
     {
-	target_depth = computation_root->depth + TASK_DEPTH + 1;
+	target_depth = computation_root->depth + task_depth + 1;
     } else {
-	target_depth = computation_root->depth + TASK_DEPTH + 3;
+	target_depth = computation_root->depth + task_depth + 3;
     }
 
     if (target_depth - v->depth <= 0)
@@ -289,41 +289,18 @@ template<int MODE> bool possible_task_advanced(adversary_vertex *v, int largest_
     }
 }
 
-template<int MODE> bool possible_task_size(adversary_vertex *v)
+bool possible_task_size(adversary_vertex *v)
 {
-    if (v->bc->totalload() >= TASK_LOAD)
+    if (v->bc->totalload() >= task_load)
     {
 	return true;
     }
     return false;
 }
 
-// Return true if a vertex might be a task for the parallel
-// computation. Now works in two modes: GENERATING (starting generation) and EXPANDING
-// (expanding an overdue task).
-
-template<int MODE> bool possible_task_depth(adversary_vertex *v, int largest_item)
+bool possible_task_depth(adversary_vertex *v, int largest_item)
 {
-
-    int target_depth;
-    if (MODE == GENERATING)
-    {
-	target_depth = computation_root->depth + TASK_DEPTH;
-
-	/*if (world_rank != 0)
-	{
-	    target_depth--;
-	}*/
-	/*if (computation_root->depth >= 5)
-	{
-	    target_depth--;
-	}*/
-    } else //if (MODE == EXPANDING)
-    {
-	target_depth = expansion_root->depth + EXPANSION_DEPTH;
-    }
-    
-    //assert(v->depth <= target_depth);
+    int target_depth = computation_root->depth + task_depth;
     if (target_depth - v->depth <= 0)
     {
 	return true;
@@ -332,11 +309,11 @@ template<int MODE> bool possible_task_depth(adversary_vertex *v, int largest_ite
     return false;
 }
 
-template<int MODE> bool possible_task_mixed(adversary_vertex *v, int largest_item)
+bool possible_task_mixed(adversary_vertex *v, int largest_item)
 {
 
-    int target_depth = computation_root->depth + TASK_DEPTH;
-    if (v->bc->totalload() - computation_root->bc->totalload() >= TASK_LOAD)
+    int target_depth = computation_root->depth + task_depth;
+    if (v->bc->totalload() - computation_root->bc->totalload() >= task_load)
     {
 	return true;
     } else if (target_depth - v->depth <= 0)
@@ -354,9 +331,9 @@ void add_task(const binconf *x, thread_attr *tat)
     task_count++;
     task newtask;
     duplicate(&(newtask.bc), x);
-    newtask.last_item = tat->last_item;
+//    newtask.last_item = tat->last_item;
     newtask.expansion_depth = tat->expansion_depth; 
-    tmap.insert(std::make_pair(newtask.bc.confhash(lowest_sendable(newtask.last_item)), tarray_temporary.size()));
+    tmap.insert(std::make_pair(newtask.bc.confhash(), tarray_temporary.size()));
     tarray_temporary.push_back(newtask);
     tstatus_temporary.push_back(TASK_AVAILABLE);
     tcount++;

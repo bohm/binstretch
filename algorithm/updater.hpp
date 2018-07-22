@@ -46,9 +46,9 @@ int update(adversary_vertex *v)
 
     v->visited = true;
 
-    if (v->state == TASK)
+    if (v->task)
     {
-	uint64_t hash = v->bc->confhash(lowest_sendable(v->last_item));
+	uint64_t hash = v->bc->confhash();
 	result = completion_check(hash);
 	//fprintf(stderr, "Completion check:");
 	//print_binconf_stream(stderr, v->bc);
@@ -68,11 +68,17 @@ int update(adversary_vertex *v)
 		
 	    } else if (below == 1)
 	    {
-
-		adv_outedge *removed_edge = (*it);
-		remove_inedge<UPDATING>(*it);
-		it = v->out.erase(it); // serves as it++
-		delete removed_edge;
+		// We remove the edge unless the vertex here is FIXED.
+		// In that case, we keep the edges as they are.
+		if(v->state != FIXED)
+		{
+		    adv_outedge *removed_edge = (*it);
+		    remove_inedge<UPDATING>(*it);
+		    it = v->out.erase(it); // serves as it++
+		    delete removed_edge;
+		} else {
+		    it++;
+		}
 	    } else if (below == POSTPONED)
 	    {
 		if (result == 1) {
@@ -95,7 +101,7 @@ int update(adversary_vertex *v)
 	v->value = result;
     }
 
-    if (result == 1)
+    if (v->state != FIXED && result == 1)
     {
 	// sanity check
 	assert( v->out.empty() );
@@ -146,7 +152,7 @@ int update(algorithm_vertex *v)
 	}
     }
     
-    if (result == 1)
+    if (result == 1 && v->state != FIXED)
     {
 	remove_outedges<UPDATING>(v);
 	assert( v->out.empty() );
@@ -196,7 +202,7 @@ void regrow_recursive(adversary_vertex *v, int regrow_level)
     }
     v->visited = true;
 
-    if (v->state == TASK)
+    if (v->task)
     {
 	assert(v->value == 0);
 	sapling newsap;

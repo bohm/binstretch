@@ -425,9 +425,10 @@ int gsheuristic(binconf *b, int k, thread_attr *tat)
     {
 	if ((b->loads[i] + k)< R)
 	{
+	    bin_int previously_last_item = b->last_item;
 	    moved_load = b->assign_item(k,i);
 	    int value = testgs(b, tat);
-	    b->unassign_item(k,moved_load);
+	    b->unassign_item(k,moved_load, previously_last_item);
 	    if (value == 1)
 	    {
 		MEASURE_ONLY(tat->meas.gsheurhit++);

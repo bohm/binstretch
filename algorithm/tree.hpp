@@ -26,12 +26,14 @@ class adversary_vertex;
 std::map<llu, adversary_vertex*> generated_graph_adv;
 std::map<llu, algorithm_vertex*> generated_graph_alg;
 
-// four possible values of a vertex state
-const int NORMAL = 0;
-const int TASK = 1;
-const int EXPAND = 2;
-const int FIXED = 3;
-const int SAPLING = 4;
+// three possible values of a vertex state
+const int NEW = 0;
+const int EXPAND = 3;
+const int FIXED = 4;
+
+// Additional two booleans describing the state are "task" (whether a vertex is a task)
+// and "sapling" (whether a vertex is a sapling).
+// These two can mix with state, so we leave them separate.
 
 class algorithm_vertex
 {
@@ -44,7 +46,7 @@ public:
     uint64_t id;
     bool visited = false;
     int value = POSTPONED;
-    int state = NORMAL;
+    int state = NEW;
 
     algorithm_vertex(binconf *b, bin_int next_item) : next_item(next_item)
     {
@@ -81,25 +83,26 @@ public:
     bin_int heuristic_item = 0;
     bin_int heuristic_multi = 0;
     int heuristic_type = 0;
-    int last_item = 1;
+    // int last_item = 1; // last item is now stored in binconf
     int value = POSTPONED;
     uint64_t id;
     int expansion_depth = 0;
-    int state = NORMAL;
-   
-    adversary_vertex(const binconf *b, int depth, int last_item)
+    int state = NEW;
+    bool task = false; // task is a separate boolean because an EXPAND vertex can be a task itself.
+    bool sapling = false;
+
+    adversary_vertex(const binconf *b, int depth)
     {
 	this->bc = new binconf;
 	assert(this->bc != NULL);
 	this->id = ++global_vertex_counter;
 	this->depth = depth;
-	this->last_item = last_item;
 	duplicate(this->bc, b);
 
 	// Sanity check that we are not inserting a duplicate vertex.
-	auto it = generated_graph_adv.find(bc->confhash(lowest_sendable(last_item)));
+	auto it = generated_graph_adv.find(bc->confhash());
 	assert(it == generated_graph_adv.end());
-	generated_graph_adv[bc->confhash(lowest_sendable(last_item))] = this;
+	generated_graph_adv[bc->confhash()] = this;
 
 	//print<DEBUG>("Vertex %" PRIu64 "created.\n", this->id);
 
@@ -141,13 +144,16 @@ public:
     std::list<alg_outedge*>::iterator pos;
     std::list<alg_outedge*>::iterator pos_child;
     uint64_t id;
+    bin_int target_bin;
 
-    alg_outedge(algorithm_vertex* from, adversary_vertex* to)
+    alg_outedge(algorithm_vertex* from, adversary_vertex* to, bin_int target)
     {
+	target_bin = target;
 	this->from = from; this->to = to;
 	this->pos = from->out.insert(from->out.begin(), this);
 	this->pos_child = to->in.insert(to->in.begin(), this);
 	this->id = ++global_edge_counter;
+	
 	//print<DEBUG>("Edge %" PRIu64 " created.\n", this->id);
 
     }
@@ -163,7 +169,7 @@ public:
 // you are sure there are no remaining outedges.
 void algorithm_vertex::quickremove_outedges()
 {
-    for (auto&& e: out)
+    for (auto& e: out)
     {
 	delete e;
     }
@@ -195,10 +201,12 @@ void adversary_vertex::quickremove_outedges()
 adversary_vertex::~adversary_vertex()
 {
     //quickremove_outedges();
+    // print<true>("Deleting vertex:");
+    // print_binconf<true>(bc);
 	
-    auto it = generated_graph_adv.find(bc->confhash(lowest_sendable(last_item)));
+    auto it = generated_graph_adv.find(bc->confhash());
     assert(it != generated_graph_adv.end());
-    generated_graph_adv.erase(bc->confhash(lowest_sendable(last_item)));
+    generated_graph_adv.erase(bc->confhash());
     delete bc;
     //print<DEBUG>("Vertex %" PRIu64 "destroyed.\n", this->id);
 }
@@ -236,6 +244,114 @@ void clear_visited_bits()
     }
 }
 
+void print_partial_gametree(FILE* stream, adversary_vertex *v);
+void print_partial_gametree(FILE* stream, algorithm_vertex *v);
+
+void print_debug_tree(adversary_vertex *r, int regrow_level, int extra_id)
+{
+    clear_visited_bits();
+    char debugfile[50];
+    sprintf(debugfile, "%d_%d_%dbins_reg%d_mon%d_ex%d.txt", R,S,BINS, regrow_level, monotonicity, extra_id);
+    print<true>("Printing to %s.\n", debugfile);
+    FILE* out = fopen(debugfile, "w");
+    assert(out != NULL);
+    print_partial_gametree(out, r);
+    fclose(out);
+}
+
+void print_partial_gametree(FILE* stream, adversary_vertex *v)
+{
+    assert(v!=NULL);
+    assert(v->bc != NULL);
+
+    // since the graph is now a DAG, we use DFS to print
+    if (v->visited)
+    {
+	return;
+    }
+
+    v->visited = true;
+
+    fprintf(stream, "ADV vertex %" PRIu64 " depth %d ", v->id, v->depth);
+    if (v->task)
+    {
+	if(v->state == EXPAND)
+	{ 
+	    fprintf(stream, "(te) ");
+	} else {
+	    assert(v->state == NEW);
+	    fprintf(stream, "(t) ");
+	}
+    } else {
+	if (v->state == NEW)
+	{
+	    fprintf(stream, "(n) ");
+	} else if (v->state == EXPAND)
+	{
+	    fprintf(stream, "(e) ");
+	} else if (v->state == FIXED)
+	{
+	    fprintf(stream, "(f) ");
+	}
+    }
+
+    fprintf(stream, "val %d ", v->value);
+    
+    fprintf(stream,"bc: ");
+    print_binconf_stream(stream, v->bc, false); // false == no newline
+
+    if (!v->task)
+    {
+	fprintf(stream," ch: ");
+	for (auto& n: v->out) {
+	    fprintf(stream,"%" PRIu64 " (%d) ", n->to->id, n->item);
+	}	
+    }
+    
+    fprintf(stream,"\n");
+   
+    for (auto&& n: v->out) {
+	print_partial_gametree(stream, n->to);
+    }
+}
+
+void print_partial_gametree(FILE* stream, algorithm_vertex *v)
+{
+    assert(v!=NULL);
+
+    if (v->visited)
+    {
+	return;
+    }
+
+    v->visited = true;
+
+    fprintf(stream,"ALG vertex %" PRIu64 " ", v->id);
+
+    if (v->state == NEW)
+    {
+	fprintf(stream, "(n) ");
+    } else if (v->state == FIXED)
+    {
+	fprintf(stream, "(f) ");
+    } else {
+	abort();
+    }
+
+    fprintf(stream, "val %d ", v->value);
+
+    fprintf(stream,"ch: ");
+    for (auto&& n: v->out) {
+	fprintf(stream,"%" PRIu64 " ", n->to->id);
+    }
+    fprintf(stream,"\n");
+
+    for (auto&& n: v->out) {
+	print_partial_gametree(stream, n->to);
+    }
+}
+
+
 void print_compact_subtree(FILE* stream, bool stop_on_saplings, adversary_vertex *v)
 {
     if (v->visited)
@@ -250,10 +366,10 @@ void print_compact_subtree(FILE* stream, bool stop_on_saplings, adversary_vertex
 	fprintf(stream, "%d ", v->bc->loads[i]);
     }
 
-    if (v->state == TASK)
+    if (v->task)
     {
 	fprintf(stream, "task\"];\n");
-    } else if ((v->state == SAPLING) && stop_on_saplings)
+    } else if ((v->sapling) && stop_on_saplings)
     {
 	fprintf(stream, "sapling\"];\n");
     } else if(v->heuristic)
@@ -339,9 +455,9 @@ template <int MODE> void remove_inedge(alg_outedge *e)
     {
 	remove_outedges<MODE>(e->to);
 	// if e->to is task, remove it from the queue
-	if (e->to->state == TASK && e->to->value == POSTPONED)
+	if (e->to->task && e->to->value == POSTPONED)
 	{
-	    remove_task<MODE>(e->to->bc->confhash(lowest_sendable(e->to->last_item)));
+	    remove_task<MODE>(e->to->bc->confhash());
 	}
 	
 	// the vertex will be removed from the generated graph by calling delete on it.
@@ -353,7 +469,7 @@ template <int MODE> void remove_inedge(alg_outedge *e)
    In order to preserve incoming edges, leaves the vertex be. */
 template <int MODE> void remove_outedges(algorithm_vertex *v)
 {
-    for (auto&& e: v->out)
+    for (auto& e: v->out)
     {
 	remove_inedge<MODE>(e);
 	delete e;
@@ -364,7 +480,7 @@ template <int MODE> void remove_outedges(algorithm_vertex *v)
 
 template <int MODE> void remove_outedges(adversary_vertex *v)
 {
-    for (auto&& e: v->out)
+    for (auto& e: v->out)
     {
 	remove_inedge<MODE>(e);
 	delete e;
@@ -419,16 +535,211 @@ void clear_generated_graph()
 
 void tree_consistency_check(adversary_vertex *root)
 {
-
-    uint64_t foreach_vertices = 0;
-    uint64_t foreach_edges = 0;
-    
 }
 
 void purge_sapling(adversary_vertex *sapling)
 {
     sapling->value = POSTPONED;
-    sapling->last_item = 1; // TODO: it doesn't clearly state that last item should be ignored.
     remove_outedges<CLEANUP>(sapling);
 }
+
+void purge_new_alg(algorithm_vertex *v);
+void purge_new_adv(adversary_vertex *v);
+
+void purge_new_adv(adversary_vertex *v)
+{
+    if (v->visited)
+    {
+	return;
+    }
+
+    v->visited = true;
+    std::list<adv_outedge*>::iterator it = v->out.begin();
+    while (it != v->out.end())
+    {
+	algorithm_vertex *down = (*it)->to;
+	if (down->state == NEW) // algorithm vertex can never be a task
+	{
+	    purge_new_alg(down);
+	    remove_inedge<GENERATING>(*it);
+	    it = v->out.erase(it); // serves as it++
+	} else {
+	    purge_new_alg(down);
+	    it++;
+	}
+    }
+}
+
+void purge_new_alg(algorithm_vertex *v)
+{
+    if (v->visited)
+    {
+	return;
+    }
+
+    v->visited = true;
+    std::list<alg_outedge*>::iterator it = v->out.begin();
+    while (it != v->out.end())
+    {
+	adversary_vertex *down = (*it)->to;
+	if (down->state == NEW || down->task)
+	{
+	    purge_new_adv(down);
+	    remove_inedge<GENERATING>(*it);
+	    it = v->out.erase(it); // serves as it++
+	} else {
+	    purge_new_adv(down);
+	    it++;
+	}
+    }
+}
+
+void purge_new(adversary_vertex *r)
+{
+    clear_visited_bits();
+    purge_new_adv(r);
+}
+
+
+void relabel_tasks_adv(adversary_vertex *v); 
+void relabel_tasks_alg(algorithm_vertex *v);
+
+void relabel_tasks_adv(adversary_vertex *v)
+{
+    if (v->visited)
+    {
+	return;
+    }
+
+    v->visited = true;
+
+    if (v->task)
+    {
+	assert(v->out.size() == 0 && v->value == 0);
+	v->task = false;
+	v->state = EXPAND;
+    }
+    
+    for (auto& e: v->out)
+    {
+	relabel_tasks_alg(e->to);
+    }
+
+}
+
+void relabel_tasks_alg(algorithm_vertex *v)
+{
+    if (v->visited)
+    {
+	return;
+    }
+    v->visited = true;
+
+    // algorithm vertices should never be tasks
+    assert(v->value == 0);
+    
+    for (auto& e: v->out)
+    {
+	relabel_tasks_adv(e->to);
+    }
+}
+
+void relabel_tasks(adversary_vertex *r)
+{
+    clear_visited_bits();
+    relabel_tasks_adv(r);
+}
+
+void fix_vertices_adv(adversary_vertex *v); 
+void fix_vertices_alg(algorithm_vertex *v);
+
+void fix_vertices_adv(adversary_vertex *v)
+{
+    if (v->visited)
+    {
+	return;
+    }
+    v->visited = true;
+
+    assert(v->value == 0);
+    
+    if (v->state == NEW || v->state == EXPAND)
+    {
+	v->state = FIXED;
+    }
+
+    for (auto& e: v->out)
+    {
+	fix_vertices_alg(e->to);
+    }
+}
+
+void fix_vertices_alg(algorithm_vertex *v)
+{
+    if (v->visited)
+    {
+	return;
+    }
+    v->visited = true;
+
+    assert(v->value == 0);
+    
+    if (v->state == NEW)
+    {
+	v->state = FIXED;
+    }
+
+    for (auto& e: v->out)
+    {
+	fix_vertices_adv(e->to);
+    }
+}
+
+void fix_vertices(adversary_vertex *r)
+{
+    clear_visited_bits();
+    fix_vertices_adv(r);
+}
+
+void reset_values_adv(adversary_vertex *v);
+void reset_values_alg(algorithm_vertex *v);
+
+void reset_values_adv(adversary_vertex *v)
+{
+    if (v->visited)
+    {
+	return;
+    }
+    v->visited = true;
+
+    v->value = POSTPONED;
+    
+    for (auto& e: v->out)
+    {
+	reset_values_alg(e->to);
+    }
+}
+
+void reset_values_alg(algorithm_vertex *v)
+{
+    if (v->visited)
+    {
+	return;
+    }
+    v->visited = true;
+
+    v->value = POSTPONED;
+   
+    for (auto& e: v->out)
+    {
+	reset_values_adv(e->to);
+    }
+}
+
+void reset_values(adversary_vertex *r)
+{
+    clear_visited_bits();
+    reset_values_adv(r);
+}
+
 #endif

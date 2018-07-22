@@ -208,10 +208,10 @@ template <int MODE> int hashpush_dp(uint64_t hash, const dpht_el& data, uint64_t
 	return INSERTED_RANDOMLY;
 }
 
-void conf_hashpush(const binconf *d, const bin_int lowest, uint64_t posvalue, thread_attr *tat)
+void conf_hashpush(const binconf *d, uint64_t posvalue, thread_attr *tat)
 {
     MEASURE_ONLY(tat->meas.bc_insertions++);
-    uint64_t bchash = d->confhash(lowest);
+    uint64_t bchash = d->confhash();
     assert(posvalue >= 0 && posvalue <= 2);
     conf_el new_item;
     new_item.set(bchash, posvalue);
@@ -247,9 +247,9 @@ void conf_hashpush(const binconf *d, const bin_int lowest, uint64_t posvalue, th
     }
 }
 
-bin_int is_conf_hashed(const binconf *d, bin_int lowest, thread_attr *tat, bool &found)
+bin_int is_conf_hashed(const binconf *d, thread_attr *tat, bool &found)
 {
-    uint64_t bchash = zero_last_two_bits(d->confhash(lowest));
+    uint64_t bchash = zero_last_two_bits(d->confhash());
 
     bin_int ret;
     ret = is_hashed(bchash, conflogpart(bchash), tat, found);

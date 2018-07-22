@@ -59,11 +59,20 @@ int check_messages(thread_attr *tat)
 
 template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, adversary_vertex *adv_to_evaluate, algorithm_vertex *parent_alg)
 {
-
-    //assert(totalload(b) == b->totalload);
     algorithm_vertex *upcoming_alg = NULL;
     adv_outedge *new_edge = NULL;
+    int below = 1;
+    int r = 1;
 
+    if (MODE == GENERATING)
+    {
+	if (adv_to_evaluate->visited)
+	{
+	    return adv_to_evaluate->value;
+	}
+	adv_to_evaluate->visited = true;
+    }
+    
     // Everything can be packed into one bin, return 1.
     if ((b->loads[BINS] + (BINS*S - b->totalload())) < R)
     {
@@ -130,16 +139,74 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, advers
 	    }
 	}
     }
-    
+
     if (MODE == GENERATING)
     {
-	// we now do creation of tasks only until the REGROW_LIMIT is reached
-	if (tat->regrow_level <= REGROW_LIMIT && POSSIBLE_TASK<MODE>(adv_to_evaluate, tat->largest_since_computation_root))
+	// deal with vertices of several states (does not happen in exploration mode)
+	// states: NEW -- a new vertex that should be expanded
+	// FIXED -- vertex is already part of the prescribed lower bound (e.g. by previous computation)
+	// EXPAND -- a previous task that leads to a lower bound and should be expanded.
+
+
+	if (adv_to_evaluate->state == FIXED)
 	{
+	    // When the vertex is fixed, we know it is part of the lower bound.
+	    // We do not generate any more options; instead we just iterate over the edges that are there.
+	    std::list<adv_outedge*>::iterator it = adv_to_evaluate->out.begin();
+	    r = 1;
+	    while ( it != adv_to_evaluate->out.end())
+	    {
+		upcoming_alg = (*it)->to;
+		int old_largest = tat->largest_since_computation_root; 
+		int item_size = (*it)->item;
+		tat->largest_since_computation_root = std::max(item_size, tat->largest_since_computation_root);
+		below = algorithm<MODE>(b, item_size, depth+1, tat, upcoming_alg, adv_to_evaluate);
+		tat->largest_since_computation_root = old_largest;
+
+		if (below == 0)
+		{
+		    r = 0;
+		    bin_int right_move = (*it)->to->next_item;
+		    // we can break here (in fact we should break here, so that assertion that only one edge remains is true)
+		    remove_outedges_except<MODE>(adv_to_evaluate, right_move);
+		    break;
+		} else if (below == 1)
+		{
+		    // this may happen for a lower monotonicity; we do not remove the fixed vertices but we propagate the information upwards.
+		    // adv_outedge *removed_edge = (*it);
+		    // remove_inedge<UPDATING>(*it);
+		    // it = v->out.erase(it); // serves as it++
+		    // delete removed_edge;
+		} else if (below == POSTPONED)
+		{
+		    if (r == 1) {
+			r = POSTPONED;
+		    }
+		    it++;
+		}
+	    }
+
+	    adv_to_evaluate->value = r;
+	    return r;
+	}
+
+	// assert
+	if (adv_to_evaluate->state != NEW && adv_to_evaluate->state != EXPAND)
+	{
+	    print<true>("Assert failed: adversary vertex state is %d.\n", adv_to_evaluate->state);
+	    assert(adv_to_evaluate->state == NEW || adv_to_evaluate->state == EXPAND); // no other state should go past this point
+	}
+
+	
+	// we now do creation of tasks only until the REGROW_LIMIT is reached
+	if (tat->regrow_level <= REGROW_LIMIT && POSSIBLE_TASK(adv_to_evaluate, tat->largest_since_computation_root))
+	{
+	    // print<true>("This is a valid candidate for a task (depth %d, task_depth %d, comp. depth %d, load %d, task_load %d, comp. root load: %d.\n ",
+	    // 		depth, task_depth, computation_root->depth, b->totalload(), task_load, computation_root->bc->totalload());
+	    // print_binconf<true>(b);
 	    add_task(b, tat);
 	    // mark current adversary vertex (created by algorithm() in previous step) as a task
-	    assert(adv_to_evaluate->state == NORMAL);
-	    adv_to_evaluate->state = TASK;
+	    adv_to_evaluate->task = true;
 	    adv_to_evaluate->value = POSTPONED;
 	    return POSTPONED;
 	}
@@ -164,7 +231,7 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, advers
     }
 
     // Idea: start with monotonicity 0 (non-decreasing), and move towards S (full generality).
-    bin_int lower_bound = lowest_sendable(tat->last_item);
+    bin_int lower_bound = lowest_sendable(b->last_item);
 
     // Check cache here (after we have solved trivial cases).
     // We only do this in exploration mode; while this could be also done
@@ -172,7 +239,7 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, advers
     if (MODE == EXPLORING && !DISABLE_CACHE)
     {
 	bool found_conf = false;
-	int conf_in_hashtable = is_conf_hashed(b, lower_bound, tat, found_conf);
+	int conf_in_hashtable = is_conf_hashed(b, tat, found_conf);
 	
 	if (found_conf)
 	{
@@ -184,18 +251,17 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, advers
     // finds the maximum feasible item that can be added using dyn. prog.
     bin_int old_max_feasible = tat->prev_max_feasible;
     bin_int dp = MAXIMUM_FEASIBLE(b, depth, lower_bound, old_max_feasible, tat);
-
+    r = 1;
+    below = 1;
+    
     tat->prev_max_feasible = dp;
     int maximum_feasible = dp; // possibly also INFEASIBLE == -1
-    int below = 1;
-    int r = 1;
     print<DEBUG>("Trying player zero choices, with maxload starting at %d\n", maximum_feasible);
 
     for (int item_size = maximum_feasible; item_size>=lower_bound; item_size--)
     {
         print<DEBUG>("Sending item %d to algorithm.\n", item_size);
 
-	bool already_generated = false;
 	if (MODE == GENERATING)
 	{
 	    // Check vertex cache if this algorithmic vertex is already present.
@@ -206,7 +272,6 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, advers
 		upcoming_alg = new algorithm_vertex(b, item_size);
 		new_edge = new adv_outedge(adv_to_evaluate, upcoming_alg, item_size);
 	    } else {
-		already_generated = true;
 		upcoming_alg = it->second;
 		// create new edge
 		new_edge = new adv_outedge(adv_to_evaluate, upcoming_alg, item_size);
@@ -215,19 +280,10 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, advers
     
 	}
 
-
-	if (!already_generated)
-	{
-	    
-	    int li = tat->last_item;
-	    int old_largest = tat->largest_since_computation_root; 
-	    tat->last_item = item_size;
-	    tat->largest_since_computation_root = std::max(item_size, tat->largest_since_computation_root);
-	    below = algorithm<MODE>(b, item_size, depth+1, tat, upcoming_alg, adv_to_evaluate);
-
-	    tat->last_item = li;
-	    tat->largest_since_computation_root = old_largest;
-	}
+	int old_largest = tat->largest_since_computation_root; 
+	tat->largest_since_computation_root = std::max(item_size, tat->largest_since_computation_root);
+	below = algorithm<MODE>(b, item_size, depth+1, tat, upcoming_alg, adv_to_evaluate);
+	tat->largest_since_computation_root = old_largest;
 	
 	// send signal that we should terminate immediately upwards
 	if (below == TERMINATING || below == IRRELEVANT)
@@ -266,7 +322,7 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, advers
 
     if (MODE == EXPLORING && !DISABLE_CACHE)
     {
-	conf_hashpush(b, lower_bound, r, tat);
+	conf_hashpush(b, r, tat);
     }
 
     // Sanity check.
@@ -283,7 +339,18 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, advers
 template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat, algorithm_vertex *alg_to_evaluate, adversary_vertex *parent_adv)
 {
     adversary_vertex *upcoming_adv = NULL;
-
+    int below = 0;
+    int r = 0;
+ 
+    if (MODE == GENERATING)
+    {
+	if (alg_to_evaluate->visited)
+	{
+	    return alg_to_evaluate->value;
+	}
+	alg_to_evaluate->visited = true;
+    }
+ 
     // if you are exploring, check the global terminate flag every 100th iteration
     if (MODE == EXPLORING)
     {
@@ -303,7 +370,6 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 	}
     }
  
-    
     if (gsheuristic(b,k, tat) == 1)
     {
 	if (MODE == GENERATING)
@@ -315,10 +381,51 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 	return 1;
     }
 
-    int r = 0;
-    int below = 0;
-    bin_int i = 1;
+    if (MODE == GENERATING)
+    {
+	if (alg_to_evaluate->state == FIXED)
+	{
+	    std::list<alg_outedge*>::iterator it = alg_to_evaluate->out.begin();
+	    while (it != alg_to_evaluate->out.end())
+	    {
+		upcoming_adv = (*it)->to;
+		bin_int target_bin = (*it)->target_bin;
+		int previously_last_item = b->last_item;
+		int from = b->assign_and_rehash(k, target_bin);
+		int ol_from = onlineloads_assign(tat->ol, k);
+		below = adversary<MODE>(b, depth, tat, upcoming_adv, alg_to_evaluate);
+		b->unassign_and_rehash(k,from, previously_last_item);
+		onlineloads_unassign(tat->ol, k, ol_from);
+		b->last_item = previously_last_item;
+
+		if (below == 1)
+		{
+		    r = 1;
+		    // the state is winning, but we do not remove the outedges, because the vertex is fixed
+		    break;
+		} else if (below == 0)
+		{
+		    // do not delete subtree, it might be part
+		    // of the lower bound
+		    it++;
+		} else if (below == POSTPONED)
+		{
+		    if (r == 0) {
+			r = POSTPONED;
+		    }
+		    it++;
+		}
+	    }
+
+	    alg_to_evaluate->value = r;
+	    return r;
+	}
+    }
+
+    r = 0;
+    below = 0;
     
+    bin_int i = 1;
     while(i <= BINS)
     {
 	// simply skip a step where two bins have the same load
@@ -331,47 +438,39 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 	if ((b->loads[i] + k < R))
 	{
 	    // editing binconf in place -- undoing changes later
-	    
+
+	    int previously_last_item = b->last_item;
 	    int from = b->assign_and_rehash(k,i);
 	    int ol_from = onlineloads_assign(tat->ol, k);
 	    // initialize the adversary's next vertex in the tree (corresponding to d)
-	    bool already_generated = false;
-
 	    if (MODE == GENERATING)
 	    {
 		// Check vertex cache if this adversarial vertex is already present.
 		// std::map<llu, adversary_vertex*>::iterator it;
-		auto it = generated_graph_adv.find(b->confhash(lowest_sendable(tat->last_item)));
+		auto it = generated_graph_adv.find(b->confhash());
 		if (it == generated_graph_adv.end())
 		{
-		    upcoming_adv = new adversary_vertex(b, depth, tat->last_item);
-		    new alg_outedge(alg_to_evaluate, upcoming_adv);
+		    upcoming_adv = new adversary_vertex(b, depth);
+		    // Note: "i" is the position in the previous binconf, not the new one.
+		    new alg_outedge(alg_to_evaluate, upcoming_adv, i);
 		} else {
-		    already_generated = true;
 		    upcoming_adv = it->second;
-		    new alg_outedge(alg_to_evaluate, upcoming_adv);
-		    below = it->second->value;
+		    new alg_outedge(alg_to_evaluate, upcoming_adv, i);
+		    // below = it->second->value;
 		}
 	    }
 	    
-	    if (!already_generated)
+	    below = adversary<MODE>(b, depth, tat, upcoming_adv, alg_to_evaluate);
+	    // send signal that we should terminate immediately upwards
+	    if (below == TERMINATING || below == IRRELEVANT)
 	    {
-
-		below = adversary<MODE>(b, depth, tat, upcoming_adv, alg_to_evaluate);
-
-		// send signal that we should terminate immediately upwards
-		if (below == TERMINATING || below == IRRELEVANT)
-		{
-		    return below;
-		}
-		
-		print<DEBUG>("We have calculated the following position, result is %d\n", below);
-		print_binconf<DEBUG>(b);
-
+		return below;
 	    }
-
+		
+	    print<DEBUG>("We have calculated the following position, result is %d\n", below);
+	    print_binconf<DEBUG>(b);
 	    // return b to original form
-	    b->unassign_and_rehash(k,from);
+	    b->unassign_and_rehash(k,from, previously_last_item);
 	    onlineloads_unassign(tat->ol, k, ol_from);
 	    if (below == 1)
 	    {
@@ -425,7 +524,7 @@ int explore(binconf *b, thread_attr *tat)
     //tat->previous_pass = &first_pass;
     tat->eval_start = std::chrono::system_clock::now();
     tat->current_overdue = false;
-    tat->explore_roothash = b->confhash(lowest_sendable(tat->last_item));
+    tat->explore_roothash = b->confhash();
     tat->explore_root = &root_copy;
     int ret = adversary<EXPLORING>(b, 0, tat, NULL, NULL);
     assert(ret != POSTPONED);

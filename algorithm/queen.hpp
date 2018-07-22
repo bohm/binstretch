@@ -84,7 +84,7 @@ int queen()
     sync_up(); // Sync before any rounds start.
 
     binconf root = {INITIAL_LOADS, INITIAL_ITEMS};
-    root_vertex = new adversary_vertex(&root, 0, 1);
+    root_vertex = new adversary_vertex(&root, 0);
  
     if (BINS == 3 && 3*ALPHA >= S)
     {
@@ -98,17 +98,6 @@ int queen()
     if (SEQUENCE_SAPLINGS)
     {
 	sequencing(INITIAL_SEQUENCE, root, root_vertex);
-	/* if (WRITE_SEQUENCE)
-	{
-	    fprintf(stderr, "Clearing ./sap/.\n");
-	    for (auto& old_sapling : fs::directory_iterator("./sap/"))
-	    {
-		fs::remove(old_sapling);
-	    }
-	
-	    write_sapling_queue();
-	    }*/
-
 
 	if (OUTPUT && !SINGLE_TREE)
 	{
@@ -124,88 +113,55 @@ int queen()
 
     if (TERMINATE_AFTER_SEQUENCING) { return 0; }
 
-    /*
-    if (LOAD_SAPLINGS)
-    {
-	// if sequencing was done, it clears the sequencing queue and handles it separately.
-	while(!sapling_stack.empty())
-	{
-	    sapling_stack.pop();
-	}
-	
-	adversary_vertex* loaded_sapling = load_sapling();
-	if (loaded_sapling != NULL)
-	{
-	    loaded_sapling->bc->consistency_check();
-	    sapling_stack.push(loaded_sapling);
-	}
-    }
-    */
-
     while (!sapling_stack.empty())
     {
-	sapling current_sapling = sapling_stack.top();
+	sapling currently_growing = sapling_stack.top();
 	sapling_stack.pop();
-
-	/* 
-	// if the sapling is loaded from a file, we need to make it the root of the generated graph
-	if (LOAD_SAPLINGS)
+	bool lower_bound_complete = false;
+	computation_root = currently_growing.root;
+	computation_root->state = EXPAND;
+	computation_root->value = POSTPONED;
+	// reset sapling's last item (so that the search space is a little bit better)
+	computation_root->bc->last_item = 1;
+	monotonicity = FIRST_PASS;
+	for(int regrow_level = 0; regrow_level <= REGROW_LIMIT; regrow_level++)
 	{
-	    // clear generated graph
-            // insert sapling as root
-	    int remaining = remaining_sapling_files();
-	    print<PROGRESS>("Queen: remaining input files: %d, current sapling:\n", remaining);
-	    print_binconf_stream(stderr, sapling->bc);
-
-	} else {
-	    print<PROGRESS>("Queen: sapling queue size: %zu, current sapling of depth %d:\n", sapling_stack.size(), sapling->depth);
-	    print_binconf_stream(stderr, sapling->bc);
-	}
-	*/
-	
-	regrow_queue.push(current_sapling);
-
-	while (!regrow_queue.empty())
-	{
-	    sapling currently_growing = regrow_queue.front();
-	    computation_root = currently_growing.root;
-	    regrow_queue.pop();
-	    print<PROGRESS>("Queen: sapling stack size: %zu, regrow queue size: %zu, current sapling of depth %d and regrow level %d:\n",
-			    sapling_stack.size(), regrow_queue.size(), computation_root->depth, currently_growing.regrow_level);
+	    if (regrow_level > 0)
+	    {
+		task_depth += TASK_DEPTH_STEP;
+		task_load += TASK_LOAD_STEP;
+	    }
+	    print<PROGRESS>("Queen: sapling queue size: %zu, current sapling of depth %d and regrow level %d:\n", sapling_stack.size(), computation_root->depth, regrow_level);
 	    print_binconf<PROGRESS>(computation_root->bc);
 
-
-	    // temporarily isolate sapling (detach it from its parent, set depth to 0)
-	    int orig_value = currently_growing.root->value;
-	    computation_root->state = NORMAL;
-	    computation_root->value = POSTPONED;
-
 	    thread_attr tat;
+	    tat.regrow_level = regrow_level;
 	    
 	    if (PROGRESS) { scheduler_start = std::chrono::system_clock::now(); }
-	    monotonicity = FIRST_PASS;
+
+	    // do not change monotonicity when regrowing (regrow_level >= 1)
 	    for (; monotonicity <= S-1; monotonicity++)
 	    {
-		
+		print<PROGRESS>("Queen: Switching to monotonicity %d.\n", monotonicity);
+
 		if (PROGRESS) { iteration_start = std::chrono::system_clock::now(); }
-		
-		clear_visited_bits();
-		purge_sapling(computation_root);
+
+                // Purge all new vertices, so that only FIXED and EXPAND remain.
+		purge_new(computation_root);
+		reset_values(computation_root);
 		reset_running_lows();
-		
-// generates tasks for workers
 		clear_visited_bits();
 		removed_task_count = 0;
 		updater_result = generate(currently_growing, &tat);
+		print_debug_tree(computation_root, regrow_level, 0);
 		
 		computation_root->value = updater_result.load(std::memory_order_acquire);
-		//broadcast_after_generation(computation_root->value);
-
-		if(computation_root->value != POSTPONED)
+		if (computation_root->value != POSTPONED)
 		{
-		    fprintf(stderr, "Queen: We have evaluated the tree: %d\n", computation_root->value);
+		    fprintf(stderr, "Queen: Completed lower bound.\n");
 		    if (computation_root->value == 0)
 		    {
+			lower_bound_complete = true;
 			break;
 		    } else if (computation_root->value == 1)
 		    {
@@ -215,8 +171,7 @@ int queen()
 		    // queen needs to start the round
 		    print<COMM_DEBUG>("Queen: Starting the round.\n");
 		    round_start_and_finality(false);
-		    print<PROGRESS>("Queen: switch to monotonicity %d.\n", monotonicity);
-		    // queen sends the current monotonicity to the workers
+			    // queen sends the current monotonicity to the workers
 		    broadcast_monotonicity(monotonicity);
 
 		    init_tstatus(tstatus_temporary); tstatus_temporary.clear();
@@ -278,26 +233,27 @@ int queen()
 		std::chrono::duration<long double> scheduler_time = scheduler_end - scheduler_start;
 		print<PROGRESS>("Full evaluation time: %Lfs.\n", scheduler_time.count());
 	    }
-	    
-	    /* 
-	    if (LOAD_SAPLINGS)
+
+	    if (lower_bound_complete)
 	    {
-		adversary_vertex* loaded_sapling = load_sapling();
-		if (loaded_sapling != NULL)
-		{
-		    sapling_stack.push(loaded_sapling);
-		} 
+		break;
 	    }
-	    */
-	    
-	    assert(orig_value == POSTPONED || orig_value == updater_result);
+
 	    if (updater_result == 1)
 	    {
 		ret = 1;
 		break;
-	    }
+	    } else
+	    {
+		// return value is 0, but the tree needs to be expanded.
+		assert(updater_result == 0);
+		// Transform NEW vertices into FIXED.
+		fix_vertices(computation_root);
+		// Transform tasks into EXPAND.
+		relabel_tasks(computation_root);
+		print_debug_tree(computation_root, regrow_level, 1);
 
-	    REGROW_ONLY(regrow(currently_growing));
+	    }
 	}
 
 	if (OUTPUT && !SINGLE_TREE)
@@ -308,19 +264,12 @@ int queen()
 	    assert(out != NULL);
 	    fprintf(out, "strict digraph sapling%d {\n", sapling_no);
 	    fprintf(out, "overlap = none;\n");
-	    print_compact(out, current_sapling.root);
+	    print_compact(out, computation_root);
 	    fprintf(out, "}\n");
 	    fclose(out);
 	}
 
 	sapling_no++;
-	/* 
-	if (WRITE_SOLUTIONS)
-	{
-	    // also erases the old file
-	    write_solution(sapling, updater_result, monotonicity); 
-	}
-	*/
     }
 
     // We are terminating, start final round.

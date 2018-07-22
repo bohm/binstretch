@@ -110,7 +110,7 @@ int sequencing_adversary(binconf *b, unsigned int depth, thread_attr *tat,
     if (depth == seq.size())
     {
 	add_sapling(adv_to_evaluate);
-	adv_to_evaluate->state = SAPLING;
+	adv_to_evaluate->sapling = true;
 	adv_to_evaluate->value = POSTPONED;
 	return POSTPONED;
     }
@@ -140,10 +140,7 @@ int sequencing_adversary(binconf *b, unsigned int depth, thread_attr *tat,
     
     if (!already_generated)
     {
-	int li = tat->last_item;
-	tat->last_item = item_size;
 	below = sequencing_algorithm(b, item_size, depth+1, tat, upcoming_alg, adv_to_evaluate, seq);
-	tat->last_item = li;
     }
     
     if (below == 0)
@@ -199,23 +196,24 @@ int sequencing_algorithm(binconf *b, int k, unsigned int depth, thread_attr *tat
 	{
 // editing binconf in place -- undoing changes later
 	    
+	    bin_int previously_last_item = b->last_item;
 	    int from = b->assign_and_rehash(k,i);
 	    int ol_from = onlineloads_assign(tat->ol, k);
 	    // initialize the adversary's next vertex in the tree (corresponding to d)
 	    bool already_generated = false;
 
 	    /* Check vertex cache if this adversarial vertex is already present */
-	    auto it = generated_graph_adv.find(b->confhash(lowest_sendable(tat->last_item)));
+	    auto it = generated_graph_adv.find(b->confhash());
 	    if (it == generated_graph_adv.end())
 	    {
-		upcoming_adv = new adversary_vertex(b, depth, tat->last_item);
+		upcoming_adv = new adversary_vertex(b, depth);
 		// create new edge
-		new alg_outedge(alg_to_evaluate, upcoming_adv);
+		new alg_outedge(alg_to_evaluate, upcoming_adv, i);
 	    } else {
 		already_generated = true;
 		upcoming_adv = it->second;
 		// create new edge
-		new alg_outedge(alg_to_evaluate, upcoming_adv);
+		new alg_outedge(alg_to_evaluate, upcoming_adv, i);
 		below = it->second->value;
 	    }
 
@@ -227,7 +225,8 @@ int sequencing_algorithm(binconf *b, int k, unsigned int depth, thread_attr *tat
 	    }
 	    
 	    // return b to original form
-	    b->unassign_and_rehash(k,from);
+	    b->unassign_and_rehash(k,from, previously_last_item);
+
 	    onlineloads_unassign(tat->ol, k, ol_from);
 	    
 	    if (below == 1)

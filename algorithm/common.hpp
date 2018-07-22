@@ -27,11 +27,17 @@ typedef signed char tiny;
 // than 127 items or not. We allow it to go negative for signalling -1/-2.
 typedef int16_t bin_int;
 
-const bool PROGRESS = true; // print progress
-const bool MEASURE = true; // collect and print measurements
+const bool PROGRESS = true; // Whether to print progress info to stderr.
+const bool MEASURE = true; // Whether to collect and print measurements to stderr.
 
 const bool REGROW = true;
-const int REGROW_LIMIT = 0;
+const int REGROW_LIMIT = 2;
+
+const int TASK_LOAD_INIT = 14; // A bound on total load of a configuration before we split it into a task.
+const int TASK_LOAD_STEP = 6; // The amount by which the load can increase when regrowing the tree.
+const int TASK_DEPTH_INIT = 3; // The maximum depth of a vertex in the tree before it is made into a task.
+const int TASK_DEPTH_STEP = 2; // The amount by which the depth is increased when regrowing.
+
 
 const bool OUTPUT = true;
 // whether to print the output as a single tree or as multiple trees.
@@ -53,11 +59,11 @@ const bool WRITE_SOLUTIONS = true;
 const bool TERMINATE_AFTER_SEQUENCING = false; // if true, only do the sequencing, then terminate
 
 // maximum load of a bin in the optimal offline setting
-const bin_int S = 14;
+const bin_int S = 63;
 // target goal of the online bin stretching problem
-const bin_int R = 19;
+const bin_int R = 86;
 // Change this number or the selected number of bins.
-const bin_int BINS = 4;
+const bin_int BINS = 3;
 
 // If you want to generate a specific lower bound, you can create an initial bin configuration here.
 // You can also insert an initial sequence here.
@@ -74,10 +80,10 @@ const std::vector<bin_int> INITIAL_ITEMS = {};
 
 //const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1};
 //const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1,1,1,1};
-const std::vector<bin_int> INITIAL_SEQUENCE = {5};
+//const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1};
 //const std::vector<bin_int> INITIAL_SEQUENCE = {1};
 //const std::vector<bin_int> INITIAL_SEQUENCE = {2,2};
-//const std::vector<bin_int> INITIAL_SEQUENCE = {};
+const std::vector<bin_int> INITIAL_SEQUENCE = {};
 
 const int FIRST_PASS = 0;
 //const int FIRST_PASS = 8;
@@ -85,7 +91,6 @@ const int FIRST_PASS = 0;
 // constants used for good situations
 const int RMOD = (R-1);
 const int ALPHA = (RMOD-S);
-
 
 // secondary booleans, controlling some heuristics
 const bool LARGE_ITEM_ACTIVE_EVERYWHERE = false;
@@ -97,6 +102,10 @@ unsigned int conflog = 0;
 unsigned int dplog = 0;
 uint64_t ht_size = 0;
 uint64_t dpht_size = 0;
+
+// the task depth will increase as the tree iteratively grows.
+int task_depth = TASK_DEPTH_INIT;
+int task_load = TASK_LOAD_INIT;
 
 const unsigned int LOADLOG = 12;
 
@@ -113,13 +122,8 @@ const int LINPROBE_LIMIT = 4;
 const int DEFAULT_DP_SIZE = 100000;
 const int BESTFIT_THRESHOLD = (1*S)/10;
 
-// a bound on total load of a configuration before we split it into a task
-const int TASK_LOAD = 10;
-const int TASK_DEPTH = 4;
-//const int TASK_DEPTH = S > 41 ? 3 : 4;
-//const int TASK_DEPTH = S > 41 ? 2 : 3;
-//#define POSSIBLE_TASK possible_task_mixed
-#define POSSIBLE_TASK possible_task_depth
+#define POSSIBLE_TASK possible_task_mixed
+//#define POSSIBLE_TASK possible_task_depth
 
 const int EXPANSION_DEPTH = 3;
 const int TASK_LARGEST_ITEM = 5;
