@@ -30,40 +30,31 @@ typedef int16_t bin_int;
 const bool PROGRESS = true; // Whether to print progress info to stderr.
 const bool MEASURE = true; // Whether to collect and print measurements to stderr.
 
-const bool REGROW = true;
-const int REGROW_LIMIT = 2;
+const bool OUTPUT = true; // Whether to produce output.
+const int REGROW_LIMIT = 3; // When producing output, how many times should a tree be regrown.
 
-const int TASK_LOAD_INIT = 14; // A bound on total load of a configuration before we split it into a task.
-const int TASK_LOAD_STEP = 6; // The amount by which the load can increase when regrowing the tree.
-const int TASK_DEPTH_INIT = 3; // The maximum depth of a vertex in the tree before it is made into a task.
-const int TASK_DEPTH_STEP = 2; // The amount by which the depth is increased when regrowing.
+const int TASK_LOAD_INIT = 10; // A bound on total load of a configuration before we split it into a task.
+const int TASK_LOAD_STEP = 5; // The amount by which the load can increase when regrowing the tree.
+const int TASK_DEPTH_INIT = 4; // The maximum depth of a vertex in the tree before it is made into a task.
+const int TASK_DEPTH_STEP = 3; // The amount by which the depth is increased when regrowing.
 
-
-const bool OUTPUT = true;
 // whether to print the output as a single tree or as multiple trees.
 const bool SINGLE_TREE = true;
 // Use adversarial heuristics for nicer trees and disable them for machine verification.
-const bool ADVERSARY_HEURISTICS = false;
+const bool ADVERSARY_HEURISTICS = true;
 
-const bool ONLY_ONE_PASS = false;
+const bool ONLY_ONE_PASS = false; // Do only one pass of monotonicity before quitting.
 
 // log tasks which run at least some amount of time
 const bool TASKLOG = false;
 const long double TASKLOG_THRESHOLD = 60.0; // in seconds
 
-// constants related to the logging of solved saplings
-const bool SEQUENCE_SAPLINGS = true; // whether to compute initial sequencing (or load it from files)
-const bool WRITE_SEQUENCE = false;
-const bool LOAD_SAPLINGS = false; // whether to load saplings from files or use the sequenced ones
-const bool WRITE_SOLUTIONS = true;
-const bool TERMINATE_AFTER_SEQUENCING = false; // if true, only do the sequencing, then terminate
-
 // maximum load of a bin in the optimal offline setting
-const bin_int S = 63;
+const bin_int S = 14;
 // target goal of the online bin stretching problem
-const bin_int R = 86;
+const bin_int R = 19;
 // Change this number or the selected number of bins.
-const bin_int BINS = 3;
+const bin_int BINS = 9;
 
 // If you want to generate a specific lower bound, you can create an initial bin configuration here.
 // You can also insert an initial sequence here.
@@ -79,11 +70,11 @@ const std::vector<bin_int> INITIAL_ITEMS = {};
 // You can also insert an initial sequence here, and the adversary will use it as a predefined start.
 
 //const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1};
-//const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1,1,1,1};
+const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1,1,1,1};
 //const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1};
-//const std::vector<bin_int> INITIAL_SEQUENCE = {1};
+//const std::vector<bin_int> INITIAL_SEQUENCE = {5};
 //const std::vector<bin_int> INITIAL_SEQUENCE = {2,2};
-const std::vector<bin_int> INITIAL_SEQUENCE = {};
+//const std::vector<bin_int> INITIAL_SEQUENCE = {};
 
 const int FIRST_PASS = 0;
 //const int FIRST_PASS = 8;
@@ -110,7 +101,7 @@ int task_load = TASK_LOAD_INIT;
 const unsigned int LOADLOG = 12;
 
 // batching constants
-const int BATCH_SIZE = 1000;
+const int BATCH_SIZE = 250;
 // const int BATCH_THRESHOLD = 50;
 
 // sizes of the hash tables

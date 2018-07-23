@@ -26,10 +26,14 @@ class adversary_vertex;
 std::map<llu, adversary_vertex*> generated_graph_adv;
 std::map<llu, algorithm_vertex*> generated_graph_alg;
 
-// three possible values of a vertex state
+// four possible values of a vertex state
 const int NEW = 0;
-const int EXPAND = 3;
-const int FIXED = 4;
+const int FINISHED = 1;
+const int EXPAND = 2;
+const int FIXED = 3;
+
+// FIXED means part of the lower bound (as evaluated by a previous computation)
+// but the full lower bound tree is not yet present.
 
 // Additional two booleans describing the state are "task" (whether a vertex is a task)
 // and "sapling" (whether a vertex is a sapling).
@@ -278,9 +282,20 @@ void print_partial_gametree(FILE* stream, adversary_vertex *v)
 	if(v->state == EXPAND)
 	{ 
 	    fprintf(stream, "(te) ");
-	} else {
-	    assert(v->state == NEW);
+	} else if (v->state == NEW)
+	{
 	    fprintf(stream, "(t) ");
+	} else {
+	   //assert(v->state == NEW);
+	   // bugged cases
+	   if (v->state == FIXED)
+	   {
+	       fprintf(stream, "(tf?) ");
+	   } else if (v->state == FINISHED) {
+	       fprintf(stream, "(tF?) ");
+	   } else {
+	       fprintf(stream, "(t?) ");
+	   }
 	}
     } else {
 	if (v->state == NEW)
@@ -292,6 +307,9 @@ void print_partial_gametree(FILE* stream, adversary_vertex *v)
 	} else if (v->state == FIXED)
 	{
 	    fprintf(stream, "(f) ");
+	} else if (v->state == FINISHED)
+	{
+	    fprintf(stream, "(F) ");
 	}
     }
 
@@ -300,7 +318,7 @@ void print_partial_gametree(FILE* stream, adversary_vertex *v)
     fprintf(stream,"bc: ");
     print_binconf_stream(stream, v->bc, false); // false == no newline
 
-    if (!v->task)
+    if (v->out.size() != 0)
     {
 	fprintf(stream," ch: ");
 	for (auto& n: v->out) {
@@ -334,9 +352,14 @@ void print_partial_gametree(FILE* stream, algorithm_vertex *v)
     } else if (v->state == FIXED)
     {
 	fprintf(stream, "(f) ");
+    } else if (v->state == FINISHED)
+    {
+	fprintf(stream, "(F)" );
     } else {
-	abort();
+	print<true>("Adversary vertex is not fixed, finished or new.\n");
+	assert(false);
     }
+    
 
     fprintf(stream, "val %d ", v->value);
 
@@ -388,6 +411,8 @@ void print_compact_subtree(FILE* stream, bool stop_on_saplings, adversary_vertex
 	{
 	    fprintf(stderr, "Trouble with vertex %" PRIu64  " with %zu children and bc:\n", v->id, v->out.size());
 	    print_binconf_stream(stderr, v->bc);
+	    fprintf(stderr, "A debug tree will be created with extra id 99.\n");
+	    print_debug_tree(computation_root, 0, 99);
 	    assert(v->out.size() == 1);
 	}
 	adv_outedge *right_edge = *(v->out.begin());
@@ -601,10 +626,10 @@ void purge_new(adversary_vertex *r)
 }
 
 
-void relabel_tasks_adv(adversary_vertex *v); 
-void relabel_tasks_alg(algorithm_vertex *v);
+void relabel_and_fix_adv(adversary_vertex *v); 
+void relabel_and_fix_alg(algorithm_vertex *v);
 
-void relabel_tasks_adv(adversary_vertex *v)
+void relabel_and_fix_adv(adversary_vertex *v)
 {
     if (v->visited)
     {
@@ -615,19 +640,33 @@ void relabel_tasks_adv(adversary_vertex *v)
 
     if (v->task)
     {
-	assert(v->out.size() == 0 && v->value == 0);
+	if (v->out.size() != 0 || v->value != 0)
+	{
+	    print<true>("Trouble with vertex %" PRIu64  " with %zu children, value %d and bc:\n", v->id, v->out.size(), v->value);
+	    print_binconf_stream(stderr, v->bc);
+	    fprintf(stderr, "A debug tree will be created with extra id 99.\n");
+	    print_debug_tree(computation_root, 0, 99);
+
+	    assert(v->out.size() == 0 && v->value == 0);
+	}
 	v->task = false;
 	v->state = EXPAND;
+    } else
+    {
+	if (v->state == NEW || v->state == EXPAND)
+	{
+	    v->state = FIXED;
+	}
     }
     
     for (auto& e: v->out)
     {
-	relabel_tasks_alg(e->to);
+	relabel_and_fix_alg(e->to);
     }
 
 }
 
-void relabel_tasks_alg(algorithm_vertex *v)
+void relabel_and_fix_alg(algorithm_vertex *v)
 {
     if (v->visited)
     {
@@ -637,53 +676,7 @@ void relabel_tasks_alg(algorithm_vertex *v)
 
     // algorithm vertices should never be tasks
     assert(v->value == 0);
-    
-    for (auto& e: v->out)
-    {
-	relabel_tasks_adv(e->to);
-    }
-}
 
-void relabel_tasks(adversary_vertex *r)
-{
-    clear_visited_bits();
-    relabel_tasks_adv(r);
-}
-
-void fix_vertices_adv(adversary_vertex *v); 
-void fix_vertices_alg(algorithm_vertex *v);
-
-void fix_vertices_adv(adversary_vertex *v)
-{
-    if (v->visited)
-    {
-	return;
-    }
-    v->visited = true;
-
-    assert(v->value == 0);
-    
-    if (v->state == NEW || v->state == EXPAND)
-    {
-	v->state = FIXED;
-    }
-
-    for (auto& e: v->out)
-    {
-	fix_vertices_alg(e->to);
-    }
-}
-
-void fix_vertices_alg(algorithm_vertex *v)
-{
-    if (v->visited)
-    {
-	return;
-    }
-    v->visited = true;
-
-    assert(v->value == 0);
-    
     if (v->state == NEW)
     {
 	v->state = FIXED;
@@ -691,15 +684,62 @@ void fix_vertices_alg(algorithm_vertex *v)
 
     for (auto& e: v->out)
     {
-	fix_vertices_adv(e->to);
+	relabel_and_fix_adv(e->to);
     }
 }
 
-void fix_vertices(adversary_vertex *r)
+void relabel_and_fix(adversary_vertex *r)
 {
     clear_visited_bits();
-    fix_vertices_adv(r);
+    relabel_and_fix_adv(r);
 }
+
+
+
+// Marks all vertices as FINISHED.
+void finish_sapling_alg(algorithm_vertex *v);
+void finish_sapling_adv(adversary_vertex *v);
+
+void finish_sapling_adv(adversary_vertex *v)
+{
+    if (v->visited)
+    {
+	return;
+    }
+    v->visited = true;
+    assert(v->value == 0);
+
+    v->state = FINISHED;
+    v->task = false;
+    for (auto& e: v->out)
+    {
+	finish_sapling_alg(e->to);
+    }
+}
+
+void finish_sapling_alg(algorithm_vertex *v)
+{
+    if (v->visited)
+    {
+	return;
+    }
+    v->visited = true;
+
+    assert(v->value == 0);
+    v->state = FINISHED;
+    for (auto& e: v->out)
+    {
+	finish_sapling_adv(e->to);
+    }
+}
+
+
+void finish_sapling(adversary_vertex *r)
+{
+    clear_visited_bits();
+    finish_sapling_adv(r);
+}
+
 
 void reset_values_adv(adversary_vertex *v);
 void reset_values_alg(algorithm_vertex *v);
@@ -711,6 +751,11 @@ void reset_values_adv(adversary_vertex *v)
 	return;
     }
     v->visited = true;
+
+    if (v->state == FINISHED)
+    {
+	return;
+    }
 
     v->value = POSTPONED;
     
@@ -727,6 +772,12 @@ void reset_values_alg(algorithm_vertex *v)
 	return;
     }
     v->visited = true;
+
+    if (v->state == FINISHED)
+    {
+	return;
+    }
+
 
     v->value = POSTPONED;
    

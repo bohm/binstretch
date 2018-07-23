@@ -48,30 +48,16 @@ int main(void)
 	    fprintf(stdout, "Lower bound for %d/%d Bin Stretching on %d bins with monotonicity %d and starting seq: ",
 		    R,S,BINS,monotonicity);
 	    print_sequence(stdout, INITIAL_SEQUENCE);
-	    if (OUTPUT && SINGLE_TREE)
-	    {
-		FILE* out = fopen(outfile, "w");
-		fprintf(stdout, "Printing to file: %s.\n", outfile);
-		assert(out != NULL);
-		fprintf(out, "strict digraph lowerbound {\n");
-		fprintf(out, "overlap = none;\n");
-		//print_gametree(out, root_vertex);
-		print_compact(out, root_vertex);
-		fprintf(out, "}\n");
-		fclose(out);
-	    }
 	} else {
 	    fprintf(stdout, "Algorithm wins %d/%d Bin Stretching on %d bins with sequence:\n", R,S,BINS);
 	    print_sequence(stdout, INITIAL_SEQUENCE);
 	}
-	
 	
 	fprintf(stderr, "Number of tasks: %d, collected tasks: %u,  pruned tasks %" PRIu64 ".\n,",
 		tcount, collected_cumulative.load(), removed_task_count);
 	fprintf(stderr, "Pruned & transmitted tasks: %" PRIu64 "\n", irrel_transmitted_count);
 
 	hashtable_cleanup();
-	//graph_cleanup(root_vertex); // TODO: fix this
     }
    
     MPI_Finalize();

@@ -111,6 +111,7 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, advers
 		    adv_to_evaluate->value = 0;
 		    adv_to_evaluate->heuristic = true;
 		    adv_to_evaluate->heuristic_type = FIVE_NINE;
+		    adv_to_evaluate->heuristic_item = S;
 		}
 		return 0;
 	    }
@@ -144,10 +145,16 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, advers
     {
 	// deal with vertices of several states (does not happen in exploration mode)
 	// states: NEW -- a new vertex that should be expanded
-	// FIXED -- vertex is already part of the prescribed lower bound (e.g. by previous computation)
 	// EXPAND -- a previous task that leads to a lower bound and should be expanded.
 
+	// FINISHED -- a vertex that is already part of a full lower bound tree (likely
+	// for some other sapling.)
 
+	if (adv_to_evaluate->state == FINISHED)
+	{
+	    return adv_to_evaluate->value;
+	}
+	// FIXED -- vertex is already part of the prescribed lower bound (e.g. by previous computation)
 	if (adv_to_evaluate->state == FIXED)
 	{
 	    // When the vertex is fixed, we know it is part of the lower bound.
@@ -197,13 +204,21 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, advers
 	    assert(adv_to_evaluate->state == NEW || adv_to_evaluate->state == EXPAND); // no other state should go past this point
 	}
 
-	
 	// we now do creation of tasks only until the REGROW_LIMIT is reached
 	if (tat->regrow_level <= REGROW_LIMIT && POSSIBLE_TASK(adv_to_evaluate, tat->largest_since_computation_root))
 	{
 	    // print<true>("This is a valid candidate for a task (depth %d, task_depth %d, comp. depth %d, load %d, task_load %d, comp. root load: %d.\n ",
 	    // 		depth, task_depth, computation_root->depth, b->totalload(), task_load, computation_root->bc->totalload());
 	    // print_binconf<true>(b);
+
+	    // In some corner cases a vertex that is to be expanded becomes itself a task (again).
+	    // We remove the state EXPAND and reset it to NEW just so that it is always true
+	    // that all tasks are NEW vertices that become EXPAND in the next turn.
+	    if (adv_to_evaluate->state == EXPAND)
+	    {
+		adv_to_evaluate->state = NEW;
+	    }
+	    
 	    add_task(b, tat);
 	    // mark current adversary vertex (created by algorithm() in previous step) as a task
 	    adv_to_evaluate->task = true;
@@ -539,9 +554,6 @@ int generate(sapling start_sapling, thread_attr *tat)
     inplace_bc.hashinit();
     onlineloads_init(tat->ol, &inplace_bc);
 
-    tat->regrow_level = start_sapling.regrow_level;
-    //assert(tat->ol.loadsum() == start->totalload());
-    
     int ret = adversary<GENERATING>(&inplace_bc, start_sapling.root->depth, tat, start_sapling.root, NULL);
     return ret;
 }

@@ -23,10 +23,18 @@
    Both decrease() and update() are slimmed down versions of the minimax algorithm.
 */
 
-int update(adversary_vertex *v);
-int update(algorithm_vertex *v);
+// Update attributes for recursion, currently only for performance and debugging purposes.
+struct update_attr
+{
+    uint64_t unfinished_tasks = 0;
+    uint64_t vertices_visited = 0;
+};
 
-int update(adversary_vertex *v)
+
+int update(adversary_vertex *v, update_attr &uat);
+int update(algorithm_vertex *v, update_attr &uat);
+
+int update(adversary_vertex *v, update_attr &uat)
 {
     int result = 1;
     int right_move;
@@ -46,10 +54,21 @@ int update(adversary_vertex *v)
 
     v->visited = true;
 
+    uat.vertices_visited++;
+
+    if (v->state == FINISHED)
+    {
+	return v->value;
+    }
+    
     if (v->task)
     {
 	uint64_t hash = v->bc->confhash();
 	result = completion_check(hash);
+	if (result == POSTPONED)
+	{
+	    uat.unfinished_tasks++;
+	}
 	//fprintf(stderr, "Completion check:");
 	//print_binconf_stream(stderr, v->bc);
         //fprintf(stderr, "Completion check result: %d\n", result);
@@ -58,7 +77,7 @@ int update(adversary_vertex *v)
 	while ( it != v->out.end())
 	{
 	    algorithm_vertex *n = (*it)->to;
-	    int below = update(n);
+	    int below = update(n, uat);
 	    if (below == 0)
 	    {
 		result = 0;
@@ -110,7 +129,7 @@ int update(adversary_vertex *v)
     return result;
 }
 
-int update(algorithm_vertex *v)
+int update(algorithm_vertex *v, update_attr &uat)
 {
     assert(v != NULL);
 
@@ -126,14 +145,20 @@ int update(algorithm_vertex *v)
     }
 
     v->visited = true;
+    uat.vertices_visited++;
 
+    if (v->state == FINISHED)
+    {
+	return v->value;
+    }
+ 
     int result = 0;
     std::list<alg_outedge*>::iterator it = v->out.begin();
     while ( it != v->out.end())
     {
 	adversary_vertex *n = (*it)->to;
    
-	int below = update(n);
+	int below = update(n, uat);
 	if (below == 1)
 	{
 	    result = 1;
@@ -166,56 +191,4 @@ int update(algorithm_vertex *v)
 
     return result;
 }
-
-// After the tree is evaluated, goes down and runs "generate" on the vertices
-// which were tasks and remain in the tree
-
-void regrow_recursive(algorithm_vertex *v, int regrow_level);
-void regrow_recursive(adversary_vertex *v, int regrow_level);
-
-
-void regrow(sapling previous)
-{
-    clear_visited_bits();
-    regrow_recursive(previous.root, previous.regrow_level+1);
-}
-
-// again, algorithm's vertices are never tasks, just pass down
-void regrow_recursive(algorithm_vertex *v, int regrow_level)
-{
-    if (v->visited)
-    {
-	return;
-    }
-    v->visited = true;
-    
-    for (auto&& n: v->out) {
-	regrow_recursive(n->to, regrow_level);
-    }
-}
-
-void regrow_recursive(adversary_vertex *v, int regrow_level)
-{
-    if (v->visited)
-    {
-	return;
-    }
-    v->visited = true;
-
-    if (v->task)
-    {
-	assert(v->value == 0);
-	sapling newsap;
-	newsap.root = v; newsap.regrow_level = regrow_level;
-	regrow_queue.push(newsap);
-    } else
-    {
-	for (auto&& n: v->out)
-	{
-	    regrow_recursive(n->to, regrow_level);
-	}
-    }
-
-}
-
 #endif

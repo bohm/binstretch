@@ -47,8 +47,20 @@ void queen_updater(adversary_vertex* sapling)
 	if (should_do_update)
 	{
 	    collected_now.store(0, std::memory_order_release);
+	    update_attr uat;
 	    clear_visited_bits();
-	    updater_result.store(update(sapling), std::memory_order_release);
+	    updater_result.store(update(sapling, uat), std::memory_order_release);
+
+	    print<VERBOSE>("Update: Visited %" PRIu64 " verts, unfinished tasks in tree: %" PRIu64 ".\n",
+			   uat.vertices_visited, uat.unfinished_tasks);
+
+	    if (updater_result == POSTPONED && uat.unfinished_tasks == 0)
+	    {
+		print<true>("The tree is in a strange state.\n");
+		fprintf(stderr, "A debug tree will be created with extra id 99.\n");
+		print_debug_tree(computation_root, 0, 99);
+		assert(updater_result != POSTPONED || uat.unfinished_tasks > 0);
+	    }
 	    if (updater_result != POSTPONED)
 	    {
 		fprintf(stderr, "We have evaluated the tree: %d\n", updater_result.load(std::memory_order_acquire));
@@ -66,6 +78,7 @@ int queen()
     int name_len;
     int sapling_no = 0;
     int ret = 0;
+    bool single_sapling = true;
     
     MPI_Get_processor_name(processor_name, &name_len);
     fprintf(stderr, "Queen: reporting for duty: %s, rank %d out of %d instances\n",
@@ -95,23 +108,26 @@ int queen()
 
     // temporarily turning off load and write
     
-    if (SEQUENCE_SAPLINGS)
-    {
-	sequencing(INITIAL_SEQUENCE, root, root_vertex);
+    sequencing(INITIAL_SEQUENCE, root, root_vertex);
 
-	if (OUTPUT && !SINGLE_TREE)
-	{
-	    FILE* out = fopen(outfile, "w");
-	    assert(out != NULL);
-	    fprintf(out, "strict digraph treetop {\n");
-	    fprintf(out, "overlap = none;\n");
-	    print_treetop(out, root_vertex);
-	    fprintf(out, "}\n");
-	    fclose(out);
-	}
+    if (sapling_stack.size() > 1)
+    {
+	single_sapling = false;
     }
 
-    if (TERMINATE_AFTER_SEQUENCING) { return 0; }
+    if (OUTPUT && !single_sapling)
+    {
+	char treetopfile[50];
+	sprintf(treetopfile, "%d_%d_%dbins_top.dot", R,S,BINS);
+	print<PROGRESS>("Printing treetop to file %s.\n", treetopfile);
+	FILE* out = fopen(treetopfile, "w");
+	assert(out != NULL);
+	fprintf(out, "strict digraph treetop {\n");
+	fprintf(out, "overlap = none;\n");
+	print_treetop(out, root_vertex);
+	fprintf(out, "}\n");
+	fclose(out);
+    }
 
     while (!sapling_stack.empty())
     {
@@ -121,12 +137,21 @@ int queen()
 	computation_root = currently_growing.root;
 	computation_root->state = EXPAND;
 	computation_root->value = POSTPONED;
-	// reset sapling's last item (so that the search space is a little bit better)
-	computation_root->bc->last_item = 1;
+
+	// Currently we cannot expand a vertex with outedges.
+	assert(computation_root->out.size() == 0);
+	
 	monotonicity = FIRST_PASS;
-	for(int regrow_level = 0; regrow_level <= REGROW_LIMIT; regrow_level++)
+	task_depth = TASK_DEPTH_INIT;
+	task_load = TASK_LOAD_INIT;
+	
+	// Reset sapling's last item (so that the search space is a little bit better).
+	computation_root->bc->last_item = 1;
+
+	// We iterate to REGROW_LIMIT + 1 because the last iteration will complete the tree.
+	for(int regrow_level = 0; regrow_level <= REGROW_LIMIT+1; regrow_level++)
 	{
-	    if (regrow_level > 0)
+	    if (regrow_level > 0 && regrow_level <= REGROW_LIMIT)
 	    {
 		task_depth += TASK_DEPTH_STEP;
 		task_load += TASK_LOAD_STEP;
@@ -146,6 +171,10 @@ int queen()
 
 		if (PROGRESS) { iteration_start = std::chrono::system_clock::now(); }
 
+		// Clear old task and task structures.
+		irrel_taskq.clear();
+		clear_tasks();
+
                 // Purge all new vertices, so that only FIXED and EXPAND remain.
 		purge_new(computation_root);
 		reset_values(computation_root);
@@ -153,7 +182,7 @@ int queen()
 		clear_visited_bits();
 		removed_task_count = 0;
 		updater_result = generate(currently_growing, &tat);
-		print_debug_tree(computation_root, regrow_level, 0);
+		// print_debug_tree(computation_root, regrow_level, 0);
 		
 		computation_root->value = updater_result.load(std::memory_order_acquire);
 		if (computation_root->value != POSTPONED)
@@ -207,12 +236,10 @@ int queen()
 		    // collect remaining, unnecessary solutions
 		    destroy_tarray();
 		    destroy_tstatus();
-		    irrel_taskq.clear();
-		    clear_tasks();
 		    round_end();
 		    ignore_additional_solutions();
 		}
-		
+	
 		if (PROGRESS)
 		{
 		    iteration_end = std::chrono::system_clock::now();
@@ -236,6 +263,7 @@ int queen()
 
 	    if (lower_bound_complete)
 	    {
+		finish_sapling(computation_root);
 		break;
 	    }
 
@@ -247,19 +275,25 @@ int queen()
 	    {
 		// return value is 0, but the tree needs to be expanded.
 		assert(updater_result == 0);
-		// Transform NEW vertices into FIXED.
-		fix_vertices(computation_root);
-		// Transform tasks into EXPAND.
-		relabel_tasks(computation_root);
-		print_debug_tree(computation_root, regrow_level, 1);
-
+		// Transform tasks into EXPAND and NEW vertices into FIXED.
+		relabel_and_fix(computation_root);
+		// print_debug_tree(computation_root, regrow_level, 1);
 	    }
 	}
 
-	if (OUTPUT && !SINGLE_TREE)
+	if (OUTPUT)
 	{
 	    char saplingfile[50];
-	    sprintf(saplingfile, "%d_%d_%dbins_sap%d.dot", R,S,BINS, sapling_no);
+
+	    if (single_sapling)
+	    {
+		sprintf(saplingfile, "%d_%d_%dbins.dot", R,S,BINS);
+	    } else {
+		sprintf(saplingfile, "%d_%d_%dbins_sap%d.dot", R,S,BINS, sapling_no);
+	    }
+
+	    print<PROGRESS>("Printing result to file %s.\n", saplingfile);
+
 	    FILE* out = fopen(saplingfile, "w");
 	    assert(out != NULL);
 	    fprintf(out, "strict digraph sapling%d {\n", sapling_no);
