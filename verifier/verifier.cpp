@@ -8,11 +8,13 @@ int main(int argc, char **argv)
     FILE *fin;
     char graph_name[255];
     int fscanf_ret;
-    uint64_t main_id, secondary_id, root_id, line = 1;
+    uint64_t main_id, secondary_id, line = 1;
+    bool first_vertex = true;
+    std::vector<int> initial_items;
 
     if (argc != 5)
     {
-	fprintf(stderr, "Usage: ./verifier file.dot R S BINS \n");
+	fprintf(stderr, "Usage: ./verifier file.dot R S BINS\n");
 	fprintf(stderr, "R = stretched bin capacity, S = optimal bin capacity.\n");
 	return -3;
     }
@@ -38,7 +40,27 @@ int main(int argc, char **argv)
 
     // second line
     fscanf(fin, "overlap = none;\n");
-    // data incoming now
+
+
+    // third line -- initial items
+    int initial_count = 0, initial = 0;
+
+    if (fscanf(fin, "// %d:", &initial_count) != 1)
+    {
+	ERROR("Malformed initial item count.\n");
+    }
+
+    for (int i = 0; i < initial_count; i++)
+    {
+	if (fscanf(fin, "%d", &initial) != 1)
+	{
+		ERROR("Malformed initial item list.\n");
+	} else {
+	    initial_items.push_back(initial);
+	}
+    }
+
+    fscanf(fin, "\n");
     
     while (!feof(fin))
     {
@@ -104,11 +126,12 @@ int main(int argc, char **argv)
 		ERROR("Failed to parse an edge on line %" PRIu64 "\n", line);
 	    }
 
-	    // If configuration is (0,0,0,...,0), set it as root.
-	    if (total == 0)
+	    // Set first vertex as root.
+	    if (first_vertex)
 	    {
 		print<DEBUG>("Setting vertex %" PRIu64 " as root.\n", main_id);
 		root_id = main_id;
+		first_vertex = false;
 	    }
 
 	    vertex cv(cc); // current vertex
@@ -138,21 +161,24 @@ int main(int argc, char **argv)
 	    line++;
 	}
 	// undefined descriptor
-	else {
+	else  
+	{
 	    ERROR("Character read was %c\n", control);
 	}
     }
     fclose(fin);
 
-    print<DEBUG>("Recursively computing loads at each vertex.\n");
+    print<true>("Finished reading input. Recursively computing loads at each vertex.\n");
     vertex& root = tree.at(root_id);
-    root.fill_types();
+    root.fill_types(initial_items);
     
-    print<DEBUG>("Starting tree validation.\n");
+    print<true>("Starting tree validation.\n");
     bool result = root.recursive_validate();
     if (result == true)
     {
-	fprintf(stdout, "The tree is a correct lower bound with value %d/%d for bin stretching on %d bins.\n", R,S, BINS);
+	fprintf(stdout, "The tree is a correct lower bound with value %d/%d for bin stretching on %d bins starting with vertex:\n", R,S, BINS);
+	tree.at(root_id).print_info();
+	fprintf(stderr, "\n");
     } else {
 	fprintf(stdout, "The tree is not a correct lower bound with value %d/%d on %d bins. Recompile with #define DEBUG 1 to see details.\n", R,S, BINS);
     }

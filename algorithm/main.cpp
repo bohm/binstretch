@@ -57,6 +57,12 @@ int main(void)
 		tcount, collected_cumulative.load(), removed_task_count);
 	fprintf(stderr, "Pruned & transmitted tasks: %" PRIu64 "\n", irrel_transmitted_count);
 
+	if (ONEPASS)
+	{
+	    fprintf(stderr, "Monotonicity %d: Number of winning saplings %d, losing saplings: %d.\n", monotonicity,
+		    winning_saplings, losing_saplings);
+	}
+
 	hashtable_cleanup();
     }
    

@@ -31,19 +31,26 @@ const bool PROGRESS = true; // Whether to print progress info to stderr.
 const bool MEASURE = true; // Whether to collect and print measurements to stderr.
 
 const bool OUTPUT = true; // Whether to produce output.
-const int REGROW_LIMIT = 3; // When producing output, how many times should a tree be regrown.
+const bool REGROW = true; // Whether to regrow or just terminate after first iteration.
 
-const int TASK_LOAD_INIT = 10; // A bound on total load of a configuration before we split it into a task.
-const int TASK_LOAD_STEP = 5; // The amount by which the load can increase when regrowing the tree.
-const int TASK_DEPTH_INIT = 4; // The maximum depth of a vertex in the tree before it is made into a task.
-const int TASK_DEPTH_STEP = 3; // The amount by which the depth is increased when regrowing.
+// When producing output, how many times should a tree be regrown.
+// Note that REGROW_LIMIT = 0 still means a full tree will be generated.
+// const int REGROW_LIMIT = 65535;
+const int REGROW_LIMIT = 9;
+
+const int TASK_LOAD_INIT = 8; // A bound on total load of a configuration before we split it into a task.
+const int TASK_LOAD_STEP = 4; // The amount by which the load can increase when regrowing the tree.
+const int TASK_DEPTH_INIT = 6; //The maximum depth of a vertex in the tree before it is made into a task.
+const int TASK_DEPTH_STEP = 4; // The amount by which the depth is increased when regrowing.
 
 // whether to print the output as a single tree or as multiple trees.
 const bool SINGLE_TREE = true;
 // Use adversarial heuristics for nicer trees and disable them for machine verification.
 const bool ADVERSARY_HEURISTICS = true;
 
-const bool ONLY_ONE_PASS = false; // Do only one pass of monotonicity before quitting.
+// Onepass mode: Do only one pass of monotonicity on all saplings and report % of successes.
+// Useful to count how many saplings need more monotonicity than FIRST_PASS.
+const bool ONEPASS = false;
 
 // log tasks which run at least some amount of time
 const bool TASKLOG = false;
@@ -54,7 +61,7 @@ const bin_int S = 14;
 // target goal of the online bin stretching problem
 const bin_int R = 19;
 // Change this number or the selected number of bins.
-const bin_int BINS = 9;
+const bin_int BINS = 8;
 
 // If you want to generate a specific lower bound, you can create an initial bin configuration here.
 // You can also insert an initial sequence here.
@@ -69,15 +76,28 @@ const std::vector<bin_int> INITIAL_ITEMS = {};
 
 // You can also insert an initial sequence here, and the adversary will use it as a predefined start.
 
-//const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1};
-const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1,1,1,1};
-//const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1};
-//const std::vector<bin_int> INITIAL_SEQUENCE = {5};
-//const std::vector<bin_int> INITIAL_SEQUENCE = {2,2};
-//const std::vector<bin_int> INITIAL_SEQUENCE = {};
+//const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1,1,1};
+//const std::vector<bin_int> INITIAL_SEQUENCE = {1,1,1,1,1,1,1,1,1,1};
+//const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1,1,1,1};
+//const std::vector<bin_int> INITIAL_SEQUENCE = {4,1,1};
 
-const int FIRST_PASS = 0;
-//const int FIRST_PASS = 8;
+// const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1,1,1,1}; // 8x1
+const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1,1,1}; // 7x1
+// const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1,1}; // 6x1
+// const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1}; // 5x1
+// const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1}; // 4x1
+// const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1}; // 3x1
+
+// const std::vector<bin_int> INITIAL_SEQUENCE = {5};
+
+// const std::vector<bin_int> INITIAL_SEQUENCE = {2,2};
+// const std::vector<bin_int> INITIAL_SEQUENCE = {};
+
+// const int FIRST_PASS = 0;
+const int FIRST_PASS = 1;
+//const int FIRST_PASS = 6;
+// const int FIRST_PASS = 8;
+//const int FIRST_PASS = S-1;
 
 // constants used for good situations
 const int RMOD = (R-1);
@@ -102,13 +122,12 @@ const unsigned int LOADLOG = 12;
 
 // batching constants
 const int BATCH_SIZE = 250;
-// const int BATCH_THRESHOLD = 50;
 
 // sizes of the hash tables
 const llu LOADSIZE = (1ULL<<LOADLOG);
 
 // linear probing limit
-const int LINPROBE_LIMIT = 4;
+const int LINPROBE_LIMIT = 8;
 
 const int DEFAULT_DP_SIZE = 100000;
 const int BESTFIT_THRESHOLD = (1*S)/10;
@@ -119,7 +138,8 @@ const int BESTFIT_THRESHOLD = (1*S)/10;
 const int EXPANSION_DEPTH = 3;
 const int TASK_LARGEST_ITEM = 5;
 // how much the updater thread sleeps (in milliseconds)
-const int TICK_SLEEP = 100;
+const int TICK_SLEEP = 20;
+
 const int TICK_UPDATE = 100;
 // how many tasks are sufficient for the updater to run the main updater routine
 const int TICK_TASKS = 50;
@@ -131,7 +151,7 @@ const int MAX_EXPANSION = 1;
 // ------------------------------------------------
 // debug constants
 
-const bool VERBOSE = false;
+const bool VERBOSE = true;
 const bool DEBUG = false;
 const bool COMM_DEBUG = false;
 

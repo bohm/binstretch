@@ -250,16 +250,34 @@ int gs4variant(const binconf *b, thread_attr *tat)
     {
 	// We have load >= S+ALPHA - item +1 on bin BINS-2
 	int virtual_lowerbound = S+ALPHA - item+1;
-	int virtual_gain = virtual_lowerbound - b->loads[BINS-2];
+	// compute virtual gain
+	int virtual_gain = 0;
+	for (int bin = BINS-2; bin >= 1; bin--)
+	{
+	    if (virtual_lowerbound - b->loads[bin] >= 1)
+	    {
+		virtual_gain += virtual_lowerbound - b->loads[bin];
+	    } else
+	    {
+		break;
+	    }
+	}
+
 	if (virtual_gain >= critical)
 	{
 	    continue;
-	} else {
-	    // how many times an item of size <= critical-1 fits on bin BINS
-	    // after we place one item of size "item" there
-	    int how_many = (S+ALPHA - b->loads[BINS] - item) / (critical-1);
-	    int virtual_on_last = b->loads[BINS] + item + how_many*item;
-	    if (virtual_gain + virtual_on_last + sum_but_two < GS1BOUND)
+	} else
+	{
+	    int virtual_gain_on_last = S+ALPHA - item - b->loads[BINS] - (critical-2);
+	    
+	    if (S+ALPHA - item - b->loads[BINS] >= item)
+	    {
+		virtual_gain_on_last = std::max(virtual_gain_on_last, item);
+	    }
+	    
+	    int virtual_load_on_last = b->loads[BINS] + item + virtual_gain_on_last;
+	    
+	    if (virtual_gain + virtual_load_on_last + sum_but_two < GS1BOUND)
 	    {
 		MEASURE_ONLY(tat->meas.gsmiss[GS4VARIANT]++);
 		return -1;
@@ -355,22 +373,23 @@ int testgs(const binconf *b, thread_attr *tat) {
     }
 
     // temporarily disabling
+    /*
     if (gs1mod(b, tat) == 1)
     {
 	return 1;
-    }
-
+	}*/
 
     if( gs3variant(b, tat) == 1)
     {
 	return 1;
     }
 
-    // temporarily disabling to see if performance improves
+    // temporarily disabling again
+    /*
     if( gs4variant(b, tat) == 1)
     {
 	return 1;
-    }
+	}*/
     
 // Apply the rest of the heuristics only with 3 bins and ALPHA >= 1/3
     if ((BINS == 3) && ((3*ALPHA) >= S))

@@ -235,6 +235,18 @@ void rebuild_tmap()
    
 }
 
+// returns the task map value or -1 if it doesn't exist
+int tstatus_id(const adversary_vertex *v)
+{
+    if (v == NULL) { return -1; }
+
+    if (tmap.find(v->bc->confhash()) != tmap.end())
+    {
+	return tmap[v->bc->confhash()];
+    }
+	
+    return -1;
+}
 
 
 // permutes tarray and tstatus (with the same permutation), rebuilds tmap.

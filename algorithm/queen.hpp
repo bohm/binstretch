@@ -23,11 +23,15 @@ Message sequence:
 std::atomic<bool> queen_cycle_terminate(false);
 std::atomic<int> updater_result(POSTPONED);
 
+int winning_saplings = 0;
+int losing_saplings = 0;
+
 void queen_updater(adversary_vertex* sapling)
 {
 
     unsigned int last_printed = 0;
     collected_cumulative = 0;
+    unsigned int cycle_counter = 0;
 
     while (updater_result == POSTPONED)
     {
@@ -46,13 +50,23 @@ void queen_updater(adversary_vertex* sapling)
 	bool should_do_update = true;
 	if (should_do_update)
 	{
+	    cycle_counter++;
 	    collected_now.store(0, std::memory_order_release);
 	    update_attr uat;
 	    clear_visited_bits();
 	    updater_result.store(update(sapling, uat), std::memory_order_release);
-
-	    print<VERBOSE>("Update: Visited %" PRIu64 " verts, unfinished tasks in tree: %" PRIu64 ".\n",
+	    if (cycle_counter >= 100)
+	    {
+		print<VERBOSE>("Update: Visited %" PRIu64 " verts, unfinished tasks in tree: %" PRIu64 ".\n",
 			   uat.vertices_visited, uat.unfinished_tasks);
+
+		if (VERBOSE && uat.unfinished_tasks <= 10)
+		{
+		    print_unfinished(sapling);
+		}
+		
+		cycle_counter = 0;
+	    }
 
 	    if (updater_result == POSTPONED && uat.unfinished_tasks == 0)
 	    {
@@ -191,10 +205,23 @@ int queen()
 		    if (computation_root->value == 0)
 		    {
 			lower_bound_complete = true;
+			if (ONEPASS)
+			{
+			    winning_saplings++;
+			}
 			break;
 		    } else if (computation_root->value == 1)
 		    {
-			continue;
+			// hack, remove soon
+			if (ONEPASS)
+			{
+			    losing_saplings++;
+			    purge_new(computation_root);
+			    break;
+			} else
+			{
+			    continue;
+			}
 		    }
 		} else {
 		    // queen needs to start the round
@@ -205,7 +232,7 @@ int queen()
 
 		    init_tstatus(tstatus_temporary); tstatus_temporary.clear();
 		    init_tarray(tarray_temporary); tarray_temporary.clear();
-		    permute_tarray_tstatus(); // randomly shuffles the tasks 
+		    // permute_tarray_tstatus(); // randomly shuffles the tasks 
 		    irrel_taskq.init(tcount);
 		    // note: do not push into irrel_taskq before permutation is done;
 		    // the numbers will not make any sense.
@@ -249,6 +276,19 @@ int queen()
 		
 		if (updater_result == 0)
 		{
+		    if (ONEPASS)
+		    {
+			winning_saplings++;
+		    }
+
+		    finish_branches(computation_root);
+		    break;
+		}
+
+		if (ONEPASS)
+		{
+		    losing_saplings++;
+		    purge_new(computation_root);
 		    break;
 		}
 	    }
@@ -261,7 +301,9 @@ int queen()
 		print<PROGRESS>("Full evaluation time: %Lfs.\n", scheduler_time.count());
 	    }
 
-	    if (lower_bound_complete)
+	    // When we are not regrowing, we just finish up and move to the next sapling.
+	    // We also finish up when the lower bound is complete.
+	    if ((!REGROW && (updater_result == 0)) || (REGROW && updater_result == 0 && lower_bound_complete))
 	    {
 		finish_sapling(computation_root);
 		break;
@@ -269,7 +311,6 @@ int queen()
 
 	    if (updater_result == 1)
 	    {
-		ret = 1;
 		break;
 	    } else
 	    {
@@ -281,7 +322,7 @@ int queen()
 	    }
 	}
 
-	if (OUTPUT)
+	if (!ONEPASS && OUTPUT)
 	{
 	    char saplingfile[50];
 

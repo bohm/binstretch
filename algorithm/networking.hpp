@@ -354,7 +354,6 @@ void check_root_solved()
 	// set global root solved flag
 	if (r_s == ROOT_SOLVED_SIGNAL)
 	{
-	    fprintf(stderr, "Overseer %d: received root solved.\n", world_rank);
 	    root_solved.store(true);
 	}
     }

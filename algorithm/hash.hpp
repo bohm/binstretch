@@ -336,6 +336,17 @@ void clear_cache_of_ones()
     }
 }
 
+void clear_cache()
+{
+    conf_el empty{0};
+    
+    for (uint64_t i =0; i < ht_size; i++)
+    {
+	ht[i].store(empty);
+    }
+}
+
+
 /*
 void cache_measurements()
 {

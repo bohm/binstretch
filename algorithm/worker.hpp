@@ -81,6 +81,18 @@ std::pair<int, int> get_task()
     }
 }
 
+// Checks whether there are less than BATCH_SIZE tasks in this batch.
+// Note that this might in rare cases not happen even when this is the last batch (batches perfectly aligned).
+bool check_batch_end(int *batch)
+{
+    if(batch[BATCH_SIZE -1] == -1)
+    {
+	return true;
+    } else {
+	return false;
+    }
+}
+
 int worker_solve(const task *t, const int& task_id)
 {
     int ret = POSTPONED;
@@ -278,6 +290,8 @@ void overseer()
 {
     int name_len;
     int monotonicity_last_round;
+    bool final_batch = false; // We set it to true when there are no more batches incoming in this round.
+    bool final_batch_message_sent = false;
     MPI_Get_processor_name(processor_name, &name_len);
     printf("Overseer reporting for duty: %s, rank %d out of %d instances\n",
 	   processor_name, world_rank, world_size);
@@ -291,7 +305,10 @@ void overseer()
     ht_size = 1LLU << conflog;
     dplog = std::get<1>(settings);
     dpht_size = 1LLU << dplog;
-    worker_count = std::get<2>(settings);
+
+    // we reserve a CPU slot for the overseer itself
+    // worker_count = std::get<2>(settings);
+    worker_count = std::get<2>(settings) - 1;
 
     print<true>("Overseer %d at server %s: conflog %d, dplog %d, worker_count %d\n",
 		world_rank, processor_name, conflog, dplog, worker_count);
@@ -329,10 +346,15 @@ void overseer()
 	    print<COMM_DEBUG>("Overseer %d waits for monotonicity.\n", world_rank);
 	    monotonicity_last_round = monotonicity;
 	    monotonicity = broadcast_monotonicity();
-	    if(monotonicity != monotonicity_last_round)
+	    if(monotonicity > monotonicity_last_round)
 	    {
-		print<COMM_DEBUG>("Overseer %d received new monotonicity: %d.\n", world_rank, monotonicity);
+		print<COMM_DEBUG>("Overseer %d received increased monotonicity: %d.\n", world_rank, monotonicity);
 		clear_cache_of_ones();
+	    } else if (monotonicity < monotonicity_last_round)
+	    {
+		print<COMM_DEBUG>("Overseer %d received decreased monotonicity: %d.\n", world_rank, monotonicity);
+		clear_cache();
+
 	    }
 	    
 
@@ -347,6 +369,8 @@ void overseer()
 	    
 	    batch_requested = false;
 	    batchpointer.store(BATCH_SIZE);
+	    final_batch_message_sent = false;
+	    
 	    // Reserve space for finished tasks.
 	    for (int w = 0; w < worker_count; w++)
 	    {
@@ -356,6 +380,8 @@ void overseer()
 	    // Wake up all workers and wait for them to wake up.
 	    worker_needed_cv.notify_all();
 	    sleep_until_all_workers_ready(); 
+
+
 	    // Processing loop for an overseer.
 	    while(true)
 	    {
@@ -368,13 +394,6 @@ void overseer()
 		    break;
 		}
 
-		/*
-		else if (all_workers_waiting()) // Root not solved, but this overseer is done.
-		{
-		    print<PROGRESS>("Overseer %d (on %s) completed all tasks and ends round.\n", world_rank, processor_name);
-		    break;
-		}
-		*/
 		
 		// last time we checked, root_solved == false
 		process_finished_tasks();
@@ -393,10 +412,17 @@ void overseer()
 		    if (batch_received)
 		    {
 			batch_requested = false;
+			final_batch = check_batch_end(working_batch);
 			batchpointer.store(0);
 		    }
 		}
-		
+
+		if (!final_batch_message_sent && final_batch && all_workers_waiting())
+		{
+		    print<VERBOSE>("Overseer %d (on %s) waits for the round to end.\n", world_rank, processor_name);
+		    final_batch_message_sent = true;
+		}
+	
 		std::this_thread::sleep_for(std::chrono::milliseconds(TICK_SLEEP));
 	    } // End of one round for an overseer.
 	    overseer_cleanup();
