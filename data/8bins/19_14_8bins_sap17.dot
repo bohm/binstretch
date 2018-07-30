@@ -1,0 +1,7 @@
+strict digraph sapling17 {
+overlap = none;
+// 6: 5 1 1 1 1 1
+13 [label="10 0 0 0 0 0 0 0 n:9"];
+13 -> 5750680
+5750680 [label="10 9 0 0 0 0 0 0 h:(10,7)"];
+}
