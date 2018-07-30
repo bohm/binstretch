@@ -13,10 +13,14 @@ int task_begin = 0;
 int task_end = 0;
 
 int working_batch[BATCH_SIZE];
+int upcoming_batch[BATCH_SIZE];
+
 std::atomic<int> batchpointer;
 
 std::mutex worker_needed;
 std::condition_variable worker_needed_cv;
+std::shared_mutex batchpointer_mutex;
+
 std::atomic<bool> final_round;
 std::atomic_bool* worker_waiting;
 
@@ -53,37 +57,59 @@ const int NO_MORE_TASKS = -1;
 const int WAIT_FOR_TASK = 0;
 const int TASK_RECEIVED = 1;
 
-std::pair<int, int> get_task()
+int get_task(int thread_id)
 {
-    // we do these tests first to make sure we do not increment any further
-    if (batchpointer.load() >= BATCH_SIZE)
+    int assigned_tid = 0;
+    int assigned_index = 0;
+    std::shared_lock<std::shared_mutex> lk(batchpointer_mutex);
+    lk.unlock();
+
+    while(true)
     {
-	return std::make_pair(0, WAIT_FOR_TASK);
-    } else if (working_batch[batchpointer.load()] == -1)
-    {
-	return std::make_pair(0, NO_MORE_TASKS);
-    } else
-    {
-	int potential_task = batchpointer++;
-	// we have to do the above tests again, because we loaded
-	// the batchpointer non-atomically
-	if (potential_task >= BATCH_SIZE)
+	if (root_solved)
 	{
-	    return std::make_pair(0, WAIT_FOR_TASK);
-	} else if (working_batch[potential_task] == -1)
+	    return -2; // Should be irrelevant, we check for root_solved immediately afterwards.
+	}
+
+	// In order to minimize useless atomic adding, check first.
+	if (batchpointer >= BATCH_SIZE)
 	{
-	    return std::make_pair(0, NO_MORE_TASKS);
-	} else
+	    std::this_thread::sleep_for(std::chrono::milliseconds(TICK_SLEEP));
+	    continue;
+	}
+
+	// atomically get an index (naturally, it may again be greater than BATCH_SIZE)
+	lk.lock();
+	assigned_index = batchpointer++; // atomic ++, so can be done in shared mode
+	if (assigned_index < BATCH_SIZE)
 	{
-	    // normal task
-	    return std::make_pair(working_batch[potential_task], TASK_RECEIVED);
+	    assigned_tid = working_batch[assigned_index];
+	}
+	lk.unlock();
+	// print<true>("Worker %d was assigned batch index %d.\n", thread_rank + thread_id, assigned_index);
+
+	// actively wait for tasks
+	// TODO: make this into a passive
+	if (assigned_index >= BATCH_SIZE)
+	{
+	    std::this_thread::sleep_for(std::chrono::milliseconds(TICK_SLEEP));
+	    continue;
+	} else if (assigned_tid == -1)
+	{
+	    return -1;
+	} else if (tstatus[assigned_tid].load() == TASK_PRUNED)
+	{
+	    // print<true>("Worker %d skipping task %d, PRUNED.\n", thread_rank + thread_id, assigned_tid);
+	    continue;
+	} else {
+	    return assigned_tid;
 	}
     }
 }
 
 // Checks whether there are less than BATCH_SIZE tasks in this batch.
 // Note that this might in rare cases not happen even when this is the last batch (batches perfectly aligned).
-bool check_batch_end(int *batch)
+bool check_batch_end(const int* batch)
 {
     if(batch[BATCH_SIZE -1] == -1)
     {
@@ -128,10 +154,11 @@ void worker(int thread_id)
     //printf("Worker reporting for duty: %s, rank %d out of %d instances\n",
 //	   processor_name, thread_rank + thread_id, thread_rank_size);
 
-    int signal, current_task_id;
+    int current_task_id;
+    // bool no_more_tasks = false;
     std::unique_lock<std::mutex> lk(worker_needed);
     lk.unlock();
-    
+
     while(true)
     {
 	// Wait until notified by overseer.
@@ -148,27 +175,27 @@ void worker(int thread_id)
 	    print<DEBUG>("Worker %d (%d) terminating, final round.\n");
 	    return;
 	}
+
+	// no_more_tasks = false;
 	
 	while(!root_solved)
 	{
-	    std::tie(current_task_id, signal) = get_task();
-	    if (signal == NO_MORE_TASKS)
-	    {
-		break;
-	    }
-
-	    if (signal == WAIT_FOR_TASK)
-	    {
-		std::this_thread::sleep_for(std::chrono::milliseconds(TICK_SLEEP));
-		continue;
-	    }
+	    current_task_id = get_task(thread_id); // this will actively wait for a task, if necessary
+	    // print<true>("Worker %d processing task %d.\n", thread_rank + thread_id, current_task_id);
 
 	    if (root_solved)
 	    {
+		print<VERBOSE>("Worker %d: root solved, breaking.\n", thread_rank + thread_id);
 		break;
 	    }
+	    
+	    if (current_task_id == -1)
+	    {
+		print<VERBOSE>("Worker %d: No more tasks, breaking.\n", thread_rank + thread_id);
 
-// Now signal == TASK_RECEIVED.
+		// no_more_tasks = true;
+		break;
+	    }
 	    assert(current_task_id >= 0 && current_task_id < tcount);
 	    current_task = tarray[current_task_id];
 	    // current_task.bc.hash_loads_init(); // should not be necessary
@@ -209,7 +236,6 @@ void worker(int thread_id)
 		// print<true>("Queue info: reserve %d, qhead %d, qsize %d.\n", finished_tasks[thread_id].reserve,
 		// 		finished_tasks[thread_id].qhead, finished_tasks[thread_id].qsize.load());
 	    }
-	    current_task_id++;
 	}
 	
 	print<DEBUG>("Worker %d (%d) detected root solved, waiting until the next round.\n");
@@ -306,9 +332,9 @@ void overseer()
     dplog = std::get<1>(settings);
     dpht_size = 1LLU << dplog;
 
-    // we reserve a CPU slot for the overseer itself
-    // worker_count = std::get<2>(settings);
-    worker_count = std::get<2>(settings) - 1;
+    // If we want to have a reserve CPU slot for the overseer itself, we should subtract 1.
+    // worker_count = std::get<2>(settings) - 1;
+    worker_count = std::get<2>(settings);
 
     print<true>("Overseer %d at server %s: conflog %d, dplog %d, worker_count %d\n",
 		world_rank, processor_name, conflog, dplog, worker_count);
@@ -408,12 +434,17 @@ void overseer()
 
 		if (batch_requested)
 		{
-		    bool batch_received = try_receiving_batch(working_batch);
+		    bool batch_received = try_receiving_batch(upcoming_batch);
 		    if (batch_received)
 		    {
 			batch_requested = false;
+			std::unique_lock<std::shared_mutex> bplk(batchpointer_mutex);
+			std::copy(std::begin(upcoming_batch), std::end(upcoming_batch), std::begin(working_batch));
 			final_batch = check_batch_end(working_batch);
+
+                        // reset the batch pointer
 			batchpointer.store(0);
+			bplk.unlock();
 		    }
 		}
 

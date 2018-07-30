@@ -39,7 +39,10 @@ int main(int argc, char **argv)
     line++;
 
     // second line
-    fscanf(fin, "overlap = none;\n");
+    if (fscanf(fin, "overlap = none;\n") != 0)
+    {
+	abort();
+    }
 
 
     // third line -- initial items
@@ -52,7 +55,7 @@ int main(int argc, char **argv)
 
     for (int i = 0; i < initial_count; i++)
     {
-	if (fscanf(fin, "%d", &initial) != 1)
+	if (fscanf(fin, " %d", &initial) != 1)
 	{
 		ERROR("Malformed initial item list.\n");
 	} else {
@@ -60,7 +63,10 @@ int main(int argc, char **argv)
 	}
     }
 
-    fscanf(fin, "\n");
+    if(fscanf(fin, "\n") != 0)
+    {
+	abort();
+    }
     
     while (!feof(fin))
     {
@@ -75,21 +81,32 @@ int main(int argc, char **argv)
 		ERROR("Error at line %" PRIu64 " at first number\n", line);
 	    }
 	}
-	
-	fscanf(fin, " %c", &control);
 
+	largest_id = std::max(main_id, largest_id);
+	if (fscanf(fin, " %c", &control) != 1)
+	{
+	    abort();
+	}
+	
+	
 	// vertex descriptor
 	if (control == '[')
 	{
-	    binconf* cc = new binconf(); // current configuration
-	    int next;
-	    int total = 0;
+	    binconf cc; // current configuration
+	    // print<true>("Sanity check: ");
+	    // cc.print_binconf();
+	    int next = 0;
+	    int htype = 0;
+	    int hitem_amount = 0;
+	    int hitem_size = 0;
+	       
 	    if (fscanf(fin, "label=\"") != 0) {
 		ERROR("Failed to parse an edge on line %" PRIu64 "\n", line);
 	    }
 	    
-	    for (int i =0; i < BINS; i++) {
-		if (fscanf(fin, "%d", &(cc->loads[i])) != 1)
+	    for (unsigned int i =0; i < BINS; i++)
+	    {
+		if (fscanf(fin, "%d", &(cc.loads[i])) != 1)
 		{
 		    ERROR("Failed to parse a vertex on line %" PRIu64 "\n", line);
 		}
@@ -116,31 +133,86 @@ int main(int argc, char **argv)
 		{
 		    ERROR("Separator on line %" PRIu64 " is not one of the valid ones.\n", line);
 		} 
-		
-
-		     
-		total += cc->loads[i];
 	    }
+
+	    char next_control;
+	    if(fscanf(fin, "%c", &next_control) != 1)
+	    {
+		ERROR("Failed to parse next/heuristic character on line %" PRIu64 "\n", line);
+	    }
+		    
+	    if (next_control == 'n')
+	    {
+		if (fscanf(fin, ": %d\"];\n", &next) != 1) {
+		    ERROR("Failed to parse next item on line %" PRIu64 "\n", line);
+		}
+	    } else if (next_control == 'h')
+	    {
+		char heur_control;
+		heuristics_counter++;
+		
+		if(fscanf(fin, ":%c", &heur_control) != 1)
+		{
+		    ERROR("Failed to recognize heuristic on line %" PRIu64 "\n", line);
+		}
+		
+		if (heur_control == '(')
+		{
+		    htype = LARGE_ITEM;
+		    if (fscanf(fin, "%d,%d)\"];\n", &hitem_size, &hitem_amount) != 2)
+		    {
+			ERROR("Failed to complete large item heuristic on line %" PRIu64 "\n", line);
+		    }
 	    
-	    if (fscanf(fin, "n: %d\"];\n", &next) != 1) {
-		ERROR("Failed to parse an edge on line %" PRIu64 "\n", line);
+		}
+		else if (heur_control == 'F')
+		{
+		    htype = FIVE_NINE;
+		    hitem_size = 5;
+		    if (fscanf(fin, "N (%d)\"];\n", &hitem_amount) != 1)
+		    {
+			ERROR("Failed to parse the heuristic on line %" PRIu64 "\n", line);
+		    }
+	    
+		} else {
+		    // unknown heuristic
+		    ERROR("Failed to recognize heuristic on line %" PRIu64 "\n", line);
+		}
+
+	    }
+	    else
+	    {
+		ERROR("Unknown character %c on line %" PRIu64 " where we expected 'n' or 'h'.\n", next_control, line);
 	    }
 
 	    // Set first vertex as root.
 	    if (first_vertex)
 	    {
 		print<DEBUG>("Setting vertex %" PRIu64 " as root.\n", main_id);
+		print<DEBUG>("Its contents:");
+		cc.print_binconf<DEBUG>();
 		root_id = main_id;
 		first_vertex = false;
 	    }
 
-	    vertex cv(cc); // current vertex
-	    cv.nextItem = next;
-	    cv.id = main_id;
-	    print<DEBUG>("Creating vertex %" PRIu64 ": ", main_id);
+	    // We create the vertex in heap so that the tree map 
+	    // serves as a list of all vertices as well, and vertices inside can be edited.
+	    
+	    vertex* cv;
+
+	    if (htype == 0)
+	    {
+		cv = new vertex(cc, main_id, next);
+		print<DEBUG>("Creating vertex %" PRIu64 ": ", main_id);
+	    } else {
+		cv = new vertex(cc, main_id, htype, hitem_size, hitem_amount);
+		print<DEBUG>("Creating new heuristic vertex %" PRIu64 ": ", main_id);
+	    }
+	    
 	    print_vertex<DEBUG>(cv);
-	    print<DEBUG>("and next item %d\n", cv.nextItem);
-	    tree.insert(make_pair(main_id, cv));
+	    print<DEBUG>("and next item %d\n", cv->nextItem);
+
+	    tree.insert(std::pair(main_id, cv));
 	    line++;
 	}
 	
@@ -151,8 +223,8 @@ int main(int argc, char **argv)
 		ERROR("Failed to parse an edge on line %" PRIu64 "\n", line);
 	    }
 	    try {
-		vertex& relevant = tree.at(main_id); 
-		relevant.children.push_back(secondary_id);
+		vertex* relevant = tree.at(main_id); 
+		relevant->children.push_back(secondary_id);
 		print<DEBUG>("Adding edge from %" PRIu64 " to %" PRIu64 "\n", main_id, secondary_id);
 	    } catch (exception &e) {
 		ERROR("Failed to find a relevant vertex for the vertex %" PRIu64 "\n", main_id);
@@ -167,20 +239,40 @@ int main(int argc, char **argv)
 	}
     }
     fclose(fin);
+    vertex* root = tree.at(root_id);
 
-    print<true>("Finished reading input. Recursively computing loads at each vertex.\n");
-    vertex& root = tree.at(root_id);
-    root.fill_types(initial_items);
-    
+    print<true>("Finished reading input, tree has %zu vertices, out of which %d are heuristic nodes.\n Recursively computing item count.\n", tree.size(), heuristics_counter);
+    root->fill_types(initial_items);
+
+    print<true>("Expanding heuristic strategies to full strategies.\n");
+    clear_visits();
+    expand_all_vertices(root);
+    print<true>("Expanded %" PRIu64 " vertices.\n", vertices_expanded);
+
     print<true>("Starting tree validation.\n");
-    bool result = root.recursive_validate();
+    bool result = root->recursive_validate();
     if (result == true)
     {
-	fprintf(stdout, "The tree is a correct lower bound with value %d/%d for bin stretching on %d bins starting with vertex:\n", R,S, BINS);
-	tree.at(root_id).print_info();
+	fprintf(stdout, "The tree is a correct lower bound with value %d/%d for bin stretching on %d bins starting with:\n", R,S, BINS);
+	tree.at(root_id)->configuration.print_binconf<true>();
 	fprintf(stderr, "\n");
     } else {
-	fprintf(stdout, "The tree is not a correct lower bound with value %d/%d on %d bins. Recompile with #define DEBUG 1 to see details.\n", R,S, BINS);
+	if(DEBUG)
+	{
+	    fprintf(stdout, "The tree is not a correct lower bound with value %d/%d on %d bins.\n", R,S, BINS);
+	}
+	else 
+	{
+	    fprintf(stdout, "The tree is not a correct lower bound with value %d/%d on %d bins. Recompile with const DEBUG = true; to see more details.\n", R,S, BINS);
+	}
     }
+
+    // cleanup
+
+    for (auto [id, point] : tree)
+    {
+	delete point;
+    }
+    tree.clear();
     return 0;
 }

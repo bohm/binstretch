@@ -80,12 +80,18 @@ int sequencing_adversary(binconf *b, unsigned int depth, thread_attr *tat,
 
 
 	// one heuristic specific for 19/14
-	if (S == 14 && R == 19 && five_nine_heuristic(b,tat))
+	if (S == 14 && R == 19)
 	{
-	    adv_to_evaluate->value = 0;
-	    adv_to_evaluate->heuristic = true;
-	    adv_to_evaluate->heuristic_type = FIVE_NINE;
-	    return 0;
+	    
+	    auto [fnh, fives_to_send] = five_nine_heuristic(b,tat);
+	    if (fnh)
+	    {
+		adv_to_evaluate->value = 0;
+		adv_to_evaluate->heuristic = true;
+		adv_to_evaluate->heuristic_type = FIVE_NINE;
+		adv_to_evaluate->heuristic_multi = fives_to_send;
+		return 0;
+	    }
 	}
 
     /* Large items heuristic: if 2nd or later bin is at least R-S, check if enough large items

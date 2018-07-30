@@ -366,7 +366,8 @@ public:
 	}
 };
 
-void duplicate(binconf *t, const binconf *s) {
+void duplicate(binconf *t, const binconf *s)
+{
     for(int i=1; i<=BINS; i++)
 	t->loads[i] = s->loads[i];
     for(int j=1; j<=S; j++)

@@ -220,19 +220,7 @@ void compute_thread_ranks()
     }
 }
 
-int chunk = 0;
-void broadcast_task_partitioning()
-{
-    if (BEING_OVERSEER)
-    {
-	MPI_Bcast(&chunk, 1, MPI_INT, QUEEN, MPI_COMM_WORLD);
-    } else {
-	chunk = tcount / thread_rank_size;
-	if (tcount % thread_rank_size != 0) { chunk++; }
-	MPI_Bcast(&chunk, 1, MPI_INT, QUEEN, MPI_COMM_WORLD);
-    }
-}
-
+/*
 // queen transmits an irrelevant task to the right worker
 void transmit_irrelevant_task(int taskno)
 {
@@ -278,6 +266,7 @@ void fetch_irrelevant_tasks(const int& overseer_lb, const int& overseer_ub)
 	MPI_Iprobe(QUEEN, SENDING_IRRELEVANT, MPI_COMM_WORLD, &irrel_task_incoming, &stat);
     }
 }
+*/
 
 // Workers fetch and ignore additional signals about root solved (since it may arrive in two places).
 void ignore_additional_signals()
@@ -590,7 +579,7 @@ void receive_batch(int *current_batch)
 }
 
 
-bool try_receiving_batch(int *current_batch)
+bool try_receiving_batch(int *upcoming_batch)
 {
     int batch_incoming = 0;
     MPI_Status stat;
@@ -598,7 +587,7 @@ bool try_receiving_batch(int *current_batch)
     if (batch_incoming)
     {
 	print<COMM_DEBUG>("Overseer %d receives the new batch.\n", world_rank);
-	MPI_Recv(current_batch, BATCH_SIZE, MPI_INT, QUEEN, SENDING_BATCH, MPI_COMM_WORLD, &stat);
+	MPI_Recv(upcoming_batch, BATCH_SIZE, MPI_INT, QUEEN, SENDING_BATCH, MPI_COMM_WORLD, &stat);
 	return true;
     } else
     {
@@ -609,13 +598,13 @@ bool try_receiving_batch(int *current_batch)
 
 void send_out_batches()
 {
-    int batch[BATCH_SIZE];
     for (int overseer = 1; overseer < world_size; overseer++)
     {
 	if (running_low[overseer])
 	{
-	    compose_batch(batch);
-	    transmit_batch(batch, overseer);
+	    //check_batch_finished(overseer);
+	    compose_batch(batches[overseer]);
+	    transmit_batch(batches[overseer], overseer);
 	    running_low[overseer] = false;
 	}
     }

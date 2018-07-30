@@ -101,7 +101,8 @@ int queen()
     broadcast_zobrist();
     compute_thread_ranks();
     init_running_lows();
-
+    init_batches();
+    
     std::tuple<unsigned int, unsigned int, unsigned int> settings = server_properties(processor_name);
     // out of the settings, queen does not spawn workers or use ht, only dpht
     dplog = std::get<1>(settings);
@@ -186,7 +187,7 @@ int queen()
 		if (PROGRESS) { iteration_start = std::chrono::system_clock::now(); }
 
 		// Clear old task and task structures.
-		irrel_taskq.clear();
+		// irrel_taskq.clear();
 		clear_tasks();
 
                 // Purge all new vertices, so that only FIXED and EXPAND remain.
@@ -212,7 +213,6 @@ int queen()
 			break;
 		    } else if (computation_root->value == 1)
 		    {
-			// hack, remove soon
 			if (ONEPASS)
 			{
 			    losing_saplings++;
@@ -226,14 +226,16 @@ int queen()
 		} else {
 		    // queen needs to start the round
 		    print<COMM_DEBUG>("Queen: Starting the round.\n");
+		    clear_batches();
 		    round_start_and_finality(false);
-			    // queen sends the current monotonicity to the workers
+		    // queen sends the current monotonicity to the workers
 		    broadcast_monotonicity(monotonicity);
 
+		    collect_tasks(computation_root, &tat);
 		    init_tstatus(tstatus_temporary); tstatus_temporary.clear();
 		    init_tarray(tarray_temporary); tarray_temporary.clear();
-		    // permute_tarray_tstatus(); // randomly shuffles the tasks 
-		    irrel_taskq.init(tcount);
+		    permute_tarray_tstatus(); // randomly shuffles the tasks 
+		    // irrel_taskq.init(tcount);
 		    // note: do not push into irrel_taskq before permutation is done;
 		    // the numbers will not make any sense.
 		
@@ -317,7 +319,7 @@ int queen()
 		// return value is 0, but the tree needs to be expanded.
 		assert(updater_result == 0);
 		// Transform tasks into EXPAND and NEW vertices into FIXED.
-		relabel_and_fix(computation_root);
+		relabel_and_fix(computation_root, &tat);
 		// print_debug_tree(computation_root, regrow_level, 1);
 	    }
 	}
@@ -357,6 +359,8 @@ int queen()
     g_meas.print();
     delete_running_lows();
     free_queen_memory();
+    delete_batches();
+
     return ret;
 }
 

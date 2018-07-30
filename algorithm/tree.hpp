@@ -403,7 +403,7 @@ void print_compact_subtree(FILE* stream, bool stop_on_saplings, adversary_vertex
 	    fprintf(stream, "h:(%hd,%hd)\"];\n", v->heuristic_item, v->heuristic_multi);
 	} else if (v->heuristic_type == FIVE_NINE)
 	{
-	    fprintf(stream, "h:F/N\"];\n");
+	    fprintf(stream, "h:FN (%hd)\"];\n", v->heuristic_multi);
 	}
     } else 
     {
@@ -438,29 +438,28 @@ void print_item_list(FILE* stream, adversary_vertex *v)
 {
     bool first = true;
     int counter = 0;
+
+    int total_items = 0;
     for (int item = 1; item < S; item++)
+    {
+	total_items += v->bc->items[item];
+    }
+
+    fprintf(stream, "// %d:", total_items);
+   
+    for (int item = S; item >= 1; item--)
     {
 	if (v->bc->items[item] > 0)
 	{
 	    counter = v->bc->items[item];
 	    for (int j = 0; j < counter; j++)
 	    {
-		if (first)
-		{
-		    fprintf(stream, "// %d",item);
-		    first = false;
-		} else {
-		    fprintf(stream, ",%d", item);
-		}
+		    fprintf(stream, " %d", item);
 	    }
 	}
     }
 
-    // print a newline if anything was printed to the output.
-    if (!first)
-    {
-	fprintf(stream, "\n");
-    }
+    fprintf(stream, "\n");
 }
 
 // a wrapper around print_compact_subtree that sets the stop_on_saplings to true
@@ -540,7 +539,7 @@ template <int MODE> void remove_outedges(algorithm_vertex *v);
 template <int MODE> void remove_outedges(adversary_vertex *v);
 
 /* Forward declaration of remove_task for inclusion purposes. */
-template <int MODE> void remove_task(uint64_t hash);
+void remove_task(uint64_t hash);
 
 template <int MODE> void remove_inedge(adv_outedge *e)
 {
@@ -560,10 +559,10 @@ template <int MODE> void remove_inedge(alg_outedge *e)
     if (e->to->in.empty())
     {
 	remove_outedges<MODE>(e->to);
-	// if e->to is task, remove it from the queue
-	if (e->to->task && e->to->value == POSTPONED)
+	// when updating the tree, if e->to is task, remove it from the queue
+	if (MODE == UPDATING && e->to->task && e->to->value == POSTPONED)
 	{
-	    remove_task<MODE>(e->to->bc->confhash());
+	    remove_task(e->to->bc->confhash());
 	}
 	
 	// the vertex will be removed from the generated graph by calling delete on it.
@@ -630,333 +629,6 @@ template <int MODE> void remove_outedges_except(adversary_vertex *v, int right_i
     v->out.push_back(right_edge);
     //v->out.remove_if( [right_item](adv_outedge *e){ return (e->item != right_item); } );
     //assert(v->out.size() == 1);
-}
-
-void clear_generated_graph()
-{
-}
-
-// Checks that the two traversals of the graph (DFS and going through the arrays)
-// contain the same amount of vertices and edges.
-
-void tree_consistency_check(adversary_vertex *root)
-{
-}
-
-void purge_sapling(adversary_vertex *sapling)
-{
-    sapling->value = POSTPONED;
-    remove_outedges<CLEANUP>(sapling);
-}
-
-void purge_new_alg(algorithm_vertex *v);
-void purge_new_adv(adversary_vertex *v);
-
-void purge_new_adv(adversary_vertex *v)
-{
-    if (v->visited)
-    {
-	return;
-    }
-
-    v->visited = true;
-    std::list<adv_outedge*>::iterator it = v->out.begin();
-    while (it != v->out.end())
-    {
-	algorithm_vertex *down = (*it)->to;
-	if (down->state == NEW) // algorithm vertex can never be a task
-	{
-	    purge_new_alg(down);
-	    remove_inedge<GENERATING>(*it);
-	    it = v->out.erase(it); // serves as it++
-	} else {
-	    purge_new_alg(down);
-	    it++;
-	}
-    }
-}
-
-void purge_new_alg(algorithm_vertex *v)
-{
-    if (v->visited)
-    {
-	return;
-    }
-
-    v->visited = true;
-    std::list<alg_outedge*>::iterator it = v->out.begin();
-    while (it != v->out.end())
-    {
-	adversary_vertex *down = (*it)->to;
-	if (down->state == NEW || down->task)
-	{
-	    purge_new_adv(down);
-	    remove_inedge<GENERATING>(*it);
-	    it = v->out.erase(it); // serves as it++
-	} else {
-	    purge_new_adv(down);
-	    it++;
-	}
-    }
-}
-
-void purge_new(adversary_vertex *r)
-{
-    clear_visited_bits();
-    purge_new_adv(r);
-}
-
-
-void relabel_and_fix_adv(adversary_vertex *v); 
-void relabel_and_fix_alg(algorithm_vertex *v);
-
-void relabel_and_fix_adv(adversary_vertex *v)
-{
-    if (v->visited)
-    {
-	return;
-    }
-
-    v->visited = true;
-
-    if (v->task)
-    {
-	if (v->out.size() != 0 || v->value != 0)
-	{
-	    print<true>("Trouble with vertex %" PRIu64  " with %zu children, value %d and bc:\n", v->id, v->out.size(), v->value);
-	    print_binconf_stream(stderr, v->bc);
-	    fprintf(stderr, "A debug tree will be created with extra id 99.\n");
-	    print_debug_tree(computation_root, 0, 99);
-
-	    assert(v->out.size() == 0 && v->value == 0);
-	}
-
-	if(v->state != FINISHED)
-	{
-	    v->task = false;
-	    v->state = EXPAND;
-	}
-    } else
-    {
-	if (v->state == NEW || v->state == EXPAND)
-	{
-	    v->state = FIXED;
-	}
-    }
-    
-    for (auto& e: v->out)
-    {
-	relabel_and_fix_alg(e->to);
-    }
-
-}
-
-void relabel_and_fix_alg(algorithm_vertex *v)
-{
-    if (v->visited)
-    {
-	return;
-    }
-    v->visited = true;
-
-    // algorithm vertices should never be tasks
-    assert(v->value == 0);
-
-    if (v->state == NEW)
-    {
-	v->state = FIXED;
-    }
-
-    for (auto& e: v->out)
-    {
-	relabel_and_fix_adv(e->to);
-    }
-}
-
-void relabel_and_fix(adversary_vertex *r)
-{
-    clear_visited_bits();
-    relabel_and_fix_adv(r);
-}
-
-// Marks all branches without tasks in them as FINISHED.
-// Call this after you compute a winning strategy and
-// when the tree is not yet complete.
-
-bool finish_branches_rec(adversary_vertex *v);
-bool finish_branches_rec(algorithm_vertex *v);
-
-bool finish_branches_rec(adversary_vertex *v)
-{
-
-    if (v->state == FINISHED)
-    {
-	return true;
-    }
-
-    if (v->visited)
-    {
-	// it is visited but not finished, and thus it must is incomplete.
-	return false;
-    }
-    
-    v->visited = true;
-
-    if (v->task) { return false; }
-
-    if (v->out.size() == 0)
-    {
-	assert(v->value == 0);
-	v->state = FINISHED;
-	return true;
-    }
-
-    assert(v->out.size() == 1);
-    bool children_finished = finish_branches_rec((*v->out.begin())->to);
-
-    if (children_finished)
-    {
-	v->state = FINISHED;
-    }
-
-    return children_finished;
-}
-
-bool finish_branches_rec(algorithm_vertex *v)
-{
-    if (v->state == FINISHED)
-    {
-	return true;
-    }
-
-    if (v->visited)
-    {
-	// it is visited but not finished, and thus it must is incomplete.
-	return false;
-    }
-    
-    v->visited = true;
-
-    assert(v->out.size() != 0);
-
-    bool children_finished = true;
-    for (auto& e: v->out)
-    {
-	if (!finish_branches_rec(e->to))
-	{
-	    children_finished = false;
-	}
-    }
-
-    if (children_finished)
-    {
-	v->state = FINISHED;
-    }
-
-    return children_finished;
-}
-
-bool finish_branches(adversary_vertex *r)
-{
-    clear_visited_bits();
-    return finish_branches_rec(r);
-}
-
-// Marks all vertices as FINISHED.
-void finish_sapling_alg(algorithm_vertex *v);
-void finish_sapling_adv(adversary_vertex *v);
-
-void finish_sapling_adv(adversary_vertex *v)
-{
-    if (v->visited || v->state == FINISHED)
-    {
-	return;
-    }
-    v->visited = true;
-    assert(v->value == 0);
-
-    v->state = FINISHED;
-    // v->task = false;
-    for (auto& e: v->out)
-    {
-	finish_sapling_alg(e->to);
-    }
-}
-
-void finish_sapling_alg(algorithm_vertex *v)
-{
-    if (v->visited)
-    {
-	return;
-    }
-    v->visited = true;
-
-    assert(v->value == 0);
-    v->state = FINISHED;
-    for (auto& e: v->out)
-    {
-	finish_sapling_adv(e->to);
-    }
-}
-
-
-void finish_sapling(adversary_vertex *r)
-{
-    clear_visited_bits();
-    finish_sapling_adv(r);
-}
-
-
-void reset_values_adv(adversary_vertex *v);
-void reset_values_alg(algorithm_vertex *v);
-
-void reset_values_adv(adversary_vertex *v)
-{
-    if (v->visited)
-    {
-	return;
-    }
-    v->visited = true;
-
-    if (v->state == FINISHED)
-    {
-	return;
-    }
-
-    v->value = POSTPONED;
-    
-    for (auto& e: v->out)
-    {
-	reset_values_alg(e->to);
-    }
-}
-
-void reset_values_alg(algorithm_vertex *v)
-{
-    if (v->visited)
-    {
-	return;
-    }
-    v->visited = true;
-
-    if (v->state == FINISHED)
-    {
-	return;
-    }
-
-
-    v->value = POSTPONED;
-   
-    for (auto& e: v->out)
-    {
-	reset_values_adv(e->to);
-    }
-}
-
-void reset_values(adversary_vertex *r)
-{
-    clear_visited_bits();
-    reset_values_adv(r);
 }
 
 #endif

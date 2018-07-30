@@ -772,12 +772,17 @@ std::pair<bin_int,bin_int> large_item_heuristic(binconf *b, thread_attr *tat)
     return ret;
 }
 
-bool five_nine_heuristic(binconf *b, thread_attr *tat)
+std::pair<bool, bin_int> five_nine_heuristic(binconf *b, thread_attr *tat)
 {
     // print<true>("Computing FN for: "); print_binconf<true>(b);
+
+    // It doesn't make too much sense to send BINS times 5, so we disallow it.
+    // Also, b->loads[BINS] has to be non-zero, so that nines do not fit together into
+    // any bin of capacity 18.
+    
     if (b->loads[1] < 5 || b->loads[BINS] == 0)
     {
-	return false;
+	return std::make_pair(false, -1);
     }
 
     // bin_int itemcount_start = b->_itemcount;
@@ -785,49 +790,48 @@ bool five_nine_heuristic(binconf *b, thread_attr *tat)
     // uint64_t loadhash_start = b->loadhash;
     // uint64_t itemhash_start = b->itemhash;
 
-    bool nines_feasible = pack_query_compute(*b,9, tat, BINS);
+    bool bins_times_nine_threat = pack_query_compute(*b,9, tat, BINS);
     bool fourteen_feasible = false;
-    if (nines_feasible)
+    if (bins_times_nine_threat)
     {
-	// print<true>("We are able to pack %d nines.\n", BINS);
-	// try sending fives
-	int last_bin_five = 1;
+	// First, compute the last bin which is above five.
+	int last_bin_above_five = 1;
 	for (int bin = 1; bin <= BINS-1; bin++)
 	{
 	    if (b->loads[bin] >= 5 && b->loads[bin+1] < 5)
 	    {
-		last_bin_five = bin;
+		last_bin_above_five = bin;
 		break;
 	    }
 	}
 
-	int fives = 0;
-	int fourteen_count = BINS - last_bin_five;
-	while (nines_feasible && fourteen_count >= 1 && last_bin_five <= BINS)
+	bin_int fives = 0; // how many fives are we sending
+	int fourteen_sequence = BINS - last_bin_above_five + 1;
+	while (bins_times_nine_threat && fourteen_sequence >= 1 && last_bin_above_five <= BINS)
 	{
-	    fourteen_feasible = pack_query_compute(*b,14,tat,fourteen_count);
+	    fourteen_feasible = pack_query_compute(*b,14,tat,fourteen_sequence);
 	    //print<true>("Itemhash after pack 14: %" PRIu64 ".\n", b->itemhash);
 
 	    if (fourteen_feasible)
 	    {
 		remove_item_inplace(*b,5,fives);
-		return true;
+		return std::pair(true, fives);
 	    }
 
 	    // virtually add a five to one bin that's below the threshold
-	    last_bin_five++;
-	    fourteen_count--;
+	    last_bin_above_five++;
+	    fourteen_sequence--;
 	    add_item_inplace(*b,5);
 	    fives++;
 
-	    nines_feasible = pack_query_compute(*b,9,tat,BINS);
+	    bins_times_nine_threat = pack_query_compute(*b,9,tat,BINS);
 	}
 
 	// return b to normal
 	remove_item_inplace(*b,5,fives);
     }
  
-    return false;
+    return std::pair(false, -1);
 }
 
 void dp_cache_print(binconf &h, thread_attr *tat)

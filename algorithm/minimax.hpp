@@ -71,6 +71,12 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, advers
 	    return adv_to_evaluate->value;
 	}
 	adv_to_evaluate->visited = true;
+
+	if (adv_to_evaluate->state == FINISHED)
+	{
+	    assert(adv_to_evaluate->value == 0);
+	    return adv_to_evaluate->value;
+	}
     }
     
     // Everything can be packed into one bin, return 1.
@@ -101,7 +107,7 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, advers
 	// one heuristic specific for 19/14
 	if (S == 14 && R == 19 && (MODE == GENERATING || FIVE_NINE_ACTIVE_EVERYWHERE))
 	{
-	    bool fnh = five_nine_heuristic(b,tat);
+	    auto [fnh, fives_to_send] = five_nine_heuristic(b,tat);
 	    tat->meas.five_nine_calls++;
 	    if (fnh)
 	    {
@@ -111,7 +117,8 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, advers
 		    adv_to_evaluate->value = 0;
 		    adv_to_evaluate->heuristic = true;
 		    adv_to_evaluate->heuristic_type = FIVE_NINE;
-		    adv_to_evaluate->heuristic_item = S;
+		    // do not set heuristic_item, it is implicit
+		    adv_to_evaluate->heuristic_multi = fives_to_send;
 		}
 		return 0;
 	    }
@@ -150,51 +157,24 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, advers
 	// FINISHED -- a vertex that is already part of a full lower bound tree (likely
 	// for some other sapling.)
 
-	if (adv_to_evaluate->state == FINISHED)
-	{
-	    return adv_to_evaluate->value;
-	}
 	// FIXED -- vertex is already part of the prescribed lower bound (e.g. by previous computation)
 	if (adv_to_evaluate->state == FIXED)
 	{
 	    // When the vertex is fixed, we know it is part of the lower bound.
 	    // We do not generate any more options; instead we just iterate over the edges that are there.
+	    assert(adv_to_evaluate->out.size() == 1);
+
 	    std::list<adv_outedge*>::iterator it = adv_to_evaluate->out.begin();
-	    r = 1;
-	    while ( it != adv_to_evaluate->out.end())
-	    {
-		upcoming_alg = (*it)->to;
-		int old_largest = tat->largest_since_computation_root; 
-		int item_size = (*it)->item;
-		tat->largest_since_computation_root = std::max(item_size, tat->largest_since_computation_root);
-		below = algorithm<MODE>(b, item_size, depth+1, tat, upcoming_alg, adv_to_evaluate);
-		tat->largest_since_computation_root = old_largest;
 
-		if (below == 0)
-		{
-		    r = 0;
-		    bin_int right_move = (*it)->to->next_item;
-		    // we can break here (in fact we should break here, so that assertion that only one edge remains is true)
-		    remove_outedges_except<MODE>(adv_to_evaluate, right_move);
-		    break;
-		} else if (below == 1)
-		{
-		    // this may happen for a lower monotonicity; we do not remove the fixed vertices but we propagate the information upwards.
-		    // adv_outedge *removed_edge = (*it);
-		    // remove_inedge<UPDATING>(*it);
-		    // it = v->out.erase(it); // serves as it++
-		    // delete removed_edge;
-		} else if (below == POSTPONED)
-		{
-		    if (r == 1) {
-			r = POSTPONED;
-		    }
-		    it++;
-		}
-	    }
+	    upcoming_alg = (*it)->to;
+	    int old_largest = tat->largest_since_computation_root; 
+	    int item_size = (*it)->item;
+	    tat->largest_since_computation_root = std::max(item_size, tat->largest_since_computation_root);
+	    below = algorithm<MODE>(b, item_size, depth+1, tat, upcoming_alg, adv_to_evaluate);
+	    tat->largest_since_computation_root = old_largest;
 
-	    adv_to_evaluate->value = r;
-	    return r;
+	    adv_to_evaluate->value = below;
+	    return below;
 	}
 
 	// assert
@@ -211,16 +191,18 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, advers
 	    // 		depth, task_depth, computation_root->depth, b->totalload(), task_load, computation_root->bc->totalload());
 	    // print_binconf<true>(b);
 
+	    // disabled for now:
 	    // In some corner cases a vertex that is to be expanded becomes itself a task (again).
 	    // We remove the state EXPAND and reset it to NEW just so that it is always true
 	    // that all tasks are NEW vertices that become EXPAND in the next turn.
-	    if (adv_to_evaluate->state == EXPAND)
+	    /*if (adv_to_evaluate->state == EXPAND)
 	    {
 		adv_to_evaluate->state = NEW;
-	    }
+	    }*/ 
 	    
-	    add_task(b, tat);
 	    // mark current adversary vertex (created by algorithm() in previous step) as a task
+	    
+	    // add_task(b, tat); // we do no longer add tasks; instead, we collect them afterwards.
 	    adv_to_evaluate->task = true;
 	    adv_to_evaluate->value = POSTPONED;
 	    return POSTPONED;
@@ -364,6 +346,12 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 	    return alg_to_evaluate->value;
 	}
 	alg_to_evaluate->visited = true;
+
+	if (alg_to_evaluate->state == FINISHED)
+	{
+	    assert(alg_to_evaluate->value == 0);
+	    return alg_to_evaluate->value;
+	}
     }
  
     // if you are exploring, check the global terminate flag every 100th iteration

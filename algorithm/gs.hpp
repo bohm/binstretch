@@ -232,52 +232,46 @@ int gs4variant(const binconf *b, thread_attr *tat)
 	return -1;
     }
     
-    int sum_but_two = b->totalload() - b->loads[BINS] - b->loads[BINS-1];
-    
-    int load_req = GS1BOUND - sum_but_two;
-    if (load_req > S+ALPHA)
+    // items of size [critical, S] triggers GS1 when placed into bin[BINS-1].
+    int critical = GS1BOUND - (b->totalload() - b->loads[BINS]);
+
+    if (critical <= 0)
+    {
+	MEASURE_ONLY(tat->meas.gshit[GS4VARIANT]++);
+	return 1;
+    } else if (critical > S)
     {
 	MEASURE_ONLY(tat->meas.gsmiss[GS4VARIANT]++);
 	return -1;
     }
-    
-    // items of size [critical, S] trigger GS2 when placed into BINS-1.
-    int critical = load_req - b->loads[BINS-1];
 
     // So an item of size < critical arrives which does not fit into bin BINS-2.
     // For such an item: 
     for (int item = 1; item < critical; item++)
     {
 	// We have load >= S+ALPHA - item +1 on bin BINS-2
-	int virtual_lowerbound = S+ALPHA - item+1;
-	// compute virtual gain
-	int virtual_gain = 0;
-	for (int bin = BINS-2; bin >= 1; bin--)
+	// compute virtual load on all bins
+	int total_virtual = 0;
+	for (int bin = 1; bin <= BINS-2; bin++)
 	{
-	    if (virtual_lowerbound - b->loads[bin] >= 1)
-	    {
-		virtual_gain += virtual_lowerbound - b->loads[bin];
-	    } else
-	    {
-		break;
-	    }
+	    total_virtual += std::max((int) b->loads[bin], (int)(S+ALPHA) - (item-1)); 
 	}
-
-	if (virtual_gain >= critical)
+	
+	if (total_virtual + b->loads[BINS-2] >= GS1BOUND)
 	{
 	    continue;
 	} else
 	{
-	    int virtual_gain_on_last = S+ALPHA - item - b->loads[BINS] - (critical-2);
-	    
-	    if (S+ALPHA - item - b->loads[BINS] >= item)
+	    int virtual_load_on_last;
+	    if (b->loads[BINS] + item < S+ALPHA - (critical-2))
 	    {
-		virtual_gain_on_last = std::max(virtual_gain_on_last, item);
+		virtual_load_on_last = std::max( (int)(S+ALPHA) - (critical-2), (int) b->loads[BINS] + 2*item);
+	    } else {
+		virtual_load_on_last = std::max( (int)(S+ALPHA) - (critical-2), (int) b->loads[BINS] + item);
 	    }
-	    
-	    int virtual_load_on_last = b->loads[BINS] + item + virtual_gain_on_last;
-	    
-	    if (virtual_gain + virtual_load_on_last + sum_but_two < GS1BOUND)
+
+	    total_virtual += virtual_load_on_last;
+	    if (total_virtual < GS1BOUND)
 	    {
 		MEASURE_ONLY(tat->meas.gsmiss[GS4VARIANT]++);
 		return -1;
@@ -373,11 +367,11 @@ int testgs(const binconf *b, thread_attr *tat) {
     }
 
     // temporarily disabling
-    /*
+    
     if (gs1mod(b, tat) == 1)
     {
 	return 1;
-	}*/
+    }
 
     if( gs3variant(b, tat) == 1)
     {
@@ -385,11 +379,13 @@ int testgs(const binconf *b, thread_attr *tat) {
     }
 
     // temporarily disabling again
+
     /*
     if( gs4variant(b, tat) == 1)
     {
 	return 1;
-	}*/
+    }
+    */
     
 // Apply the rest of the heuristics only with 3 bins and ALPHA >= 1/3
     if ((BINS == 3) && ((3*ALPHA) >= S))

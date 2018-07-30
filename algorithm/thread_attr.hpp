@@ -50,7 +50,9 @@ struct measure_attr
     uint64_t five_nine_calls = 0;
 
     uint64_t pruned_collision = 0; // only used by the queen
-
+    int relabeled_vertices = 0;
+    int visit_counter = 0;
+    
     void add(const measure_attr &other)
 	{
 	    dp_hit += other.dp_hit;

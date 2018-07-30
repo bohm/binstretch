@@ -12,6 +12,7 @@ queue update code. */
 
 #include "common.hpp"
 #include "tree.hpp"
+#include "dfs.hpp"
 
 // task but in a flat form; used for MPI
 struct flat_task
@@ -29,6 +30,14 @@ public:
     // int last_item = 1;
     int expansion_depth = 0;
 
+    task()
+	{
+	}
+    
+    task(const binconf *other)
+	{
+	    duplicate(&bc, other);
+	}
 
     void load(const flat_task& ft)
 	{
@@ -83,6 +92,17 @@ public:
 	}
 };
 
+// A sapling is an adversary vertex which will be processed by the parallel
+// minimax algorithm (its tree will be expanded).
+struct sapling
+{
+    adversary_vertex *root;
+    int regrow_level = 0;
+    std::string filename;
+    uint64_t binconf_hash; // binconf hash for debug purposes
+};
+
+
 // semi-atomic queue: one pusher, one puller, no resize
 class semiatomic_q
 {
@@ -95,56 +115,48 @@ public:
     
 public:
     ~semiatomic_q()
-	{
-	    if(data != NULL)
-	    {
-		delete[] data;
-	    }
-	}
+       {
+           if(data != NULL)
+           {
+               delete[] data;
+           }
+       }
 
     void init(const int& r)
-	{
-	    data = new int[r];
-	    reserve = r;
-	}
+       {
+           data = new int[r];
+           reserve = r;
+       }
 
 
     void push(const int& n)
-	{
-	    assert(qsize < reserve);
-	    data[qsize] = n;
-	    qsize++;
-	}
+       {
+           assert(qsize < reserve);
+           data[qsize] = n;
+           qsize++;
+       }
 
     int pop_if_able()
-	{
-	    if (qhead >= qsize)
-	    {
-		return -1;
-	    } else {
-		return data[qhead++];
-	    }
-	}
+       {
+           if (qhead >= qsize)
+           {
+               return -1;
+           } else {
+               return data[qhead++];
+           }
+       }
 
     void clear()
-	{
-	    qsize.store(0);
-	    qhead.store(0);
-	    reserve = 0;
-	    delete[] data;
-	    data = NULL;
-	}
+       {
+           qsize.store(0);
+           qhead.store(0);
+           reserve = 0;
+           delete[] data;
+           data = NULL;
+       }
 };
 
-// A sapling is an adversary vertex which will be processed by the parallel
-// minimax algorithm (its tree will be expanded).
-struct sapling
-{
-    adversary_vertex *root;
-    int regrow_level = 0;
-    std::string filename;
-    uint64_t binconf_hash; // binconf hash for debug purposes
-};
+
 
 // stack for processing the saplings
 std::stack<sapling> sapling_stack;
@@ -157,7 +169,6 @@ std::vector<int> tstatus_temporary;
 std::vector<task> tarray_temporary; // temporary array used for building
 task* tarray; // tarray used after we know the size
 
-semiatomic_q irrel_taskq;
 int tcount = 0;
 int thead = 0; // head of the tarray queue which queen uses to send tasks
 int tpruned = 0; // number of tasks which are pruned
@@ -207,6 +218,7 @@ void init_tstatus(const std::vector<int>& tstatus_temp)
     init_tstatus();
     for (int i = 0; i < tcount; i++)
     {
+	print<DEBUG>("Initializing tstatus %d with temporary value %d.\n", i, tstatus_temp[i]);
 	tstatus[i].store(tstatus_temp[i]);
     }
 }
@@ -348,7 +360,68 @@ void add_task(const binconf *x, thread_attr *tat)
     tmap.insert(std::make_pair(newtask.bc.confhash(), tarray_temporary.size()));
     tarray_temporary.push_back(newtask);
     tstatus_temporary.push_back(TASK_AVAILABLE);
+    // print<true>("Adding task number %d.\n", tcount);
     tcount++;
+}
+
+// Collects tasks from a generated tree.
+// To be called after generation, before the game starts.
+
+void collect_tasks_alg(algorithm_vertex *v, thread_attr *tat);
+void collect_tasks_adv(adversary_vertex *v, thread_attr *tat);
+
+void collect_tasks_adv(adversary_vertex *v, thread_attr *tat)
+{
+    if (v->visited || v->state == FINISHED)
+    {
+	return;
+    }
+    v->visited = true;
+
+    if (v->task)
+    {
+	if(v->value != POSTPONED || ((v->state != NEW) && (v->state != EXPAND)) )
+	{
+	    print<true>("Trouble with task vertex %" PRIu64 ": it has value not POSTPONED, but %d.\n", v->id, v->value);
+	    print_debug_tree(computation_root, tat->regrow_level, 99);
+	    assert(v->value == POSTPONED && ((v->state == NEW) || (v->state == EXPAND)) );
+	}
+
+	task newtask(v->bc);
+	tmap.insert(std::make_pair(newtask.bc.confhash(), tarray_temporary.size()));
+	tarray_temporary.push_back(newtask);
+	tstatus_temporary.push_back(TASK_AVAILABLE);
+	tcount++;
+    }
+    else
+    {
+	for(auto& outedge: v->out)
+	{
+	    collect_tasks_alg(outedge->to, tat);
+	}
+    }
+}
+
+void collect_tasks_alg(algorithm_vertex *v, thread_attr *tat)
+{
+    if (v->visited || v->state == FINISHED)
+    {
+	return;
+    }
+    v->visited = true;
+
+    for(auto& outedge: v->out)
+    {
+	collect_tasks_adv(outedge->to, tat);
+    }
+}
+
+
+void collect_tasks(adversary_vertex *r, thread_attr *tat)
+{
+    clear_visited_bits();
+    tcount = 0;
+    collect_tasks_adv(r,tat);
 }
 
 void clear_tasks()
@@ -361,24 +434,10 @@ void clear_tasks()
 }
 
 // Does not actually remove a task, just marks it as completed.
-template <int MODE> void remove_task(uint64_t hash)
+// Only run when UPDATING; in GENERATING you just mark a vertex as not a task.
+void remove_task(uint64_t hash)
 {
-
-    if (MODE == GENERATING || MODE == UPDATING)
-    {
-	removed_task_count++;
-	if (MODE == GENERATING)
-	{
-	    tstatus_temporary[tmap[hash]] = TASK_PRUNED;
-	}
-	
-	if (MODE == UPDATING)
-	{
-	    tstatus[tmap[hash]].store(TASK_PRUNED, std::memory_order_release);
-	    // add task to irrelevant task queue
-	    irrel_taskq.push(tmap[hash]);
-	}
-    }
+    tstatus[tmap[hash]].store(TASK_PRUNED, std::memory_order_release);
 }
 
 // Check if a given task is complete, return its value. 
@@ -403,6 +462,57 @@ void print_tasks()
 
 // -- batching --
 int taskpointer = 0;
+int (*batches)[BATCH_SIZE]; // the queen stores the last batch sent out to each overseer, for debugging purposes
+
+void init_batches()
+{
+    batches = new int[world_size+1][BATCH_SIZE]; 
+}
+
+void clear_batches()
+{
+    for (int i = 0; i <= world_size; i++)
+    {
+	for (int j = 0; j < BATCH_SIZE; j++)
+	{
+	    batches[i][j] = -1;
+	}
+    }
+}
+
+
+void delete_batches()
+{
+    delete batches;
+    batches = NULL;
+}
+
+void check_batch_finished(int overseer)
+{
+/*
+    for (int t = 0; t < BATCH_SIZE; t++)
+    {
+	if (batches[overseer][t] == -1)
+	{
+	    continue;
+	}
+
+	int task_status = tstatus[batches[overseer][t]].load();
+
+	if (task_status == TASK_PRUNED || task_status == 0 || task_status == 1)
+	{
+	    continue;
+	} else
+	{
+	    print<true>("Task status of task %d sent in batch position %d to overseer %d is %d even though overseer asks for a new batch.\n",
+			batches[overseer][t], t, overseer, task_status );
+            assert(task_status == TASK_PRUNED || task_status == 0 || task_status == 1);
+	}
+
+    }
+*/
+}
+
 void compose_batch(int *batch)
 {
     int i = 0;
@@ -414,10 +524,13 @@ void compose_batch(int *batch)
 	    batch[i] = -1;
 	} else
 	{
-	    if (tstatus[taskpointer].load(std::memory_order_acquire) == TASK_AVAILABLE)
+	    int status = tstatus[taskpointer].load(std::memory_order_acquire);
+	    if (status == TASK_AVAILABLE)
 	    {
+		print<DEBUG>("Added task %d into the next batch.\n", taskpointer);
 		batch[i] = taskpointer++;
 	    } else {
+		print<DEBUG>("Task %d has status %d, skipping.\n", taskpointer, status);
 		taskpointer++;
 		continue;
 	    }

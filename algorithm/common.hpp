@@ -39,9 +39,9 @@ const bool REGROW = true; // Whether to regrow or just terminate after first ite
 const int REGROW_LIMIT = 9;
 
 const int TASK_LOAD_INIT = 8; // A bound on total load of a configuration before we split it into a task.
-const int TASK_LOAD_STEP = 4; // The amount by which the load can increase when regrowing the tree.
-const int TASK_DEPTH_INIT = 6; //The maximum depth of a vertex in the tree before it is made into a task.
-const int TASK_DEPTH_STEP = 4; // The amount by which the depth is increased when regrowing.
+const int TASK_LOAD_STEP = 6; // The amount by which the load can increase when regrowing the tree.
+const int TASK_DEPTH_INIT = 5; //The maximum depth of a vertex in the tree before it is made into a task.
+const int TASK_DEPTH_STEP = 1; // The amount by which the depth is increased when regrowing.
 
 // whether to print the output as a single tree or as multiple trees.
 const bool SINGLE_TREE = true;
@@ -61,7 +61,7 @@ const bin_int S = 14;
 // target goal of the online bin stretching problem
 const bin_int R = 19;
 // Change this number or the selected number of bins.
-const bin_int BINS = 8;
+const bin_int BINS = 6;
 
 // If you want to generate a specific lower bound, you can create an initial bin configuration here.
 // You can also insert an initial sequence here.
@@ -81,23 +81,25 @@ const std::vector<bin_int> INITIAL_ITEMS = {};
 //const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1,1,1,1};
 //const std::vector<bin_int> INITIAL_SEQUENCE = {4,1,1};
 
+// const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1,1,1,1,1,1}; // 10x1
+// const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1,1,1,1,1}; // 9x1
 // const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1,1,1,1}; // 8x1
-const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1,1,1}; // 7x1
+// const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1,1,1}; // 7x1
 // const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1,1}; // 6x1
 // const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1}; // 5x1
 // const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1}; // 4x1
 // const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1}; // 3x1
 
-// const std::vector<bin_int> INITIAL_SEQUENCE = {5};
+const std::vector<bin_int> INITIAL_SEQUENCE = {5};
 
 // const std::vector<bin_int> INITIAL_SEQUENCE = {2,2};
 // const std::vector<bin_int> INITIAL_SEQUENCE = {};
 
-// const int FIRST_PASS = 0;
-const int FIRST_PASS = 1;
-//const int FIRST_PASS = 6;
+const int FIRST_PASS = 0;
+// const int FIRST_PASS = 1;
+// const int FIRST_PASS = 6;
 // const int FIRST_PASS = 8;
-//const int FIRST_PASS = S-1;
+// const int FIRST_PASS = S-1;
 
 // constants used for good situations
 const int RMOD = (R-1);
@@ -121,7 +123,7 @@ int task_load = TASK_LOAD_INIT;
 const unsigned int LOADLOG = 12;
 
 // batching constants
-const int BATCH_SIZE = 250;
+const int BATCH_SIZE = 50;
 
 // sizes of the hash tables
 const llu LOADSIZE = (1ULL<<LOADLOG);
