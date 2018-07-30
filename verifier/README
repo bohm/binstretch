@@ -1,5 +1,5 @@
-To compile, you need a modern C++ compiler, such as recent g++ with -std=c++14.
+To compile, you need a modern C++ compiler, such as recent g++ with -std=c++17.
 Steps:
 
-1. Compile the program: "g++ -O3 -Wall -std=c++14 verifier.cpp -o ver"
+1. Compile the program: "g++ -O3 -Wall -std=c++17 verifier.cpp -o ver"
 2. Run the program "./ver 45_33_3bins.dot 45 33 3"

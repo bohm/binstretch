@@ -436,7 +436,6 @@ void print_compact_subtree(FILE* stream, bool stop_on_saplings, adversary_vertex
 
 void print_item_list(FILE* stream, adversary_vertex *v)
 {
-    bool first = true;
     int counter = 0;
 
     int total_items = 0;
