@@ -14,3 +14,4 @@ The code is inspired by the original techniques of:
 
 The lower bound search of the paper is also available [on Github](https://github.com/mgabay/Bin-Stretching-Lower-Bounds).
 
+(The version submitted alongside the dissertation is up to the commit `6ee81dd5d4f71d4eec5cf42194b59c447fe0bafa`.)
