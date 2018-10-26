@@ -1,5 +1,6 @@
 #include <cstdio>
 #include <cstdlib>
+#include <csignal>
 #include <inttypes.h>
 
 #include <mpi.h>
@@ -11,8 +12,23 @@
 #include "queen.hpp"
 #include "worker.hpp"
 
+void handle_sigusr1(int signo)
+{
+    if(BEING_QUEEN && signo == SIGUSR1)
+    {
+	fprintf(stderr, "Queen: Received SIGUSR1; updater will print the tree to a temporary file.\n");
+	debug_print_requested.store(true, std::memory_order_release);
+    }
+
+}
+
 int main(void)
 {
+    // set up to handle the SIGUSR1 signal
+    if (signal(SIGUSR1, handle_sigusr1) == SIG_ERR)
+    {
+	fprintf(stderr, "Warning: cannot catch SIGUSR1.\n");
+    }
     // create output file name
     sprintf(outfile, "%d_%d_%dbins.dot", R,S,BINS);
     int provided = 0;

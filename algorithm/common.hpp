@@ -30,13 +30,13 @@ typedef int16_t bin_int;
 const bool PROGRESS = true; // Whether to print progress info to stderr.
 const bool MEASURE = true; // Whether to collect and print measurements to stderr.
 
-const bool OUTPUT = false; // Whether to produce output.
-const bool REGROW = false; // Whether to regrow or just terminate after first iteration.
+const bool OUTPUT = true; // Whether to produce output.
+const bool REGROW = true; // Whether to regrow or just terminate after first iteration.
 
 // When producing output, how many times should a tree be regrown.
 // Note that REGROW_LIMIT = 0 still means a full tree will be generated.
 // const int REGROW_LIMIT = 65535;
-const int REGROW_LIMIT = 9;
+const int REGROW_LIMIT = 5;
 
 const int TASK_LOAD_INIT = 8; // A bound on total load of a configuration before we split it into a task.
 const int TASK_LOAD_STEP = 6; // The amount by which the load can increase when regrowing the tree.
@@ -46,10 +46,11 @@ const int TASK_DEPTH_STEP = 1; // The amount by which the depth is increased whe
 // whether to print the output as a single tree or as multiple trees.
 const bool SINGLE_TREE = true;
 // Use adversarial heuristics for nicer trees and disable them for machine verification.
-const bool ADVERSARY_HEURISTICS = true;
+const bool ADVERSARY_HEURISTICS = false;
 
 // Onepass mode: Do only one pass of monotonicity on all saplings and report % of successes.
 // Useful to count how many saplings need more monotonicity than FIRST_PASS.
+// const bool ONEPASS = false;
 const bool ONEPASS = false;
 
 // log tasks which run at least some amount of time
@@ -57,11 +58,11 @@ const bool TASKLOG = false;
 const long double TASKLOG_THRESHOLD = 60.0; // in seconds
 
 // maximum load of a bin in the optimal offline setting
-const bin_int S = 60;
+const bin_int S = 14;
 // target goal of the online bin stretching problem
-const bin_int R = 82;
+const bin_int R = 19;
 // Change this number or the selected number of bins.
-const bin_int BINS = 3;
+const bin_int BINS = 7;
 
 // If you want to generate a specific lower bound, you can create an initial bin configuration here.
 // You can also insert an initial sequence here.
@@ -86,19 +87,19 @@ const std::vector<bin_int> INITIAL_ITEMS = {};
 // const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1,1,1,1}; // 8x1
 // const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1,1,1}; // 7x1
 // const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1,1}; // 6x1
-// const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1}; // 5x1
+//const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1}; // 5x1
 // const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1}; // 4x1
 // const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1}; // 3x1
-// const std::vector<bin_int> INITIAL_SEQUENCE = {5};
+const std::vector<bin_int> INITIAL_SEQUENCE = {5};
 
 // const std::vector<bin_int> INITIAL_SEQUENCE = {2,2};
-const std::vector<bin_int> INITIAL_SEQUENCE = {};
+// const std::vector<bin_int> INITIAL_SEQUENCE = {};
 
-// const int FIRST_PASS = 0;
+const int FIRST_PASS = 0;
 // const int FIRST_PASS = 1;
 // const int FIRST_PASS = 6;
 // const int FIRST_PASS = 8;
-const int FIRST_PASS = S-1;
+// const int FIRST_PASS = S-1;
 
 // constants used for good situations
 const int RMOD = (R-1);

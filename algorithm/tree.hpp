@@ -251,18 +251,6 @@ void clear_visited_bits()
 void print_partial_gametree(FILE* stream, adversary_vertex *v);
 void print_partial_gametree(FILE* stream, algorithm_vertex *v);
 
-void print_debug_tree(adversary_vertex *r, int regrow_level, int extra_id)
-{
-    clear_visited_bits();
-    char debugfile[50];
-    sprintf(debugfile, "%d_%d_%dbins_reg%d_mon%d_ex%d.txt", R,S,BINS, regrow_level, monotonicity, extra_id);
-    print<true>("Printing to %s.\n", debugfile);
-    FILE* out = fopen(debugfile, "w");
-    assert(out != NULL);
-    print_partial_gametree(out, r);
-    fclose(out);
-}
-
 void print_partial_gametree(FILE* stream, adversary_vertex *v)
 {
     assert(v!=NULL);
@@ -374,6 +362,165 @@ void print_partial_gametree(FILE* stream, algorithm_vertex *v)
     }
 }
 
+void print_states(FILE *stream, adversary_vertex *v)
+{
+    fprintf(stream, "(");
+    
+    if (v->task)
+    {
+	fprintf(stream, "t");
+    } else if (v->sapling)
+    {
+	fprintf(stream, "s");
+    }
+
+    if (v->state == EXPAND)
+    { 
+	fprintf(stream, "E");
+    } else if (v->state == NEW)
+    {
+	fprintf(stream, "N");
+    } else if (v->state == FIXED)
+    {
+	fprintf(stream, "F");
+    } else if (v->state == FINISHED)
+    {
+	fprintf(stream, "D");
+    }
+    else {
+	fprintf(stream, "?");
+    }
+
+    fprintf(stream, ")");
+}
+
+
+void print_item_list(FILE* stream, adversary_vertex *v)
+{
+    int counter = 0;
+
+    int total_items = 0;
+    for (int item = 1; item < S; item++)
+    {
+	total_items += v->bc->items[item];
+    }
+
+    fprintf(stream, "// %d:", total_items);
+   
+    for (int item = S; item >= 1; item--)
+    {
+	if (v->bc->items[item] > 0)
+	{
+	    counter = v->bc->items[item];
+	    for (int j = 0; j < counter; j++)
+	    {
+		    fprintf(stream, " %d", item);
+	    }
+	}
+    }
+
+    fprintf(stream, "\n");
+}
+
+void print_edge(FILE *stream, adv_outedge *edge)
+{
+    fprintf(stream, "%" PRIu64 " -> %" PRIu64 ";\n", edge->from->id, edge->to->id);
+}
+    
+void print_edge(FILE *stream, alg_outedge *edge)
+{
+    fprintf(stream, "%" PRIu64 " -> %" PRIu64 ";\n", edge->from->id, edge->to->id);
+}
+ 
+void print_tree_adv(FILE *stream, adversary_vertex *v);
+void print_tree_alg(FILE *stream, algorithm_vertex *v);
+
+void print_tree_adv(FILE *stream, adversary_vertex *v)
+{
+    if (v->visited)
+    {
+	return;
+    }
+
+    v->visited = true;
+
+    if (v->task)
+    {
+	assert(v->out.size() == 0);
+    }
+
+    fprintf(stream, "%" PRIu64 " [label=\"", v->id);
+    for (int i=1; i<=BINS; i++)
+    {
+	// if (i > 1) { fprintf(stream, " "); }
+	fprintf(stream, "%d ", v->bc->loads[i]);
+    }
+
+    print_states(stream, v);
+
+    if(v->heuristic)
+    {
+	if (v->heuristic_type == LARGE_ITEM)
+	{
+	    fprintf(stream, "h:(%hd,%hd)\"];\n", v->heuristic_item, v->heuristic_multi);
+	} else if (v->heuristic_type == FIVE_NINE)
+	{
+	    fprintf(stream, "h:FN (%hd)\"];\n", v->heuristic_multi);
+	}
+    }
+
+    fprintf(stream, "\"];\n");
+
+    for (auto& edge : v->out)
+    {
+	print_edge(stream, edge);
+	print_tree_alg(stream, edge->to);
+    }
+
+}
+
+// This print function actually displays algorithm's game states as vertices as well.
+void print_tree_alg(FILE *stream, algorithm_vertex *v)
+{
+    if (v->visited)
+    {
+	return;
+    }
+    v->visited = true;
+
+    fprintf(stream, "%" PRIu64 " [label=\"%hu", v->id, v->next_item);
+    // print_states(stream, v);
+    fprintf(stream, "\"];\n");
+
+    for (auto& edge : v->out)
+    {
+	print_edge(stream, edge);
+	print_tree_adv(stream, edge->to);
+    }
+}
+
+void print_tree(FILE *stream, adversary_vertex *root)
+{
+    clear_visited_bits();
+    fprintf(stream, "strict digraph debug {\n");
+    fprintf(stream, "overlap = none;\n");
+    print_item_list(stream, root);
+    print_tree_adv(stream, root);
+    fprintf(stream, "}\n");
+}
+
+void print_debug_tree(adversary_vertex *r, int regrow_level, int extra_id)
+{
+    clear_visited_bits();
+    char debugfile[50];
+    sprintf(debugfile, "%d_%d_%dbins_reg%d_mon%d_ex%d.txt", R,S,BINS, regrow_level, monotonicity, extra_id);
+    print<true>("Printing to %s.\n", debugfile);
+    FILE* out = fopen(debugfile, "w");
+    assert(out != NULL);
+    print_tree(out, r);
+    fclose(out);
+}
+
 
 void print_compact_subtree(FILE* stream, bool stop_on_saplings, adversary_vertex *v)
 {
@@ -432,33 +579,6 @@ void print_compact_subtree(FILE* stream, bool stop_on_saplings, adversary_vertex
 
     }
     
-}
-
-void print_item_list(FILE* stream, adversary_vertex *v)
-{
-    int counter = 0;
-
-    int total_items = 0;
-    for (int item = 1; item < S; item++)
-    {
-	total_items += v->bc->items[item];
-    }
-
-    fprintf(stream, "// %d:", total_items);
-   
-    for (int item = S; item >= 1; item--)
-    {
-	if (v->bc->items[item] > 0)
-	{
-	    counter = v->bc->items[item];
-	    for (int j = 0; j < counter; j++)
-	    {
-		    fprintf(stream, " %d", item);
-	    }
-	}
-    }
-
-    fprintf(stream, "\n");
 }
 
 // a wrapper around print_compact_subtree that sets the stop_on_saplings to true

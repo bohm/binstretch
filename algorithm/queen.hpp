@@ -21,6 +21,7 @@ Message sequence:
  */
 
 std::atomic<bool> queen_cycle_terminate(false);
+std::atomic_bool debug_print_requested(false);
 std::atomic<int> updater_result(POSTPONED);
 
 int winning_saplings = 0;
@@ -75,6 +76,15 @@ void queen_updater(adversary_vertex* sapling)
 		print_debug_tree(computation_root, 0, 99);
 		assert(updater_result != POSTPONED || uat.unfinished_tasks > 0);
 	    }
+
+	    if (debug_print_requested.load(std::memory_order_acquire) == true)
+	    {
+		print<true>("Queen: printing the current state of the tree, as requested.\n");
+		fprintf(stderr, "A debug tree will be created with extra id 100.\n");
+		print_debug_tree(computation_root, 0, 100);
+		debug_print_requested.store(false, std::memory_order_release);
+	    }
+
 	    if (updater_result != POSTPONED)
 	    {
 		fprintf(stderr, "We have evaluated the tree: %d\n", updater_result.load(std::memory_order_acquire));
@@ -311,8 +321,11 @@ int queen()
 		break;
 	    }
 
+	    // When we compute 1 in this step, at least one of the saplings is definitely
+	    // a wrong move, which (currently) means Algorithm should be the winning player.
 	    if (updater_result == 1)
 	    {
+		ret = 1;
 		break;
 	    } else
 	    {
@@ -324,7 +337,15 @@ int queen()
 	    }
 	}
 
-	if (!ONEPASS && OUTPUT)
+	
+	// Do not try other saplings at the moment if one of them is a losing state.
+	// Disabled with ONEPASS = true (so that onepass counts the % of wins)
+	if (!ONEPASS && ret == 1)
+	{
+	    break;
+	}
+	
+	if (!ONEPASS && OUTPUT && updater_result == 0)
 	{
 	    char saplingfile[50];
 
