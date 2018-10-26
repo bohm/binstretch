@@ -383,7 +383,7 @@ void collect_tasks_adv(adversary_vertex *v, thread_attr *tat)
 	if(v->value != POSTPONED || ((v->state != NEW) && (v->state != EXPAND)) )
 	{
 	    print<true>("Trouble with task vertex %" PRIu64 ": it has value not POSTPONED, but %d.\n", v->id, v->value);
-	    print_debug_tree(computation_root, tat->regrow_level, 99);
+	    print_debug_dag(computation_root, tat->regrow_level, 99);
 	    assert(v->value == POSTPONED && ((v->state == NEW) || (v->state == EXPAND)) );
 	}
 

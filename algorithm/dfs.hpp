@@ -6,6 +6,7 @@
 #include <cstdio>
 #include "common.hpp"
 #include "tree.hpp"
+#include "tree_print.hpp"
 
 void purge_new_alg(algorithm_vertex *v);
 void purge_new_adv(adversary_vertex *v);
@@ -85,7 +86,7 @@ void relabel_and_fix_adv(adversary_vertex *v, thread_attr *tat)
 	    print<true>("Trouble with vertex %" PRIu64  " with %zu children, value %d and bc:\n", v->id, v->out.size(), v->value);
 	    print_binconf_stream(stderr, v->bc);
 	    fprintf(stderr, "A debug tree will be created with extra id 99.\n");
-	    print_debug_tree(computation_root, 0, 99);
+	    print_debug_dag(computation_root, 0, 99);
 
 	    assert(v->out.size() == 0 && v->value == 0);
 	}

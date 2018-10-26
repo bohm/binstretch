@@ -73,7 +73,7 @@ void queen_updater(adversary_vertex* sapling)
 	    {
 		print<true>("The tree is in a strange state.\n");
 		fprintf(stderr, "A debug tree will be created with extra id 99.\n");
-		print_debug_tree(computation_root, 0, 99);
+		print_debug_dag(computation_root, 0, 99);
 		assert(updater_result != POSTPONED || uat.unfinished_tasks > 0);
 	    }
 
@@ -81,7 +81,7 @@ void queen_updater(adversary_vertex* sapling)
 	    {
 		print<true>("Queen: printing the current state of the tree, as requested.\n");
 		fprintf(stderr, "A debug tree will be created with extra id 100.\n");
-		print_debug_tree(computation_root, 0, 100);
+		print_debug_dag(computation_root, 0, 100);
 		debug_print_requested.store(false, std::memory_order_release);
 	    }
 
@@ -207,7 +207,7 @@ int queen()
 		clear_visited_bits();
 		removed_task_count = 0;
 		updater_result = generate(currently_growing, &tat);
-		// print_debug_tree(computation_root, regrow_level, 0);
+		// print_debug_dag(computation_root, regrow_level, 0);
 		
 		computation_root->value = updater_result.load(std::memory_order_acquire);
 		if (computation_root->value != POSTPONED)
@@ -333,7 +333,7 @@ int queen()
 		assert(updater_result == 0);
 		// Transform tasks into EXPAND and NEW vertices into FIXED.
 		relabel_and_fix(computation_root, &tat);
-		// print_debug_tree(computation_root, regrow_level, 1);
+		// print_debug_dag(computation_root, regrow_level, 1);
 	    }
 	}
 

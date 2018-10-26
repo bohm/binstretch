@@ -15,120 +15,6 @@
 
 // Game tree (directed acyclic graph) printing routines.
 
-void print_partial_gametree(FILE* stream, adversary_vertex *v);
-void print_partial_gametree(FILE* stream, algorithm_vertex *v);
-
-void print_partial_gametree(FILE* stream, adversary_vertex *v)
-{
-    assert(v!=NULL);
-    assert(v->bc != NULL);
-
-    // since the graph is now a DAG, we use DFS to print
-    if (v->visited)
-    {
-	return;
-    }
-
-    v->visited = true;
-
-    fprintf(stream, "ADV vertex %" PRIu64 " depth %d ", v->id, v->depth);
-    if (v->task)
-    {
-	if(v->state == EXPAND)
-	{ 
-	    fprintf(stream, "(te) ");
-	} else if (v->state == NEW)
-	{
-	    fprintf(stream, "(t) ");
-	} else {
-	   //assert(v->state == NEW);
-	   // bugged cases
-	   if (v->state == FIXED)
-	   {
-	       fprintf(stream, "(tf?) ");
-	   } else if (v->state == FINISHED) {
-	       fprintf(stream, "(tF?) ");
-	   } else {
-	       fprintf(stream, "(t?) ");
-	   }
-	}
-    } else {
-	if (v->state == NEW)
-	{
-	    fprintf(stream, "(n) ");
-	} else if (v->state == EXPAND)
-	{
-	    fprintf(stream, "(e) ");
-	} else if (v->state == FIXED)
-	{
-	    fprintf(stream, "(f) ");
-	} else if (v->state == FINISHED)
-	{
-	    fprintf(stream, "(F) ");
-	}
-    }
-
-    fprintf(stream, "val %d ", v->value);
-    
-    fprintf(stream,"bc: ");
-    print_binconf_stream(stream, v->bc, false); // false == no newline
-
-    if (v->out.size() != 0)
-    {
-	fprintf(stream," ch: ");
-	for (auto& n: v->out) {
-	    fprintf(stream,"%" PRIu64 " (%d) ", n->to->id, n->item);
-	}	
-    }
-    
-    fprintf(stream,"\n");
-   
-    for (auto&& n: v->out) {
-	print_partial_gametree(stream, n->to);
-    }
-}
-
-void print_partial_gametree(FILE* stream, algorithm_vertex *v)
-{
-    assert(v!=NULL);
-
-    if (v->visited)
-    {
-	return;
-    }
-
-    v->visited = true;
-
-    fprintf(stream,"ALG vertex %" PRIu64 " ", v->id);
-
-    if (v->state == NEW)
-    {
-	fprintf(stream, "(n) ");
-    } else if (v->state == FIXED)
-    {
-	fprintf(stream, "(f) ");
-    } else if (v->state == FINISHED)
-    {
-	fprintf(stream, "(F)" );
-    } else {
-	print<true>("Adversary vertex is not fixed, finished or new.\n");
-	assert(false);
-    }
-    
-
-    fprintf(stream, "val %d ", v->value);
-
-    fprintf(stream,"ch: ");
-    for (auto& n: v->out) {
-	fprintf(stream,"%" PRIu64 " ", n->to->id);
-    }
-    fprintf(stream,"\n");
-
-    for (auto& n: v->out) {
-	print_partial_gametree(stream, n->to);
-    }
-}
-
 void print_states(FILE *stream, adversary_vertex *v)
 {
     fprintf(stream, "(");
@@ -199,10 +85,10 @@ void print_edge(FILE *stream, alg_outedge *edge)
     fprintf(stream, "%" PRIu64 " -> %" PRIu64 ";\n", edge->from->id, edge->to->id);
 }
  
-void print_tree_adv(FILE *stream, adversary_vertex *v);
-void print_tree_alg(FILE *stream, algorithm_vertex *v);
+void print_dag_adv(FILE *stream, adversary_vertex *v);
+void print_dag_alg(FILE *stream, algorithm_vertex *v);
 
-void print_tree_adv(FILE *stream, adversary_vertex *v)
+void print_dag_adv(FILE *stream, adversary_vertex *v)
 {
     if (v->visited)
     {
@@ -241,13 +127,13 @@ void print_tree_adv(FILE *stream, adversary_vertex *v)
     for (auto& edge : v->out)
     {
 	print_edge(stream, edge);
-	print_tree_alg(stream, edge->to);
+	print_dag_alg(stream, edge->to);
     }
 
 }
 
 // This print function actually displays algorithm's game states as vertices as well.
-void print_tree_alg(FILE *stream, algorithm_vertex *v)
+void print_dag_alg(FILE *stream, algorithm_vertex *v)
 {
     if (v->visited)
     {
@@ -262,21 +148,21 @@ void print_tree_alg(FILE *stream, algorithm_vertex *v)
     for (auto& edge : v->out)
     {
 	print_edge(stream, edge);
-	print_tree_adv(stream, edge->to);
+	print_dag_adv(stream, edge->to);
     }
 }
 
-void print_tree(FILE *stream, adversary_vertex *root)
+void print_dag(FILE *stream, adversary_vertex *root)
 {
     clear_visited_bits();
     fprintf(stream, "strict digraph debug {\n");
     fprintf(stream, "overlap = none;\n");
     print_item_list(stream, root);
-    print_tree_adv(stream, root);
+    print_dag_adv(stream, root);
     fprintf(stream, "}\n");
 }
 
-void print_debug_tree(adversary_vertex *r, int regrow_level, int extra_id)
+void print_debug_dag(adversary_vertex *r, int regrow_level, int extra_id)
 {
     clear_visited_bits();
     char debugfile[50];
@@ -284,12 +170,12 @@ void print_debug_tree(adversary_vertex *r, int regrow_level, int extra_id)
     print<true>("Printing to %s.\n", debugfile);
     FILE* out = fopen(debugfile, "w");
     assert(out != NULL);
-    print_tree(out, r);
+    print_dag(out, r);
     fclose(out);
 }
 
 
-void print_compact_subtree(FILE* stream, bool stop_on_saplings, adversary_vertex *v)
+void print_compact_subdag(FILE* stream, bool stop_on_saplings, adversary_vertex *v)
 {
     if (v->visited)
     {
@@ -321,19 +207,19 @@ void print_compact_subtree(FILE* stream, bool stop_on_saplings, adversary_vertex
 	}
     } else 
     {
-	// print_compact_subtree currently works for only DAGs with outdegree 1 on alg vertices
+	// print_compact_subdag currently works for only DAGs with outdegree 1 on alg vertices
 	if (v->out.size() > 1 || v->out.size() == 0)
 	{
 	    fprintf(stderr, "Trouble with vertex %" PRIu64  " with %zu children and bc:\n", v->id, v->out.size());
 	    print_binconf_stream(stderr, v->bc);
 	    fprintf(stderr, "A debug tree will be created with extra id 99.\n");
-	    print_debug_tree(computation_root, 0, 99);
+	    print_debug_dag(computation_root, 0, 99);
 	    assert(v->out.size() == 1);
 	}
 	adv_outedge *right_edge = *(v->out.begin());
 	int right_item = right_edge->item;
 	fprintf(stream, "n:%d\"];\n", right_item);
-	// print edges first, then print subtrees
+	// print edges first, then print subdags
 	for (auto& next: right_edge->to->out)
 	{
 	    fprintf(stream, "%" PRIu64 " -> %" PRIu64 "\n", v->id, next->to->id);
@@ -341,26 +227,37 @@ void print_compact_subtree(FILE* stream, bool stop_on_saplings, adversary_vertex
 	
 	for (auto& next: right_edge->to->out)
 	{
-	    print_compact_subtree(stream, stop_on_saplings, next->to);
+	    print_compact_subdag(stream, stop_on_saplings, next->to);
 	}
 
     }
     
 }
 
-// a wrapper around print_compact_subtree that sets the stop_on_saplings to true
+// Prints a tree with duplicates.
+void print_tree(FILE* stream, adversary_vertex *v);
+void print_tree(FILE* stream, algorithm_vertex *v);
+
+void print_tree(FILE* stream, adversary_vertex *v)
+{
+    
+}
+
+
+// A wrapper around print_compact_subdag that sets the stop_on_saplings to true.
+// Technically prints a DAG, not a tree.
 void print_treetop(FILE* stream, adversary_vertex *v)
 {
     clear_visited_bits();
     print_item_list(stream, v);
-    print_compact_subtree(stream, true, v);
+    print_compact_subdag(stream, true, v);
 }
 
 void print_compact(FILE* stream, adversary_vertex *v)
 {
     clear_visited_bits();
     print_item_list(stream, v);
-    print_compact_subtree(stream, false, v);
+    print_compact_subdag(stream, false, v);
 }
 
 // Defined in tasks.hpp.
