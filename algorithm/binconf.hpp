@@ -525,4 +525,134 @@ void binconf::unassign_and_rehash(int item, int bin, bin_int item_before_last)
     rehash_decreased_range(item, bin, from);
 }
 
+
+// A special variant of loadconf that is only used for the following
+// Coq proof.
+// For every bin, it holds the set of items currently packed in the bin.
+class fullconf
+{
+public:
+    uint64_t loadhash = 0;
+    bin_int loadset[BINS+1][S+1] = {0};
+    
+    bin_int load(bin_int bin)
+	{
+	    assert(bin >= 1 && bin <= BINS);
+	    bin_int sum = 0;
+	    for (int i = 1; i <= S; i++)
+	    {
+		sum += i*loadset[bin][i];
+	    }
+
+	    return sum;
+	}
+
+    void hashinit()
+	{
+	    loadhash = 0;
+	    
+	    for (int i=1; i<=BINS; i++)
+	    {
+		loadhash ^= Zl[i*(R+1) + load(i)];
+	    }
+	}
+
+    // returns new position of the newly loaded bin
+    int sortloads_one_increased(int i)
+	{
+	   //int i = newly_increased;
+	    while (!((i == 1) || (load(i-1) >= load(i))))
+	   {
+	       std::swap(loadset[i], loadset[i-1]);
+	       i--;
+	   }
+
+	   return i;
+       }
+
+    // inverse to sortloads_one_increased.
+    int sortloads_one_decreased(int i)
+       {
+	   //int i = newly_decreased;
+	   while (!((i == BINS) || (load(i+1) <= load(i))))
+	   {
+	       std::swap(loadset[i], loadset[i+1]);
+	       i++;
+	   }
+
+	   return i;
+       }
+
+    void rehash_loads_increased_range(int item, int from, int to)
+	{
+	    assert(item >= 1); assert(from <= to); assert(from >= 1); assert(to <= BINS);
+	    assert(load(from) >= item);
+	    
+	    if (from == to)
+	    {
+		loadhash ^= Zl[from*(R+1) + load(from) - item]; // old load
+		loadhash ^= Zl[from*(R+1) + load(from)]; // new load
+	    } else {
+		
+		// rehash loads in [from, to).
+		// here it is easy: the load on i changed from
+		// loads[i+1] to loads[i]
+		for (int i = from; i < to; i++)
+		{
+		    loadhash ^= Zl[i*(R+1) + load(i+1)]; // the old load on i
+		    loadhash ^= Zl[i*(R+1) + load(i)]; // the new load on i
+		}
+		
+		// the last load is tricky, because it is the increased load
+		
+		loadhash ^= Zl[to*(R+1) + load(from) - item]; // the old load
+		loadhash ^= Zl[to*(R+1) + load(to)]; // the new load
+	    }
+	}
+
+
+    void rehash_loads_decreased_range(int item, int from, int to)
+	{
+	    assert(item >= 1); assert(from <= to); assert(from >= 1); assert(to <= BINS);
+	    if (from == to)
+	    {
+		loadhash ^= Zl[from*(R+1) + load(from) + item]; // old load
+		loadhash ^= Zl[from*(R+1) + load(from)]; // new load
+	    } else {
+		
+		// rehash loads in (from, to].
+		// here it is easy: the load on i changed from
+		// d->loads[i] to d->loads[i-1]
+		for (int i = from+1; i <= to; i++)
+		{
+		    loadhash ^= Zl[i*(R+1) + load(i-1)]; // the old load on i
+		    loadhash ^= Zl[i*(R+1) + load(i)]; // the new load on i
+		}
+		
+		// the first load is tricky
+		
+		loadhash ^= Zl[from*(R+1) + load(to) + item]; // the old load
+		loadhash ^= Zl[from*(R+1) + load(from)]; // the new load
+	    }
+	}
+
+    int assign_and_rehash(int item, int bin)
+	{
+	    loadset[bin][item]++;
+	    int from = sortloads_one_increased(bin);
+	    rehash_loads_increased_range(item,from,bin);
+
+	    return from;
+	}
+
+    void unassign_and_rehash(int item, int bin)
+	{
+	    assert(loadset[bin][item] >= 1);
+	    loadset[bin][item]--;
+	    int to = sortloads_one_decreased(bin);
+	    rehash_loads_decreased_range(item, bin, to);
+	}
+};
+
+
 #endif

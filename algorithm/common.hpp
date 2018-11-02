@@ -19,8 +19,7 @@
 #include <numeric>
 #include <mpi.h>
 
-typedef unsigned long long int llu;
-typedef signed char tiny;
+#include "constants.hpp" // Non-changeable system constants.
 
 // Use this type for values of loads and items.
 // Reasonable settings are either int8_t or int16_t, depending on whether a bin can contain more
@@ -31,12 +30,14 @@ const bool PROGRESS = true; // Whether to print progress info to stderr.
 const bool MEASURE = true; // Whether to collect and print measurements to stderr.
 
 const bool OUTPUT = true; // Whether to produce output.
+const int OUTPUT_TYPE = COQ; // Choices: TREE, DAG, COQ.
+
 const bool REGROW = true; // Whether to regrow or just terminate after first iteration.
 
 // When producing output, how many times should a tree be regrown.
 // Note that REGROW_LIMIT = 0 still means a full tree will be generated.
 // const int REGROW_LIMIT = 65535;
-const int REGROW_LIMIT = 5;
+const int REGROW_LIMIT = 10;
 
 const int TASK_LOAD_INIT = 8; // A bound on total load of a configuration before we split it into a task.
 const int TASK_LOAD_STEP = 6; // The amount by which the load can increase when regrowing the tree.
@@ -58,11 +59,11 @@ const bool TASKLOG = false;
 const long double TASKLOG_THRESHOLD = 60.0; // in seconds
 
 // maximum load of a bin in the optimal offline setting
-const bin_int S = 14;
+const bin_int S = 63;
 // target goal of the online bin stretching problem
-const bin_int R = 19;
+const bin_int R = 86;
 // Change this number or the selected number of bins.
-const bin_int BINS = 7;
+const bin_int BINS = 3;
 
 // If you want to generate a specific lower bound, you can create an initial bin configuration here.
 // You can also insert an initial sequence here.
@@ -90,14 +91,16 @@ const std::vector<bin_int> INITIAL_ITEMS = {};
 //const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1}; // 5x1
 // const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1}; // 4x1
 // const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1}; // 3x1
-const std::vector<bin_int> INITIAL_SEQUENCE = {5};
+// const std::vector<bin_int> INITIAL_SEQUENCE = {5};
 
 // const std::vector<bin_int> INITIAL_SEQUENCE = {2,2};
-// const std::vector<bin_int> INITIAL_SEQUENCE = {};
+// const std::vector<bin_int> INITIAL_SEQUENCE = {2};
 
-const int FIRST_PASS = 0;
+const std::vector<bin_int> INITIAL_SEQUENCE = {};
+
+// const int FIRST_PASS = 0;
 // const int FIRST_PASS = 1;
-// const int FIRST_PASS = 6;
+const int FIRST_PASS = 6;
 // const int FIRST_PASS = 8;
 // const int FIRST_PASS = S-1;
 
@@ -168,18 +171,6 @@ const bool DISABLE_DP_CACHE = false;
 // maximum number of items
 const bin_int MAX_ITEMS = S*BINS;
 
-const int POSTPONED = 2;
-const int TERMINATING = 3;
-const int OVERDUE = 4;
-const int IRRELEVANT = 5;
-
-const int GENERATING = 1;
-const int EXPLORING = 2;
-const int EXPANDING = 3;
-const int UPDATING = 4;
-const int SEQUENCING = 5;
-const int CLEANUP = 6;
-
 char outfile[50];
 // MPI-related globals
 int world_size = 0;
@@ -211,44 +202,14 @@ int thread_rank_size = 0;
 
 // defined in binconf.hpp
 class binconf;
-class loadconf; 
-
-
-typedef int8_t maybebool;
-
-const maybebool MB_INFEASIBLE = 0;
-const maybebool MB_FEASIBLE = 1;
-const maybebool MB_NOT_CACHED = 2;
+class loadconf;
 
 // if a maximalization procedure gets an infeasible configuration, it returns MAX_INFEASIBLE.
 const bin_int MAX_INFEASIBLE = -1;
 // when a heuristic is unable to pack (but the configuration still may be feasible)
 const bin_int MAX_UNABLE_TO_PACK = -2;
 
-
-// aliases for measurements of good situations
-const int SITUATIONS = 10;
-
-const int GS1 = 0;
-const int GS1MOD = 1;
-const int GS2 = 2;
-const int GS2VARIANT = 3;
-const int GS3 = 4;
-const int GS3VARIANT = 5;
-const int GS4 = 6;
-const int GS4VARIANT = 7;
-const int GS5 = 8;
-const int GS6 = 9;
-
-const std::array<std::string, SITUATIONS> gsnames = {"GS1", "GS1MOD", "GS2", "GS2VARIANT", "GS3",
-				"GS3VARIANT", "GS4", "GS4VARIANT", "GS5", "GS6"};
-
-
 const bin_int IN_PROGRESS = 2;
-
-// modes for pushing into dynprog cache
-const int HEURISTIC = 0;
-const int PERMANENT = 1;
 
 // a test for queen being the only process working
 #define QUEEN_ONLY (world_size == 1)

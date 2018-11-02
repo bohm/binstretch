@@ -234,14 +234,265 @@ void print_compact_subdag(FILE* stream, bool stop_on_saplings, adversary_vertex 
     
 }
 
-// Prints a tree with duplicates.
-void print_tree(FILE* stream, adversary_vertex *v);
-void print_tree(FILE* stream, algorithm_vertex *v);
 
-void print_tree(FILE* stream, adversary_vertex *v)
+
+// Defined in dynprog.hpp.
+std::pair<bool, fullconf> dynprog_feasible_with_output(const binconf &conf);
+
+void print_coq_feasible_packing(FILE* stream,const binconf& bc, bin_int next_item, const char delim)
 {
     
+    binconf newconf(bc);
+    newconf.items[next_item]++;
+    auto [feas, packing] = dynprog_feasible_with_output(newconf);
+
+    // Only call this for feasible bin configurations.
+    assert(feas);
+    bool firstitem = true;
+    fprintf(stream, "[");
+    for (int i = 1; i <= BINS; i++)
+    {
+	if (i == 1)
+	{
+	    fprintf(stream, " [");
+	}
+	else
+	{
+	    fprintf(stream, "%c [", delim);
+	}
+
+	firstitem = true;
+	for (int j = 1; j <= S; j++)
+	{
+	    if (packing.loadset[i][j] > 0)
+	    {
+		bin_int times = packing.loadset[i][j];
+
+		for ( int i = 0; i < times; i++)
+		{
+		    if (firstitem)
+		    {
+			fprintf(stream, "%d", j );
+			firstitem = false;
+		    } else {
+			fprintf(stream, "%c%d", delim , j );
+		    }
+		}
+	    }
+	}
+	
+	fprintf(stream, "]");
+    }
+
+    fprintf(stream, " ]");
 }
+
+
+// Prints a tree with duplicates. The map of duplicate counts enables unique indices even
+// with duplicates in the tree.
+
+void print_tree_adv(FILE* stream, std::map<uint64_t, int>& duplicate_counts, adversary_vertex *v)
+{
+    // Compute the duplicate id of the current vertex.
+    int duplicate_id;
+    if (duplicate_counts.find(v->id) == duplicate_counts.end())
+    {
+	duplicate_id = duplicate_counts[v->id] = 0;
+    } else
+    {
+	duplicate_id = ++duplicate_counts[v->id];
+    }
+
+    fprintf(stream, "v%" PRIu64 "_%d [label=\"", v->id, duplicate_id);
+    for (int i=1; i<=BINS; i++)
+    {
+	fprintf(stream, "%d ", v->bc->loads[i]);
+    }
+
+    if (v->task)
+    {
+	assert(v->out.size() == 0);
+	fprintf(stream, "task\"];\n");
+    } else if(v->heuristic)
+    {
+	if (v->heuristic_type == LARGE_ITEM)
+	{
+	    fprintf(stream, "h:(%hd,%hd)\"];\n", v->heuristic_item, v->heuristic_multi);
+	} else if (v->heuristic_type == FIVE_NINE)
+	{
+	    fprintf(stream, "h:FN (%hd)\"];\n", v->heuristic_multi);
+	}
+    } else 
+    {
+	// print_compact_subdag currently works for only DAGs with outdegree 1 on alg vertices
+	if (v->out.size() > 1 || v->out.size() == 0)
+	{
+	    fprintf(stderr, "Trouble with vertex %" PRIu64  " with %zu children and bc:\n", v->id, v->out.size());
+	    print_binconf_stream(stderr, v->bc);
+	    fprintf(stderr, "A debug tree will be created with extra id 99.\n");
+	    print_debug_dag(computation_root, 0, 99);
+	    assert(v->out.size() == 1);
+	}
+	adv_outedge *right_edge = *(v->out.begin());
+	int right_item = right_edge->item;
+	fprintf(stream, "n:%d", right_item);
+
+	// Adding this to test packing print -- will make leaves bigger.
+	// If this is an adversarial leaf (all moves win), print a feasible packing.
+	if (right_edge->to->out.empty())
+	{
+	    fprintf(stream, " ");
+	    print_coq_feasible_packing(stream, *v->bc, right_item, ',');
+	}
+
+	fprintf(stream, "\"];\n");
+
+	// We have to deal with the fact that we do not know what is
+	// the actual full id (with duplicate id) of the
+	// children. However, this is not a problem, as in DFS we are
+	// sure that the first appearance of the child's duplicate id
+	// will be in our recursive call.
+	
+	for (auto& next: right_edge->to->out)
+	{
+	    int child_duplicate_id;
+	    if (duplicate_counts.find(next->to->id) == duplicate_counts.end())
+	    {
+		child_duplicate_id = 0;
+	    } else
+	    {
+		child_duplicate_id = duplicate_counts[next->to->id] + 1;
+	    }
+
+	    fprintf(stream, "v%" PRIu64 "_%d -> v%" PRIu64 "_%d \n", v->id, duplicate_id,
+		    next->to->id, child_duplicate_id);
+	}
+	
+	for (auto& next: right_edge->to->out)
+	{
+	    print_tree_adv(stream, duplicate_counts, next->to);
+	}
+    }
+}
+
+void print_compact_tree(adversary_vertex *r, bool single_sapling, int sapling_no)
+{
+    std::map<uint64_t, int> dups;
+
+    char saplingfile[50];
+
+    if (single_sapling)
+    {
+	sprintf(saplingfile, "%d_%d_%dbins.dot", R,S,BINS);
+    } else {
+	sprintf(saplingfile, "%d_%d_%dbins_sap%d.dot", R,S,BINS, sapling_no);
+    }
+
+     print<PROGRESS>("Printing result in Graphviz format (as a tree) to file %s.\n", saplingfile);
+    FILE* out = fopen(saplingfile, "w");
+    assert(out != NULL);
+
+    fprintf(out, "strict digraph sapling%d {\n", sapling_no);
+    fprintf(out, "overlap = none;\n");
+
+    print_tree_adv(out, dups, r);
+
+    fprintf(out, "}\n");
+    fclose(out);
+}
+
+
+// Prints a tree with duplicates which is in the format required by Coq.
+void print_coq_tree_adv(FILE *stream, adversary_vertex *v)
+{
+    // Constructor.
+    fprintf(stream, "\n node " );
+
+    // bin loads
+    fprintf(stream, "[");
+
+    for (int i=1; i<=BINS; i++)
+    {
+	if(i != 1)
+	{
+	    fprintf(stream, ";");
+	}
+	
+	fprintf(stream, "%d", v->bc->loads[i]);
+    }
+    fprintf(stream, "] ");
+
+    // Coq currently does not support printing tasks or heuristics.
+
+    assert(!v->task);
+    assert(!v->heuristic);
+
+    // Coq printing currently works only for DAGs with outdegree 1 on alg vertices
+    if (v->out.size() > 1 || v->out.size() == 0)
+    {
+	fprintf(stderr, "Trouble with vertex %" PRIu64  " with %zu children and bc:\n", v->id, v->out.size());
+	print_binconf_stream(stderr, v->bc);
+	fprintf(stderr, "A debug tree will be created with extra id 99.\n");
+	print_debug_dag(computation_root, 0, 99);
+	assert(v->out.size() == 1);
+    }
+    
+    adv_outedge *right_edge = *(v->out.begin());
+    int right_item = right_edge->item;
+
+
+    // Next item.
+    fprintf(stream, " %d ", right_item);
+
+    // If this is an adversarial leaf (all moves win), print a feasible packing.
+    if (right_edge->to->out.empty())
+    {
+	print_coq_feasible_packing(stream, *v->bc, right_item, ';');
+
+	fprintf(stream, " leaf ");
+    } else {
+
+	// Print empty packing for a non-leaf.
+	fprintf(stream, " [] ");
+	// List of children
+	fprintf(stream, "[[");
+
+	bool first = true;
+	for (auto& next: right_edge->to->out)
+	{
+	    if(first)
+	    {
+		first = false;
+	    } else {
+		fprintf(stream, "; ");
+	    }
+	    
+	    print_coq_tree_adv(stream, next->to);
+	}
+
+	// End of children list.
+	fprintf(stream, " ]]");
+    }
+}
+
+void print_coq_tree(adversary_vertex *v, bool single_sapling, int sapling_no)
+{
+    char saplingfile[50];
+
+    // We currently do not support multiple saplings.
+    assert(single_sapling);
+    sprintf(saplingfile, "%d_%d_%dbins.coq", R,S,BINS);
+    print<PROGRESS>("Printing result in Coq format to file %s.\n", saplingfile);
+
+
+    FILE* out = fopen(saplingfile, "w");
+    assert(out != NULL);
+
+    fprintf(out, "Definition lowerbound :=\n");
+    print_coq_tree_adv(out, v);
+    fprintf(out, ".\n");
+    fclose(out);
+}    
 
 
 // A wrapper around print_compact_subdag that sets the stop_on_saplings to true.
@@ -253,11 +504,32 @@ void print_treetop(FILE* stream, adversary_vertex *v)
     print_compact_subdag(stream, true, v);
 }
 
-void print_compact(FILE* stream, adversary_vertex *v)
+void print_compact(adversary_vertex *v, bool single_sapling, int sapling_no)
 {
     clear_visited_bits();
-    print_item_list(stream, v);
-    print_compact_subdag(stream, false, v);
+
+    char saplingfile[50];
+
+    if (single_sapling)
+    {
+	sprintf(saplingfile, "%d_%d_%dbins.dot", R,S,BINS);
+    } else {
+	sprintf(saplingfile, "%d_%d_%dbins_sap%d.dot", R,S,BINS, sapling_no);
+    }
+
+    print<PROGRESS>("Printing result in Graphviz format to file %s.\n", saplingfile);
+    FILE* out = fopen(saplingfile, "w");
+    assert(out != NULL);
+
+    fprintf(out, "strict digraph sapling%d {\n", sapling_no);
+    fprintf(out, "overlap = none;\n");
+
+    print_item_list(out, v);
+    print_compact_subdag(out, false, v);
+
+    fprintf(out, "}\n");
+    fclose(out);
+
 }
 
 // Defined in tasks.hpp.

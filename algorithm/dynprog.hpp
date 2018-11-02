@@ -221,10 +221,10 @@ bool dynprog_test_loadhash(const binconf *conf, thread_attr *tat)
 			}
 
 			int newpos = tuple.assign_and_rehash(size, i);
-			if(! loadconf_hashfind(tuple.loadhash, tat))
+			if(! loadconf_hashfind(tuple.loadhash, tat->loadht))
 			{
 			    pnewq->push_back(tuple);
-			    loadconf_hashpush(tuple.loadhash, tat);
+			    loadconf_hashpush(tuple.loadhash, tat->loadht);
 			}
 
 		        tuple.unassign_and_rehash(size, newpos);
@@ -330,7 +330,7 @@ bin_int dynprog_max_safe(const binconf &conf, thread_attr *tat)
 			uint64_t debug_loadhash = tuple.loadhash;
 			int newpos = tuple.assign_and_rehash(size, i);
 	
-			if(! loadconf_hashfind(tuple.loadhash ^ salt, tat))
+			if(! loadconf_hashfind(tuple.loadhash ^ salt, tat->loadht))
 			{
 			    if(size == smallest_item && k == 1)
 			    {
@@ -339,7 +339,7 @@ bin_int dynprog_max_safe(const binconf &conf, thread_attr *tat)
 			    }
 
 			    pnewq->push_back(tuple);
-			    loadconf_hashpush(tuple.loadhash ^ salt, tat);
+			    loadconf_hashpush(tuple.loadhash ^ salt, tat->loadht);
 			}
 
 		        tuple.unassign_and_rehash(size, newpos);
@@ -460,7 +460,7 @@ bin_int dynprog_max(const binconf &conf, thread_attr *tat)
 			uint64_t debug_loadhash = tuple.loadhash;
 			int newpos = tuple.assign_and_rehash(size, i);
 	
-			if(! loadconf_hashfind(tuple.loadhash ^ salt, tat))
+			if(! loadconf_hashfind(tuple.loadhash ^ salt, tat->loadht))
 			{
 			    if(size == smallest_item && k == 1)
 			    {
@@ -469,7 +469,7 @@ bin_int dynprog_max(const binconf &conf, thread_attr *tat)
 			    }
 
 			    pnewq->push_back(tuple);
-			    loadconf_hashpush(tuple.loadhash ^ salt, tat);
+			    loadconf_hashpush(tuple.loadhash ^ salt, tat->loadht);
 			}
 
 		        tuple.unassign_and_rehash(size, newpos);
@@ -586,7 +586,7 @@ std::pair<bool, bin_int> dynprog_max_vector(const binconf *conf, const std::vect
 
 			int newpos = tuple.assign_and_rehash(size, i);
 			
-			if(! loadconf_hashfind(tuple.loadhash, tat))
+			if(! loadconf_hashfind(tuple.loadhash, tat->loadht))
 			{
 			    if(size == smallest_item && k == 1)
 			    {
@@ -602,7 +602,7 @@ std::pair<bool, bin_int> dynprog_max_vector(const binconf *conf, const std::vect
 			    }
 
 			    pnewq->push_back(tuple);
-			    loadconf_hashpush(tuple.loadhash, tat);
+			    loadconf_hashpush(tuple.loadhash, tat->loadht);
 			}
 
 		        tuple.unassign_and_rehash(size, newpos);
@@ -846,4 +846,102 @@ void dp_cache_print(binconf &h, thread_attr *tat)
     fprintf(stderr, "\n");
 	    
 }
+
+
+// Computes a maximum feasible packing (if it exists) and returns it.
+// A function currently used only for Coq output.
+// Also does not handle any size separately; no need to speed this up.
+std::pair<bool, fullconf> dynprog_feasible_with_output(const binconf &conf)
+{
+    std::vector<fullconf> oldloadqueue, newloadqueue;
+    oldloadqueue.reserve(LOADSIZE);
+    newloadqueue.reserve(LOADSIZE);
+    uint64_t loadht[LOADSIZE] = {0};
+
+    std::vector<fullconf> *poldq = &oldloadqueue;
+    std::vector<fullconf> *pnewq = &newloadqueue;
+
+    uint64_t salt = rand_64bit();
+    bool initial_phase = true;
+    bin_int smallest_item = 0;
+
+    fullconf ret;
+    
+    for (int i = 1; i <= S; i++)
+    {
+	if (conf.items[i] > 0)
+	{
+	    smallest_item = i;
+	    break;
+	}
+    }
+
+    for (bin_int size=S; size>=1; size--)
+    {
+	bin_int k = conf.items[size];
+	while (k > 0)
+	{
+	    if (initial_phase)
+	    {
+		fullconf first;
+		first.hashinit();
+		first.assign_and_rehash(size, 1);
+		pnewq->push_back(first);
+
+		initial_phase = false;
+
+		if(size == smallest_item && k == 1)
+		{
+		    return std::make_pair(true,first);
+		}
+	    } else {
+		for (fullconf& tuple: *poldq)
+		{
+		    for (int i=BINS; i >= 1; i--)
+		    {
+			// same as with Algorithm, we can skip when sequential bins have the same load
+			if (i < BINS && tuple.load(i) == tuple.load(i + 1))
+			{
+			    continue;
+			}
+			
+			if (tuple.load(i) + size > S) {
+			    break;
+			}
+
+			uint64_t debug_loadhash = tuple.loadhash;
+			int newpos = tuple.assign_and_rehash(size, i);
+	
+			if(! loadconf_hashfind(tuple.loadhash ^ salt, loadht))
+			{
+			    if(size == smallest_item && k == 1)
+			    {
+				return std::make_pair(true, tuple);
+			    }
+
+			    pnewq->push_back(tuple);
+			    loadconf_hashpush(tuple.loadhash ^ salt, loadht);
+			}
+
+		        tuple.unassign_and_rehash(size, newpos);
+			assert(tuple.loadhash == debug_loadhash);
+		    }
+		}
+		if (pnewq->size() == 0)
+		{
+		    return std::make_pair(false, ret);
+		}
+	    }
+
+	    std::swap(poldq, pnewq);
+	    pnewq->clear();
+	    k--;
+	}
+    }
+
+    // Generally should not happen, but we return an object anyway.
+    return std::make_pair(false, ret);
+}
+
+
 #endif // _DYNPROG_HPP

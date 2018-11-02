@@ -142,6 +142,7 @@ int queen()
 
     if (OUTPUT && !single_sapling)
     {
+	assert(OUTPUT_TYPE == DAG);
 	char treetopfile[50];
 	sprintf(treetopfile, "%d_%d_%dbins_top.dot", R,S,BINS);
 	print<PROGRESS>("Printing treetop to file %s.\n", treetopfile);
@@ -347,24 +348,17 @@ int queen()
 	
 	if (!ONEPASS && OUTPUT && updater_result == 0)
 	{
-	    char saplingfile[50];
 
-	    if (single_sapling)
+	    if (OUTPUT_TYPE == DAG)
 	    {
-		sprintf(saplingfile, "%d_%d_%dbins.dot", R,S,BINS);
-	    } else {
-		sprintf(saplingfile, "%d_%d_%dbins_sap%d.dot", R,S,BINS, sapling_no);
+		print_compact(computation_root, single_sapling, sapling_no);
+	    } else if (OUTPUT_TYPE == TREE)
+	    {
+		print_compact_tree(computation_root, single_sapling, sapling_no);
+	    } else if (OUTPUT_TYPE == COQ)
+	    {
+		print_coq_tree(computation_root, single_sapling, sapling_no);
 	    }
-
-	    print<PROGRESS>("Printing result to file %s.\n", saplingfile);
-
-	    FILE* out = fopen(saplingfile, "w");
-	    assert(out != NULL);
-	    fprintf(out, "strict digraph sapling%d {\n", sapling_no);
-	    fprintf(out, "overlap = none;\n");
-	    print_compact(out, computation_root);
-	    fprintf(out, "}\n");
-	    fclose(out);
 	}
 
 	sapling_no++;

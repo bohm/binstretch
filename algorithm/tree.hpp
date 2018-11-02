@@ -11,7 +11,9 @@
 #include <chrono>
 #include <queue>
 #include <stack>
+
 #include "common.hpp"
+#include "binconf.hpp"
 
 // a game tree (actually a DAG) used for outputting the resulting
 // strategy if the result is positive.
