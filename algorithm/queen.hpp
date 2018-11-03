@@ -103,6 +103,7 @@ int queen()
     int sapling_no = 0;
     int ret = 0;
     bool single_sapling = true;
+    bool output_useful = false; // Set to true when it is clear output will be printed.
     
     MPI_Get_processor_name(processor_name, &name_len);
     fprintf(stderr, "Queen: reporting for duty: %s, rank %d out of %d instances\n",
@@ -140,6 +141,8 @@ int queen()
 	single_sapling = false;
     }
 
+    /* We no longer print treetops, instead we print the full graph always.
+       Saplings should still be supported, though.
     if (OUTPUT && !single_sapling)
     {
 	assert(OUTPUT_TYPE == DAG);
@@ -154,6 +157,7 @@ int queen()
 	fprintf(out, "}\n");
 	fclose(out);
     }
+    */
 
     while (!sapling_stack.empty())
     {
@@ -346,22 +350,15 @@ int queen()
 	    break;
 	}
 	
-	if (!ONEPASS && OUTPUT && updater_result == 0)
-	{
-
-	    if (OUTPUT_TYPE == DAG)
-	    {
-		print_compact(computation_root, single_sapling, sapling_no);
-	    } else if (OUTPUT_TYPE == TREE)
-	    {
-		print_compact_tree(computation_root, single_sapling, sapling_no);
-	    } else if (OUTPUT_TYPE == COQ)
-	    {
-		print_coq_tree(computation_root, single_sapling, sapling_no);
-	    }
-	}
-
 	sapling_no++;
+    }
+
+    // We currently print output when:
+    // ONEPASS is false, the last sapling was winning for Algorithm,
+    // and there are no more saplings in the queue.
+    if (!ONEPASS && ret == 0 && sapling_stack.empty())
+    {
+	output_useful = true;
     }
 
     // We are terminating, start final round.
@@ -369,6 +366,23 @@ int queen()
     round_start_and_finality(true);
     receive_measurements();
     round_end();
+
+    
+    // We now print only once, after a full tree is generated.
+    if (OUTPUT && output_useful)
+    {
+
+	if (OUTPUT_TYPE == DAG)
+	{
+	    print_compact(root_vertex);
+	} else if (OUTPUT_TYPE == TREE)
+	{
+	    print_compact_tree(root_vertex);
+	} else if (OUTPUT_TYPE == COQ)
+	{
+	    print_coq_tree(root_vertex);
+	}
+    }
 
     // Print measurements and clean up.
     g_meas.print();

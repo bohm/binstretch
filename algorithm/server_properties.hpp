@@ -79,7 +79,7 @@ std::tuple<unsigned int, unsigned int, unsigned int> server_properties(char *ser
     }
     else if ( (strcmp(server_name, "t1000") == 0) )
     {
-	return std::make_tuple(26, 26, 7);
+	return std::make_tuple(27, 27, 7);
 
     }
     else {

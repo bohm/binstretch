@@ -54,4 +54,22 @@ const std::array<std::string, SITUATIONS> gsnames = {"GS1", "GS1MOD", "GS2", "GS
 const int HEURISTIC = 0;
 const int PERMANENT = 1;
 
+// Sanity check for definition of the variables that should be passed
+// by the build script.
+
+#ifndef _BINS
+#error "The macro constant _BINS need to be set by the build script!"
+#define _BINS 2 // This line is a hack to make G++ spit out only the error above.
 #endif
+
+#ifndef _R
+#error "The macro constant _R need to be set by the build script!"
+#define _R 4 // ditto
+#endif
+
+#ifndef _S
+#error "The macro constant _S need to be set by the build script!"
+#define _S 3 // ditto 
+#endif
+
+#endif // _CONSTANTS_HPP

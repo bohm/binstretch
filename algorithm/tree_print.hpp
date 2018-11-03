@@ -375,24 +375,18 @@ void print_tree_adv(FILE* stream, std::map<uint64_t, int>& duplicate_counts, adv
     }
 }
 
-void print_compact_tree(adversary_vertex *r, bool single_sapling, int sapling_no)
+void print_compact_tree(adversary_vertex *r)
 {
     std::map<uint64_t, int> dups;
 
-    char saplingfile[50];
-
-    if (single_sapling)
-    {
-	sprintf(saplingfile, "%d_%d_%dbins.dot", R,S,BINS);
-    } else {
-	sprintf(saplingfile, "%d_%d_%dbins_sap%d.dot", R,S,BINS, sapling_no);
-    }
-
-     print<PROGRESS>("Printing result in Graphviz format (as a tree) to file %s.\n", saplingfile);
-    FILE* out = fopen(saplingfile, "w");
+    char outfile[50];
+    sprintf(outfile, "bs%d_%d_%dbins_tree.dot", R,S,BINS);
+    print<PROGRESS>("Printing result in Graphviz format (as a tree) to file %s.\n", outfile);
+    
+    FILE* out = fopen(outfile, "w");
     assert(out != NULL);
 
-    fprintf(out, "strict digraph sapling%d {\n", sapling_no);
+    fprintf(out, "strict digraph lowerbound_tree {\n");
     fprintf(out, "overlap = none;\n");
 
     print_tree_adv(out, dups, r);
@@ -411,14 +405,21 @@ void print_coq_tree_adv(FILE *stream, adversary_vertex *v)
     // bin loads
     fprintf(stream, "[");
 
+    bool first = true;
     for (int i=1; i<=BINS; i++)
     {
-	if(i != 1)
+	if (v->bc->loads[i] > 0)
 	{
-	    fprintf(stream, ";");
-	}
+	    if(first)
+	    {
+		first = false;
+	    }
+	    else {
+		fprintf(stream, ";");
+	    }
 	
-	fprintf(stream, "%d", v->bc->loads[i]);
+	    fprintf(stream, "%d", v->bc->loads[i]);
+	}
     }
     fprintf(stream, "] ");
 
@@ -475,19 +476,18 @@ void print_coq_tree_adv(FILE *stream, adversary_vertex *v)
     }
 }
 
-void print_coq_tree(adversary_vertex *v, bool single_sapling, int sapling_no)
+void print_coq_tree(adversary_vertex *v)
 {
-    char saplingfile[50];
+    char outfile[50];
 
-    // We currently do not support multiple saplings.
-    assert(single_sapling);
-    sprintf(saplingfile, "%d_%d_%dbins.coq", R,S,BINS);
-    print<PROGRESS>("Printing result in Coq format to file %s.\n", saplingfile);
+    sprintf(outfile, "bs%d_%d_%dbins.coq", R,S,BINS);
+    print<PROGRESS>("Printing result in Coq format to file %s.\n", outfile);
 
 
-    FILE* out = fopen(saplingfile, "w");
+    FILE* out = fopen(outfile, "w");
     assert(out != NULL);
 
+    fprintf(out, "Require Import binstretching.\n");
     fprintf(out, "Definition lowerbound :=\n");
     print_coq_tree_adv(out, v);
     fprintf(out, ".\n");
@@ -504,24 +504,18 @@ void print_treetop(FILE* stream, adversary_vertex *v)
     print_compact_subdag(stream, true, v);
 }
 
-void print_compact(adversary_vertex *v, bool single_sapling, int sapling_no)
+void print_compact(adversary_vertex *v)
 {
     clear_visited_bits();
 
-    char saplingfile[50];
+    char outfile[50];
+    sprintf(outfile, "bs%d_%d_%dbins.dot", R,S,BINS);
 
-    if (single_sapling)
-    {
-	sprintf(saplingfile, "%d_%d_%dbins.dot", R,S,BINS);
-    } else {
-	sprintf(saplingfile, "%d_%d_%dbins_sap%d.dot", R,S,BINS, sapling_no);
-    }
-
-    print<PROGRESS>("Printing result in Graphviz format to file %s.\n", saplingfile);
-    FILE* out = fopen(saplingfile, "w");
+    print<PROGRESS>("Printing result in Graphviz format to file %s.\n", outfile);
+    FILE* out = fopen(outfile, "w");
     assert(out != NULL);
 
-    fprintf(out, "strict digraph sapling%d {\n", sapling_no);
+    fprintf(out, "strict digraph lowerbound {\n");
     fprintf(out, "overlap = none;\n");
 
     print_item_list(out, v);
