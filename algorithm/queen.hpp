@@ -141,23 +141,7 @@ int queen()
 	single_sapling = false;
     }
 
-    /* We no longer print treetops, instead we print the full graph always.
-       Saplings should still be supported, though.
-    if (OUTPUT && !single_sapling)
-    {
-	assert(OUTPUT_TYPE == DAG);
-	char treetopfile[50];
-	sprintf(treetopfile, "%d_%d_%dbins_top.dot", R,S,BINS);
-	print<PROGRESS>("Printing treetop to file %s.\n", treetopfile);
-	FILE* out = fopen(treetopfile, "w");
-	assert(out != NULL);
-	fprintf(out, "strict digraph treetop {\n");
-	fprintf(out, "overlap = none;\n");
-	print_treetop(out, root_vertex);
-	fprintf(out, "}\n");
-	fclose(out);
-    }
-    */
+    if (PROGRESS) { scheduler_start = std::chrono::system_clock::now(); }
 
     while (!sapling_stack.empty())
     {
@@ -192,8 +176,6 @@ int queen()
 	    thread_attr tat;
 	    tat.regrow_level = regrow_level;
 	    
-	    if (PROGRESS) { scheduler_start = std::chrono::system_clock::now(); }
-
 	    // do not change monotonicity when regrowing (regrow_level >= 1)
 	    for (; monotonicity <= S-1; monotonicity++)
 	    {
@@ -310,14 +292,6 @@ int queen()
 		}
 	    }
 	    
-	    // either updater_result == 0 or tested all monotonicities
-	    if (PROGRESS)
-	    {
-		scheduler_end = std::chrono::system_clock::now();
-		std::chrono::duration<long double> scheduler_time = scheduler_end - scheduler_start;
-		print<PROGRESS>("Full evaluation time: %Lfs.\n", scheduler_time.count());
-	    }
-
 	    // When we are not regrowing, we just finish up and move to the next sapling.
 	    // We also finish up when the lower bound is complete.
 	    if ((!REGROW && (updater_result == 0)) || (REGROW && updater_result == 0 && lower_bound_complete))
@@ -366,6 +340,14 @@ int queen()
     round_start_and_finality(true);
     receive_measurements();
     round_end();
+
+    if (PROGRESS)
+    {
+	scheduler_end = std::chrono::system_clock::now();
+	std::chrono::duration<long double> scheduler_time = scheduler_end - scheduler_start;
+	print<PROGRESS>("Full evaluation time: %Lfs.\n", scheduler_time.count());
+    }
+
 
     
     // We now print only once, after a full tree is generated.

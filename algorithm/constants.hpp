@@ -54,6 +54,9 @@ const std::array<std::string, SITUATIONS> gsnames = {"GS1", "GS1MOD", "GS2", "GS
 const int HEURISTIC = 0;
 const int PERMANENT = 1;
 
+#define STRATEGY_BASIC 0
+#define STRATEGY_NINETEEN_FREQ 1
+
 // Sanity check for definition of the variables that should be passed
 // by the build script.
 

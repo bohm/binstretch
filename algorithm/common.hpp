@@ -21,13 +21,6 @@
 
 #include "constants.hpp" // Non-changeable system constants.
 
-// Maximum load of a bin in the optimal offline setting.
-// #define _S 14
-// Target goal of the online bin stretching problem.
-// #define _R 19
-// Change this number for the selected number of bins.
-// #define _BINS 7
-
 const bool PROGRESS = true; // Whether to print progress info to stderr.
 const bool MEASURE = true; // Whether to collect and print measurements to stderr.
 
@@ -41,9 +34,9 @@ const bool REGROW = true; // Whether to regrow or just terminate after first ite
 // const int REGROW_LIMIT = 65535;
 const int REGROW_LIMIT = 4;
 
-const int TASK_LOAD_INIT = 8; // A bound on total load of a configuration before we split it into a task.
+const int TASK_LOAD_INIT = 9; // A bound on total load of a configuration before we split it into a task.
 const int TASK_LOAD_STEP = 6; // The amount by which the load can increase when regrowing the tree.
-const int TASK_DEPTH_INIT = 5; //The maximum depth of a vertex in the tree before it is made into a task.
+const int TASK_DEPTH_INIT = 7; //The maximum depth of a vertex in the tree before it is made into a task.
 const int TASK_DEPTH_STEP = 1; // The amount by which the depth is increased when regrowing.
 
 // whether to print the output as a single tree or as multiple trees.
@@ -59,6 +52,9 @@ const bool ONEPASS = false;
 // log tasks which run at least some amount of time
 const bool TASKLOG = false;
 const long double TASKLOG_THRESHOLD = 60.0; // in seconds
+
+// #define STRATEGY STRATEGY_BASIC
+#define STRATEGY STRATEGY_NINETEEN_FREQ
 
 
 // Use this type for values of loads and items.
@@ -95,9 +91,9 @@ const std::vector<bin_int> INITIAL_ITEMS = {};
 // const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1,1}; // 6x1
 // const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1}; // 5x1
 // const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1}; // 4x1
-// const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1}; // 3x1
+ const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1}; // 3x1
 // const std::vector<bin_int> INITIAL_SEQUENCE = {5};
-const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,4}; // 3x1
+// const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,4}; // 3x1
 
 // const std::vector<bin_int> INITIAL_SEQUENCE = {2,2};
 // const std::vector<bin_int> INITIAL_SEQUENCE = {2};

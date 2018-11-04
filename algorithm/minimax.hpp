@@ -21,6 +21,7 @@
 #include "gs.hpp"
 #include "tasks.hpp"
 #include "networking.hpp"
+#include "strategy.hpp"
 
 template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, adversary_vertex *adv_to_evaluate, algorithm_vertex* parent_alg);
 template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat, algorithm_vertex *alg_to_evaluate, adversary_vertex *parent_adv);
@@ -256,8 +257,21 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, advers
     int maximum_feasible = dp; // possibly also INFEASIBLE == -1
     print<DEBUG>("Trying player zero choices, with maxload starting at %d\n", maximum_feasible);
 
-    for (int item_size = maximum_feasible; item_size>=lower_bound; item_size--)
+    // for (int item_size = maximum_feasible; item_size>=lower_bound; item_size--)
+
+    // counts the number of current iterations taken
+    int stepcounter = 0;
+    for (int item_size = strategy_start(maximum_feasible);
+     	 !strategy_end(maximum_feasible, lower_bound, stepcounter, item_size);
+	 strategy_step(maximum_feasible, lower_bound, stepcounter, item_size)) */
     {
+
+	// Skip if the current choice is disallowed (by e.g. lower and upper bounds).
+	if (strategy_skip(maximum_feasible, lower_bound, stepcounter, item_size))
+	{
+	    continue;
+	}
+	
         print<DEBUG>("Sending item %d to algorithm.\n", item_size);
 
 	if (MODE == GENERATING)
