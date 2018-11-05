@@ -263,7 +263,7 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, advers
     int stepcounter = 0;
     for (int item_size = strategy_start(maximum_feasible);
      	 !strategy_end(maximum_feasible, lower_bound, stepcounter, item_size);
-	 strategy_step(maximum_feasible, lower_bound, stepcounter, item_size)) */
+	 strategy_step(maximum_feasible, lower_bound, stepcounter, item_size))
     {
 
 	// Skip if the current choice is disallowed (by e.g. lower and upper bounds).
