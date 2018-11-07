@@ -25,7 +25,7 @@ const bool PROGRESS = true; // Whether to print progress info to stderr.
 const bool MEASURE = true; // Whether to collect and print measurements to stderr.
 
 const bool OUTPUT = true; // Whether to produce output.
-const int OUTPUT_TYPE = DAG; // Choices: DAG, TREE, COQ.
+const output_type OUTPUT_TYPE = output_type::dag; // Choices: dag, tree, coq.
 
 const bool REGROW = true; // Whether to regrow or just terminate after first iteration.
 

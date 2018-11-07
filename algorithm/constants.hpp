@@ -7,10 +7,16 @@ typedef unsigned long long int llu;
 typedef signed char tiny;
 
 
+// Victory states.
+enum class victory {uncertain, alg, adv};
+
+enum class output_type {tree, dag, coq};
+
+
 // Output types.
-const int TREE = 0;
-const int DAG = 1;
-const int COQ = 2;
+// const int TREE = 0;
+// const int DAG = 1;
+// const int COQ = 2;
 
 // Updater states.
 const int POSTPONED = 2;

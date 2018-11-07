@@ -354,13 +354,13 @@ int queen()
     if (OUTPUT && output_useful)
     {
 
-	if (OUTPUT_TYPE == DAG)
+	if (OUTPUT_TYPE == output_type::dag)
 	{
 	    print_compact(root_vertex);
-	} else if (OUTPUT_TYPE == TREE)
+	} else if (OUTPUT_TYPE == output_type::tree)
 	{
 	    print_compact_tree(root_vertex);
-	} else if (OUTPUT_TYPE == COQ)
+	} else if (OUTPUT_TYPE == output_type::coq)
 	{
 	    print_coq_tree(root_vertex);
 	}
