@@ -348,6 +348,7 @@ void check_root_solved()
     }
 }
 
+/*
 void broadcast_after_generation(int generated_value)
 {
     assert(BEING_QUEEN);
@@ -361,6 +362,7 @@ int broadcast_after_generation()
     MPI_Bcast(&value_from_queen, 1, MPI_INT, QUEEN, MPI_COMM_WORLD);
     return value_from_queen;
 }
+*/
 
 void blocking_check_root_solved()
 {

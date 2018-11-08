@@ -119,9 +119,9 @@ bool check_batch_end(const int* batch)
     }
 }
 
-int worker_solve(const task *t, const int& task_id)
+victory worker_solve(const task *t, const int& task_id)
 {
-    int ret = POSTPONED;
+    victory ret = victory::uncertain;
 
     thread_attr tat;
     //tat.last_item = t->last_item;
@@ -139,7 +139,7 @@ int worker_solve(const task *t, const int& task_id)
     tat.prev_max_feasible = S;
     ret = explore(&task_copy, &tat);
     g_meas.add(tat.meas);
-    assert(ret != POSTPONED);
+    assert(ret != victory::uncertain); // Might be victory for alg, adv or irrelevant.
     return ret;
 }
 
@@ -205,7 +205,7 @@ void worker(int thread_id)
 		processing_start = std::chrono::system_clock::now();
 	    }
 	
-	    int solution = IRRELEVANT;
+	    victory solution = victory::irrelevant;
 	    if  (tstatus[current_task_id].load() != TASK_PRUNED)
 	    {
 		// print<true>("Worker %d processing task %d.\n", thread_rank + thread_id, current_task_id);
@@ -226,15 +226,16 @@ void worker(int thread_id)
 		}
 	    }
 
-	    assert(solution == 0 || solution == 1 || solution == IRRELEVANT);
+	    assert(solution == victory::alg || solution == victory::adv || solution == victory::adv);
 
-	    if (solution != IRRELEVANT)
+	    if (solution == victory::adv)
 	    {
-		tstatus[current_task_id].store(solution);
-		// print<true>("Pushing task %d into queue %d.\n", current_task_id, thread_id);
+		tstatus[current_task_id].store(TASK_ADV);
 		finished_tasks[thread_id].push(current_task_id);
-		// print<true>("Queue info: reserve %d, qhead %d, qsize %d.\n", finished_tasks[thread_id].reserve,
-		// 		finished_tasks[thread_id].qhead, finished_tasks[thread_id].qsize.load());
+	    } else if (solution == victory::alg)
+	    {
+		tstatus[current_task_id].store(TASK_ALG);
+		finished_tasks[thread_id].push(current_task_id);
 	    }
 	}
 	

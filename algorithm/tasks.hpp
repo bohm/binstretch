@@ -177,10 +177,6 @@ int tpruned = 0; // number of tasks which are pruned
 std::atomic<unsigned int> collected_cumulative{0};
 std::atomic<unsigned int> collected_now{0};
 
-const int TASK_AVAILABLE = 2;
-const int TASK_IN_PROGRESS = 3;
-const int TASK_PRUNED = 4;
-
 void init_tarray()
 {
     assert(tcount > 0);
@@ -380,11 +376,12 @@ void collect_tasks_adv(adversary_vertex *v, thread_attr *tat)
 
     if (v->task)
     {
-	if(v->value != POSTPONED || ((v->state != NEW) && (v->state != EXPAND)) )
+	if(v->win != victory::uncertain || ((v->state != NEW) && (v->state != EXPAND)) )
 	{
-	    print<true>("Trouble with task vertex %" PRIu64 ": it has value not POSTPONED, but %d.\n", v->id, v->value);
+	    print<true>("Trouble with task vertex %" PRIu64 ": it has winning value not UNCERTAIN, but %d.\n",
+			v->id, v->win);
 	    print_debug_dag(computation_root, tat->regrow_level, 99);
-	    assert(v->value == POSTPONED && ((v->state == NEW) || (v->state == EXPAND)) );
+	    assert(v->win == victory::uncertain && ((v->state == NEW) || (v->state == EXPAND)) );
 	}
 
 	task newtask(v->bc);
@@ -441,14 +438,19 @@ void remove_task(uint64_t hash)
 }
 
 // Check if a given task is complete, return its value. 
-int completion_check(uint64_t hash)
+victory completion_check(uint64_t hash)
 {
     int query = tstatus[tmap[hash]].load(std::memory_order_acquire);
-    if (query == 0 || query == 1)
+    if (query == TASK_ADV)
     {
-	return query;
+	return victory::adv;
     }
-    return POSTPONED;
+    else if (query == TASK_ALG)
+    {
+	return victory::alg;
+    }
+
+    return victory::uncertain;
 }
 
 // A debug function for printing out the global task map. 

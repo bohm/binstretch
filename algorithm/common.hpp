@@ -53,8 +53,8 @@ const bool ONEPASS = false;
 const bool TASKLOG = false;
 const long double TASKLOG_THRESHOLD = 60.0; // in seconds
 
-// #define STRATEGY STRATEGY_BASIC
-#define STRATEGY STRATEGY_NINETEEN_FREQ
+#define STRATEGY STRATEGY_BASIC
+// #define STRATEGY STRATEGY_NINETEEN_FREQ
 
 
 // Use this type for values of loads and items.
@@ -91,20 +91,20 @@ const std::vector<bin_int> INITIAL_ITEMS = {};
 // const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1,1}; // 6x1
 // const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1}; // 5x1
 // const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1}; // 4x1
- const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1}; // 3x1
+//  const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1}; // 3x1
 // const std::vector<bin_int> INITIAL_SEQUENCE = {5};
 // const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,4}; // 3x1
 
 // const std::vector<bin_int> INITIAL_SEQUENCE = {2,2};
 // const std::vector<bin_int> INITIAL_SEQUENCE = {2};
 
-// const std::vector<bin_int> INITIAL_SEQUENCE = {};
+ const std::vector<bin_int> INITIAL_SEQUENCE = {};
 
-const int FIRST_PASS = 0;
+// const int FIRST_PASS = 0;
 // const int FIRST_PASS = 1;
 // const int FIRST_PASS = 6;
 // const int FIRST_PASS = 8;
-// const int FIRST_PASS = S-1;
+const int FIRST_PASS = S-1;
 
 // constants used for good situations
 const int RMOD = (R-1);

@@ -81,14 +81,14 @@ void relabel_and_fix_adv(adversary_vertex *v, thread_attr *tat)
 
     if (v->task)
     {
-	if (v->out.size() != 0 || v->value != 0)
+	if (v->out.size() != 0 || v->win != victory::adv)
 	{
-	    print<true>("Trouble with vertex %" PRIu64  " with %zu children, value %d and bc:\n", v->id, v->out.size(), v->value);
+	    print<true>("Trouble with vertex %" PRIu64  " with %zu children, value %d and bc:\n", v->id, v->out.size(), v->win);
 	    print_binconf_stream(stderr, v->bc);
 	    fprintf(stderr, "A debug tree will be created with extra id 99.\n");
 	    print_debug_dag(computation_root, 0, 99);
 
-	    assert(v->out.size() == 0 && v->value == 0);
+	    assert(v->out.size() == 0 && v->win == victory::adv);
 	}
 
 	tat->meas.relabeled_vertices++;
@@ -121,7 +121,7 @@ void relabel_and_fix_alg(algorithm_vertex *v, thread_attr *tat)
     tat->meas.visit_counter++;
 
     // algorithm vertices should never be tasks
-    assert(v->value == 0);
+    assert(v->win == victory::adv);
 
     if (v->state == NEW)
     {
@@ -171,7 +171,7 @@ bool finish_branches_rec(adversary_vertex *v)
 
     if (v->out.size() == 0)
     {
-	assert(v->value == 0);
+	assert(v->win == victory::adv);
 	v->state = FINISHED;
 	return true;
     }
@@ -181,7 +181,7 @@ bool finish_branches_rec(adversary_vertex *v)
 
     if (children_finished)
     {
-	assert(v->value == 0);
+	assert(v->win == victory::adv);
 	v->state = FINISHED;
     }
 
@@ -214,7 +214,7 @@ bool finish_branches_rec(algorithm_vertex *v)
 
     if (children_finished)
     {
-	assert(v->value == 0);
+	assert(v->win == victory::adv);
 	v->state = FINISHED;
     }
 
@@ -238,7 +238,7 @@ void finish_sapling_adv(adversary_vertex *v)
 	return;
     }
     v->visited = true;
-    assert(v->value == 0);
+    assert(v->win == victory::adv);
 
     v->task = false;
     v->state = FINISHED;
@@ -257,7 +257,7 @@ void finish_sapling_alg(algorithm_vertex *v)
     }
     v->visited = true;
 
-    assert(v->value == 0);
+    assert(v->win == victory::adv);
     // v->task = false;
     v->state = FINISHED;
     for (auto& e: v->out)
@@ -291,7 +291,7 @@ void reset_values_adv(adversary_vertex *v)
 	return;
     }
 
-    v->value = POSTPONED;
+    v->win = victory::uncertain;
     v->task = false; // reset all tasks
     
     for (auto& e: v->out)
@@ -314,7 +314,7 @@ void reset_values_alg(algorithm_vertex *v)
 	return;
     }
 
-    v->value = POSTPONED;
+    v->win = victory::uncertain;
    
     for (auto& e: v->out)
     {

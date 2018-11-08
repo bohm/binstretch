@@ -31,25 +31,25 @@ struct update_attr
 };
 
 
-int update(adversary_vertex *v, update_attr &uat);
-int update(algorithm_vertex *v, update_attr &uat);
+victory update(adversary_vertex *v, update_attr &uat);
+victory update(algorithm_vertex *v, update_attr &uat);
 
-int update(adversary_vertex *v, update_attr &uat)
+victory update(adversary_vertex *v, update_attr &uat)
 {
-    int result = 1;
+    victory result = victory::alg;
     int right_move;
  
     assert(v != NULL);
 
-    if (v->value == 0 || v->value == 1)
+    if (v->win == victory::adv || v->win == victory::alg)
     {
-	return v->value;
+	return v->win;
     }
 
     /* Already visited this update. */
     if (v->visited)
     {
-	return v->value;
+	return v->win;
     }
 
     v->visited = true;
@@ -58,14 +58,14 @@ int update(adversary_vertex *v, update_attr &uat)
 
     if (v->state == FINISHED)
     {
-	return v->value;
+	return v->win;
     }
     
     if (v->task)
     {
 	uint64_t hash = v->bc->confhash();
 	result = completion_check(hash);
-	if (result == POSTPONED)
+	if (result == victory::uncertain)
 	{
 	    uat.unfinished_tasks++;
 	}
@@ -77,15 +77,15 @@ int update(adversary_vertex *v, update_attr &uat)
 	while ( it != v->out.end())
 	{
 	    algorithm_vertex *n = (*it)->to;
-	    int below = update(n, uat);
-	    if (below == 0)
+	    victory below = update(n, uat);
+	    if (below == victory::adv)
 	    {
-		result = 0;
+		result = victory::adv;
 		right_move = (*it)->item;
 		// we can break here (in fact we should break here, so that assertion that only one edge remains is true)
 		break;
 		
-	    } else if (below == 1)
+	    } else if (below == victory::alg)
 	    {
 		// We remove the edge unless the vertex here is FIXED.
 		// In that case, we keep the edges as they are.
@@ -98,16 +98,16 @@ int update(adversary_vertex *v, update_attr &uat)
 		} else {
 		    it++;
 		}
-	    } else if (below == POSTPONED)
+	    } else if (below == victory::uncertain)
 	    {
-		if (result == 1) {
-		    result = POSTPONED;
+		if (result == victory::alg) {
+		    result = victory::uncertain;
 		}
 		it++;
 	    }
 	}
 	// remove outedges only for a non-task
-	if (result == 0)
+	if (result == victory::adv)
 	{
 	    remove_outedges_except<UPDATING>(v, right_move);
 	}
@@ -115,12 +115,12 @@ int update(adversary_vertex *v, update_attr &uat)
 
     }
     
-    if (result == 0 || result == 1)
+    if (result == victory::adv || result == victory::alg)
     {
-	v->value = result;
+	v->win = result;
     }
 
-    if (v->state != FIXED && result == 1)
+    if (v->state != FIXED && result == victory::alg)
     {
 	// sanity check
 	assert( v->out.empty() );
@@ -129,19 +129,19 @@ int update(adversary_vertex *v, update_attr &uat)
     return result;
 }
 
-int update(algorithm_vertex *v, update_attr &uat)
+victory update(algorithm_vertex *v, update_attr &uat)
 {
     assert(v != NULL);
 
-    if (v->value == 0 || v->value == 1)
+    if (v->win == victory::adv || v->win == victory::alg)
     {
-	return v->value;
+	return v->win;
     }
 
     /* Already visited this update. */
     if (v->visited)
     {
-	return v->value;
+	return v->win;
     }
 
     v->visited = true;
@@ -149,44 +149,44 @@ int update(algorithm_vertex *v, update_attr &uat)
 
     if (v->state == FINISHED)
     {
-	return v->value;
+	return v->win;
     }
  
-    int result = 0;
+    victory result = victory::adv;
     std::list<alg_outedge*>::iterator it = v->out.begin();
     while ( it != v->out.end())
     {
 	adversary_vertex *n = (*it)->to;
    
-	int below = update(n, uat);
-	if (below == 1)
+	victory below = update(n, uat);
+	if (below == victory::alg)
 	{
-	    result = 1;
+	    result = victory::alg;
 	    break;
-	} else if (below == 0)
+	} else if (below == victory::adv)
 	{
 	    // do not delete subtree, it might be part
 	    // of the lower bound
 	    it++;
-	} else if (below == POSTPONED)
+	} else if (below == victory::uncertain)
         {
-	    if (result == 0) {
-		result = POSTPONED;
+	    if (result == victory::adv) {
+		result = victory::uncertain;
 	    }
 	    it++;
 	}
     }
     
-    if (result == 1 && v->state != FIXED)
+    if (result == victory::alg && v->state != FIXED)
     {
 	remove_outedges<UPDATING>(v);
 	assert( v->out.empty() );
 
     }
 
-    if (result == 0 || result == 1)
+    if (result == victory::adv || result == victory::alg)
     {
-	v->value = result;
+	v->win = result;
     }
 
     return result;

@@ -542,7 +542,7 @@ void print_unfinished_rec(adversary_vertex *v)
 	return;
     }
     v->visited = true;
-    if ((v->task) && v->value == POSTPONED)
+    if ((v->task) && v->win == victory::uncertain)
     {
 	fprintf(stderr, "%d with task status id %d: ", unfinished_counter, tstatus_id(v));
 	print_binconf<true>(v->bc);

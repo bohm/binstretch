@@ -23,25 +23,25 @@
 #include "networking.hpp"
 #include "strategy.hpp"
 
-template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, adversary_vertex *adv_to_evaluate, algorithm_vertex* parent_alg);
-template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat, algorithm_vertex *alg_to_evaluate, adversary_vertex *parent_adv);
+template<int MODE> victory adversary(binconf *b, int depth, thread_attr *tat, adversary_vertex *adv_to_evaluate, algorithm_vertex* parent_alg);
+template<int MODE> victory algorithm(binconf *b, int k, int depth, thread_attr *tat, algorithm_vertex *alg_to_evaluate, adversary_vertex *parent_adv);
 
-int check_messages(thread_attr *tat)
+victory check_messages(thread_attr *tat)
 {
     // check_root_solved();
     // check_termination();
     // fetch_irrelevant_tasks();
     if (root_solved)
     {
-	return IRRELEVANT;
+	return victory::irrelevant;
     }
 
     if (tstatus[tat->task_id].load() == TASK_PRUNED)
     {
 	//print<true>("Worker %d works on an irrelevant thread.\n", world_rank);
-	return IRRELEVANT;
+	return victory::irrelevant;
     }
-    return 0;
+    return victory::uncertain;
 }
 
 /* return values: 0: player 1 cannot pack the sequence starting with binconf b
@@ -59,33 +59,33 @@ int check_messages(thread_attr *tat)
     * EXPLORING (general exploration done by individual threads)
 */
 
-template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, adversary_vertex *adv_to_evaluate, algorithm_vertex *parent_alg)
+template<int MODE> victory adversary(binconf *b, int depth, thread_attr *tat, adversary_vertex *adv_to_evaluate, algorithm_vertex *parent_alg)
 {
     algorithm_vertex *upcoming_alg = NULL;
     adv_outedge *new_edge = NULL;
-    int below = 1;
-    int r = 1;
+    victory below = victory::alg;
+    victory win = victory::alg;
 
     if (MODE == GENERATING)
     {
 	if (adv_to_evaluate->visited)
 	{
-	    return adv_to_evaluate->value;
+	    return adv_to_evaluate->win;
 	}
 	adv_to_evaluate->visited = true;
 
 	if (adv_to_evaluate->state == FINISHED)
 	{
-	    assert(adv_to_evaluate->value == 0);
-	    return adv_to_evaluate->value;
+	    assert(adv_to_evaluate->win == victory::adv);
+	    return adv_to_evaluate->win;
 	}
     }
     
     // Everything can be packed into one bin, return 1.
     if ((b->loads[BINS] + (BINS*S - b->totalload())) < R)
     {
-	if (MODE == GENERATING) { adv_to_evaluate->value = 1; }
-	return 1;
+	if (MODE == GENERATING) { adv_to_evaluate->win = victory::alg; }
+	return victory::alg;
     }
 
     // Turn off adversary heuristics if convenient (e.g. for machine verification).
@@ -97,13 +97,13 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, advers
 	{
 	    if(MODE == GENERATING)
 	    {
-		adv_to_evaluate->value = 0;
+		adv_to_evaluate->win = victory::adv;
 		adv_to_evaluate->heuristic = true;
 		adv_to_evaluate->heuristic_type = LARGE_ITEM;
 		adv_to_evaluate->heuristic_item = S;
 		adv_to_evaluate->heuristic_multi = BINS-1;
 	    }
-	    return 0;
+	    return victory::adv;
 	}
 
 	// one heuristic specific for 19/14
@@ -116,13 +116,13 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, advers
 		tat->meas.five_nine_hits++;
 		if(MODE == GENERATING)
 		{
-		    adv_to_evaluate->value = 0;
+		    adv_to_evaluate->win = victory::adv;
 		    adv_to_evaluate->heuristic = true;
 		    adv_to_evaluate->heuristic_type = FIVE_NINE;
 		    // do not set heuristic_item, it is implicit
 		    adv_to_evaluate->heuristic_multi = fives_to_send;
 		}
-		return 0;
+		return victory::adv;
 	    }
 	}
 
@@ -139,13 +139,13 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, advers
 
 		if (MODE == GENERATING)
 		{
-		    adv_to_evaluate->value = 0;
+		    adv_to_evaluate->win = victory::adv;
 		    adv_to_evaluate->heuristic = true;
 		    adv_to_evaluate->heuristic_type = LARGE_ITEM;
 		    adv_to_evaluate->heuristic_item = lih;
 		    adv_to_evaluate->heuristic_multi = mul;
 		}
-		return 0;
+		return victory::adv;
 	    }
 	}
     }
@@ -175,7 +175,7 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, advers
 	    below = algorithm<MODE>(b, item_size, depth+1, tat, upcoming_alg, adv_to_evaluate);
 	    tat->largest_since_computation_root = old_largest;
 
-	    adv_to_evaluate->value = below;
+	    adv_to_evaluate->win = below;
 	    return below;
 	}
 
@@ -206,8 +206,8 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, advers
 	    
 	    // add_task(b, tat); // we do no longer add tasks; instead, we collect them afterwards.
 	    adv_to_evaluate->task = true;
-	    adv_to_evaluate->value = POSTPONED;
-	    return POSTPONED;
+	    adv_to_evaluate->win = victory::uncertain;
+	    return victory::uncertain;
 	}
     }
 
@@ -219,8 +219,8 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, advers
 	{
 	    if (MEASURE)
 	    {
-		int recommendation = check_messages(tat);
-		if (recommendation == TERMINATING || recommendation == IRRELEVANT)
+		victory recommendation = check_messages(tat);
+		if (recommendation == victory::irrelevant)
 		{
 		    //fprintf(stderr, "We got advice to terminate.\n");
 		    return recommendation;
@@ -242,16 +242,22 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, advers
 	
 	if (found_conf)
 	{
-	    assert(conf_in_hashtable >= 0 && conf_in_hashtable <= 1);
-	    return conf_in_hashtable;
+	    assert(conf_in_hashtable == 0 || conf_in_hashtable == 1);
+	    if (conf_in_hashtable == 0)
+	    {
+		return victory::adv;
+	    } else if (conf_in_hashtable == 1)
+	    {
+		return victory::alg;
+	    }
 	}
     }
 
     // finds the maximum feasible item that can be added using dyn. prog.
     bin_int old_max_feasible = tat->prev_max_feasible;
     bin_int dp = MAXIMUM_FEASIBLE(b, depth, lower_bound, old_max_feasible, tat);
-    r = 1;
-    below = 1;
+    win = victory::alg;
+    below = victory::alg;
     
     tat->prev_max_feasible = dp;
     int maximum_feasible = dp; // possibly also INFEASIBLE == -1
@@ -287,7 +293,7 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, advers
 		upcoming_alg = it->second;
 		// create new edge
 		new_edge = new adv_outedge(adv_to_evaluate, upcoming_alg, item_size);
-		below = it->second->value;
+		below = it->second->win;
 	    }
     
 	}
@@ -298,14 +304,14 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, advers
 	tat->largest_since_computation_root = old_largest;
 	
 	// send signal that we should terminate immediately upwards
-	if (below == TERMINATING || below == IRRELEVANT)
+	if (below == victory::irrelevant)
 	{
 	    return below;
 	}
 
-	if (below == 0)
+	if (below == victory::adv)
 	{
-	    r = 0;
+	    win = victory::adv;
 	    
 	    if (MODE == GENERATING)
 	    {
@@ -313,7 +319,7 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, advers
 		remove_outedges_except<GENERATING>(adv_to_evaluate, item_size);
 	    }
 	    break;
-	} else if (below == 1)
+	} else if (below == victory::alg)
 	{
 	    if (MODE == GENERATING)
 	    {
@@ -321,12 +327,12 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, advers
 		remove_edge<GENERATING>(new_edge);
 		// assert(new_edge == NULL); // TODO: make a better assertion
 	    }
-	} else if (below == POSTPONED)
+	} else if (below == victory::uncertain)
 	{
 	    assert(MODE == GENERATING);
-	    if (r == 1)
+	    if (win == victory::alg)
 	    {
-		r = POSTPONED;
+		win = victory::uncertain;
 	    }
 	}
     }
@@ -334,38 +340,46 @@ template<int MODE> int adversary(binconf *b, int depth, thread_attr *tat, advers
 
     if (MODE == EXPLORING && !DISABLE_CACHE)
     {
-	conf_hashpush(b, r, tat);
+	// TODO: Make this cleaner.
+	if (win == victory::adv)
+	{
+	    conf_hashpush(b, 0, tat);
+	} else if (win == victory::alg)
+	{
+	    conf_hashpush(b, 1, tat);
+	}
+	
     }
 
     // Sanity check.
-    if ((MODE == GENERATING) && r == 1)
+    if ((MODE == GENERATING) && win == victory::alg)
     {
 	assert(adv_to_evaluate->out.empty());
     }
 
-    if (MODE == GENERATING) { adv_to_evaluate->value = r; }
+    if (MODE == GENERATING) { adv_to_evaluate->win = win; }
     tat->prev_max_feasible = old_max_feasible;
-    return r;
+    return win;
 }
 
-template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat, algorithm_vertex *alg_to_evaluate, adversary_vertex *parent_adv)
+template<int MODE> victory algorithm(binconf *b, int k, int depth, thread_attr *tat, algorithm_vertex *alg_to_evaluate, adversary_vertex *parent_adv)
 {
     adversary_vertex *upcoming_adv = NULL;
-    int below = 0;
-    int r = 0;
+    victory below = victory::adv; // Who wins below.
+    victory win = victory::adv; // Who wins this configuration.
  
     if (MODE == GENERATING)
     {
 	if (alg_to_evaluate->visited)
 	{
-	    return alg_to_evaluate->value;
+	    return alg_to_evaluate->win;
 	}
 	alg_to_evaluate->visited = true;
 
 	if (alg_to_evaluate->state == FINISHED)
 	{
-	    assert(alg_to_evaluate->value == 0);
-	    return alg_to_evaluate->value;
+	    assert(alg_to_evaluate->win == victory::adv);
+	    return alg_to_evaluate->win;
 	}
     }
  
@@ -378,8 +392,8 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 	{
 	    if (MEASURE)
 	    {
-		int recommendation = check_messages(tat);
-		if (recommendation == TERMINATING || recommendation == IRRELEVANT)
+		victory recommendation = check_messages(tat);
+		if (recommendation == victory::irrelevant)
 		{
 		    //fprintf(stderr, "We got advice to terminate.\n");
 		    return recommendation;
@@ -392,11 +406,11 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
     {
 	if (MODE == GENERATING)
 	{
-	    alg_to_evaluate->value = 1;
+	    alg_to_evaluate->win = victory::alg;
 	    // alg_to_evaluate->heuristic = true;
 	    // alg_to_evaluate->heuristic_type = GS;
 	}
-	return 1;
+	return victory::alg;
     }
 
     if (MODE == GENERATING)
@@ -416,32 +430,32 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 		onlineloads_unassign(tat->ol, k, ol_from);
 		b->last_item = previously_last_item;
 
-		if (below == 1)
+		if (below == victory::alg)
 		{
-		    r = 1;
+		    win = victory::alg;
 		    // the state is winning, but we do not remove the outedges, because the vertex is fixed
 		    break;
-		} else if (below == 0)
+		} else if (below == victory::adv)
 		{
 		    // do not delete subtree, it might be part
 		    // of the lower bound
 		    it++;
-		} else if (below == POSTPONED)
+		} else if (below == victory::uncertain)
 		{
-		    if (r == 0) {
-			r = POSTPONED;
+		    if (win == victory::adv ) {
+			win = victory::uncertain;
 		    }
 		    it++;
 		}
 	    }
 
-	    alg_to_evaluate->value = r;
-	    return r;
+	    alg_to_evaluate->win = win;
+	    return win;
 	}
     }
 
-    r = 0;
-    below = 0;
+    win = victory::adv;
+    below = victory::adv;
     
     bin_int i = 1;
     while(i <= BINS)
@@ -474,13 +488,13 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 		} else {
 		    upcoming_adv = it->second;
 		    new alg_outedge(alg_to_evaluate, upcoming_adv, i);
-		    // below = it->second->value;
+		    // below = it->second->win;
 		}
 	    }
 	    
 	    below = adversary<MODE>(b, depth, tat, upcoming_adv, alg_to_evaluate);
 	    // send signal that we should terminate immediately upwards
-	    if (below == TERMINATING || below == IRRELEVANT)
+	    if (below == victory::irrelevant)
 	    {
 		return below;
 	    }
@@ -490,7 +504,7 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 	    // return b to original form
 	    b->unassign_and_rehash(k,from, previously_last_item);
 	    onlineloads_unassign(tat->ol, k, ol_from);
-	    if (below == 1)
+	    if (below == victory::alg)
 	    {
 		if (MODE == GENERATING)
 		{
@@ -502,19 +516,19 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
 		    remove_outedges<GENERATING>(alg_to_evaluate);
 		    // assert(current_algorithm == NULL); // sanity check
 
-		    alg_to_evaluate->value = 1;
+		    alg_to_evaluate->win = victory::alg;
 		}
-		return 1;
-	    } else if (below == 0)
+		return victory::alg;
+	    } else if (below == victory::adv)
 	    {
 		// nothing needs to be currently done, the edge is already created
-	    } else if (below == POSTPONED)
+	    } else if (below == victory::uncertain)
 	    {
  		assert(MODE == GENERATING); // should not happen during anything else but GENERATING
 		// insert analyzed_vertex into algorithm's "next" list
-		if (r == 0)
+		if (win == victory::adv)
 		{
-		    r = POSTPONED;
+		    win = victory::uncertain;
 		}
 	    }
 	} // else b->loads[i] + k >= R, so a good situation for the adversary
@@ -522,14 +536,14 @@ template<int MODE> int algorithm(binconf *b, int k, int depth, thread_attr *tat,
     }
 
     // r is now 0 or POSTPONED, depending on the circumstances
-    if (MODE == GENERATING) { alg_to_evaluate->value = r; }
-    return r;
+    if (MODE == GENERATING) { alg_to_evaluate->win = win; }
+    return win;
 }
 
 // wrapper for exploration
 // Returns value of the current position.
 
-int explore(binconf *b, thread_attr *tat)
+victory explore(binconf *b, thread_attr *tat)
 {
     b->hashinit();
     binconf root_copy = *b;
@@ -544,20 +558,20 @@ int explore(binconf *b, thread_attr *tat)
     tat->current_overdue = false;
     tat->explore_roothash = b->confhash();
     tat->explore_root = &root_copy;
-    int ret = adversary<EXPLORING>(b, 0, tat, NULL, NULL);
-    assert(ret != POSTPONED);
+    victory ret = adversary<EXPLORING>(b, 0, tat, NULL, NULL);
+    assert(ret != victory::uncertain);
     return ret;
 }
 
 // wrapper for generation
-int generate(sapling start_sapling, thread_attr *tat)
+victory generate(sapling start_sapling, thread_attr *tat)
 {
     binconf inplace_bc;
     duplicate(&inplace_bc, start_sapling.root->bc);
     inplace_bc.hashinit();
     onlineloads_init(tat->ol, &inplace_bc);
 
-    int ret = adversary<GENERATING>(&inplace_bc, start_sapling.root->depth, tat, start_sapling.root, NULL);
+    victory ret = adversary<GENERATING>(&inplace_bc, start_sapling.root->depth, tat, start_sapling.root, NULL);
     return ret;
 }
 

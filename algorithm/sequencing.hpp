@@ -20,10 +20,10 @@
 #include "tasks.hpp"
 
 
-int sequencing_adversary(binconf *b, unsigned int depth, thread_attr *tat,
+victory sequencing_adversary(binconf *b, unsigned int depth, thread_attr *tat,
 			 adversary_vertex *adv_to_evaluate, algorithm_vertex* parent_alg,
 			 const std::vector<bin_int>& seq);
-int sequencing_algorithm(binconf *b, int k, unsigned int depth, thread_attr *tat,
+victory sequencing_algorithm(binconf *b, int k, unsigned int depth, thread_attr *tat,
 			 algorithm_vertex *alg_to_evaluate, adversary_vertex *parent_adv,
 			 const std::vector<bin_int>& seq);
 
@@ -35,7 +35,7 @@ void add_sapling(adversary_vertex* v)
 
 
 // Generates a tree with saplings (not tasks) from a sequence of items
-int sequencing(const std::vector<bin_int>& seq, binconf& root, adversary_vertex* root_vertex)
+victory sequencing(const std::vector<bin_int>& seq, binconf& root, adversary_vertex* root_vertex)
 {
 
     thread_attr tat;
@@ -46,13 +46,14 @@ int sequencing(const std::vector<bin_int>& seq, binconf& root, adversary_vertex*
     {
 	sapling just_root; just_root.root = root_vertex; just_root.regrow_level = 0;
 	sapling_stack.push(just_root);
-	return POSTPONED;
+	return victory::uncertain;
     } else {
-	int ret = sequencing_adversary(&root, root_vertex->depth, &tat, root_vertex, NULL, seq);
+	victory ret = sequencing_adversary(&root, root_vertex->depth, &tat, root_vertex, NULL, seq);
 	return ret;
     }
 }
-int sequencing_adversary(binconf *b, unsigned int depth, thread_attr *tat,
+
+victory sequencing_adversary(binconf *b, unsigned int depth, thread_attr *tat,
 			 adversary_vertex *adv_to_evaluate, algorithm_vertex* parent_alg,
 			 const std::vector<bin_int>& seq)
 {
@@ -62,8 +63,8 @@ int sequencing_adversary(binconf *b, unsigned int depth, thread_attr *tat,
     /* Everything can be packed into one bin, return 1. */
     if ((b->loads[BINS] + (BINS*S - b->totalload())) < R)
     {
-	adv_to_evaluate->value = 1; 
-	return 1;
+	adv_to_evaluate->win = victory::alg; 
+	return victory::alg;
     }
 
     if (ADVERSARY_HEURISTICS)
@@ -71,11 +72,11 @@ int sequencing_adversary(binconf *b, unsigned int depth, thread_attr *tat,
 	// a much weaker variant of large item heuristic, but takes O(1) time
 	if (b->totalload() <= S && b->loads[2] >= R-S)
 	{
-	    adv_to_evaluate->value = 0;
+	    adv_to_evaluate->win = victory::adv;
 	    adv_to_evaluate->heuristic = true;
 	    adv_to_evaluate->heuristic_item = S;
 	    adv_to_evaluate->heuristic_type = LARGE_ITEM;
-	    return 0;
+	    return victory::adv;
 	}
 
 
@@ -86,11 +87,11 @@ int sequencing_adversary(binconf *b, unsigned int depth, thread_attr *tat,
 	    auto [fnh, fives_to_send] = five_nine_heuristic(b,tat);
 	    if (fnh)
 	    {
-		adv_to_evaluate->value = 0;
+		adv_to_evaluate->win = victory::adv;
 		adv_to_evaluate->heuristic = true;
 		adv_to_evaluate->heuristic_type = FIVE_NINE;
 		adv_to_evaluate->heuristic_multi = fives_to_send;
-		return 0;
+		return victory::adv;
 	    }
 	}
 
@@ -102,13 +103,13 @@ int sequencing_adversary(binconf *b, unsigned int depth, thread_attr *tat,
 	if (lih != MAX_INFEASIBLE)
 	{
 	    {
-		adv_to_evaluate->value = 0;
+		adv_to_evaluate->win = victory::adv;
 		adv_to_evaluate->heuristic = true;
 		adv_to_evaluate->heuristic_item = lih;
 		adv_to_evaluate->heuristic_type = LARGE_ITEM;
 		adv_to_evaluate->heuristic_multi = mul;
 	    }
-	    return 0;
+	    return victory::adv;
 	}
     }
 
@@ -117,14 +118,14 @@ int sequencing_adversary(binconf *b, unsigned int depth, thread_attr *tat,
     {
 	add_sapling(adv_to_evaluate);
 	adv_to_evaluate->sapling = true;
-	adv_to_evaluate->value = POSTPONED;
-	return POSTPONED;
+	adv_to_evaluate->win = victory::uncertain;
+	return victory::uncertain;
     }
 
     // send items based on the array and depth
     int item_size = seq[depth];
-    int below = 1;
-    int r = 1;
+    victory below = victory::alg;
+    victory r = victory::alg;
     print<DEBUG>("Trying player zero choices, with maxload starting at %d\n", maximum_feasible);
     print<DEBUG>("Sending item %d to algorithm.\n", item_size);
     // algorithm's vertex for the next step
@@ -141,7 +142,7 @@ int sequencing_adversary(binconf *b, unsigned int depth, thread_attr *tat,
 	upcoming_alg = it->second;
 	// create new edge
 	new_edge = new adv_outedge(adv_to_evaluate, upcoming_alg, item_size);
-	below = it->second->value;
+	below = it->second->win;
     }
     
     if (!already_generated)
@@ -149,31 +150,31 @@ int sequencing_adversary(binconf *b, unsigned int depth, thread_attr *tat,
 	below = sequencing_algorithm(b, item_size, depth+1, tat, upcoming_alg, adv_to_evaluate, seq);
     }
     
-    if (below == 0)
+    if (below == victory::adv)
     {
-	r = 0;
+	r = victory::adv;
 	remove_outedges_except<SEQUENCING>(adv_to_evaluate, item_size);
-    } else if (below == 1)
+    } else if (below == victory::alg)
     {
 	remove_edge<SEQUENCING>(new_edge);
-    } else if (below == POSTPONED)
+    } else if (below == victory::uncertain)
     {
-	if (r == 1)
+	if (r == victory::alg)
 	{
-	    r = POSTPONED;
+	    r = victory::uncertain;
 	}
     }
     
-    if (r == 1)
+    if (r == victory::alg)
     {
 	assert(adv_to_evaluate->out.empty());
     }
 
-    adv_to_evaluate->value = r;
+    adv_to_evaluate->win = r;
     return r;
 }
 
-int sequencing_algorithm(binconf *b, int k, unsigned int depth, thread_attr *tat,
+victory sequencing_algorithm(binconf *b, int k, unsigned int depth, thread_attr *tat,
 			 algorithm_vertex *alg_to_evaluate, adversary_vertex *parent_adv,
 			 const std::vector<bin_int>& seq)
 {
@@ -181,12 +182,12 @@ int sequencing_algorithm(binconf *b, int k, unsigned int depth, thread_attr *tat
     adversary_vertex* upcoming_adv = NULL;
     if (gsheuristic(b,k, tat) == 1)
     {
-	alg_to_evaluate->value = 1;
-	return 1;
+	alg_to_evaluate->win = victory::alg;
+	return victory::alg;
     }
 
-    int r = 0;
-    int below = 0;
+    victory r = victory::adv;
+    victory below = victory::adv;
     int8_t i = 1;
     
     while(i <= BINS)
@@ -220,7 +221,7 @@ int sequencing_algorithm(binconf *b, int k, unsigned int depth, thread_attr *tat
 		upcoming_adv = it->second;
 		// create new edge
 		new alg_outedge(alg_to_evaluate, upcoming_adv, i);
-		below = it->second->value;
+		below = it->second->win;
 	    }
 
 	    if (!already_generated)
@@ -235,21 +236,21 @@ int sequencing_algorithm(binconf *b, int k, unsigned int depth, thread_attr *tat
 
 	    onlineloads_unassign(tat->ol, k, ol_from);
 	    
-	    if (below == 1)
+	    if (below == victory::alg)
 	    {
 		r = below;
 		remove_outedges<SEQUENCING>(alg_to_evaluate);
-		alg_to_evaluate->value = r;
+		alg_to_evaluate->win = r;
 		return r;
-	    } else if (below == 0)
+	    } else if (below == victory::adv)
 	    {
 		// nothing needs to be currently done, the edge is already created
-	    } else if (below == POSTPONED)
+	    } else if (below == victory::uncertain)
 	    {
 		// insert upcoming_adv into algorithm's "next" list
-		if (r == 0)
+		if (r == victory::adv)
 		{
-		    r = POSTPONED;
+		    r = victory::uncertain;
 		}
 	    }
 	} else { // b->loads[i] + k >= R, so a good situation for the adversary
@@ -257,7 +258,7 @@ int sequencing_algorithm(binconf *b, int k, unsigned int depth, thread_attr *tat
 	i++;
     }
 
-    alg_to_evaluate->value = r;
+    alg_to_evaluate->win = r;
     return r;
 }
 

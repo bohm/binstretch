@@ -22,7 +22,7 @@ Message sequence:
 
 std::atomic<bool> queen_cycle_terminate(false);
 std::atomic_bool debug_print_requested(false);
-std::atomic<int> updater_result(POSTPONED);
+std::atomic<victory> updater_result(victory::uncertain);
 
 int winning_saplings = 0;
 int losing_saplings = 0;
@@ -34,7 +34,7 @@ void queen_updater(adversary_vertex* sapling)
     collected_cumulative = 0;
     unsigned int cycle_counter = 0;
 
-    while (updater_result == POSTPONED)
+    while (updater_result == victory::uncertain)
     {
 	std::this_thread::sleep_for(std::chrono::milliseconds(TICK_SLEEP));
 	// unsigned int currently_collected = collect_tasks();
@@ -69,12 +69,12 @@ void queen_updater(adversary_vertex* sapling)
 		cycle_counter = 0;
 	    }
 
-	    if (updater_result == POSTPONED && uat.unfinished_tasks == 0)
+	    if (updater_result == victory::uncertain && uat.unfinished_tasks == 0)
 	    {
 		print<true>("The tree is in a strange state.\n");
 		fprintf(stderr, "A debug tree will be created with extra id 99.\n");
 		print_debug_dag(computation_root, 0, 99);
-		assert(updater_result != POSTPONED || uat.unfinished_tasks > 0);
+		assert(updater_result != victory::uncertain || uat.unfinished_tasks > 0);
 	    }
 
 	    if (debug_print_requested.load(std::memory_order_acquire) == true)
@@ -85,9 +85,11 @@ void queen_updater(adversary_vertex* sapling)
 		debug_print_requested.store(false, std::memory_order_release);
 	    }
 
-	    if (updater_result != POSTPONED)
+	    if (updater_result != victory::uncertain)
 	    {
-		fprintf(stderr, "We have evaluated the tree: %d\n", updater_result.load(std::memory_order_acquire));
+		fprintf(stderr, "We have evaluated the tree: ");
+		print(stderr, updater_result.load(std::memory_order_acquire));
+		fprintf(stderr, "\n");
 		print<MEASURE>("Prune/receive collisions: %" PRIu64 ".\n", g_meas.pruned_collision);
 		g_meas.pruned_collision = 0;
 	    }
@@ -150,7 +152,7 @@ int queen()
 	bool lower_bound_complete = false;
 	computation_root = currently_growing.root;
 	computation_root->state = EXPAND;
-	computation_root->value = POSTPONED;
+	computation_root->win = victory::uncertain;
 
 	// Currently we cannot expand a vertex with outedges.
 	assert(computation_root->out.size() == 0);
@@ -196,11 +198,11 @@ int queen()
 		updater_result = generate(currently_growing, &tat);
 		// print_debug_dag(computation_root, regrow_level, 0);
 		
-		computation_root->value = updater_result.load(std::memory_order_acquire);
-		if (computation_root->value != POSTPONED)
+		computation_root->win = updater_result.load(std::memory_order_acquire);
+		if (computation_root->win != victory::uncertain)
 		{
 		    fprintf(stderr, "Queen: Completed lower bound.\n");
-		    if (computation_root->value == 0)
+		    if (computation_root->win == victory::adv)
 		    {
 			lower_bound_complete = true;
 			if (ONEPASS)
@@ -208,7 +210,7 @@ int queen()
 			    winning_saplings++;
 			}
 			break;
-		    } else if (computation_root->value == 1)
+		    } else if (computation_root->win == victory::alg)
 		    {
 			if (ONEPASS)
 			{
@@ -244,7 +246,7 @@ int queen()
 		    // wake up updater thread.
 		
 		    // Main loop of this thread (the variable is updated by the other thread).
-		    while(updater_result == POSTPONED)
+		    while(updater_result == victory::uncertain)
 		    {
 			collect_worker_tasks();
 			collect_running_lows();
@@ -273,7 +275,7 @@ int queen()
 		    print<PROGRESS>("Iteration time: %Lfs.\n", iteration_time.count());
 		}
 		
-		if (updater_result == 0)
+		if (updater_result == victory::adv)
 		{
 		    if (ONEPASS)
 		    {
@@ -294,7 +296,8 @@ int queen()
 	    
 	    // When we are not regrowing, we just finish up and move to the next sapling.
 	    // We also finish up when the lower bound is complete.
-	    if ((!REGROW && (updater_result == 0)) || (REGROW && updater_result == 0 && lower_bound_complete))
+	    if ((!REGROW && (updater_result == victory::adv)) ||
+		(REGROW && updater_result == victory::adv && lower_bound_complete))
 	    {
 		finish_sapling(computation_root);
 		break;
@@ -302,14 +305,14 @@ int queen()
 
 	    // When we compute 1 in this step, at least one of the saplings is definitely
 	    // a wrong move, which (currently) means Algorithm should be the winning player.
-	    if (updater_result == 1)
+	    if (updater_result == victory::alg)
 	    {
 		ret = 1;
 		break;
 	    } else
 	    {
 		// return value is 0, but the tree needs to be expanded.
-		assert(updater_result == 0);
+		assert(updater_result == victory::adv);
 		// Transform tasks into EXPAND and NEW vertices into FIXED.
 		relabel_and_fix(computation_root, &tat);
 		// print_debug_dag(computation_root, regrow_level, 1);

@@ -51,7 +51,7 @@ public:
     bin_int next_item;
     uint64_t id;
     bool visited = false;
-    int value = POSTPONED;
+    victory win = victory::uncertain;
     int state = NEW;
 
     algorithm_vertex(binconf *b, bin_int next_item) : next_item(next_item)
@@ -90,7 +90,7 @@ public:
     bin_int heuristic_multi = 0;
     int heuristic_type = 0;
     // int last_item = 1; // last item is now stored in binconf
-    int value = POSTPONED;
+    victory win = victory::uncertain;
     uint64_t id;
     int expansion_depth = 0;
     int state = NEW;
@@ -285,7 +285,7 @@ template <int MODE> void remove_inedge(alg_outedge *e)
     {
 	remove_outedges<MODE>(e->to);
 	// when updating the tree, if e->to is task, remove it from the queue
-	if (MODE == UPDATING && e->to->task && e->to->value == POSTPONED)
+	if (MODE == UPDATING && e->to->task && e->to->win == victory::uncertain)
 	{
 	    remove_task(e->to->bc->confhash());
 	}
