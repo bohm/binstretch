@@ -26,18 +26,17 @@ void print(FILE *stream, const victory& win)
 	fprintf(stream, "irrelevant"); break;
     }
 }
-enum class output_type {tree, dag, coq};
+
+// Output types are no longer used.
+// enum class output_type {tree, dag, coq};
 
 
-// Output types.
-// const int TREE = 0;
-// const int DAG = 1;
-// const int COQ = 2;
 
 // Updater states.
 // const int POSTPONED = 2;
-const int TERMINATING = 3;
-const int OVERDUE = 4;
+// const int TERMINATING = 3;
+//const int OVERDUE = 4;
+
 const int IRRELEVANT = 5;
 
 enum class updater_states {postponed, terminating, overdue, irrelevant};

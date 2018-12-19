@@ -104,7 +104,6 @@ int queen()
     int name_len;
     int sapling_no = 0;
     int ret = 0;
-    bool single_sapling = true;
     bool output_useful = false; // Set to true when it is clear output will be printed.
     
     MPI_Get_processor_name(processor_name, &name_len);
@@ -137,11 +136,6 @@ int queen()
     // temporarily turning off load and write
     
     sequencing(INITIAL_SEQUENCE, root, root_vertex);
-
-    if (sapling_stack.size() > 1)
-    {
-	single_sapling = false;
-    }
 
     if (PROGRESS) { scheduler_start = std::chrono::system_clock::now(); }
 
@@ -356,17 +350,7 @@ int queen()
     // We now print only once, after a full tree is generated.
     if (OUTPUT && output_useful)
     {
-
-	if (OUTPUT_TYPE == output_type::dag)
-	{
-	    print_compact(root_vertex);
-	} else if (OUTPUT_TYPE == output_type::tree)
-	{
-	    print_compact_tree(root_vertex);
-	} else if (OUTPUT_TYPE == output_type::coq)
-	{
-	    print_coq_tree(root_vertex);
-	}
+	print_compact(root_vertex);
     }
 
     // Print measurements and clean up.

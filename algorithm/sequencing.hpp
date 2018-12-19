@@ -67,50 +67,9 @@ victory sequencing_adversary(binconf *b, unsigned int depth, thread_attr *tat,
 	return victory::alg;
     }
 
-    if (ADVERSARY_HEURISTICS)
+    if (ADVERSARY_HEURISTICS && adversary_heuristics<GENERATING>(b, tat, adv_to_evaluate) == victory::adv)
     {
-	// a much weaker variant of large item heuristic, but takes O(1) time
-	if (b->totalload() <= S && b->loads[2] >= R-S)
-	{
-	    adv_to_evaluate->win = victory::adv;
-	    adv_to_evaluate->heuristic = true;
-	    adv_to_evaluate->heuristic_item = S;
-	    adv_to_evaluate->heuristic_type = LARGE_ITEM;
-	    return victory::adv;
-	}
-
-
-	// one heuristic specific for 19/14
-	if (S == 14 && R == 19)
-	{
-	    
-	    auto [fnh, fives_to_send] = five_nine_heuristic(b,tat);
-	    if (fnh)
-	    {
-		adv_to_evaluate->win = victory::adv;
-		adv_to_evaluate->heuristic = true;
-		adv_to_evaluate->heuristic_type = FIVE_NINE;
-		adv_to_evaluate->heuristic_multi = fives_to_send;
-		return victory::adv;
-	    }
-	}
-
-    /* Large items heuristic: if 2nd or later bin is at least R-S, check if enough large items
-	   can be sent so that this bin (or some other) hits R. */
-
-	bin_int lih, mul;
-	std::tie(lih,mul) = large_item_heuristic(b, tat);
-	if (lih != MAX_INFEASIBLE)
-	{
-	    {
-		adv_to_evaluate->win = victory::adv;
-		adv_to_evaluate->heuristic = true;
-		adv_to_evaluate->heuristic_item = lih;
-		adv_to_evaluate->heuristic_type = LARGE_ITEM;
-		adv_to_evaluate->heuristic_multi = mul;
-	    }
-	    return victory::adv;
-	}
+	return victory::adv;
     }
 
    

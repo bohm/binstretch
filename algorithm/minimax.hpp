@@ -59,6 +59,67 @@ victory check_messages(thread_attr *tat)
     * EXPLORING (general exploration done by individual threads)
 */
 
+template<int MODE> victory adversary_heuristics(binconf *b, thread_attr *tat, adversary_vertex *adv_to_evaluate)
+{
+    //1. a much weaker variant of large item heuristic, but takes O(1) time
+    if (b->totalload() <= S && b->loads[2] >= R-S)
+    {
+	if(MODE == GENERATING)
+	{
+	    adv_to_evaluate->win = victory::adv;
+	    adv_to_evaluate->heuristic = true;
+	    adv_to_evaluate->heuristic_type = LARGE_ITEM;
+	    adv_to_evaluate->heuristic_item = S;
+	    adv_to_evaluate->heuristic_multi = BINS-1;
+	}
+	return victory::adv;
+    }
+
+    // one heuristic specific for 19/14
+    if (S == 14 && R == 19 && (MODE == GENERATING || FIVE_NINE_ACTIVE_EVERYWHERE))
+    {
+	auto [fnh, fives_to_send] = five_nine_heuristic(b,tat);
+	tat->meas.five_nine_calls++;
+	if (fnh)
+	{
+	    tat->meas.five_nine_hits++;
+	    if(MODE == GENERATING)
+	    {
+		adv_to_evaluate->win = victory::adv;
+		adv_to_evaluate->heuristic = true;
+		adv_to_evaluate->heuristic_type = FIVE_NINE;
+		// do not set heuristic_item, it is implicit
+		adv_to_evaluate->heuristic_multi = fives_to_send;
+	    }
+	    return victory::adv;
+	}
+    }
+
+    if (MODE == GENERATING || LARGE_ITEM_ACTIVE_EVERYWHERE)
+    {
+	bin_int lih, mul;
+	tat->meas.large_item_calls++;
+
+	std::tie(lih,mul) = large_item_heuristic(b, tat);
+	if (lih != MAX_INFEASIBLE)
+	{
+	    tat->meas.large_item_hits++;
+
+	    if (MODE == GENERATING)
+	    {
+		adv_to_evaluate->win = victory::adv;
+		adv_to_evaluate->heuristic = true;
+		adv_to_evaluate->heuristic_type = LARGE_ITEM;
+		adv_to_evaluate->heuristic_item = lih;
+		adv_to_evaluate->heuristic_multi = mul;
+	    }
+	    return victory::adv;
+	}
+    }
+
+    return victory::uncertain;
+}
+
 template<int MODE> victory adversary(binconf *b, int depth, thread_attr *tat, adversary_vertex *adv_to_evaluate, algorithm_vertex *parent_alg)
 {
     algorithm_vertex *upcoming_alg = NULL;
@@ -89,65 +150,9 @@ template<int MODE> victory adversary(binconf *b, int depth, thread_attr *tat, ad
     }
 
     // Turn off adversary heuristics if convenient (e.g. for machine verification).
-    if (ADVERSARY_HEURISTICS)
+    if (ADVERSARY_HEURISTICS && adversary_heuristics<MODE>(b, tat, adv_to_evaluate) == victory::adv)
     {
-
-	// a much weaker variant of large item heuristic, but takes O(1) time
-	if (b->totalload() <= S && b->loads[2] >= R-S)
-	{
-	    if(MODE == GENERATING)
-	    {
-		adv_to_evaluate->win = victory::adv;
-		adv_to_evaluate->heuristic = true;
-		adv_to_evaluate->heuristic_type = LARGE_ITEM;
-		adv_to_evaluate->heuristic_item = S;
-		adv_to_evaluate->heuristic_multi = BINS-1;
-	    }
-	    return victory::adv;
-	}
-
-	// one heuristic specific for 19/14
-	if (S == 14 && R == 19 && (MODE == GENERATING || FIVE_NINE_ACTIVE_EVERYWHERE))
-	{
-	    auto [fnh, fives_to_send] = five_nine_heuristic(b,tat);
-	    tat->meas.five_nine_calls++;
-	    if (fnh)
-	    {
-		tat->meas.five_nine_hits++;
-		if(MODE == GENERATING)
-		{
-		    adv_to_evaluate->win = victory::adv;
-		    adv_to_evaluate->heuristic = true;
-		    adv_to_evaluate->heuristic_type = FIVE_NINE;
-		    // do not set heuristic_item, it is implicit
-		    adv_to_evaluate->heuristic_multi = fives_to_send;
-		}
-		return victory::adv;
-	    }
-	}
-
-	//if (true)
-	if (MODE == GENERATING || LARGE_ITEM_ACTIVE_EVERYWHERE)
-	{
-	    bin_int lih, mul;
-	    tat->meas.large_item_calls++;
-
-	    std::tie(lih,mul) = large_item_heuristic(b, tat);
-	    if (lih != MAX_INFEASIBLE)
-	    {
-		tat->meas.large_item_hits++;
-
-		if (MODE == GENERATING)
-		{
-		    adv_to_evaluate->win = victory::adv;
-		    adv_to_evaluate->heuristic = true;
-		    adv_to_evaluate->heuristic_type = LARGE_ITEM;
-		    adv_to_evaluate->heuristic_item = lih;
-		    adv_to_evaluate->heuristic_multi = mul;
-		}
-		return victory::adv;
-	    }
-	}
+	return victory::adv;
     }
 
     if (MODE == GENERATING)

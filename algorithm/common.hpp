@@ -25,7 +25,8 @@ const bool PROGRESS = true; // Whether to print progress info to stderr.
 const bool MEASURE = true; // Whether to collect and print measurements to stderr.
 
 const bool OUTPUT = true; // Whether to produce output.
-const output_type OUTPUT_TYPE = output_type::dag; // Choices: dag, tree, coq.
+
+// const output_type OUTPUT_TYPE = output_type::dag; // No longer used; we always print a DAG.
 
 const bool REGROW = true; // Whether to regrow or just terminate after first iteration.
 
@@ -92,19 +93,19 @@ const std::vector<bin_int> INITIAL_ITEMS = {};
 // const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1}; // 5x1
 // const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1}; // 4x1
 //  const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1}; // 3x1
-// const std::vector<bin_int> INITIAL_SEQUENCE = {5};
+const std::vector<bin_int> INITIAL_SEQUENCE = {5};
 // const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,4}; // 3x1
 
 // const std::vector<bin_int> INITIAL_SEQUENCE = {2,2};
 // const std::vector<bin_int> INITIAL_SEQUENCE = {2};
 
- const std::vector<bin_int> INITIAL_SEQUENCE = {};
+// const std::vector<bin_int> INITIAL_SEQUENCE = {};
 
-// const int FIRST_PASS = 0;
+const int FIRST_PASS = 0;
 // const int FIRST_PASS = 1;
 // const int FIRST_PASS = 6;
 // const int FIRST_PASS = 8;
-const int FIRST_PASS = S-1;
+// const int FIRST_PASS = S-1;
 
 // constants used for good situations
 const int RMOD = (R-1);
