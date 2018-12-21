@@ -217,7 +217,7 @@ void conf_hashpush(const binconf *d, uint64_t posvalue, thread_attr *tat)
     new_item.set(bchash, posvalue);
 
     int ret;
-	ret = hashpush(new_item, conflogpart(bchash), tat);
+    ret = hashpush(new_item, logpart(bchash, conflog), tat);
     if (MEASURE)
     {
 	if (ret == INSERTED)
@@ -252,7 +252,7 @@ bin_int is_conf_hashed(const binconf *d, thread_attr *tat, bool &found)
     uint64_t bchash = zero_last_two_bits(d->confhash());
 
     bin_int ret;
-    ret = is_hashed(bchash, conflogpart(bchash), tat, found);
+    ret = is_hashed(bchash, logpart(bchash,conflog), tat, found);
     assert(ret <= 2 && ret >= -2);
 
     if (ret >= 0)
@@ -290,14 +290,14 @@ void dp_encache(const binconf &d, const bool feasibility, thread_attr *tat)
     uint64_t hash = d.dphash();
     dpht_el ins;
     ins.set(hash, feasibility, PERMANENT);
-    hashpush_dp<PERMANENT>(hash, ins, dplogpart(hash), tat);
+    hashpush_dp<PERMANENT>(hash, ins, logpart(hash, dplog), tat);
    
 }
 
 maybebool dp_query(const binconf &d, thread_attr *tat)
 {
     uint64_t hash = d.dphash();
-    return is_dp_hashed(hash, dplogpart(hash), tat);
+    return is_dp_hashed(hash, logpart(hash, dplog), tat);
 
 }
 

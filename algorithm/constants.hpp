@@ -30,39 +30,22 @@ void print(FILE *stream, const victory& win)
 // Output types are no longer used.
 // enum class output_type {tree, dag, coq};
 
+// Minimax states.
+enum class mm_state {generating, exploring, expanding, updating, sequencing, cleanup};
 
+enum class task_status {available, batched, pruned, alg_win, adv_win, irrelevant};
 
-// Updater states.
-// const int POSTPONED = 2;
-// const int TERMINATING = 3;
-//const int OVERDUE = 4;
-
-const int IRRELEVANT = 5;
 
 enum class updater_states {postponed, terminating, overdue, irrelevant};
 
-enum class minimax_states {generating, exploring, expanding, updating, sequencing, cleanup};
-
-// Minimax states.
-const int GENERATING = 1;
-const int EXPLORING = 2;
-const int EXPANDING = 3;
-const int UPDATING = 4;
-const int SEQUENCING = 5;
-const int CLEANUP = 6;
+// States of a vertex in a currently evaluating minimax graph.
+enum class vert_state {fresh, finished, expand, fixed};
 
 typedef int8_t maybebool;
 
 const maybebool MB_INFEASIBLE = 0;
 const maybebool MB_FEASIBLE = 1;
 const maybebool MB_NOT_CACHED = 2;
-
-const int TASK_ADV = 0;
-const int TASK_ALG = 1;
-const int TASK_AVAILABLE = 2;
-const int TASK_IN_PROGRESS = 3;
-const int TASK_PRUNED = 4;
-
 
 // aliases for measurements of good situations
 const int SITUATIONS = 10;

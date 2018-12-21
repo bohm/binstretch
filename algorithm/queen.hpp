@@ -119,8 +119,10 @@ int queen()
     // out of the settings, queen does not spawn workers or use ht, only dpht
     dplog = std::get<1>(settings);
     dpht_size = 1LLU << dplog;
-    init_queen_memory();
-    
+
+    ht = NULL; // Init queen memory (the queen does not use the main solved cache).
+    dpht_el::init(&dpht, dpht_size);
+
     sync_up(); // Sync before any rounds start.
 
     binconf root = {INITIAL_LOADS, INITIAL_ITEMS};
@@ -145,7 +147,7 @@ int queen()
 	sapling_stack.pop();
 	bool lower_bound_complete = false;
 	computation_root = currently_growing.root;
-	computation_root->state = EXPAND;
+	computation_root->state = vert_state::expand;
 	computation_root->win = victory::uncertain;
 
 	// Currently we cannot expand a vertex with outedges.
@@ -183,7 +185,7 @@ int queen()
 		// irrel_taskq.clear();
 		clear_tasks();
 
-                // Purge all new vertices, so that only FIXED and EXPAND remain.
+                // Purge all new vertices, so that only vert_state::fixed and vert_state::expand remain.
 		purge_new(computation_root);
 		reset_values(computation_root);
 		reset_running_lows();
@@ -307,7 +309,8 @@ int queen()
 	    {
 		// return value is 0, but the tree needs to be expanded.
 		assert(updater_result == victory::adv);
-		// Transform tasks into EXPAND and NEW vertices into FIXED.
+		// Transform tasks into vert_state::expand and
+		// vert_state::fresh vertices into vert_state::fixed.
 		relabel_and_fix(computation_root, &tat);
 		// print_debug_dag(computation_root, regrow_level, 1);
 	    }
@@ -356,7 +359,8 @@ int queen()
     // Print measurements and clean up.
     g_meas.print();
     delete_running_lows();
-    free_queen_memory();
+
+    dpht_el::free(&dpht); // Free queen cache.
     delete_batches();
 
     return ret;

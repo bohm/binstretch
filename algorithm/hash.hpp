@@ -43,6 +43,15 @@ inline bool get_last_bit(uint64_t n)
     return ((n & 1) == 1);
 }
 
+// typedef dpht_el_128 dpht_el;
+
+class conf_el; class dpht_el_64; // Both defined later in the file.
+typedef dpht_el_64 dpht_el;
+
+// generic hash table (for configurations)
+std::atomic<conf_el> *ht = NULL;
+std::atomic<dpht_el> *dpht = NULL;
+
 
 class conf_el
 {
@@ -91,6 +100,24 @@ public:
     bin_int depth() const
 	{
 	    return 0;
+	}
+
+    // Setup of the whole cache.
+    static void init(std::atomic<conf_el> **ccache, uint64_t size)
+	{
+	    (*ccache) = new std::atomic<conf_el>[size];
+	    assert((*ccache) != NULL);
+    
+	    conf_el y{0};
+	    for (uint64_t i = 0; i < size; i++)
+	    {
+		std::atomic_init(&(*ccache)[i], y);
+	    }
+	}
+
+    static void free(std::atomic<conf_el> **ccache)
+	{
+	    delete[] (*ccache); *ccache = NULL;
 	}
 };
 
@@ -144,67 +171,38 @@ public:
 	    return 0;
 	}
 
+
+    // Setup of the whole cache.
+    static void init(std::atomic<dpht_el_64> **cache, uint64_t size)
+	{
+	    (*cache) = new std::atomic<dpht_el_64>[size];
+	    assert((*cache) != NULL);
+
+	    dpht_el_64 x{0};
+
+	    for (uint64_t i =0; i < size; i++)
+	    {
+		std::atomic_init(&((*cache)[i]),x);
+	    }
+	}
+
+    static void free(std::atomic<dpht_el_64> **cache)
+	{
+	    delete[] *cache; *cache = NULL;
+	}
 };
 
-class dpht_el_128
+const unsigned int CACHE_LOADCONF_LIMIT = 1000;
+
+class dpht_large
 {
-public:
     uint64_t _hash;
-    int16_t _feasible;
-    int16_t _empty_bins;
-    int16_t _permanence;
-    int16_t _unused; //align to 128 bit.
-
-    inline void set(uint64_t hash, int16_t feasible, int16_t permanence)
-	{
-	    _hash = hash;
-	    _feasible = feasible;
-	    _permanence = permanence;
-	    _empty_bins = 0;
-	    _unused = 0;
-	}
-    
-    inline bin_int value() const
-	{
-	    return _feasible;
-	}
-    inline uint64_t hash() const
-	{
-	    return _hash;
-	}
-    inline bool empty() const
-	{
-	    return _hash == 0;
-	}
-
-    inline bool match(const uint64_t& hash) const
-	{
-	    return (_hash == hash);
-	}
-    inline bool removed() const
-	{
-	    return _hash == REMOVED;
-	}
-
-    inline void remove()
-	{
-	    _hash = REMOVED;
-	}
-
-    inline void erase()
-	{
-	    _hash = 0;
-	}
+    victory _win;
+    bool overfull; // In the situation that there are more final _confs than CACHE_LOADCONF_LIMITS, we cannot use the cache element.
+    // (Maybe not cache it at that time?)
+    std::array<loadconf, CACHE_LOADCONF_LIMIT> _confs;
+   
 };
-
-// typedef dpht_el_128 dpht_el;
-typedef dpht_el_64 dpht_el;
-// typedef dpht_el_64dangerous dpht_el;
-
-// generic hash table (for configurations)
-std::atomic<conf_el> *ht = NULL;
-std::atomic<dpht_el> *dpht = NULL; // = new std::atomic<dpht_el_extended>[BC_HASHSIZE];
-//void *baseptr, *dpbaseptr;
 
 // Mersenne twister.
 std::mt19937_64 gen(12345);
@@ -241,7 +239,7 @@ void zobrist_init()
 
     for (int i=0; i<=BINS; i++)
     {
-	for( int j=0; j<=R; j++)
+	for (int j=0; j<=R; j++)
 	{
 	    Zl[i*(R+1)+j] = rand_64bit();
 	}
@@ -262,56 +260,6 @@ uint64_t quicklog(uint64_t x)
 	ret++;
     }
     return ret;
-}
-
-// initializes the queen's memory. The queen uses dynamic programming cache but not the main solved cache.
-void init_queen_memory()
-{
-    dpht = new std::atomic<dpht_el>[dpht_size];
-    ht = NULL;
-    assert(dpht != NULL);
-    
-    dpht_el x{0};
-
-    for (uint64_t i =0; i < dpht_size; i++)
-    {
-	std::atomic_init(&dpht[i],x);
-    }
-   
-}
-
-void free_queen_memory()
-{
-    delete[] dpht; dpht = NULL;
-}
-
-// Initializes hashtables.
-// Call by overseer, not by workers.
-
-void init_worker_memory()
-{
-    ht = new std::atomic<conf_el>[ht_size];
-    dpht = new std::atomic<dpht_el>[dpht_size];
-
-    conf_el y{0};
-    dpht_el x{0};
-    assert(ht != NULL && dpht != NULL);
-    
-    for (uint64_t i = 0; i < ht_size; i++)
-    {
-	std::atomic_init(&ht[i], y);
-    }
-
-    for (uint64_t i =0; i < dpht_size; i++)
-    {
-	std::atomic_init(&dpht[i],x);
-    }
-}
-
-void free_worker_memory()
-{
-    delete[] ht; ht = NULL;
-    delete[] dpht; dpht = NULL;
 }
 
 void clear_cache_of_ones()
@@ -475,19 +423,13 @@ template<unsigned int LOG> inline uint64_t logpart(uint64_t x)
     return x >> (64 - LOG); 
 }
 
+const auto loadlogpart = logpart<LOADLOG>;
+
 // with some memory allocated dynamically, we also need a dynamic logpart
 
-inline uint64_t conflogpart(uint64_t x)
+inline uint64_t logpart(uint64_t x, int log)
 {
-    return x >> (64 - conflog);
+    return x >> (64 - log);
 }
 
-inline uint64_t dplogpart(uint64_t x)
-{
-    return x >> (64 - dplog);
-}
-
-// const auto shared_conflogpart = logpart<SHARED_CONFLOG>;
-// const auto shared_dplogpart = logpart<SHARED_DPLOG>;
-const auto loadlogpart = logpart<LOADLOG>;
 #endif // _HASH_HPP

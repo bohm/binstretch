@@ -442,7 +442,6 @@ bin_int dynprog_max(const binconf &conf, thread_attr *tat)
 		    return S;
 		}
 	    } else {
-		MEASURE_ONLY(tat->meas.largest_queue_observed = std::max(tat->meas.largest_queue_observed, poldq->size()));
 		for (loadconf& tuple: *poldq)
 		{
 		    for (int i=BINS; i >= 1; i--)
@@ -479,6 +478,11 @@ bin_int dynprog_max(const binconf &conf, thread_attr *tat)
 		if (pnewq->size() == 0)
 		{
 		    return MAX_INFEASIBLE;
+		} else
+		{
+		    MEASURE_ONLY(tat->meas.largest_queue_observed =
+				 std::max(tat->meas.largest_queue_observed, pnewq->size()));
+
 		}
 	    }
 

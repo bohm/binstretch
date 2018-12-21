@@ -28,12 +28,6 @@ class adversary_vertex;
 std::map<llu, adversary_vertex*> generated_graph_adv;
 std::map<llu, algorithm_vertex*> generated_graph_alg;
 
-// four possible values of a vertex state
-const int NEW = 0;
-const int FINISHED = 1;
-const int EXPAND = 2;
-const int FIXED = 3;
-
 // FIXED means part of the lower bound (as evaluated by a previous computation)
 // but the full lower bound tree is not yet present.
 
@@ -52,7 +46,7 @@ public:
     uint64_t id;
     bool visited = false;
     victory win = victory::uncertain;
-    int state = NEW;
+    vert_state state = vert_state::fresh;
 
     algorithm_vertex(binconf *b, bin_int next_item) : next_item(next_item)
     {
@@ -81,20 +75,21 @@ public:
     std::list<adv_outedge*> out; // next algorithmic states
     std::list<alg_outedge*> in; // previous algorithmic states
 
+    uint64_t id;
     int depth; // Depth increases only in adversary's steps.
-    //bool task = false;
-    //bool sapling = false;
+
     bool visited = false; // We use this for DFS (e.g. for printing).
+    
+    vert_state state = vert_state::fresh;
+    victory win = victory::uncertain;
+
     bool heuristic = false;
     bin_int heuristic_item = 0;
     bin_int heuristic_multi = 0;
     int heuristic_type = 0;
-    // int last_item = 1; // last item is now stored in binconf
-    victory win = victory::uncertain;
-    uint64_t id;
+
     int expansion_depth = 0;
-    int state = NEW;
-    bool task = false; // task is a separate boolean because an EXPAND vertex can be a task itself.
+    bool task = false; // task is a separate boolean because an vert_state::expand vertex can be a task itself.
     bool sapling = false;
 
     adversary_vertex(const binconf *b, int depth)
@@ -257,16 +252,16 @@ void clear_visited_bits()
 
 /* remove_inedge removes the edge from the list of the incoming edges,
    but does not touch the outgoing edge list. */
-template <int MODE> void remove_inedge(alg_outedge *e);
-template <int MODE> void remove_inedge(adv_outedge *e);
+template <mm_state MODE> void remove_inedge(alg_outedge *e);
+template <mm_state MODE> void remove_inedge(adv_outedge *e);
 
-template <int MODE> void remove_outedges(algorithm_vertex *v);
-template <int MODE> void remove_outedges(adversary_vertex *v);
+template <mm_state MODE> void remove_outedges(algorithm_vertex *v);
+template <mm_state MODE> void remove_outedges(adversary_vertex *v);
 
 /* Forward declaration of remove_task for inclusion purposes. */
 void remove_task(uint64_t hash);
 
-template <int MODE> void remove_inedge(adv_outedge *e)
+template <mm_state MODE> void remove_inedge(adv_outedge *e)
 {
     e->to->in.erase(e->pos_child);
 
@@ -278,14 +273,14 @@ template <int MODE> void remove_inedge(adv_outedge *e)
     }
 }
 
-template <int MODE> void remove_inedge(alg_outedge *e)
+template <mm_state MODE> void remove_inedge(alg_outedge *e)
 {
     e->to->in.erase(e->pos_child);
     if (e->to->in.empty())
     {
 	remove_outedges<MODE>(e->to);
 	// when updating the tree, if e->to is task, remove it from the queue
-	if (MODE == UPDATING && e->to->task && e->to->win == victory::uncertain)
+	if (MODE == mm_state::updating && e->to->task && e->to->win == victory::uncertain)
 	{
 	    remove_task(e->to->bc->confhash());
 	}
@@ -297,7 +292,7 @@ template <int MODE> void remove_inedge(alg_outedge *e)
 
 /* Removes all outgoing edges (including from the inedge lists).
    In order to preserve incoming edges, leaves the vertex be. */
-template <int MODE> void remove_outedges(algorithm_vertex *v)
+template <mm_state MODE> void remove_outedges(algorithm_vertex *v)
 {
     for (auto& e: v->out)
     {
@@ -308,7 +303,7 @@ template <int MODE> void remove_outedges(algorithm_vertex *v)
     v->out.clear();
 }
 
-template <int MODE> void remove_outedges(adversary_vertex *v)
+template <mm_state MODE> void remove_outedges(adversary_vertex *v)
 {
     for (auto& e: v->out)
     {
@@ -320,14 +315,14 @@ template <int MODE> void remove_outedges(adversary_vertex *v)
 }
 
 // removes both the outedge and the inedge
-template <int MODE> void remove_edge(alg_outedge *e)
+template <mm_state MODE> void remove_edge(alg_outedge *e)
 {
     remove_inedge<MODE>(e);
     e->from->out.erase(e->pos);
     delete e;
 }
 
-template <int MODE> void remove_edge(adv_outedge *e)
+template <mm_state MODE> void remove_edge(adv_outedge *e)
 {
     remove_inedge<MODE>(e);
     e->from->out.erase(e->pos);
@@ -335,7 +330,7 @@ template <int MODE> void remove_edge(adv_outedge *e)
 }
 
 // Remove all outedges except the right path.
-template <int MODE> void remove_outedges_except(adversary_vertex *v, int right_item)
+template <mm_state MODE> void remove_outedges_except(adversary_vertex *v, int right_item)
 {
     adv_outedge *right_edge = NULL;
     for (auto& e: v->out)

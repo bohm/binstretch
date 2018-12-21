@@ -163,8 +163,8 @@ std::stack<sapling> sapling_stack;
 // a queue where one sapling can put its own tasks
 std::queue<sapling> regrow_queue;
 
-std::atomic<int> *tstatus;
-std::vector<int> tstatus_temporary;
+std::atomic<task_status> *tstatus;
+std::vector<task_status> tstatus_temporary;
 
 std::vector<task> tarray_temporary; // temporary array used for building
 task* tarray; // tarray used after we know the size
@@ -201,20 +201,19 @@ void destroy_tarray()
 void init_tstatus()
 {
     assert(tcount > 0);
-    tstatus = new std::atomic<int>[tcount];
+    tstatus = new std::atomic<task_status>[tcount];
     for (int i = 0; i < tcount; i++)
     {
-	tstatus[i].store(TASK_AVAILABLE);
+	tstatus[i].store(task_status::available);
     }
 }
 
 // call before tstatus is permuted
-void init_tstatus(const std::vector<int>& tstatus_temp)
+void init_tstatus(const std::vector<task_status>& tstatus_temp)
 {
     init_tstatus();
     for (int i = 0; i < tcount; i++)
     {
-	print<DEBUG>("Initializing tstatus %d with temporary value %d.\n", i, tstatus_temp[i]);
 	tstatus[i].store(tstatus_temp[i]);
     }
 }
@@ -271,7 +270,7 @@ void permute_tarray_tstatus()
     // permutes the tasks 
     std::random_shuffle(perm.begin(), perm.end());
     task *tarray_new = new task[tcount];
-    std::atomic<int> *tstatus_new = new std::atomic<int>[tcount];
+    std::atomic<task_status> *tstatus_new = new std::atomic<task_status>[tcount];
     for (int i = 0; i < tcount; i++)
     {
 	tarray_new[perm[i]] = tarray[i];
@@ -345,21 +344,6 @@ bool possible_task_mixed(adversary_vertex *v, int largest_item)
 }
 
 
-// Adds a task to the task array.
-void add_task(const binconf *x, thread_attr *tat)
-{
-    task_count++;
-    task newtask;
-    duplicate(&(newtask.bc), x);
-//    newtask.last_item = tat->last_item;
-    newtask.expansion_depth = tat->expansion_depth; 
-    tmap.insert(std::make_pair(newtask.bc.confhash(), tarray_temporary.size()));
-    tarray_temporary.push_back(newtask);
-    tstatus_temporary.push_back(TASK_AVAILABLE);
-    // print<true>("Adding task number %d.\n", tcount);
-    tcount++;
-}
-
 // Collects tasks from a generated tree.
 // To be called after generation, before the game starts.
 
@@ -368,7 +352,7 @@ void collect_tasks_adv(adversary_vertex *v, thread_attr *tat);
 
 void collect_tasks_adv(adversary_vertex *v, thread_attr *tat)
 {
-    if (v->visited || v->state == FINISHED)
+    if (v->visited || v->state == vert_state::finished)
     {
 	return;
     }
@@ -376,18 +360,18 @@ void collect_tasks_adv(adversary_vertex *v, thread_attr *tat)
 
     if (v->task)
     {
-	if(v->win != victory::uncertain || ((v->state != NEW) && (v->state != EXPAND)) )
+	if(v->win != victory::uncertain || ((v->state != vert_state::fresh) && (v->state != vert_state::expand)) )
 	{
 	    print<true>("Trouble with task vertex %" PRIu64 ": it has winning value not UNCERTAIN, but %d.\n",
 			v->id, v->win);
 	    print_debug_dag(computation_root, tat->regrow_level, 99);
-	    assert(v->win == victory::uncertain && ((v->state == NEW) || (v->state == EXPAND)) );
+	    assert(v->win == victory::uncertain && ((v->state == vert_state::fresh) || (v->state == vert_state::expand)) );
 	}
 
 	task newtask(v->bc);
 	tmap.insert(std::make_pair(newtask.bc.confhash(), tarray_temporary.size()));
 	tarray_temporary.push_back(newtask);
-	tstatus_temporary.push_back(TASK_AVAILABLE);
+	tstatus_temporary.push_back(task_status::available);
 	tcount++;
     }
     else
@@ -401,7 +385,7 @@ void collect_tasks_adv(adversary_vertex *v, thread_attr *tat)
 
 void collect_tasks_alg(algorithm_vertex *v, thread_attr *tat)
 {
-    if (v->visited || v->state == FINISHED)
+    if (v->visited || v->state == vert_state::finished)
     {
 	return;
     }
@@ -434,18 +418,18 @@ void clear_tasks()
 // Only run when UPDATING; in GENERATING you just mark a vertex as not a task.
 void remove_task(uint64_t hash)
 {
-    tstatus[tmap[hash]].store(TASK_PRUNED, std::memory_order_release);
+    tstatus[tmap[hash]].store(task_status::pruned, std::memory_order_release);
 }
 
 // Check if a given task is complete, return its value. 
 victory completion_check(uint64_t hash)
 {
-    int query = tstatus[tmap[hash]].load(std::memory_order_acquire);
-    if (query == TASK_ADV)
+    task_status query = tstatus[tmap[hash]].load(std::memory_order_acquire);
+    if (query == task_status::adv_win)
     {
 	return victory::adv;
     }
-    else if (query == TASK_ALG)
+    else if (query == task_status::alg_win)
     {
 	return victory::alg;
     }
@@ -526,8 +510,8 @@ void compose_batch(int *batch)
 	    batch[i] = -1;
 	} else
 	{
-	    int status = tstatus[taskpointer].load(std::memory_order_acquire);
-	    if (status == TASK_AVAILABLE)
+	    task_status status = tstatus[taskpointer].load(std::memory_order_acquire);
+	    if (status == task_status::available)
 	    {
 		print<DEBUG>("Added task %d into the next batch.\n", taskpointer);
 		batch[i] = taskpointer++;

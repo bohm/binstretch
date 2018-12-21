@@ -23,8 +23,8 @@
 #include "networking.hpp"
 #include "strategy.hpp"
 
-template<int MODE> victory adversary(binconf *b, int depth, thread_attr *tat, adversary_vertex *adv_to_evaluate, algorithm_vertex* parent_alg);
-template<int MODE> victory algorithm(binconf *b, int k, int depth, thread_attr *tat, algorithm_vertex *alg_to_evaluate, adversary_vertex *parent_adv);
+template<mm_state MODE> victory adversary(binconf *b, int depth, thread_attr *tat, adversary_vertex *adv_to_evaluate, algorithm_vertex* parent_alg);
+template<mm_state MODE> victory algorithm(binconf *b, int k, int depth, thread_attr *tat, algorithm_vertex *alg_to_evaluate, adversary_vertex *parent_adv);
 
 victory check_messages(thread_attr *tat)
 {
@@ -36,7 +36,7 @@ victory check_messages(thread_attr *tat)
 	return victory::irrelevant;
     }
 
-    if (tstatus[tat->task_id].load() == TASK_PRUNED)
+    if (tstatus[tat->task_id].load() == task_status::pruned)
     {
 	//print<true>("Worker %d works on an irrelevant thread.\n", world_rank);
 	return victory::irrelevant;
@@ -59,12 +59,12 @@ victory check_messages(thread_attr *tat)
     * EXPLORING (general exploration done by individual threads)
 */
 
-template<int MODE> victory adversary_heuristics(binconf *b, thread_attr *tat, adversary_vertex *adv_to_evaluate)
+template<mm_state MODE> victory adversary_heuristics(binconf *b, thread_attr *tat, adversary_vertex *adv_to_evaluate)
 {
     //1. a much weaker variant of large item heuristic, but takes O(1) time
     if (b->totalload() <= S && b->loads[2] >= R-S)
     {
-	if(MODE == GENERATING)
+	if(MODE == mm_state::generating)
 	{
 	    adv_to_evaluate->win = victory::adv;
 	    adv_to_evaluate->heuristic = true;
@@ -76,14 +76,14 @@ template<int MODE> victory adversary_heuristics(binconf *b, thread_attr *tat, ad
     }
 
     // one heuristic specific for 19/14
-    if (S == 14 && R == 19 && (MODE == GENERATING || FIVE_NINE_ACTIVE_EVERYWHERE))
+    if (S == 14 && R == 19 && (MODE == mm_state::generating || FIVE_NINE_ACTIVE_EVERYWHERE))
     {
 	auto [fnh, fives_to_send] = five_nine_heuristic(b,tat);
 	tat->meas.five_nine_calls++;
 	if (fnh)
 	{
 	    tat->meas.five_nine_hits++;
-	    if(MODE == GENERATING)
+	    if(MODE == mm_state::generating)
 	    {
 		adv_to_evaluate->win = victory::adv;
 		adv_to_evaluate->heuristic = true;
@@ -95,7 +95,7 @@ template<int MODE> victory adversary_heuristics(binconf *b, thread_attr *tat, ad
 	}
     }
 
-    if (MODE == GENERATING || LARGE_ITEM_ACTIVE_EVERYWHERE)
+    if (MODE == mm_state::generating || LARGE_ITEM_ACTIVE_EVERYWHERE)
     {
 	bin_int lih, mul;
 	tat->meas.large_item_calls++;
@@ -105,7 +105,7 @@ template<int MODE> victory adversary_heuristics(binconf *b, thread_attr *tat, ad
 	{
 	    tat->meas.large_item_hits++;
 
-	    if (MODE == GENERATING)
+	    if (MODE == mm_state::generating)
 	    {
 		adv_to_evaluate->win = victory::adv;
 		adv_to_evaluate->heuristic = true;
@@ -120,14 +120,14 @@ template<int MODE> victory adversary_heuristics(binconf *b, thread_attr *tat, ad
     return victory::uncertain;
 }
 
-template<int MODE> victory adversary(binconf *b, int depth, thread_attr *tat, adversary_vertex *adv_to_evaluate, algorithm_vertex *parent_alg)
+template<mm_state MODE> victory adversary(binconf *b, int depth, thread_attr *tat, adversary_vertex *adv_to_evaluate, algorithm_vertex *parent_alg)
 {
     algorithm_vertex *upcoming_alg = NULL;
     adv_outedge *new_edge = NULL;
     victory below = victory::alg;
     victory win = victory::alg;
 
-    if (MODE == GENERATING)
+    if (MODE == mm_state::generating)
     {
 	if (adv_to_evaluate->visited)
 	{
@@ -135,7 +135,7 @@ template<int MODE> victory adversary(binconf *b, int depth, thread_attr *tat, ad
 	}
 	adv_to_evaluate->visited = true;
 
-	if (adv_to_evaluate->state == FINISHED)
+	if (adv_to_evaluate->state == vert_state::finished)
 	{
 	    assert(adv_to_evaluate->win == victory::adv);
 	    return adv_to_evaluate->win;
@@ -145,7 +145,7 @@ template<int MODE> victory adversary(binconf *b, int depth, thread_attr *tat, ad
     // Everything can be packed into one bin, return 1.
     if ((b->loads[BINS] + (BINS*S - b->totalload())) < R)
     {
-	if (MODE == GENERATING) { adv_to_evaluate->win = victory::alg; }
+	if (MODE == mm_state::generating) { adv_to_evaluate->win = victory::alg; }
 	return victory::alg;
     }
 
@@ -155,17 +155,17 @@ template<int MODE> victory adversary(binconf *b, int depth, thread_attr *tat, ad
 	return victory::adv;
     }
 
-    if (MODE == GENERATING)
+    if (MODE == mm_state::generating)
     {
 	// deal with vertices of several states (does not happen in exploration mode)
-	// states: NEW -- a new vertex that should be expanded
-	// EXPAND -- a previous task that leads to a lower bound and should be expanded.
+	// states: fresh -- a new vertex that should be expanded
+	// expand -- a previous task that leads to a lower bound and should be expanded.
 
-	// FINISHED -- a vertex that is already part of a full lower bound tree (likely
+	// finished -- a vertex that is already part of a full lower bound tree (likely
 	// for some other sapling.)
 
-	// FIXED -- vertex is already part of the prescribed lower bound (e.g. by previous computation)
-	if (adv_to_evaluate->state == FIXED)
+	// fixed -- vertex is already part of the prescribed lower bound (e.g. by previous computation)
+	if (adv_to_evaluate->state == vert_state::fixed)
 	{
 	    // When the vertex is fixed, we know it is part of the lower bound.
 	    // We do not generate any more options; instead we just iterate over the edges that are there.
@@ -185,10 +185,10 @@ template<int MODE> victory adversary(binconf *b, int depth, thread_attr *tat, ad
 	}
 
 	// assert
-	if (adv_to_evaluate->state != NEW && adv_to_evaluate->state != EXPAND)
+	if (adv_to_evaluate->state != vert_state::fresh && adv_to_evaluate->state != vert_state::expand)
 	{
 	    print<true>("Assert failed: adversary vertex state is %d.\n", adv_to_evaluate->state);
-	    assert(adv_to_evaluate->state == NEW || adv_to_evaluate->state == EXPAND); // no other state should go past this point
+	    assert(adv_to_evaluate->state == vert_state::fresh || adv_to_evaluate->state == vert_state::expand); // no other state should go past this point
 	}
 
 	// we now do creation of tasks only until the REGROW_LIMIT is reached
@@ -200,16 +200,15 @@ template<int MODE> victory adversary(binconf *b, int depth, thread_attr *tat, ad
 
 	    // disabled for now:
 	    // In some corner cases a vertex that is to be expanded becomes itself a task (again).
-	    // We remove the state EXPAND and reset it to NEW just so that it is always true
-	    // that all tasks are NEW vertices that become EXPAND in the next turn.
-	    /*if (adv_to_evaluate->state == EXPAND)
+	    // We remove the state vert_state::expand and reset it to vert_state::fresh just so that it is always true
+	    // that all tasks are vert_state::fresh vertices that become vert_state::expand in the next turn.
+	    /*if (adv_to_evaluate->state == vert_state::expand)
 	    {
-		adv_to_evaluate->state = NEW;
+		adv_to_evaluate->state = vert_state::fresh;
 	    }*/ 
 	    
 	    // mark current adversary vertex (created by algorithm() in previous step) as a task
 	    
-	    // add_task(b, tat); // we do no longer add tasks; instead, we collect them afterwards.
 	    adv_to_evaluate->task = true;
 	    adv_to_evaluate->win = victory::uncertain;
 	    return victory::uncertain;
@@ -217,7 +216,7 @@ template<int MODE> victory adversary(binconf *b, int depth, thread_attr *tat, ad
     }
 
     // if you are exploring, check the global terminate flag every 100th iteration
-    if (MODE == EXPLORING)
+    if (MODE == mm_state::exploring)
     {
 	tat->iterations++;
 	if (tat->iterations % 100 == 0)
@@ -240,7 +239,7 @@ template<int MODE> victory adversary(binconf *b, int depth, thread_attr *tat, ad
     // Check cache here (after we have solved trivial cases).
     // We only do this in exploration mode; while this could be also done
     // when generating we want the whole lower bound tree to be generated.
-    if (MODE == EXPLORING && !DISABLE_CACHE)
+    if (MODE == mm_state::exploring && !DISABLE_CACHE)
     {
 	bool found_conf = false;
 	int conf_in_hashtable = is_conf_hashed(b, tat, found_conf);
@@ -285,7 +284,7 @@ template<int MODE> victory adversary(binconf *b, int depth, thread_attr *tat, ad
 	
         print<DEBUG>("Sending item %d to algorithm.\n", item_size);
 
-	if (MODE == GENERATING)
+	if (MODE == mm_state::generating)
 	{
 	    // Check vertex cache if this algorithmic vertex is already present.
 	    // std::map<llu, adversary_vertex*>::iterator it;
@@ -318,23 +317,23 @@ template<int MODE> victory adversary(binconf *b, int depth, thread_attr *tat, ad
 	{
 	    win = victory::adv;
 	    
-	    if (MODE == GENERATING)
+	    if (MODE == mm_state::generating)
 	    {
 		// remove all outedges except the right one
-		remove_outedges_except<GENERATING>(adv_to_evaluate, item_size);
+		remove_outedges_except<mm_state::generating>(adv_to_evaluate, item_size);
 	    }
 	    break;
 	} else if (below == victory::alg)
 	{
-	    if (MODE == GENERATING)
+	    if (MODE == mm_state::generating)
 	    {
 		// no decreasing, but remove this branch of the game tree
-		remove_edge<GENERATING>(new_edge);
+		remove_edge<mm_state::generating>(new_edge);
 		// assert(new_edge == NULL); // TODO: make a better assertion
 	    }
 	} else if (below == victory::uncertain)
 	{
-	    assert(MODE == GENERATING);
+	    assert(MODE == mm_state::generating);
 	    if (win == victory::alg)
 	    {
 		win = victory::uncertain;
@@ -343,7 +342,7 @@ template<int MODE> victory adversary(binconf *b, int depth, thread_attr *tat, ad
     }
 
 
-    if (MODE == EXPLORING && !DISABLE_CACHE)
+    if (MODE == mm_state::exploring && !DISABLE_CACHE)
     {
 	// TODO: Make this cleaner.
 	if (win == victory::adv)
@@ -357,23 +356,23 @@ template<int MODE> victory adversary(binconf *b, int depth, thread_attr *tat, ad
     }
 
     // Sanity check.
-    if ((MODE == GENERATING) && win == victory::alg)
+    if ((MODE == mm_state::generating) && win == victory::alg)
     {
 	assert(adv_to_evaluate->out.empty());
     }
 
-    if (MODE == GENERATING) { adv_to_evaluate->win = win; }
+    if (MODE == mm_state::generating) { adv_to_evaluate->win = win; }
     tat->prev_max_feasible = old_max_feasible;
     return win;
 }
 
-template<int MODE> victory algorithm(binconf *b, int k, int depth, thread_attr *tat, algorithm_vertex *alg_to_evaluate, adversary_vertex *parent_adv)
+template<mm_state MODE> victory algorithm(binconf *b, int k, int depth, thread_attr *tat, algorithm_vertex *alg_to_evaluate, adversary_vertex *parent_adv)
 {
     adversary_vertex *upcoming_adv = NULL;
     victory below = victory::adv; // Who wins below.
     victory win = victory::adv; // Who wins this configuration.
  
-    if (MODE == GENERATING)
+    if (MODE == mm_state::generating)
     {
 	if (alg_to_evaluate->visited)
 	{
@@ -381,7 +380,7 @@ template<int MODE> victory algorithm(binconf *b, int k, int depth, thread_attr *
 	}
 	alg_to_evaluate->visited = true;
 
-	if (alg_to_evaluate->state == FINISHED)
+	if (alg_to_evaluate->state == vert_state::finished)
 	{
 	    assert(alg_to_evaluate->win == victory::adv);
 	    return alg_to_evaluate->win;
@@ -389,7 +388,7 @@ template<int MODE> victory algorithm(binconf *b, int k, int depth, thread_attr *
     }
  
     // if you are exploring, check the global terminate flag every 100th iteration
-    if (MODE == EXPLORING)
+    if (MODE == mm_state::exploring)
     {
 	tat->iterations++;
 
@@ -409,7 +408,7 @@ template<int MODE> victory algorithm(binconf *b, int k, int depth, thread_attr *
  
     if (gsheuristic(b,k, tat) == 1)
     {
-	if (MODE == GENERATING)
+	if (MODE == mm_state::generating)
 	{
 	    alg_to_evaluate->win = victory::alg;
 	    // alg_to_evaluate->heuristic = true;
@@ -418,9 +417,9 @@ template<int MODE> victory algorithm(binconf *b, int k, int depth, thread_attr *
 	return victory::alg;
     }
 
-    if (MODE == GENERATING)
+    if (MODE == mm_state::generating)
     {
-	if (alg_to_evaluate->state == FIXED)
+	if (alg_to_evaluate->state == vert_state::fixed)
 	{
 	    std::list<alg_outedge*>::iterator it = alg_to_evaluate->out.begin();
 	    while (it != alg_to_evaluate->out.end())
@@ -480,7 +479,7 @@ template<int MODE> victory algorithm(binconf *b, int k, int depth, thread_attr *
 	    int from = b->assign_and_rehash(k,i);
 	    int ol_from = onlineloads_assign(tat->ol, k);
 	    // initialize the adversary's next vertex in the tree (corresponding to d)
-	    if (MODE == GENERATING)
+	    if (MODE == mm_state::generating)
 	    {
 		// Check vertex cache if this adversarial vertex is already present.
 		// std::map<llu, adversary_vertex*>::iterator it;
@@ -511,14 +510,14 @@ template<int MODE> victory algorithm(binconf *b, int k, int depth, thread_attr *
 	    onlineloads_unassign(tat->ol, k, ol_from);
 	    if (below == victory::alg)
 	    {
-		if (MODE == GENERATING)
+		if (MODE == mm_state::generating)
 		{
 		    // Delete all edges from the current algorithmic vertex
 		    // which should also delete the deeper adversary vertex.
 		    
 		    // Does not delete the algorithm vertex itself,
 		    // because we created it on a higher level of recursion.
-		    remove_outedges<GENERATING>(alg_to_evaluate);
+		    remove_outedges<mm_state::generating>(alg_to_evaluate);
 		    // assert(current_algorithm == NULL); // sanity check
 
 		    alg_to_evaluate->win = victory::alg;
@@ -529,7 +528,7 @@ template<int MODE> victory algorithm(binconf *b, int k, int depth, thread_attr *
 		// nothing needs to be currently done, the edge is already created
 	    } else if (below == victory::uncertain)
 	    {
- 		assert(MODE == GENERATING); // should not happen during anything else but GENERATING
+ 		assert(MODE == mm_state::generating); // should not happen during anything else but mm_state::generating
 		// insert analyzed_vertex into algorithm's "next" list
 		if (win == victory::adv)
 		{
@@ -541,7 +540,7 @@ template<int MODE> victory algorithm(binconf *b, int k, int depth, thread_attr *
     }
 
     // r is now 0 or POSTPONED, depending on the circumstances
-    if (MODE == GENERATING) { alg_to_evaluate->win = win; }
+    if (MODE == mm_state::generating) { alg_to_evaluate->win = win; }
     return win;
 }
 
@@ -563,7 +562,7 @@ victory explore(binconf *b, thread_attr *tat)
     tat->current_overdue = false;
     tat->explore_roothash = b->confhash();
     tat->explore_root = &root_copy;
-    victory ret = adversary<EXPLORING>(b, 0, tat, NULL, NULL);
+    victory ret = adversary<mm_state::exploring>(b, 0, tat, NULL, NULL);
     assert(ret != victory::uncertain);
     return ret;
 }
@@ -576,7 +575,7 @@ victory generate(sapling start_sapling, thread_attr *tat)
     inplace_bc.hashinit();
     onlineloads_init(tat->ol, &inplace_bc);
 
-    victory ret = adversary<GENERATING>(&inplace_bc, start_sapling.root->depth, tat, start_sapling.root, NULL);
+    victory ret = adversary<mm_state::generating>(&inplace_bc, start_sapling.root->depth, tat, start_sapling.root, NULL);
     return ret;
 }
 

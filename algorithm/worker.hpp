@@ -38,12 +38,12 @@ void process_finished_tasks()
 	{
 	    // print<true>("Popped task id %d for worker %d.\n", ftask_id, p);
 
-	    int solution = tstatus[ftask_id].load();
-	    if (solution != IRRELEVANT)
+	    task_status solution = tstatus[ftask_id].load();
+	    if (solution == task_status::alg_win || solution == task_status::adv_win)
 	    {
 		int solution_pair[2];
 		solution_pair[0] = ftask_id;
-		solution_pair[1] = solution;
+		solution_pair[1] = static_cast<int>(solution);
 		// print<true>("Sending solution (%d, %d).\n", ftask_id, solution);
 		MPI_Send(&solution_pair, 2, MPI_INT, QUEEN, SOLUTION, MPI_COMM_WORLD);
 	    }
@@ -97,7 +97,7 @@ int get_task(int thread_id)
 	} else if (assigned_tid == -1)
 	{
 	    return -1;
-	} else if (tstatus[assigned_tid].load() == TASK_PRUNED)
+	} else if (tstatus[assigned_tid].load() == task_status::pruned)
 	{
 	    // print<true>("Worker %d skipping task %d, PRUNED.\n", thread_rank + thread_id, assigned_tid);
 	    continue;
@@ -206,7 +206,7 @@ void worker(int thread_id)
 	    }
 	
 	    victory solution = victory::irrelevant;
-	    if  (tstatus[current_task_id].load() != TASK_PRUNED)
+	    if  (tstatus[current_task_id].load() != task_status::pruned)
 	    {
 		// print<true>("Worker %d processing task %d.\n", thread_rank + thread_id, current_task_id);
 		solution = worker_solve(&current_task, current_task_id);
@@ -226,15 +226,15 @@ void worker(int thread_id)
 		}
 	    }
 
-	    assert(solution == victory::alg || solution == victory::adv || solution == victory::adv);
+	    assert(solution == victory::alg || solution == victory::adv || solution == victory::irrelevant);
 
 	    if (solution == victory::adv)
 	    {
-		tstatus[current_task_id].store(TASK_ADV);
+		tstatus[current_task_id].store(task_status::adv_win);
 		finished_tasks[thread_id].push(current_task_id);
 	    } else if (solution == victory::alg)
 	    {
-		tstatus[current_task_id].store(TASK_ALG);
+		tstatus[current_task_id].store(task_status::alg_win);
 		finished_tasks[thread_id].push(current_task_id);
 	    }
 	}
@@ -345,7 +345,10 @@ void overseer()
     worker_waiting = new std::atomic_bool[worker_count];
 
     std::thread* threads = new std::thread[worker_count];
-    init_worker_memory();
+
+    conf_el::init(&ht, ht_size); // Init worker cache.
+    dpht_el::init(&dpht, dpht_size);
+
     sync_up(); // Sync before any rounds start.
     bool batch_requested = false;
     root_solved.store(false);
@@ -470,7 +473,9 @@ void overseer()
 	    }
 	    
 	    transmit_measurements();
-	    free_worker_memory();
+	    conf_el::free(&ht); // Free worker cache.
+	    dpht_el::free(&dpht);
+
 	    delete[] finished_tasks;
 	    round_end();
 	    break;

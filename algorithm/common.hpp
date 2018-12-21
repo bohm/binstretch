@@ -24,11 +24,11 @@
 const bool PROGRESS = true; // Whether to print progress info to stderr.
 const bool MEASURE = true; // Whether to collect and print measurements to stderr.
 
-const bool OUTPUT = true; // Whether to produce output.
+const bool OUTPUT = false; // Whether to produce output.
 
 // const output_type OUTPUT_TYPE = output_type::dag; // No longer used; we always print a DAG.
 
-const bool REGROW = true; // Whether to regrow or just terminate after first iteration.
+const bool REGROW = false; // Whether to regrow or just terminate after first iteration.
 
 // When producing output, how many times should a tree be regrown.
 // Note that REGROW_LIMIT = 0 still means a full tree will be generated.

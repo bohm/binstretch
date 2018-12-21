@@ -424,17 +424,17 @@ void broadcast_tarray_tstatus()
 
 
 	// we work around passing an atomic<int> array
-	int tstatus_i = TASK_AVAILABLE;
+	int tstatus_i = 0;
 	if (BEING_QUEEN)
 	{
-	    tstatus_i = tstatus[i].load();
+	    tstatus_i = static_cast<int>(tstatus[i].load());
 	}
 	
 	MPI_Bcast(&tstatus_i, 1, MPI_INT, QUEEN, MPI_COMM_WORLD);
 
 	if (BEING_OVERSEER)
 	{
-	    tstatus[i].store(tstatus_i);
+	    tstatus[i].store(static_cast<task_status>(tstatus_i));
 	}
     }
 
@@ -466,13 +466,14 @@ void collect_worker_tasks()
 	collected_cumulative++;
 	//printf("Queen: received solution %d.\n", solution);
         // add it to the collected set of the queen
-	if (solution_pair[1] != IRRELEVANT)
+	if (static_cast<task_status>(solution_pair[1]) != task_status::irrelevant)
 	{
-	    if (tstatus[solution_pair[0]].load(std::memory_order_acquire) == TASK_PRUNED)
+	    if (tstatus[solution_pair[0]].load(std::memory_order_acquire) == task_status::pruned)
 	    {
 		g_meas.pruned_collision++;
 	    }
-	    tstatus[solution_pair[0]].store(solution_pair[1], std::memory_order_release);
+	    tstatus[solution_pair[0]].store(static_cast<task_status>(solution_pair[1]),
+					    std::memory_order_release);
 	    // transmit the solution_pair[0] as solved
 	    // transmit_irrelevant_task(solution_pair[0]);
 	}
@@ -502,8 +503,8 @@ void send_out_tasks()
 	// fetches the first available task 
 	while (thead < tcount)
 	{
-	    int stat = tstatus[thead].load(std::memory_order_acquire);
-	    if (stat == TASK_AVAILABLE)
+	    task_status stat = tstatus[thead].load(std::memory_order_acquire);
+	    if (stat == task_status::available)
 	    {
 		outgoing_task = thead;
 		thead++;

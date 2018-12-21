@@ -27,16 +27,16 @@ void print_states(FILE *stream, adversary_vertex *v)
 	fprintf(stream, "s");
     }
 
-    if (v->state == EXPAND)
+    if (v->state == vert_state::expand)
     { 
 	fprintf(stream, "E");
-    } else if (v->state == NEW)
+    } else if (v->state == vert_state::fresh)
     {
 	fprintf(stream, "N");
-    } else if (v->state == FIXED)
+    } else if (v->state == vert_state::fixed)
     {
 	fprintf(stream, "F");
-    } else if (v->state == FINISHED)
+    } else if (v->state == vert_state::finished)
     {
 	fprintf(stream, "D");
     }

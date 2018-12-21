@@ -23,10 +23,10 @@ void purge_new_adv(adversary_vertex *v)
     while (it != v->out.end())
     {
 	algorithm_vertex *down = (*it)->to;
-	if (down->state == NEW) // algorithm vertex can never be a task
+	if (down->state == vert_state::fresh) // algorithm vertex can never be a task
 	{
 	    purge_new_alg(down);
-	    remove_inedge<GENERATING>(*it);
+	    remove_inedge<mm_state::generating>(*it);
 	    it = v->out.erase(it); // serves as it++
 	} else {
 	    purge_new_alg(down);
@@ -47,10 +47,10 @@ void purge_new_alg(algorithm_vertex *v)
     while (it != v->out.end())
     {
 	adversary_vertex *down = (*it)->to;
-	if (down->state == NEW || down->task)
+	if (down->state == vert_state::fresh || down->task)
 	{
 	    purge_new_adv(down);
-	    remove_inedge<GENERATING>(*it);
+	    remove_inedge<mm_state::generating>(*it);
 	    it = v->out.erase(it); // serves as it++
 	} else {
 	    purge_new_adv(down);
@@ -71,7 +71,7 @@ void relabel_and_fix_alg(algorithm_vertex *v, thread_attr *tat);
 
 void relabel_and_fix_adv(adversary_vertex *v, thread_attr *tat)
 {
-    if (v->visited || v->state == FINISHED)
+    if (v->visited || v->state == vert_state::finished)
     {
 	return;
     }
@@ -93,13 +93,13 @@ void relabel_and_fix_adv(adversary_vertex *v, thread_attr *tat)
 
 	tat->meas.relabeled_vertices++;
 	v->task = false;
-	v->state = EXPAND;
+	v->state = vert_state::expand;
 
     } else
     {
-	if (v->state == NEW || v->state == EXPAND)
+	if (v->state == vert_state::fresh || v->state == vert_state::expand)
 	{
-	    v->state = FIXED;
+	    v->state = vert_state::fixed;
 	}
     }
     
@@ -112,7 +112,7 @@ void relabel_and_fix_adv(adversary_vertex *v, thread_attr *tat)
 
 void relabel_and_fix_alg(algorithm_vertex *v, thread_attr *tat)
 {
-    if (v->visited || v->state == FINISHED)
+    if (v->visited || v->state == vert_state::finished)
     {
 	return;
     }
@@ -123,9 +123,9 @@ void relabel_and_fix_alg(algorithm_vertex *v, thread_attr *tat)
     // algorithm vertices should never be tasks
     assert(v->win == victory::adv);
 
-    if (v->state == NEW)
+    if (v->state == vert_state::fresh)
     {
-	v->state = FIXED;
+	v->state = vert_state::fixed;
     }
 
     for (auto& e: v->out)
@@ -144,7 +144,7 @@ void relabel_and_fix(adversary_vertex *r, thread_attr *tat)
     print<true>("Visited %d verts, marked %d vertices to expand.\n", tat->meas.visit_counter, tat->meas.relabeled_vertices);
 }
 
-// Marks all branches without tasks in them as FINISHED.
+// Marks all branches without tasks in them as vert_state::finished.
 // Call this after you compute a winning strategy and
 // when the tree is not yet complete.
 
@@ -154,7 +154,7 @@ bool finish_branches_rec(algorithm_vertex *v);
 bool finish_branches_rec(adversary_vertex *v)
 {
 
-    if (v->state == FINISHED)
+    if (v->state == vert_state::finished)
     {
 	return true;
     }
@@ -172,7 +172,7 @@ bool finish_branches_rec(adversary_vertex *v)
     if (v->out.size() == 0)
     {
 	assert(v->win == victory::adv);
-	v->state = FINISHED;
+	v->state = vert_state::finished;
 	return true;
     }
 
@@ -182,7 +182,7 @@ bool finish_branches_rec(adversary_vertex *v)
     if (children_finished)
     {
 	assert(v->win == victory::adv);
-	v->state = FINISHED;
+	v->state = vert_state::finished;
     }
 
     return children_finished;
@@ -190,7 +190,7 @@ bool finish_branches_rec(adversary_vertex *v)
 
 bool finish_branches_rec(algorithm_vertex *v)
 {
-    if (v->state == FINISHED)
+    if (v->state == vert_state::finished)
     {
 	return true;
     }
@@ -215,7 +215,7 @@ bool finish_branches_rec(algorithm_vertex *v)
     if (children_finished)
     {
 	assert(v->win == victory::adv);
-	v->state = FINISHED;
+	v->state = vert_state::finished;
     }
 
     return children_finished;
@@ -227,13 +227,13 @@ bool finish_branches(adversary_vertex *r)
     return finish_branches_rec(r);
 }
 
-// Marks all vertices as FINISHED.
+// Marks all vertices as vert_state::finished.
 void finish_sapling_alg(algorithm_vertex *v);
 void finish_sapling_adv(adversary_vertex *v);
 
 void finish_sapling_adv(adversary_vertex *v)
 {
-    if (v->visited || v->state == FINISHED)
+    if (v->visited || v->state == vert_state::finished)
     {
 	return;
     }
@@ -241,7 +241,7 @@ void finish_sapling_adv(adversary_vertex *v)
     assert(v->win == victory::adv);
 
     v->task = false;
-    v->state = FINISHED;
+    v->state = vert_state::finished;
     // v->task = false;
     for (auto& e: v->out)
     {
@@ -259,7 +259,7 @@ void finish_sapling_alg(algorithm_vertex *v)
 
     assert(v->win == victory::adv);
     // v->task = false;
-    v->state = FINISHED;
+    v->state = vert_state::finished;
     for (auto& e: v->out)
     {
 	finish_sapling_adv(e->to);
@@ -285,7 +285,7 @@ void reset_values_adv(adversary_vertex *v)
     }
     v->visited = true;
 
-    if (v->state == FINISHED)
+    if (v->state == vert_state::finished)
     {
 	assert(!v->task);
 	return;
@@ -309,7 +309,7 @@ void reset_values_alg(algorithm_vertex *v)
 
     v->visited = true;
 
-    if (v->state == FINISHED)
+    if (v->state == vert_state::finished)
     {
 	return;
     }

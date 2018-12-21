@@ -67,7 +67,7 @@ victory sequencing_adversary(binconf *b, unsigned int depth, thread_attr *tat,
 	return victory::alg;
     }
 
-    if (ADVERSARY_HEURISTICS && adversary_heuristics<GENERATING>(b, tat, adv_to_evaluate) == victory::adv)
+    if (ADVERSARY_HEURISTICS && adversary_heuristics<mm_state::generating>(b, tat, adv_to_evaluate) == victory::adv)
     {
 	return victory::adv;
     }
@@ -112,10 +112,10 @@ victory sequencing_adversary(binconf *b, unsigned int depth, thread_attr *tat,
     if (below == victory::adv)
     {
 	r = victory::adv;
-	remove_outedges_except<SEQUENCING>(adv_to_evaluate, item_size);
+	remove_outedges_except<mm_state::sequencing>(adv_to_evaluate, item_size);
     } else if (below == victory::alg)
     {
-	remove_edge<SEQUENCING>(new_edge);
+	remove_edge<mm_state::sequencing>(new_edge);
     } else if (below == victory::uncertain)
     {
 	if (r == victory::alg)
@@ -198,7 +198,7 @@ victory sequencing_algorithm(binconf *b, int k, unsigned int depth, thread_attr 
 	    if (below == victory::alg)
 	    {
 		r = below;
-		remove_outedges<SEQUENCING>(alg_to_evaluate);
+		remove_outedges<mm_state::sequencing>(alg_to_evaluate);
 		alg_to_evaluate->win = r;
 		return r;
 	    } else if (below == victory::adv)
