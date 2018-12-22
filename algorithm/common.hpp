@@ -216,12 +216,12 @@ const bin_int IN_PROGRESS = 2;
 
 // a test for queen being the only process working
 #define QUEEN_ONLY (world_size == 1)
-#define BEING_OVERSEER (world_rank != 0)
-#define BEING_QUEEN (world_rank == 0)
+#define BEING_OVERSEER (world_rank != QUEEN)
+#define BEING_QUEEN (world_rank == QUEEN)
 
 // monotonicity 0: monotonely non-decreasing lower bound
 // monotonicity S: equivalent to full generality lower bound
-int monotonicity = S;
+int monotonicity; 
 
 uint64_t global_vertex_counter = 0;
 uint64_t global_edge_counter = 0;

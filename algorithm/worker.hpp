@@ -45,7 +45,7 @@ void process_finished_tasks()
 		solution_pair[0] = ftask_id;
 		solution_pair[1] = static_cast<int>(solution);
 		// print<true>("Sending solution (%d, %d).\n", ftask_id, solution);
-		MPI_Send(&solution_pair, 2, MPI_INT, QUEEN, SOLUTION, MPI_COMM_WORLD);
+		MPI_Send(&solution_pair, 2, MPI_INT, QUEEN, net::SOLUTION, MPI_COMM_WORLD);
 	    }
 	    ftask_id = finished_tasks[p].pop_if_able();
 	}

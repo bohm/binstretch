@@ -69,6 +69,10 @@ const std::array<std::string, SITUATIONS> gsnames = {"GS1", "GS1MOD", "GS2", "GS
 const int HEURISTIC = 0;
 const int PERMANENT = 1;
 
+// queen's world_rank
+const int QUEEN = 0;
+
+
 #define STRATEGY_BASIC 0
 #define STRATEGY_NINETEEN_FREQ 1
 
