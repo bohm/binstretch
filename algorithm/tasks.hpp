@@ -169,6 +169,10 @@ std::vector<task_status> tstatus_temporary;
 std::vector<task> tarray_temporary; // temporary array used for building
 task* tarray; // tarray used after we know the size
 
+// Mapping from hashes to status indices.
+std::map<llu, int> tmap;
+
+
 int tcount = 0;
 int thead = 0; // head of the tarray queue which queen uses to send tasks
 int tpruned = 0; // number of tasks which are pruned
@@ -227,18 +231,6 @@ void destroy_tstatus()
 	tstatus_temporary.clear();
     }
 }
-
-// Init the tasklist assigned to one overseer.
-void init_tasklist()
-{
-}
-
-void free_tasklist()
-{
-}
-
-// Mapping from hashes to status indices.
-std::map<llu, int> tmap;
 
 // builds an inverse task map after all tasks are inserted into the task array.
 void rebuild_tmap()

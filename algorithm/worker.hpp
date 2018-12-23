@@ -191,13 +191,13 @@ void worker(int thread_id)
 
 	    if (root_solved)
 	    {
-		print<VERBOSE>("Worker %d: root solved, breaking.\n", thread_rank + thread_id);
+		print<TASK_DEBUG>("Worker %d: root solved, breaking.\n", thread_rank + thread_id);
 		break;
 	    }
 	    
 	    if (current_task_id == NO_MORE_TASKS)
 	    {
-		print<VERBOSE>("Worker %d: No more tasks, breaking.\n", thread_rank + thread_id);
+		print<TASK_DEBUG>("Worker %d: No more tasks, breaking.\n", thread_rank + thread_id);
 
 		// no_more_tasks = true;
 		break;
@@ -328,7 +328,7 @@ const int BATCH_THRESHOLD = BATCH_SIZE / 2;
 
 bool overseer_running_low()
 {
-    return (overseer_tasks.size() - next_task.load()) <= BATCH_THRESHOLD;
+    return overseer_tasks.size() <= next_task.load() + BATCH_THRESHOLD;
 }
 
 void overseer()
@@ -434,7 +434,7 @@ void overseer()
 		check_root_solved();
 		if (root_solved)
 		{
-		    print<PROGRESS>("Overseer %d (on %s) received root solved and ends round.\n", world_rank, processor_name);
+		    print<PROGRESS>("Overseer %d (on %s): Received root solved, ending round.\n", world_rank, processor_name);
 
 		    sleep_until_all_workers_waiting();
 		    break;
@@ -449,7 +449,7 @@ void overseer()
 		// if (!batch_requested && next_task.load() >= BATCH_SIZE)
 		if (!batch_requested && overseer_running_low())
 		{
-		    print<COMM_DEBUG>("Overseer %d requests a new batch (next_task: %u, tasklist: %u). \n", world_rank, next_task.load(), overseer_tasks.size());
+		    print<TASK_DEBUG>("Overseer %d (on %s): Requesting a new batch (next_task: %u, tasklist: %u). \n", world_rank, processor_name, next_task.load(), overseer_tasks.size());
 
 		    request_new_batch();
 		    batch_requested = true;

@@ -7,6 +7,7 @@
 #include "sequencing.hpp"
 #include "tasks.hpp"
 #include "server_properties.hpp"
+#include "savefile.hpp"
 
 // #include "filestorage.hpp"
 /*
@@ -358,7 +359,8 @@ int queen()
     // We now print only once, after a full tree is generated.
     if (OUTPUT && output_useful)
     {
-	print_compact(root_vertex);
+	// print_compact(root_vertex);
+	savefile(root_vertex);
     }
 
     // Print measurements and clean up.

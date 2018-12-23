@@ -61,8 +61,9 @@ public:
 	//print<DEBUG>("Vertex %" PRIu64 "created.\n", this->id);
     }
 
-    void quickremove_outedges();
     ~algorithm_vertex();
+    void quickremove_outedges();
+    void print_extended(FILE *stream); // defined in savefile.hpp
 };
 
 const int LARGE_ITEM = 1;
@@ -109,8 +110,10 @@ public:
 
     }
 
-    void quickremove_outedges();
     ~adversary_vertex();
+    
+    void quickremove_outedges();
+    void print_extended(FILE *stream); // defined in savefile.hpp
 
 };
 
@@ -136,6 +139,8 @@ public:
     {
 	//print<DEBUG>("Edge %" PRIu64 " destroyed.\n", this->id);
     }
+
+    void print_extended(FILE *stream); // defined in savefile.hpp
 };
 
 class alg_outedge {
@@ -163,6 +168,8 @@ public:
     {
 	//print<DEBUG>("Edge %" PRIu64 " destroyed.\n", this->id);
     }
+
+    void print_extended(FILE *stream); // defined in savefile.hpp
 };
 
 // Deletes all outedges. Note: does not care about their endvertices or recursion.
@@ -231,7 +238,8 @@ bool is_root(const binconf *b)
 // global root vertex
 adversary_vertex *root_vertex;
 
-// Go through the generated graph and clear all visited flags. 
+// Go through the generated graph and clear all visited flags.
+// Generates a warning until a statically bound variable can be ignored in a standard way.
 void clear_visited_bits()
 {
     for (auto& [hash, vert] : generated_graph_adv)

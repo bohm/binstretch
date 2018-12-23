@@ -374,7 +374,6 @@ void broadcast_tarray_tstatus()
 	print<COMM_DEBUG>("Received tcount %d.\n", tcount);
 	init_tarray();
 	init_tstatus();
-	init_tasklist();
     }
 
     for (int i = 0; i < tcount; i++)
@@ -550,9 +549,12 @@ void receive_batch(int *current_batch)
     MPI_Recv(current_batch, BATCH_SIZE, MPI_INT, QUEEN, net::SENDING_BATCH, MPI_COMM_WORLD, &stat);
 }
 
-
 bool try_receiving_batch(std::array<int, BATCH_SIZE>& upcoming_batch)
 {
+    print<TASK_DEBUG>("Overseer %d (on %s): Attempting to receive a new batch. \n",
+		      world_rank, processor_name);
+
+
     int batch_incoming = 0;
     MPI_Status stat;
     MPI_Iprobe(QUEEN, net::SENDING_BATCH, MPI_COMM_WORLD, &batch_incoming, &stat);
