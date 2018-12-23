@@ -21,7 +21,8 @@ std::vector<int> overseer_tasks;
 // std::atomic<int> overseer_tasksize;
 
 
-// An index to the overseer tasklist that shows the next available task. Will be accessed concurrently.
+// An index to the overseer tasklist that shows the next available task.
+// Will be accessed concurrently.
 std::atomic<unsigned int> next_task;
 
 
@@ -77,13 +78,12 @@ int get_task()
 
 	// In order to minimize useless atomic adding, check first.
 	if (next_task.load() >= overseer_tasks.size())
-	// if (next_task.load() >= overseer_tasksize.load())
 	{
 	    std::this_thread::sleep_for(std::chrono::milliseconds(TICK_SLEEP));
 	    continue;
 	}
 
-	// atomically get an index (naturally, it may again be greater than BATCH_SIZE)
+	// Atomically get an index (naturally, it may again be greater than BATCH_SIZE).
 	lk.lock();
 	assigned_index = next_task++; // atomic ++, so can be done in shared mode
 	int subjective_tasksize = overseer_tasks.size();
@@ -257,7 +257,8 @@ void overseer_cleanup()
     assert(tarray != NULL && tstatus != NULL);
     destroy_tarray();
     destroy_tstatus();
-    free_tasklist();
+    overseer_tasks.clear();
+    next_task.store(0);
     
     for (int p = 0; p < worker_count; p++) { finished_tasks[p].clear(); }
     ignore_additional_signals();
