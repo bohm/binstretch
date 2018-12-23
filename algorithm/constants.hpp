@@ -73,6 +73,12 @@ const int PERMANENT = 1;
 const int QUEEN = 0;
 
 
+// worker's get_task() constants
+const int NO_MORE_TASKS = -1;
+const int WAIT_FOR_TASK = 0;
+const int TASK_RECEIVED = 1;
+
+
 #define STRATEGY_BASIC 0
 #define STRATEGY_NINETEEN_FREQ 1
 

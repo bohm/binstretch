@@ -12,10 +12,18 @@ semiatomic_q* finished_tasks;
 int task_begin = 0;
 int task_end = 0;
 
-int working_batch[BATCH_SIZE];
-int upcoming_batch[BATCH_SIZE];
+// int working_batch[BATCH_SIZE];
+std::array<int, BATCH_SIZE> upcoming_batch;
 
-std::atomic<int> batchpointer;
+// A list of tasks assigned to an overseer.
+std::vector<int> overseer_tasks;
+// Current size of the tasklist (for a given overseer).
+// std::atomic<int> overseer_tasksize;
+
+
+// An index to the overseer tasklist that shows the next available task. Will be accessed concurrently.
+std::atomic<unsigned int> next_task;
+
 
 std::mutex worker_needed;
 std::condition_variable worker_needed_cv;
@@ -53,14 +61,10 @@ void process_finished_tasks()
 }
 
 // Receives a new task (in this case, from the batch). Must be thread-safe.
-const int NO_MORE_TASKS = -1;
-const int WAIT_FOR_TASK = 0;
-const int TASK_RECEIVED = 1;
-
-int get_task(int thread_id)
+int get_task()
 {
-    int assigned_tid = 0;
     int assigned_index = 0;
+    int assigned_tid = NO_MORE_TASKS;
     std::shared_lock<std::shared_mutex> lk(batchpointer_mutex);
     lk.unlock();
 
@@ -72,7 +76,8 @@ int get_task(int thread_id)
 	}
 
 	// In order to minimize useless atomic adding, check first.
-	if (batchpointer >= BATCH_SIZE)
+	if (next_task.load() >= overseer_tasks.size())
+	// if (next_task.load() >= overseer_tasksize.load())
 	{
 	    std::this_thread::sleep_for(std::chrono::milliseconds(TICK_SLEEP));
 	    continue;
@@ -80,23 +85,24 @@ int get_task(int thread_id)
 
 	// atomically get an index (naturally, it may again be greater than BATCH_SIZE)
 	lk.lock();
-	assigned_index = batchpointer++; // atomic ++, so can be done in shared mode
-	if (assigned_index < BATCH_SIZE)
+	assigned_index = next_task++; // atomic ++, so can be done in shared mode
+	int subjective_tasksize = overseer_tasks.size();
+	if (assigned_index < subjective_tasksize)
 	{
-	    assigned_tid = working_batch[assigned_index];
+	    assigned_tid = overseer_tasks[assigned_index];
 	}
 	lk.unlock();
 	// print<true>("Worker %d was assigned batch index %d.\n", thread_rank + thread_id, assigned_index);
 
 	// actively wait for tasks
 	// TODO: make this into a passive
-	if (assigned_index >= BATCH_SIZE)
+	if (assigned_index >= subjective_tasksize)
 	{
 	    std::this_thread::sleep_for(std::chrono::milliseconds(TICK_SLEEP));
 	    continue;
-	} else if (assigned_tid == -1)
+	} else if (assigned_tid == NO_MORE_TASKS)
 	{
-	    return -1;
+	    return NO_MORE_TASKS;
 	} else if (tstatus[assigned_tid].load() == task_status::pruned)
 	{
 	    // print<true>("Worker %d skipping task %d, PRUNED.\n", thread_rank + thread_id, assigned_tid);
@@ -180,7 +186,7 @@ void worker(int thread_id)
 	
 	while(!root_solved)
 	{
-	    current_task_id = get_task(thread_id); // this will actively wait for a task, if necessary
+	    current_task_id = get_task(); // this will actively wait for a task, if necessary
 	    // print<true>("Worker %d processing task %d.\n", thread_rank + thread_id, current_task_id);
 
 	    if (root_solved)
@@ -189,12 +195,15 @@ void worker(int thread_id)
 		break;
 	    }
 	    
-	    if (current_task_id == -1)
+	    if (current_task_id == NO_MORE_TASKS)
 	    {
 		print<VERBOSE>("Worker %d: No more tasks, breaking.\n", thread_rank + thread_id);
 
 		// no_more_tasks = true;
 		break;
+	    } else {
+		print<TASK_DEBUG>("Worker %d: Taken up task %d.\n", thread_rank + thread_id, current_task_id);
+
 	    }
 	    assert(current_task_id >= 0 && current_task_id < tcount);
 	    current_task = tarray[current_task_id];
@@ -248,6 +257,8 @@ void overseer_cleanup()
     assert(tarray != NULL && tstatus != NULL);
     destroy_tarray();
     destroy_tstatus();
+    free_tasklist();
+    
     for (int p = 0; p < worker_count; p++) { finished_tasks[p].clear(); }
     ignore_additional_signals();
 
@@ -312,13 +323,17 @@ void sleep_until_all_workers_ready()
 
 }
 
+const int BATCH_THRESHOLD = BATCH_SIZE / 2;
+
+bool overseer_running_low()
+{
+    return (overseer_tasks.size() - next_task.load()) <= BATCH_THRESHOLD;
+}
 
 void overseer()
 {
     int name_len;
     int monotonicity_last_round;
-    bool final_batch = false; // We set it to true when there are no more batches incoming in this round.
-    bool final_batch_message_sent = false;
     MPI_Get_processor_name(processor_name, &name_len);
     printf("Overseer reporting for duty: %s, rank %d out of %d instances\n",
 	   processor_name, world_rank, world_size);
@@ -398,8 +413,8 @@ void overseer()
 	    // trouble.
 	    
 	    batch_requested = false;
-	    batchpointer.store(BATCH_SIZE);
-	    final_batch_message_sent = false;
+	    assert(overseer_tasks.size() == 0);
+	    next_task.store(0);
 	    
 	    // Reserve space for finished tasks.
 	    for (int w = 0; w < worker_count; w++)
@@ -407,7 +422,7 @@ void overseer()
 		finished_tasks[w].init(tcount);
 	    }
 	    
-	    // Wake up all workers and wait for them to wake up.
+	    // Wake up all workers and wait for them to set up and go back to sleep.
 	    worker_needed_cv.notify_all();
 	    sleep_until_all_workers_ready(); 
 
@@ -429,9 +444,12 @@ void overseer()
 		process_finished_tasks();
 
 		// if running low, get new batch
-		// if (BATCH_SIZE - batchpointer <= BATCH_THRESHOLD)
-		if (!batch_requested && batchpointer.load() >= BATCH_SIZE)
+		// if (BATCH_SIZE - next_task <= BATCH_THRESHOLD)
+		// if (!batch_requested && next_task.load() >= BATCH_SIZE)
+		if (!batch_requested && overseer_running_low())
 		{
+		    print<COMM_DEBUG>("Overseer %d requests a new batch (next_task: %u, tasklist: %u). \n", world_rank, next_task.load(), overseer_tasks.size());
+
 		    request_new_batch();
 		    batch_requested = true;
 		}
@@ -443,22 +461,21 @@ void overseer()
 		    {
 			batch_requested = false;
 			std::unique_lock<std::shared_mutex> bplk(batchpointer_mutex);
-			std::copy(std::begin(upcoming_batch), std::end(upcoming_batch), std::begin(working_batch));
-			final_batch = check_batch_end(working_batch);
 
-                        // reset the batch pointer
-			batchpointer.store(0);
+			// We reset the next_task index first, if it needs resetting.
+			if (next_task.load() > overseer_tasks.size())
+			{
+			    next_task.store(overseer_tasks.size());
+			}
+
+			overseer_tasks.insert(overseer_tasks.end(), upcoming_batch.begin(), upcoming_batch.end());
 			bplk.unlock();
 		    }
 		}
 
-		if (!final_batch_message_sent && final_batch && all_workers_waiting())
-		{
-		    print<VERBOSE>("Overseer %d (on %s) waits for the round to end.\n", world_rank, processor_name);
-		    final_batch_message_sent = true;
-		}
-	
+		// The only way to stop the overseer currently is to signal root solved.
 		std::this_thread::sleep_for(std::chrono::milliseconds(TICK_SLEEP));
+		
 	    } // End of one round for an overseer.
 	    overseer_cleanup();
 	    round_end(); 

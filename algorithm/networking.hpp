@@ -374,6 +374,7 @@ void broadcast_tarray_tstatus()
 	print<COMM_DEBUG>("Received tcount %d.\n", tcount);
 	init_tarray();
 	init_tstatus();
+	init_tasklist();
     }
 
     for (int i = 0; i < tcount; i++)
@@ -518,7 +519,6 @@ void delete_running_lows()
 void request_new_batch()
 {
     int irrel = 0;
-    print<COMM_DEBUG>("Overseer %d requests a new batch.\n", world_rank);
     MPI_Send(&irrel, 1, MPI_INT, QUEEN, net::RUNNING_LOW, MPI_COMM_WORLD);
 }
 
@@ -551,7 +551,7 @@ void receive_batch(int *current_batch)
 }
 
 
-bool try_receiving_batch(int *upcoming_batch)
+bool try_receiving_batch(std::array<int, BATCH_SIZE>& upcoming_batch)
 {
     int batch_incoming = 0;
     MPI_Status stat;
@@ -559,7 +559,7 @@ bool try_receiving_batch(int *upcoming_batch)
     if (batch_incoming)
     {
 	print<COMM_DEBUG>("Overseer %d receives the new batch.\n", world_rank);
-	MPI_Recv(upcoming_batch, BATCH_SIZE, MPI_INT, QUEEN, net::SENDING_BATCH, MPI_COMM_WORLD, &stat);
+	MPI_Recv(upcoming_batch.data(), BATCH_SIZE, MPI_INT, QUEEN, net::SENDING_BATCH, MPI_COMM_WORLD, &stat);
 	return true;
     } else
     {

@@ -532,10 +532,10 @@ int tstatus_id(const adversary_vertex *v);
 // Print unfinished tasks (primarily for debug and measurement purposes).
 unsigned int unfinished_counter = 0;
 
-void print_unfinished_rec(adversary_vertex *v);
-void print_unfinished_rec(algorithm_vertex *v);
+void print_unfinished_rec(adversary_vertex *v, bool also_print_binconf);
+void print_unfinished_rec(algorithm_vertex *v, bool also_print_binconf);
 
-void print_unfinished_rec(adversary_vertex *v)
+void print_unfinished_rec(adversary_vertex *v, bool also_print_binconf)
 {
     if (v->visited)
     {
@@ -544,17 +544,23 @@ void print_unfinished_rec(adversary_vertex *v)
     v->visited = true;
     if ((v->task) && v->win == victory::uncertain)
     {
-	fprintf(stderr, "%d with task status id %d: ", unfinished_counter, tstatus_id(v));
-	print_binconf<true>(v->bc);
+	fprintf(stderr, "UNF: %d with task status id %d", unfinished_counter, tstatus_id(v));
+	if (also_print_binconf)
+	{
+	    fprintf(stderr, ": ");
+	    print_binconf<true>(v->bc);
+	} else {
+	    fprintf(stderr, ".\n");
+	}
 	unfinished_counter++;
     }
 
     for (auto& outedge: v->out) {
-	print_unfinished_rec(outedge->to);
+	print_unfinished_rec(outedge->to, also_print_binconf);
     }
 }
 
-void print_unfinished_rec(algorithm_vertex *v)
+void print_unfinished_rec(algorithm_vertex *v, bool also_print_binconf)
 {
     if (v->visited)
     {
@@ -563,7 +569,7 @@ void print_unfinished_rec(algorithm_vertex *v)
     v->visited = true;
 
     for (auto& outedge: v->out) {
-	print_unfinished_rec(outedge->to);
+	print_unfinished_rec(outedge->to, also_print_binconf);
     }
 }
 
@@ -572,7 +578,14 @@ void print_unfinished(adversary_vertex *r)
 {
     unfinished_counter = 0;
     clear_visited_bits();
-    print_unfinished_rec(r);
+    print_unfinished_rec(r, false);
 }
 
+void print_unfinished_with_binconf(adversary_vertex *r)
+{
+    unfinished_counter = 0;
+    clear_visited_bits();
+    print_unfinished_rec(r, true);
+
+}
 #endif

@@ -228,6 +228,15 @@ void destroy_tstatus()
     }
 }
 
+// Init the tasklist assigned to one overseer.
+void init_tasklist()
+{
+}
+
+void free_tasklist()
+{
+}
+
 // Mapping from hashes to status indices.
 std::map<llu, int> tmap;
 
@@ -507,16 +516,16 @@ void compose_batch(int *batch)
 	if (taskpointer >= tcount)
 	{
 	    // no more tasks to send out
-	    batch[i] = -1;
+	    batch[i] = NO_MORE_TASKS;
 	} else
 	{
 	    task_status status = tstatus[taskpointer].load(std::memory_order_acquire);
 	    if (status == task_status::available)
 	    {
-		print<DEBUG>("Added task %d into the next batch.\n", taskpointer);
+		print<TASK_DEBUG>("Added task %d into the next batch.\n", taskpointer);
 		batch[i] = taskpointer++;
 	    } else {
-		print<DEBUG>("Task %d has status %d, skipping.\n", taskpointer, status);
+		print<TASK_DEBUG>("Task %d has status %d, skipping.\n", taskpointer, status);
 		taskpointer++;
 		continue;
 	    }

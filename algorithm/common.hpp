@@ -161,7 +161,8 @@ const int MAX_EXPANSION = 1;
 
 const bool VERBOSE = true;
 const bool DEBUG = false;
-const bool COMM_DEBUG = false;
+const bool COMM_DEBUG = false; // Network debug messages.
+const bool TASK_DEBUG = false; // Debugging creation of tasks, batching, etc.
 
 // completely disable dynamic programming or binconf cache
 // (useful to debug soundness of cache algs)

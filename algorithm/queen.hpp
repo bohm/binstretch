@@ -43,7 +43,7 @@ void queen_updater(adversary_vertex* sapling)
 	if (collected_cumulative.load(std::memory_order_acquire) / PROGRESS_AFTER > last_printed)
 	{
 	    last_printed = collected_cumulative / PROGRESS_AFTER;
-	    print<PROGRESS>("Queen collects task number %u, %d remain. \n", collected_cumulative.load(std::memory_order_acquire), tcount - taskpointer);
+	    print<PROGRESS>("Queen collects task number %u. \n", collected_cumulative.load(std::memory_order_acquire));
 	}
 	
 	// update main tree and task map
@@ -62,6 +62,11 @@ void queen_updater(adversary_vertex* sapling)
 			   uat.vertices_visited, uat.unfinished_tasks);
 
 		if (VERBOSE && uat.unfinished_tasks <= 10)
+		{
+		    print_unfinished_with_binconf(sapling);
+		}
+
+		if (TASK_DEBUG)
 		{
 		    print_unfinished(sapling);
 		}
