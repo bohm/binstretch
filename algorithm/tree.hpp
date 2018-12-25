@@ -28,6 +28,19 @@ class adversary_vertex;
 std::map<llu, adversary_vertex*> generated_graph_adv;
 std::map<llu, algorithm_vertex*> generated_graph_alg;
 
+// Wrapper over the entire game state graph, so we could in theory
+// have multiple instances of it. Currently, only one instance is
+// used (by the queen).
+class dag
+{
+public:
+    std::map<llu, adversary_vertex*> adv_by_hash;
+    std::map<llu, algorithm_vertex*> alg_by_hash;
+
+    std::map<llu, adversary_vertex*> adv_by_id;
+    std::map<llu, algorithm_vertex*> alg_by_id;
+};
+
 // FIXED means part of the lower bound (as evaluated by a previous computation)
 // but the full lower bound tree is not yet present.
 
@@ -59,6 +72,20 @@ public:
 	assert(it == generated_graph_alg.end());
 	generated_graph_alg[this->bc->alghash(next_item)] = this;
 	//print<DEBUG>("Vertex %" PRIu64 "created.\n", this->id);
+    }
+
+    // Build an algorithm vertex with a fixed id.
+    algorithm_vertex(binconf *b, bin_int next_item, uint64_t fixed_id) : next_item(next_item),
+									 id(fixed_id)
+    {
+	bc = new binconf;
+	duplicate(bc, b);
+
+	// Sanity check that we are not inserting a duplicate vertex.
+	auto it = generated_graph_alg.find(this->bc->alghash(next_item));
+	assert(it == generated_graph_alg.end());
+	generated_graph_alg[this->bc->alghash(next_item)] = this;
+
     }
 
     ~algorithm_vertex();
@@ -109,6 +136,19 @@ public:
 	//print<DEBUG>("Vertex %" PRIu64 "created.\n", this->id);
 
     }
+
+    adversary_vertex(const binconf *b, int depth, uint64_t fixed_id) : id(fixed_id), depth(depth) 
+    {
+	bc = new binconf;
+	assert(bc != NULL);
+	duplicate(bc, b);
+
+	// Sanity check that we are not inserting a duplicate vertex.
+	auto it = generated_graph_adv.find(bc->confhash());
+	assert(it == generated_graph_adv.end());
+	generated_graph_adv[bc->confhash()] = this;
+    }
+
 
     ~adversary_vertex();
     

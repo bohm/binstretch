@@ -103,6 +103,8 @@ void queen_updater(adversary_vertex* sapling)
     }
 }
 
+const unsigned int QUEEN_DPLOG = 15;
+
 int queen()
 {
     std::chrono::time_point<std::chrono::system_clock> iteration_start, iteration_end,
@@ -121,9 +123,9 @@ int queen()
     init_running_lows();
     init_batches();
     
-    std::tuple<unsigned int, unsigned int, unsigned int> settings = server_properties(processor_name);
+    // std::tuple<unsigned int, unsigned int, unsigned int> settings = server_properties(processor_name);
     // out of the settings, queen does not spawn workers or use ht, only dpht
-    dplog = std::get<1>(settings);
+    dplog = QUEEN_DPLOG;
     dpht_size = 1LLU << dplog;
 
     ht = NULL; // Init queen memory (the queen does not use the main solved cache).

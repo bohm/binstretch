@@ -57,7 +57,7 @@ std::tuple<unsigned int, unsigned int, unsigned int> server_properties(char *ser
     } else if (strcmp(server_name, "kamenozrout") == 0)
     {
 	// return std::make_tuple(32, 31, 32);
-	return std::make_tuple(28, 28, 32);
+	return std::make_tuple(33, 33, 64);
 
     } else if (strcmp(server_name, "kamenina") == 0
 	       || strcmp(server_name, "kamen") == 0)

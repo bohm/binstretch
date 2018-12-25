@@ -717,11 +717,13 @@ bin_int dynprog_max_sorting(binconf *conf, thread_attr *tat)
 std::pair<bin_int,bin_int> large_item_heuristic(binconf *b, thread_attr *tat)
 {
     std::vector<std::pair<bin_int, bin_int> > required_items;
-    
-    int ideal_item_lb2 = (R - b->loads[BINS]+1)/2; 
-    for (int i=BINS; i>=1; i--)
+
+    // lb2: size of an item that cannot fit twice into the last bin
+    int ideal_item_lb2 = (R - b->loads[BINS]+1)/2;
+    for (int i = BINS; i >= 1; i--)
     {
-        int ideal_item = std::max(R-b->loads[i], ideal_item_lb2); 
+	// ideal item: cannot fit even once into bin i (and not twice into the last)
+        int ideal_item = std::max(R-b->loads[i], ideal_item_lb2);
 
 	// checking only items > S/2 so that it is easier to check if you can pack them all
 	// in dynprog_max_vector
@@ -775,6 +777,7 @@ std::pair<bin_int,bin_int> large_item_heuristic(binconf *b, thread_attr *tat)
 
     return ret;
 }
+
 
 std::pair<bool, bin_int> five_nine_heuristic(binconf *b, thread_attr *tat)
 {
@@ -837,6 +840,7 @@ std::pair<bool, bin_int> five_nine_heuristic(binconf *b, thread_attr *tat)
  
     return std::pair(false, -1);
 }
+
 
 void dp_cache_print(binconf &h, thread_attr *tat)
 {

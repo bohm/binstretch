@@ -28,7 +28,7 @@ const bool OUTPUT = true; // Whether to produce output.
 
 // const output_type OUTPUT_TYPE = output_type::dag; // No longer used; we always print a DAG.
 
-const bool REGROW = true; // Whether to regrow or just terminate after first iteration.
+const bool REGROW = false; // Whether to regrow or just terminate after first iteration.
 
 // When producing output, how many times should a tree be regrown.
 // Note that REGROW_LIMIT = 0 still means a full tree will be generated.
@@ -39,6 +39,11 @@ const int TASK_LOAD_INIT = 9; // A bound on total load of a configuration before
 const int TASK_LOAD_STEP = 6; // The amount by which the load can increase when regrowing the tree.
 const int TASK_DEPTH_INIT = 7; //The maximum depth of a vertex in the tree before it is made into a task.
 const int TASK_DEPTH_STEP = 1; // The amount by which the depth is increased when regrowing.
+
+
+// const int TASK_LOAD_INIT = 0;
+// const int TASK_DEPTH_INIT = 1;
+
 
 // whether to print the output as a single tree or as multiple trees.
 const bool SINGLE_TREE = true;
@@ -90,21 +95,21 @@ const std::vector<bin_int> INITIAL_ITEMS = {};
 // const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1,1,1,1}; // 8x1
 // const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1,1,1}; // 7x1
 // const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1,1}; // 6x1
-const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1}; // 5x1, works for 8 bins and monotonicity 1.
+// const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1}; // 5x1, works for 8 bins and monotonicity 1.
 // const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1}; // 4x1
-//  const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1}; // 3x1
+// const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1}; // 3x1
 // const std::vector<bin_int> INITIAL_SEQUENCE = {5};
-// const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,4}; // 3x1
 
 // const std::vector<bin_int> INITIAL_SEQUENCE = {2,2};
 // const std::vector<bin_int> INITIAL_SEQUENCE = {2};
 
-// const std::vector<bin_int> INITIAL_SEQUENCE = {};
+const std::vector<bin_int> INITIAL_SEQUENCE = {};
 
-const int FIRST_PASS = 0; // enough to get a lb of 19/14 on 6,7 bins.
-// const int FIRST_PASS = 1; // needed for 19/14 on 8 bins.
-// const int FIRST_PASS = 6;
-// const int FIRST_PASS = 8;
+// const int FIRST_PASS = 0; // enough to get a lb of 19/14 on 6,7 bins.
+// const int FIRST_PASS = 1; // enough for 19/14 on 8 bins.
+// const int FIRST_PASS = 6; // enough for 86/63 on 3 bins.
+// const int FIRST_PASS = 8; // enough for 112/82 on 3 bins.
+const int FIRST_PASS = 10;
 // const int FIRST_PASS = S-1;
 
 // constants used for good situations

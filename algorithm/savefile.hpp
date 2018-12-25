@@ -118,7 +118,7 @@ void savefile(const char* filename, adversary_vertex *r)
 void savefile(adversary_vertex *r)
 {
     char outfile[50];
-    sprintf(outfile, "bs%d_%d_%dbins_tree.dot", R,S,BINS);
+    sprintf(outfile, "bs%d_%d_%dbins.out", R,S,BINS);
     print<PROGRESS>("Printing the game graph in DOT format into %s.\n", outfile);
     savefile(outfile, r); 
 }
