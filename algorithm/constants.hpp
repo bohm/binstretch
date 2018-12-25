@@ -72,6 +72,9 @@ const int PERMANENT = 1;
 // queen's world_rank
 const int QUEEN = 0;
 
+// bitsize of queen's dpcache
+const unsigned int QUEEN_DPLOG = 15;
+
 
 // worker's get_task() constants
 const int NO_MORE_TASKS = -1;

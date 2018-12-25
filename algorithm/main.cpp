@@ -10,7 +10,10 @@
 #include "hash.hpp"
 #include "minimax.hpp"
 #include "queen.hpp"
+#include "overseer.hpp"
 #include "worker.hpp"
+#include "worker_methods.hpp"
+#include "overseer_methods.hpp"
 
 void handle_sigusr1(int signo)
 {
@@ -49,7 +52,8 @@ int main(void)
     } else {
 	if(world_rank != 0)
 	{
-	    overseer();
+	    ov = new overseer();
+	    ov->start();
 	} else {
 	    // queen is now by default two-threaded
 	    ret = queen();

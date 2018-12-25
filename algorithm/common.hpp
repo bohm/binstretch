@@ -18,6 +18,8 @@
 #include <unordered_set>
 #include <numeric>
 #include <mpi.h>
+#define __STDC_FORMAT_MACROS
+#include <inttypes.h>
 
 #include "constants.hpp" // Non-changeable system constants.
 
@@ -109,8 +111,8 @@ const std::vector<bin_int> INITIAL_SEQUENCE = {};
 // const int FIRST_PASS = 1; // enough for 19/14 on 8 bins.
 // const int FIRST_PASS = 6; // enough for 86/63 on 3 bins.
 // const int FIRST_PASS = 8; // enough for 112/82 on 3 bins.
-const int FIRST_PASS = 10;
-// const int FIRST_PASS = S-1;
+// const int FIRST_PASS = 10;
+const int FIRST_PASS = S-1;
 
 // constants used for good situations
 const int RMOD = (R-1);
@@ -135,6 +137,7 @@ const unsigned int LOADLOG = 12;
 
 // batching constants
 const int BATCH_SIZE = 50;
+const int BATCH_THRESHOLD = BATCH_SIZE / 2;
 
 // sizes of the hash tables
 const llu LOADSIZE = (1ULL<<LOADLOG);

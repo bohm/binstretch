@@ -103,8 +103,6 @@ void queen_updater(adversary_vertex* sapling)
     }
 }
 
-const unsigned int QUEEN_DPLOG = 15;
-
 int queen()
 {
     std::chrono::time_point<std::chrono::system_clock> iteration_start, iteration_end,
