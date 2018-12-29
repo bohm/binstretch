@@ -162,7 +162,7 @@ void conf_el::parallel_init(std::atomic<conf_el> **cache, uint64_t size, int thr
 	start += segment;
 	end += segment;
 	start = std::min(start, size);
-	end = std::min(start, size);
+	end = std::min(end, size);
     }
 
     for (int w = 0; w < threads; w++)
@@ -277,7 +277,7 @@ void dpht_el_64::parallel_init(std::atomic<dpht_el_64> **cache, uint64_t size, i
 	start += segment;
 	end += segment;
 	start = std::min(start, size);
-	end = std::min(start, size);
+	end = std::min(end, size);
     }
 
     for (int w = 0; w < threads; w++)
@@ -400,7 +400,7 @@ void clear_cache(std::atomic<conf_el> *cache, uint64_t size, int threads)
 	start += segment;
 	end += segment;
 	start = std::min(start, size);
-	end = std::min(start, size);
+	end = std::min(end, size);
     }
 
     for (int w = 0; w < threads; w++)
@@ -438,7 +438,7 @@ void clear_cache_of_ones(std::atomic<conf_el> *cache, uint64_t size, int threads
 	start += segment;
 	end += segment;
 	start = std::min(start, size);
-	end = std::min(start, size);
+	end = std::min(end, size);
     }
 
     for (int w = 0; w < threads; w++)
