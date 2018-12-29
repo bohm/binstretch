@@ -136,8 +136,8 @@ void overseer::start()
     finished_tasks = new semiatomic_q[worker_count];
     std::thread* threads = new std::thread[worker_count];
 
-    conf_el::init(&ht, ht_size); // Init worker cache.
-    dpht_el::init(&dpht, dpht_size);
+    conf_el::parallel_init(&ht, ht_size, worker_count); // Init worker cache in parallel.
+    dpht_el::parallel_init(&dpht, dpht_size, worker_count);
 
     sync_up(); // Sync before any rounds start.
     bool batch_requested = false;
@@ -169,11 +169,12 @@ void overseer::start()
 	    if(monotonicity > monotonicity_last_round)
 	    {
 		print<COMM_DEBUG>("Overseer %d received increased monotonicity: %d.\n", world_rank, monotonicity);
-		clear_cache_of_ones();
+		clear_cache_of_ones(ht, ht_size, worker_count);
+
 	    } else if (monotonicity < monotonicity_last_round)
 	    {
 		print<COMM_DEBUG>("Overseer %d received decreased monotonicity: %d.\n", world_rank, monotonicity);
-		clear_cache();
+		clear_cache(ht, ht_size, worker_count);
 
 	    }
 
@@ -262,11 +263,14 @@ void overseer::start()
 	    {
 		threads[w].join();
 		print<DEBUG>("Worker %d joined back.\n", w);
+		collected_meas.add(wrkr[w]->measurements);
+		delete wrkr[w];
 	    }
-
-	    transmit_measurements();
+	    wrkr.clear();
+	    transmit_measurements(collected_meas);
 	    conf_el::free(&ht); // Free worker cache.
 	    dpht_el::free(&dpht);
+
 
 	    delete[] finished_tasks;
 	    round_end();

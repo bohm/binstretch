@@ -6,6 +6,7 @@
 #include <cassert>
 #include <random>
 #include <limits>
+#include <thread>
 #include <mpi.h>
 
 #include "common.hpp"
@@ -102,6 +103,13 @@ public:
 	    return 0;
 	}
 
+    // static void atomic_init
+    // static void parallel_atomic_init(std::atomic<conf_el> *cache, uint64_t size,
+
+    static void atomic_init_point(std::atomic<conf_el> **cache, uint64_t point);
+    static void parallel_init_segment(std::atomic<conf_el> **cache, uint64_t start, uint64_t end, uint64_t size);
+    static void parallel_init(std::atomic<conf_el> **cache, uint64_t size, int threads);
+  
     // Setup of the whole cache.
     static void init(std::atomic<conf_el> **ccache, uint64_t size)
 	{
@@ -115,13 +123,54 @@ public:
 	    }
 	}
 
+
     static void free(std::atomic<conf_el> **ccache)
 	{
 	    delete[] (*ccache); *ccache = NULL;
 	}
 };
 
+const conf_el CONF_ZERO{0};
 
+void conf_el::atomic_init_point(std::atomic<conf_el> **cache, uint64_t point)
+{
+    std::atomic_init(&(*cache)[point], CONF_ZERO);
+}
+
+void conf_el::parallel_init_segment(std::atomic<conf_el> **cache, uint64_t start, uint64_t end, uint64_t size)
+{
+    for (uint64_t i = start; i < std::min(end, size); i++)
+    {
+	conf_el::atomic_init_point(cache, i);
+    }
+}
+
+void conf_el::parallel_init(std::atomic<conf_el> **cache, uint64_t size, int threads)
+{
+
+    (*cache) = new std::atomic<conf_el>[size];
+    assert((*cache) != NULL);
+ 
+    uint64_t segment = size / threads;
+    uint64_t start = 0;
+    uint64_t end = std::min(size, segment);
+
+    std::vector<std::thread> th;
+    for (int w = 0; w < threads; w++)
+    {
+	th.push_back(std::thread(conf_el::parallel_init_segment, cache, start, end, size));
+	start += segment;
+	end += segment;
+	start = std::min(start, size);
+	end = std::min(start, size);
+    }
+
+    for (int w = 0; w < threads; w++)
+    {
+	th[w].join();
+    }
+}
+ 
 class dpht_el_64
 {
 public:
@@ -171,6 +220,9 @@ public:
 	    return 0;
 	}
 
+    static void atomic_init_point(std::atomic<dpht_el_64> **cache, uint64_t point);
+    static void parallel_init_segment(std::atomic<dpht_el_64> **cache, uint64_t start, uint64_t end, uint64_t size);
+    static void parallel_init(std::atomic<dpht_el_64> **cache, uint64_t size, int threads);
 
     // Setup of the whole cache.
     static void init(std::atomic<dpht_el_64> **cache, uint64_t size)
@@ -192,6 +244,48 @@ public:
 	}
 };
 
+const dpht_el_64 DPHT_ZERO{0};
+
+
+void dpht_el_64::atomic_init_point(std::atomic<dpht_el_64> **cache, uint64_t point)
+{
+    std::atomic_init(&(*cache)[point], DPHT_ZERO);
+}
+
+void dpht_el_64::parallel_init_segment(std::atomic<dpht_el_64> **cache, uint64_t start, uint64_t end, uint64_t size)
+{
+    for (uint64_t i = start; i < std::min(end, size); i++)
+    {
+	dpht_el_64::atomic_init_point(cache, i);
+    }
+}
+
+void dpht_el_64::parallel_init(std::atomic<dpht_el_64> **cache, uint64_t size, int threads)
+{
+
+    (*cache) = new std::atomic<dpht_el_64>[size];
+    assert((*cache) != NULL);
+ 
+    uint64_t segment = size / threads;
+    uint64_t start = 0;
+    uint64_t end = std::min(size, segment);
+
+    std::vector<std::thread> th;
+    for (int w = 0; w < threads; w++)
+    {
+	th.push_back(std::thread(dpht_el_64::parallel_init_segment, cache, start, end, size));
+	start += segment;
+	end += segment;
+	start = std::min(start, size);
+	end = std::min(start, size);
+    }
+
+    for (int w = 0; w < threads; w++)
+    {
+	th[w].join();
+    }
+}
+ 
 const unsigned int CACHE_LOADCONF_LIMIT = 1000;
 
 class dpht_large
@@ -284,13 +378,72 @@ void clear_cache_of_ones()
     }
 }
 
-void clear_cache()
+
+void clear_cache_segment(std::atomic<conf_el> *cache, uint64_t start, uint64_t end, uint64_t size)
 {
-    conf_el empty{0};
-    
-    for (uint64_t i =0; i < ht_size; i++)
+    for (uint64_t i = start; i < std::min(end, size); i++)
     {
-	ht[i].store(empty);
+	cache[i].store(CONF_ZERO);
+    }
+}
+
+void clear_cache(std::atomic<conf_el> *cache, uint64_t size, int threads)
+{
+    uint64_t segment = size / threads;
+    uint64_t start = 0;
+    uint64_t end = std::min(size, segment);
+
+    std::vector<std::thread> th;
+    for (int w = 0; w < threads; w++)
+    {
+	th.push_back(std::thread(clear_cache_segment, cache, start, end,size));
+	start += segment;
+	end += segment;
+	start = std::min(start, size);
+	end = std::min(start, size);
+    }
+
+    for (int w = 0; w < threads; w++)
+    {
+	th[w].join();
+    }
+}
+
+void clear_ones_segment(std::atomic<conf_el> *cache, uint64_t start, uint64_t end, uint64_t size)
+{
+    for (uint64_t i = start; i < std::min(end, size); i++)
+    {
+	conf_el field = ht[i];
+	if (!field.empty() && !field.removed())
+	{
+	    bin_int last_bit = field.value();
+	    if (last_bit != 0)
+	    {
+		ht[i].store(CONF_ZERO);
+	    }
+	}
+    }
+}
+
+void clear_cache_of_ones(std::atomic<conf_el> *cache, uint64_t size, int threads)
+{
+    uint64_t segment = size / threads;
+    uint64_t start = 0;
+    uint64_t end = std::min(size, segment);
+
+    std::vector<std::thread> th;
+    for (int w = 0; w < threads; w++)
+    {
+	th.push_back(std::thread(clear_ones_segment, cache, start, end,size));
+	start += segment;
+	end += segment;
+	start = std::min(start, size);
+	end = std::min(start, size);
+    }
+
+    for (int w = 0; w < threads; w++)
+    {
+	th[w].join();
     }
 }
 
@@ -368,24 +521,6 @@ void clear_cache_of_ones()
     //MEASURE_PRINT("Hashtable size: %llu, kept: %" PRIu64 ", erased: %" PRIu64 "\n", HASHSIZE, kept, erased);
 }
 */
-
-// watch out to avoid overwriting all data
-void hashtable_clear()
-{
-    dpht_el x = {0};
-    conf_el y = {0};
-    
-    for (uint64_t i = 0; i < dpht_size; i++)
-    {
-	dpht[i].store(x);
-    }
-
-    for (uint64_t i = 0; i < ht_size; i++)
-    {
-	ht[i].store(y);
-    }
-
-}
 
 void hashtable_cleanup()
 {

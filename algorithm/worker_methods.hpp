@@ -78,7 +78,7 @@ victory worker::solve(const task *t, const int& task_id)
     // worker depth is now set to be permanently zero
     tat.prev_max_feasible = S;
     ret = explore(&task_copy, &tat);
-    g_meas.add(tat.meas);
+    measurements.add(tat.meas);
     assert(ret != victory::uncertain); // Might be victory for alg, adv or irrelevant.
     return ret;
 }

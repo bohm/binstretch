@@ -18,6 +18,9 @@ class worker
 public:
     std::atomic<bool> waiting;
     int tid; // thread id
+    measure_attr measurements;
+
+    
     int get_task();
     victory solve(const task *t, const int& task_id);
 
