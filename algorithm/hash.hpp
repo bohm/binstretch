@@ -46,131 +46,13 @@ inline bool get_last_bit(uint64_t n)
 
 // typedef dpht_el_128 dpht_el;
 
-class conf_el; class dpht_el_64; // Both defined later in the file.
-typedef dpht_el_64 dpht_el;
+class dpht_el_64; // Both defined later in the file.
+// typedef dpht_el_64 dpht_el;
 
 // generic hash table (for configurations)
-std::atomic<conf_el> *ht = NULL;
-std::atomic<dpht_el> *dpht = NULL;
+// std::atomic<conf_el> *ht = NULL;
+// std::atomic<dpht_el> *dpht = NULL;
 
-
-class conf_el
-{
-public:
-    uint64_t _data;
-
-    inline void set(uint64_t hash, uint64_t val)
-	{
-	    assert(val == 0 || val == 1);
-	    _data = (zero_last_two_bits(hash) | val);
-	}
-
-    inline bin_int value() const
-	{
-	    return get_last_two_bits(_data);
-	}
-    inline uint64_t hash() const
-	{
-	    return zero_last_two_bits(_data);
-	}
-
-    inline bool match(const uint64_t& hash) const
-	{
-	    return (zero_last_two_bits(_data) == zero_last_two_bits(hash));
-	}
-	
-    inline bool empty() const
-	{
-	    return _data == 0;
-	}
-    inline bool removed() const
-	{
-	    return _data == REMOVED;
-	}
-
-    inline void remove()
-	{
-	    _data = REMOVED;
-	}
-
-    inline void erase()
-	{
-	    _data = 0;
-	}
-
-    bin_int depth() const
-	{
-	    return 0;
-	}
-
-    // static void atomic_init
-    // static void parallel_atomic_init(std::atomic<conf_el> *cache, uint64_t size,
-
-    static void atomic_init_point(std::atomic<conf_el> **cache, uint64_t point);
-    static void parallel_init_segment(std::atomic<conf_el> **cache, uint64_t start, uint64_t end, uint64_t size);
-    static void parallel_init(std::atomic<conf_el> **cache, uint64_t size, int threads);
-  
-    // Setup of the whole cache.
-    static void init(std::atomic<conf_el> **ccache, uint64_t size)
-	{
-	    (*ccache) = new std::atomic<conf_el>[size];
-	    assert((*ccache) != NULL);
-    
-	    conf_el y{0};
-	    for (uint64_t i = 0; i < size; i++)
-	    {
-		std::atomic_init(&(*ccache)[i], y);
-	    }
-	}
-
-
-    static void free(std::atomic<conf_el> **ccache)
-	{
-	    delete[] (*ccache); *ccache = NULL;
-	}
-};
-
-const conf_el CONF_ZERO{0};
-
-void conf_el::atomic_init_point(std::atomic<conf_el> **cache, uint64_t point)
-{
-    std::atomic_init(&(*cache)[point], CONF_ZERO);
-}
-
-void conf_el::parallel_init_segment(std::atomic<conf_el> **cache, uint64_t start, uint64_t end, uint64_t size)
-{
-    for (uint64_t i = start; i < std::min(end, size); i++)
-    {
-	conf_el::atomic_init_point(cache, i);
-    }
-}
-
-void conf_el::parallel_init(std::atomic<conf_el> **cache, uint64_t size, int threads)
-{
-
-    (*cache) = new std::atomic<conf_el>[size];
-    assert((*cache) != NULL);
- 
-    uint64_t segment = size / threads;
-    uint64_t start = 0;
-    uint64_t end = std::min(size, segment);
-
-    std::vector<std::thread> th;
-    for (int w = 0; w < threads; w++)
-    {
-	th.push_back(std::thread(conf_el::parallel_init_segment, cache, start, end, size));
-	start += segment;
-	end += segment;
-	start = std::min(start, size);
-	end = std::min(end, size);
-    }
-
-    for (int w = 0; w < threads; w++)
-    {
-	th[w].join();
-    }
-}
- 
 class dpht_el_64
 {
 public:
@@ -220,83 +102,12 @@ public:
 	    return 0;
 	}
 
-    static void atomic_init_point(std::atomic<dpht_el_64> **cache, uint64_t point);
-    static void parallel_init_segment(std::atomic<dpht_el_64> **cache, uint64_t start, uint64_t end, uint64_t size);
-    static void parallel_init(std::atomic<dpht_el_64> **cache, uint64_t size, int threads);
-
-    // Setup of the whole cache.
-    static void init(std::atomic<dpht_el_64> **cache, uint64_t size)
-	{
-	    (*cache) = new std::atomic<dpht_el_64>[size];
-	    assert((*cache) != NULL);
-
-	    dpht_el_64 x{0};
-
-	    for (uint64_t i =0; i < size; i++)
-	    {
-		std::atomic_init(&((*cache)[i]),x);
-	    }
-	}
-
-    static void free(std::atomic<dpht_el_64> **cache)
-	{
-	    delete[] *cache; *cache = NULL;
-	}
+    static const dpht_el_64 ZERO;
 };
 
-const dpht_el_64 DPHT_ZERO{0};
+const dpht_el_64 dpht_el_64::ZERO{0};
 
-
-void dpht_el_64::atomic_init_point(std::atomic<dpht_el_64> **cache, uint64_t point)
-{
-    std::atomic_init(&(*cache)[point], DPHT_ZERO);
-}
-
-void dpht_el_64::parallel_init_segment(std::atomic<dpht_el_64> **cache, uint64_t start, uint64_t end, uint64_t size)
-{
-    for (uint64_t i = start; i < std::min(end, size); i++)
-    {
-	dpht_el_64::atomic_init_point(cache, i);
-    }
-}
-
-void dpht_el_64::parallel_init(std::atomic<dpht_el_64> **cache, uint64_t size, int threads)
-{
-
-    (*cache) = new std::atomic<dpht_el_64>[size];
-    assert((*cache) != NULL);
- 
-    uint64_t segment = size / threads;
-    uint64_t start = 0;
-    uint64_t end = std::min(size, segment);
-
-    std::vector<std::thread> th;
-    for (int w = 0; w < threads; w++)
-    {
-	th.push_back(std::thread(dpht_el_64::parallel_init_segment, cache, start, end, size));
-	start += segment;
-	end += segment;
-	start = std::min(start, size);
-	end = std::min(end, size);
-    }
-
-    for (int w = 0; w < threads; w++)
-    {
-	th[w].join();
-    }
-}
- 
 const unsigned int CACHE_LOADCONF_LIMIT = 1000;
-
-class dpht_large
-{
-    uint64_t _hash;
-    victory _win;
-    bool overfull; // In the situation that there are more final _confs than CACHE_LOADCONF_LIMITS, we cannot use the cache element.
-    // (Maybe not cache it at that time?)
-    std::array<loadconf, CACHE_LOADCONF_LIMIT> _confs;
-   
-};
 
 // Mersenne twister.
 std::mt19937_64 gen(12345);
@@ -356,96 +167,6 @@ uint64_t quicklog(uint64_t x)
     return ret;
 }
 
-void clear_cache_of_ones()
-{
-    uint64_t kept = 0, erased = 0;
-    conf_el empty{0};
-    
-    for (uint64_t i =0; i < ht_size; i++)
-    {
-	conf_el field = ht[i];
-	if (!field.empty() && !field.removed())
-	{
-	    bin_int last_bit = field.value();
-	    if (last_bit != 0)
-	    {
-		ht[i].store(empty);
-		erased++;
-	    } else {
-		kept++;
-	    }
-	}
-    }
-}
-
-
-void clear_cache_segment(std::atomic<conf_el> *cache, uint64_t start, uint64_t end, uint64_t size)
-{
-    for (uint64_t i = start; i < std::min(end, size); i++)
-    {
-	cache[i].store(CONF_ZERO);
-    }
-}
-
-void clear_cache(std::atomic<conf_el> *cache, uint64_t size, int threads)
-{
-    uint64_t segment = size / threads;
-    uint64_t start = 0;
-    uint64_t end = std::min(size, segment);
-
-    std::vector<std::thread> th;
-    for (int w = 0; w < threads; w++)
-    {
-	th.push_back(std::thread(clear_cache_segment, cache, start, end,size));
-	start += segment;
-	end += segment;
-	start = std::min(start, size);
-	end = std::min(end, size);
-    }
-
-    for (int w = 0; w < threads; w++)
-    {
-	th[w].join();
-    }
-}
-
-void clear_ones_segment(std::atomic<conf_el> *cache, uint64_t start, uint64_t end, uint64_t size)
-{
-    for (uint64_t i = start; i < std::min(end, size); i++)
-    {
-	conf_el field = ht[i];
-	if (!field.empty() && !field.removed())
-	{
-	    bin_int last_bit = field.value();
-	    if (last_bit != 0)
-	    {
-		ht[i].store(CONF_ZERO);
-	    }
-	}
-    }
-}
-
-void clear_cache_of_ones(std::atomic<conf_el> *cache, uint64_t size, int threads)
-{
-    uint64_t segment = size / threads;
-    uint64_t start = 0;
-    uint64_t end = std::min(size, segment);
-
-    std::vector<std::thread> th;
-    for (int w = 0; w < threads; w++)
-    {
-	th.push_back(std::thread(clear_ones_segment, cache, start, end,size));
-	start += segment;
-	end += segment;
-	start = std::min(start, size);
-	end = std::min(end, size);
-    }
-
-    for (int w = 0; w < threads; w++)
-    {
-	th[w].join();
-    }
-}
 
 
 /*

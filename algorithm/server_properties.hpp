@@ -81,8 +81,17 @@ std::tuple<unsigned int, unsigned int, unsigned int> server_properties(char *ser
     {
 	return std::make_tuple(27, 27, 7);
 
-    }
-    else {
+    } else if ( (strcmp(server_name, "optilog-pc-02") == 0) )
+    {
+	return std::make_tuple(29, 29, 4);
+    } else if ( (strcmp(server_name, "triton") == 0) )
+    {
+	return std::make_tuple(31,31, 16);
+    } else if ( (strcmp(server_name, "titan") == 0) )
+    {
+	// return std::make_tuple(29, 29, 24);
+	return std::make_tuple(28, 28, 4);
+    } else {
 	return std::make_tuple(28, 28, 4);
     }
 

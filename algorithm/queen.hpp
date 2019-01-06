@@ -126,8 +126,8 @@ int queen()
     dplog = QUEEN_DPLOG;
     dpht_size = 1LLU << dplog;
 
-    ht = NULL; // Init queen memory (the queen does not use the main solved cache).
-    dpht_el::init(&dpht, dpht_size);
+    // Init queen memory (the queen does not use the main solved cache):
+    dpc = new dp_cache(dpht_size, dplog, 4); 
 
     sync_up(); // Sync before any rounds start.
 
@@ -367,7 +367,7 @@ int queen()
     g_meas.print();
     delete_running_lows();
 
-    dpht_el::free(&dpht); // Free queen cache.
+    delete dpc;
     delete_batches();
 
     return ret;

@@ -15,6 +15,8 @@
 #include "tree_print.hpp"
 #include "hash.hpp"
 #include "caching.hpp"
+#include "cache_dp.hpp"
+#include "cache_conf.hpp"
 #include "fits.hpp"
 #include "dynprog.hpp"
 #include "maxfeas.hpp"
@@ -241,16 +243,15 @@ template<mm_state MODE> victory adversary(binconf *b, int depth, thread_attr *ta
     // when generating we want the whole lower bound tree to be generated.
     if (MODE == mm_state::exploring && !DISABLE_CACHE)
     {
-	bool found_conf = false;
-	int conf_in_hashtable = is_conf_hashed(b, tat, found_conf);
+
+	auto [found, value] = dpc->lookup(b->confhash(), tat);
 	
-	if (found_conf)
+	if (found)
 	{
-	    assert(conf_in_hashtable == 0 || conf_in_hashtable == 1);
-	    if (conf_in_hashtable == 0)
+	    if (value == 0)
 	    {
 		return victory::adv;
-	    } else if (conf_in_hashtable == 1)
+	    } else if (value == 1)
 	    {
 		return victory::alg;
 	    }
@@ -347,10 +348,10 @@ template<mm_state MODE> victory adversary(binconf *b, int depth, thread_attr *ta
 	// TODO: Make this cleaner.
 	if (win == victory::adv)
 	{
-	    conf_hashpush(b, 0, tat);
+	    stcache_encache(b, (uint64_t) 0, tat);
 	} else if (win == victory::alg)
 	{
-	    conf_hashpush(b, 1, tat);
+	    stcache_encache(b, (uint64_t) 1, tat);
 	}
 	
     }
