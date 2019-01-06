@@ -656,14 +656,14 @@ bool compute_feasibility(const binconf &h, thread_attr *tat)
 void pack_and_encache(binconf &h, const bin_int item, const bool feasibility, thread_attr *tat, const bin_int multiplicity = 1)
 {
     add_item_inplace(h,item,multiplicity);
-    dp_encache(h,feasibility,tat);
+    dp_encache(h,feasibility);
     remove_item_inplace(h,item,multiplicity);
 }
 
 maybebool pack_and_query(binconf &h, const bin_int item, thread_attr *tat, const bin_int multiplicity = 1)
 {
     add_item_inplace(h,item, multiplicity);
-    maybebool ret = dp_query(h,tat);
+    maybebool ret = dp_query(h);
     remove_item_inplace(h,item, multiplicity);
     return ret;
 }
@@ -671,12 +671,12 @@ maybebool pack_and_query(binconf &h, const bin_int item, thread_attr *tat, const
 bool pack_query_compute(binconf &h, const bin_int item, thread_attr *tat, const bin_int multiplicity = 1)
 {
     add_item_inplace(h,item, multiplicity);
-    maybebool q = dp_query(h,tat);
+    maybebool q = dp_query(h);
     bool ret;
     if (q == MB_NOT_CACHED)
     {
 	ret = compute_feasibility(h,tat);
-	dp_encache(h,ret,tat);
+	dp_encache(h,ret);
     } else { // ret == FEASIBLE/INFEASIBLE
         ret = q;
     }
@@ -844,11 +844,11 @@ std::pair<bool, bin_int> five_nine_heuristic(binconf *b, thread_attr *tat)
 
 void dp_cache_print(binconf &h, thread_attr *tat)
 {
-    fprintf(stderr, "Cache print: %hd", dp_query(h,tat));
+    fprintf(stderr, "Cache print: %hd", dp_query(h));
     for (int i = 1; i <= S; i++)
     {
 	add_item_inplace(h, i);
-	fprintf(stderr, ", %hd", dp_query(h,tat));
+	fprintf(stderr, ", %hd", dp_query(h));
 	remove_item_inplace(h,i);
     }
     fprintf(stderr, "\n");

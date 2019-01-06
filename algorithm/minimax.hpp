@@ -244,7 +244,7 @@ template<mm_state MODE> victory adversary(binconf *b, int depth, thread_attr *ta
     if (MODE == mm_state::exploring && !DISABLE_CACHE)
     {
 
-	auto [found, value] = dpc->lookup(b->confhash(), tat);
+	auto [found, value] = stc->lookup(b->confhash(), tat);
 	
 	if (found)
 	{

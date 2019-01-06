@@ -13,6 +13,41 @@ uint64_t removed_task_count = 0; // number of tasks which are removed due to min
 uint64_t decreased_task_count = 0;
 uint64_t irrel_transmitted_count = 0;
 
+// Measurements for the caching structures. Need to be atomic, as they are accessed
+// concurrently.
+struct cache_measurements
+{
+    std::atomic<uint64_t> lookup_hit = 0;
+    std::atomic<uint64_t> lookup_miss_full = 0;
+    std::atomic<uint64_t> lookup_miss_reached_empty = 0;
+    std::atomic<uint64_t> insert_into_empty = 0;
+    std::atomic<uint64_t> insert_duplicate = 0;
+    std::atomic<uint64_t> insert_randomly = 0;
+
+    void print()
+	{
+	    fprintf(stderr, "Lookup hit: %" PRIu64 ", miss (full): %" PRIu64 ", miss (reached empty): %" PRIu64 ".\n",
+		    lookup_hit.load(), lookup_miss_full.load(), lookup_miss_reached_empty.load());
+	    fprintf(stderr, "Insert (into empty): %" PRIu64 ", duplicate found: %" PRIu64 ", insert (randomly): %" PRIu64 ".\n",
+		    insert_into_empty.load(), insert_duplicate.load(), insert_randomly.load()); 
+	}
+
+
+    // At the point of adding, no editing should be taking place.
+    void add(const cache_measurements &other)
+	{
+	    lookup_hit.store( lookup_hit.load() + other.lookup_hit.load() );
+	    lookup_miss_full.store( lookup_miss_full.load() + other.lookup_miss_full.load() );
+	    lookup_miss_reached_empty.store( lookup_miss_reached_empty.load() +
+					     other.lookup_miss_reached_empty.load() );
+
+	    insert_into_empty.store(insert_into_empty.load() + other.insert_into_empty.load());
+	    insert_duplicate.store(insert_duplicate.load() + other.insert_duplicate.load());
+	    insert_randomly.store(insert_randomly.load() + other.insert_randomly.load());
+	}
+};
+
+// Overall measurement structure.
 struct measure_attr
 {
     uint64_t dp_hit = 0;
@@ -52,6 +87,9 @@ struct measure_attr
     uint64_t pruned_collision = 0; // only used by the queen
     int relabeled_vertices = 0;
     int visit_counter = 0;
+
+    cache_measurements state_meas;
+    cache_measurements dpht_meas;
     
     void add(const measure_attr &other)
 	{
@@ -88,6 +126,9 @@ struct measure_attr
 		gshit[i] += other.gshit[i];
 		gsmiss[i] += other.gsmiss[i];
 	    }
+
+	    state_meas.add(other.state_meas);
+	    dpht_meas.add(other.dpht_meas);
 	}
 
     /* returns the struct as a serialized object of size sizeof(measure_attr) */
@@ -112,25 +153,17 @@ struct measure_attr
 		fprintf(stderr, "Good situation %s: hits %" PRIu64 ", misses %" PRIu64 ".\n", gsnames[i].c_str(), gshit[i], gsmiss[i]);
 	    }
 
-	    // caching
-	    // TODO: make it work with the new shared/private model
-	    fprintf(stderr, "Main cache size: %" PRIu64 ", #search: %" PRIu64 "(#hit: %" PRIu64 ",  #miss: %" PRIu64 ") #full miss: %" PRIu64 ".\n",
-			  ht_size, (bc_hit+bc_partial_nf+bc_full_nf), bc_hit,
-			  bc_partial_nf + bc_full_nf, bc_full_nf);
-	    fprintf(stderr, "Insertions: %" PRIu64 ", new data insertions: %" PRIu64 ", (normal: %" PRIu64 ", random inserts: %" PRIu64
-		    ", already inserted: %" PRIu64 ", in progress: %" PRIu64 ", overwrite of in progress: %" PRIu64 ").\n",
-		    bc_insertions, bc_insertions - bc_already_inserted - bc_in_progress_insert, bc_normal_insert, bc_random_insert,
-		    bc_already_inserted, bc_in_progress_insert, bc_overwrite);
-	    
-	    fprintf(stderr, "DP cache size: %" PRIu64 ", #insert: %" PRIu64 ", #search: %" PRIu64 "(#hit: %" PRIu64 ",  #part. miss: %" PRIu64 ",#full miss: %" PRIu64 ").\n",
-		    dpht_size, dp_insertions, (dp_hit+dp_partial_nf+dp_full_nf), dp_hit,
-		    dp_partial_nf, dp_full_nf);
+	    fprintf(stderr, "Game state cache:\n");
+	    state_meas.print();
+	    fprintf(stderr, "Dyn. prog. cache:\n");
+	    dpht_meas.print(); // caching
 	}
 };
 
 // global measurement data (actually not global, but one per process with MPI)
 measure_attr g_meas;
 
+    
 /* dynprog global variables and other attributes separate for each thread */
 class thread_attr
 {

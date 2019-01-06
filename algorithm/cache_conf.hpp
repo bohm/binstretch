@@ -2,7 +2,6 @@
 
 #include "common.hpp"
 #include "hash.hpp"
-#include "cache.hpp"
 
 // Implementations of specific caches, using the interface defined in cache_generic.hpp.
 
@@ -20,7 +19,7 @@ public:
 	    _data = (zero_last_bit(hash) | val);
 	}
 
-    inline bin_int value() const
+    inline bool value() const
 	{
 	    return get_last_bit(_data);
 	}
@@ -60,12 +59,13 @@ public:
 const conf_el conf_el::ZERO{0};
 
 
-class state_cache : public cache<conf_el, uint64_t, bin_int>
+class state_cache // : public cache<conf_el, uint64_t, bin_int>
 {
 public:
     std::atomic<conf_el> *ht;
     uint64_t htsize;
     int logsize;
+    cache_measurements meas;
 
     void atomic_init_point(uint64_t point)
 	{
@@ -82,6 +82,7 @@ public:
     
     state_cache(uint64_t size, int ls, int threads) : htsize(size), logsize(ls)
 	{
+	    assert(logsize >= 0 && logsize <= 64);
 	    ht = new std::atomic<conf_el>[htsize];
 	    assert(ht != NULL);
  
@@ -109,7 +110,7 @@ public:
 	{
 	    delete ht;
 	}
-    
+
     conf_el access(uint64_t pos)
 	{
 	    return ht[pos].load(std::memory_order_acquire); 
@@ -129,6 +130,9 @@ public:
 	{
 	    return logpart(ha, logsize);
 	}
+
+    std::pair<bool, bool> lookup(uint64_t h, thread_attr *tat);
+    void insert(conf_el e, uint64_t h, thread_attr *tat);
 
 
     // Functions for clearing part of entirety of the cache.
@@ -201,6 +205,75 @@ public:
 	    }
 	}
 };
+
+std::pair<bool, bool> state_cache::lookup(uint64_t h, thread_attr *tat)
+{
+    conf_el candidate;
+    uint64_t pos = trim(h);
+    // Use linear probing to check for the hashed value.
+    for (int i = 0; i < LINPROBE_LIMIT; i++)
+    {
+	assert(pos + i < size());
+	candidate = access(pos + i);
+
+	if (candidate.empty())
+	{
+	    MEASURE_ONLY(meas.lookup_miss_reached_empty++);
+	    break;
+	}
+
+	if (candidate.match(h))
+	{
+	    MEASURE_ONLY(meas.lookup_hit++);
+	    return std::make_pair(true, candidate.value());
+	}
+
+	// bounds check
+	if (pos + i >= size() || i == LINPROBE_LIMIT - 1)
+	{
+	    MEASURE_ONLY(meas.lookup_miss_full++);
+	    break;
+	}
+    }
+
+    return std::make_pair(false, false);
+}
+
+void state_cache::insert(conf_el e, uint64_t h, thread_attr *tat)
+{
+    conf_el candidate;
+    uint64_t pos = trim(h);
+
+    int limit = LINPROBE_LIMIT;
+    if (pos + limit > size())
+    {
+	limit = std::min((uint64_t) 0, size() - pos);
+    }
+    
+    for (int i = 0; i < limit; i++)
+    {
+	candidate = access(pos + i);
+	if (candidate.empty() || candidate.removed())
+	{
+	    MEASURE_ONLY(meas.insert_into_empty++);
+	    store(pos + i, e);
+	    // return INSERTED;
+	    return;
+	}
+	else if (candidate.match(h))
+	{
+	    MEASURE_ONLY(meas.insert_duplicate++);
+	    return;
+	}
+    }
+
+    store(pos + (rand() % limit), e);
+    MEASURE_ONLY(meas.insert_randomly++);
+    return;
+}
+
+
+
 
 state_cache *stc = NULL;
 

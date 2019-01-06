@@ -270,6 +270,12 @@ void overseer::start()
 		delete wrkr[w];
 	    }
 	    wrkr.clear();
+
+	    // Before transmitting measurements, add the atomically collected
+	    // cache measurements to the whole meas collection.
+	    collected_meas.state_meas.add(stc->meas);
+	    collected_meas.dpht_meas.add(dpc->meas);
+    
 	    transmit_measurements(collected_meas);
 	    delete dpc;
 	    delete stc;

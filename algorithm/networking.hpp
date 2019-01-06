@@ -103,7 +103,7 @@ void round_end()
     MPI_Barrier(MPI_COMM_WORLD);
 }
 
-void transmit_measurements(measure_attr meas)
+void transmit_measurements(measure_attr& meas)
 {
     MPI_Send(meas.serialize(),sizeof(measure_attr), MPI_CHAR, QUEEN, net::MEASUREMENTS, MPI_COMM_WORLD);
 }
