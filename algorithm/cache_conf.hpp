@@ -131,6 +131,8 @@ public:
 	    return logpart(ha, logsize);
 	}
 
+    void analysis();
+    
     std::pair<bool, bool> lookup(uint64_t h, thread_attr *tat);
     void insert(conf_el e, uint64_t h, thread_attr *tat);
 
@@ -228,8 +230,8 @@ std::pair<bool, bool> state_cache::lookup(uint64_t h, thread_attr *tat)
 	    return std::make_pair(true, candidate.value());
 	}
 
-	// bounds check
-	if (pos + i >= size() || i == LINPROBE_LIMIT - 1)
+	// bounds check (the second case is so that measurements are okay)
+	if (pos + i + 1 == size() || i == LINPROBE_LIMIT - 1)
 	{
 	    MEASURE_ONLY(meas.lookup_miss_full++);
 	    break;
@@ -247,7 +249,7 @@ void state_cache::insert(conf_el e, uint64_t h, thread_attr *tat)
     int limit = LINPROBE_LIMIT;
     if (pos + limit > size())
     {
-	limit = std::min((uint64_t) 0, size() - pos);
+	limit = std::max((uint64_t) 0, size() - pos);
     }
     
     for (int i = 0; i < limit; i++)
@@ -270,6 +272,20 @@ void state_cache::insert(conf_el e, uint64_t h, thread_attr *tat)
     store(pos + (rand() % limit), e);
     MEASURE_ONLY(meas.insert_randomly++);
     return;
+}
+
+void state_cache::analysis()
+{
+    for (uint64_t i = 0; i < htsize; i++)
+    {
+	if (ht[i].load().empty())
+	{
+	    meas.empty_positions++;
+	} else
+	{
+	    meas.filled_positions++;
+	}
+    }
 }
 
 

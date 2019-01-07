@@ -24,6 +24,9 @@ struct cache_measurements
     std::atomic<uint64_t> insert_duplicate = 0;
     std::atomic<uint64_t> insert_randomly = 0;
 
+    uint64_t filled_positions = 0;
+    uint64_t empty_positions = 0;
+
     void print()
 	{
 	    fprintf(stderr, "Lookup hit: %" PRIu64 ", miss (full): %" PRIu64 ", miss (reached empty): %" PRIu64 ".\n",

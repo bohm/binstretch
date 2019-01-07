@@ -275,6 +275,19 @@ void overseer::start()
 	    // cache measurements to the whole meas collection.
 	    collected_meas.state_meas.add(stc->meas);
 	    collected_meas.dpht_meas.add(dpc->meas);
+
+	    MEASURE_ONLY(stc->analysis());
+	    MEASURE_ONLY(print<true>("Overseer %d: State cache size: %" PRIu64
+				     ", filled elements: %" PRIu64 " and empty: %" PRIu64 ".\n",
+				     world_rank, stc->size(), stc->meas.filled_positions,
+				     stc->meas.empty_positions));
+
+	    MEASURE_ONLY(dpc->analysis());
+	    MEASURE_ONLY(print<true>("Overseer %d: d.p. cache size: %" PRIu64
+				     ", filled elements: %" PRIu64 " and empty: %" PRIu64 ".\n",
+				     world_rank, dpc->size(), dpc->meas.filled_positions,
+				     dpc->meas.empty_positions));
+							
     
 	    transmit_measurements(collected_meas);
 	    delete dpc;

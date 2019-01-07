@@ -109,10 +109,10 @@ const std::vector<bin_int> INITIAL_SEQUENCE = {};
 
 // const int FIRST_PASS = 0; // enough to get a lb of 19/14 on 6,7 bins.
 // const int FIRST_PASS = 1; // enough for 19/14 on 8 bins.
-// const int FIRST_PASS = 6; // enough for 86/63 on 3 bins.
+const int FIRST_PASS = 6; // enough for 86/63 on 3 bins.
 // const int FIRST_PASS = 8; // enough for 112/82 on 3 bins.
 // const int FIRST_PASS = 10;
-const int FIRST_PASS = S-1; // Full monotonicity.
+// const int FIRST_PASS = S-1; // Full monotonicity.
 
 // constants used for good situations
 const int RMOD = (R-1);

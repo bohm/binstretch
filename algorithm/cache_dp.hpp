@@ -35,6 +35,7 @@ public:
     dp_cache(uint64_t size, int ls, int threads) : htsize(size), logsize(ls)
 	{
 	    assert(logsize >= 0 && logsize <= 64);
+	    assert((uint64_t) 1 << logsize == htsize);
 
 	    ht = new std::atomic<dpht_el_64>[htsize];
 	    assert(ht != NULL);
@@ -84,6 +85,8 @@ public:
 	    return logpart(ha, logsize);
 	}
 
+    void analysis();
+    
     std::pair<bool, bool> lookup(uint64_t h);
     void insert(dpht_el_64 e, uint64_t h);
 
@@ -115,7 +118,7 @@ std::pair<bool, bool> dp_cache::lookup(uint64_t h)
 	}
 
 	// bounds check (the second case is so that measurements are okay)
-	if (pos + i >= size() || i == LINPROBE_LIMIT-1)
+	if (pos + i + 1 >= size() || i == LINPROBE_LIMIT-1)
 	{
 	    MEASURE_ONLY(meas.lookup_miss_full++);
 	    break;
@@ -133,8 +136,8 @@ void dp_cache::insert(dpht_el_64 e, uint64_t h)
     int limit = LINPROBE_LIMIT;
     if (pos + limit > size())
     {
-	printf("Pos is over size: %" PRIu64 " vs. %" PRIu64 "\n.", pos, size());
-	limit = std::min((uint64_t) 0, size() - pos);
+	// printf("Pos is over size: %" PRIu64 " vs. %" PRIu64 "\n.", pos, size());
+	limit = std::max((uint64_t) 0, size() - pos);
     }
     
     for (int i = 0; i < limit; i++)
@@ -158,6 +161,21 @@ void dp_cache::insert(dpht_el_64 e, uint64_t h)
     store(pos + (rand() % limit), e);
     MEASURE_ONLY(meas.insert_randomly++);
     return;
+}
+
+
+void dp_cache::analysis()
+{
+    for (uint64_t i = 0; i < htsize; i++)
+    {
+	if (ht[i].load().empty())
+	{
+	    meas.empty_positions++;
+	} else
+	{
+	    meas.filled_positions++;
+	}
+    }
 }
 
 // Two wrapper functions that may not be as useful with the new structure.
