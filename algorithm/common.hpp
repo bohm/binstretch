@@ -30,7 +30,7 @@ const bool OUTPUT = true; // Whether to produce output.
 
 // const output_type OUTPUT_TYPE = output_type::dag; // No longer used; we always print a DAG.
 
-const bool REGROW = false; // Whether to regrow or just terminate after first iteration.
+const bool REGROW = true; // Whether to regrow or just terminate after first iteration.
 
 // When producing output, how many times should a tree be regrown.
 // Note that REGROW_LIMIT = 0 still means a full tree will be generated.
@@ -97,7 +97,7 @@ const std::vector<bin_int> INITIAL_ITEMS = {};
 // const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1,1,1,1}; // 8x1
 // const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1,1,1}; // 7x1
 // const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1,1}; // 6x1
-// const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1}; // 5x1, works for 8 bins and monotonicity 1.
+const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1}; // 5x1, works for 8 bins and monotonicity 1.
 // const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1}; // 4x1
 // const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1}; // 3x1
 // const std::vector<bin_int> INITIAL_SEQUENCE = {5};
@@ -105,11 +105,11 @@ const std::vector<bin_int> INITIAL_ITEMS = {};
 // const std::vector<bin_int> INITIAL_SEQUENCE = {2,2};
 // const std::vector<bin_int> INITIAL_SEQUENCE = {2};
 
-const std::vector<bin_int> INITIAL_SEQUENCE = {};
+// const std::vector<bin_int> INITIAL_SEQUENCE = {};
 
-// const int FIRST_PASS = 0; // enough to get a lb of 19/14 on 6,7 bins.
+const int FIRST_PASS = 0; // enough to get a lb of 19/14 on 6,7 bins.
 // const int FIRST_PASS = 1; // enough for 19/14 on 8 bins.
-const int FIRST_PASS = 6; // enough for 86/63 on 3 bins.
+// const int FIRST_PASS = 6; // enough for 86/63 on 3 bins.
 // const int FIRST_PASS = 8; // enough for 112/82 on 3 bins.
 // const int FIRST_PASS = 10;
 // const int FIRST_PASS = S-1; // Full monotonicity.
@@ -119,7 +119,7 @@ const int RMOD = (R-1);
 const int ALPHA = (RMOD-S);
 
 // secondary booleans, controlling some heuristics
-const bool LARGE_ITEM_ACTIVE_EVERYWHERE = false;
+const bool LARGE_ITEM_ACTIVE_EVERYWHERE = true;
 const bool FIVE_NINE_ACTIVE_EVERYWHERE = false;
 // Dplog, conflog -- bitwise length of indices of hash tables and lock tables.
 // ht_size = 2^conflog, dpht_size = 2^dplog.

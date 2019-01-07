@@ -85,8 +85,8 @@ void relabel_and_fix_adv(adversary_vertex *v, thread_attr *tat)
 	{
 	    print<true>("Trouble with vertex %" PRIu64  " with %zu children, value %d and bc:\n", v->id, v->out.size(), v->win);
 	    print_binconf_stream(stderr, v->bc);
-	    fprintf(stderr, "A debug tree will be created with extra id 99.\n");
-	    print_debug_dag(computation_root, 0, 99);
+	    // fprintf(stderr, "A debug tree will be created with extra id 99.\n");
+	    // print_debug_dag(computation_root, 0, 99);
 
 	    assert(v->out.size() == 0 && v->win == victory::adv);
 	}

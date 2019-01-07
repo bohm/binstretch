@@ -75,19 +75,20 @@ void queen_updater(adversary_vertex* sapling)
 		cycle_counter = 0;
 	    }
 
+	    // TODO: make these work again.
 	    if (updater_result == victory::uncertain && uat.unfinished_tasks == 0)
 	    {
 		print<true>("The tree is in a strange state.\n");
-		fprintf(stderr, "A debug tree will be created with extra id 99.\n");
-		print_debug_dag(computation_root, 0, 99);
+		// fprintf(stderr, "A debug tree will be created with extra id 99.\n");
+		// print_debug_dag(computation_root, 0, 99);
 		assert(updater_result != victory::uncertain || uat.unfinished_tasks > 0);
 	    }
 
 	    if (debug_print_requested.load(std::memory_order_acquire) == true)
 	    {
 		print<true>("Queen: printing the current state of the tree, as requested.\n");
-		fprintf(stderr, "A debug tree will be created with extra id 100.\n");
-		print_debug_dag(computation_root, 0, 100);
+		// fprintf(stderr, "A debug tree will be created with extra id 100.\n");
+		// print_debug_dag(computation_root, 0, 100);
 		debug_print_requested.store(false, std::memory_order_release);
 	    }
 
@@ -198,7 +199,6 @@ int queen()
 		clear_visited_bits();
 		removed_task_count = 0;
 		updater_result = generate(currently_growing, &tat);
-		// print_debug_dag(computation_root, regrow_level, 0);
 		
 		computation_root->win = updater_result.load(std::memory_order_acquire);
 		if (computation_root->win != victory::uncertain)
@@ -318,7 +318,6 @@ int queen()
 		// Transform tasks into vert_state::expand and
 		// vert_state::fresh vertices into vert_state::fixed.
 		relabel_and_fix(computation_root, &tat);
-		// print_debug_dag(computation_root, regrow_level, 1);
 	    }
 	}
 

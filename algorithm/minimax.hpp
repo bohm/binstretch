@@ -20,6 +20,7 @@
 #include "fits.hpp"
 #include "dynprog.hpp"
 #include "maxfeas.hpp"
+#include "heur_adv.hpp"
 #include "gs.hpp"
 #include "tasks.hpp"
 #include "networking.hpp"
@@ -71,8 +72,21 @@ template<mm_state MODE> victory adversary_heuristics(binconf *b, thread_attr *ta
 	    adv_to_evaluate->win = victory::adv;
 	    adv_to_evaluate->heuristic = true;
 	    adv_to_evaluate->heuristic_type = LARGE_ITEM;
-	    adv_to_evaluate->heuristic_item = S;
-	    adv_to_evaluate->heuristic_multi = BINS-1;
+	    // Build description for this large item setting.
+	    std::ostringstream os;
+	    bool first = true;
+	    for (int i = 1; i <= BINS-1; i++)
+	    {
+		if(first)
+		{
+		    os << S;
+		    first = false;
+		} else {
+		    os << ","; os << S;
+		}
+	    }
+	    
+	    adv_to_evaluate->heuristic_desc = os.str();
 	}
 	return victory::adv;
     }
@@ -91,7 +105,8 @@ template<mm_state MODE> victory adversary_heuristics(binconf *b, thread_attr *ta
 		adv_to_evaluate->heuristic = true;
 		adv_to_evaluate->heuristic_type = FIVE_NINE;
 		// do not set heuristic_item, it is implicit
-		adv_to_evaluate->heuristic_multi = fives_to_send;
+		// adv_to_evaluate->heuristic_multi = fives_to_send;
+		adv_to_evaluate->heuristic_desc = ""; // TODO: add meaningful description here.
 	    }
 	    return victory::adv;
 	}
@@ -99,11 +114,11 @@ template<mm_state MODE> victory adversary_heuristics(binconf *b, thread_attr *ta
 
     if (MODE == mm_state::generating || LARGE_ITEM_ACTIVE_EVERYWHERE)
     {
-	bin_int lih, mul;
+	
 	tat->meas.large_item_calls++;
 
-	std::tie(lih,mul) = large_item_heuristic(b, tat);
-	if (lih != MAX_INFEASIBLE)
+	auto [success, heurconf] = large_item_heuristic(b, tat);
+	if (success)
 	{
 	    tat->meas.large_item_hits++;
 
@@ -112,8 +127,7 @@ template<mm_state MODE> victory adversary_heuristics(binconf *b, thread_attr *ta
 		adv_to_evaluate->win = victory::adv;
 		adv_to_evaluate->heuristic = true;
 		adv_to_evaluate->heuristic_type = LARGE_ITEM;
-		adv_to_evaluate->heuristic_item = lih;
-		adv_to_evaluate->heuristic_multi = mul;
+		adv_to_evaluate->heuristic_desc = heurconf.print();
 	    }
 	    return victory::adv;
 	}

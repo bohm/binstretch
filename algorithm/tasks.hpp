@@ -365,7 +365,7 @@ void collect_tasks_adv(adversary_vertex *v, thread_attr *tat)
 	{
 	    print<true>("Trouble with task vertex %" PRIu64 ": it has winning value not UNCERTAIN, but %d.\n",
 			v->id, v->win);
-	    print_debug_dag(computation_root, tat->regrow_level, 99);
+	    // print_debug_dag(computation_root, tat->regrow_level, 99);
 	    assert(v->win == victory::uncertain && ((v->state == vert_state::fresh) || (v->state == vert_state::expand)) );
 	}
 

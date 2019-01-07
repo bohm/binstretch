@@ -2,6 +2,10 @@
 #define _BINCONF_HPP 1
 
 #include "common.hpp"
+#include <sstream>
+#include <string>
+#include <iostream>
+
 // a cut version of binconf which only uses the loads.
 class loadconf {
 public:
@@ -185,6 +189,30 @@ public:
 	    for (int i=1; i<=BINS; i++) {
 		fprintf(stream, "%d-", loads[i]);
 	    }
+	}
+
+    // print comma separated loads as a string (currently used for heuristics)
+    std::string print() const
+	{
+	    std::ostringstream os;
+	    bool first = true;
+	    for (int i=1; i<=BINS; i++)
+	    {
+		if (loads[i] == 0)
+		{
+		    break;
+		}
+		if (first)
+		{
+		    os << loads[i];
+		    first = false;
+		} else {
+		    os << ",";
+		    os << loads[i];
+		}
+	    }
+
+	    return os.str();
 	}
 
 };

@@ -73,10 +73,10 @@ void adversary_vertex::print_extended(FILE *stream)
     {
 	if (heuristic_type == LARGE_ITEM)
 	{
-	    fprintf(stream, ",heur=\"%hd,%hd\"", heuristic_item, heuristic_multi);
+	    fprintf(stream, ",heur=\"%s\"", heuristic_desc.c_str());
 	} else if (heuristic_type == FIVE_NINE)
 	{
-	    fprintf(stream, ",heur=\"FN (%hd)\"", heuristic_multi);
+	    fprintf(stream, ",heur=\"FN%s\"", heuristic_desc.c_str());
 	}
     }
 
