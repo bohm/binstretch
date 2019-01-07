@@ -1,12 +1,12 @@
 #include <cstdio>
 
-#include "common.hpp"
-#include "hash.hpp"
+#include "../common.hpp"
+#include "../hash.hpp"
 
 // Implementations of specific caches, using the interface defined in cache_generic.hpp.
 
-#ifndef _CACHE_CONF_HPP
-#define _CACHE_CONF_HPP 1
+#ifndef _CACHE_STATE_HPP
+#define _CACHE_STATE_HPP 1
 
 class conf_el
 {
@@ -305,4 +305,4 @@ void stcache_encache(const binconf *d, uint64_t posvalue, thread_attr *tat)
     stc->insert(new_item, bchash, tat);
 }
 
-#endif // _CACHE_CONF_HPP
+#endif // _CACHE_STATE_HPP

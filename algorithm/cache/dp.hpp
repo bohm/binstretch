@@ -1,7 +1,7 @@
 #include <cstdio>
 
-#include "common.hpp"
-#include "hash.hpp"
+#include "../common.hpp"
+#include "../hash.hpp"
 
 // Implementations of specific caches, using the interface defined in cache_generic.hpp.
 
