@@ -8,6 +8,59 @@
 #ifndef _CACHE_DP_HPP
 #define _CACHE_DP_HPP 1
 
+class dpht_el_64
+{
+public:
+    uint64_t _data;
+
+    // 64-bit dpht_el does not make use of permanence.
+    inline void set(uint64_t hash, uint8_t feasible, uint16_t permanence)
+	{
+	    assert(feasible == 0 || feasible == 1);
+	    _data = (zero_last_bit(hash) | feasible);
+	}
+    inline bool value() const
+	{
+	    return get_last_bit(_data);
+	}
+    inline uint64_t hash() const
+	{
+	    return zero_last_bit(_data);
+	}
+    inline bool empty() const
+	{
+	    return _data == 0;
+	}
+    inline bool removed() const
+	{
+	    return _data == REMOVED;
+	}
+
+    inline bool match(const uint64_t& hash) const
+	{
+	    return (zero_last_bit(_data) == zero_last_bit(hash));
+	}
+
+    inline void remove()
+	{
+	    _data = REMOVED;
+	}
+
+    inline void erase()
+	{
+	    _data = 0;
+	}
+
+    // currently not used
+    bin_int depth() const
+	{
+	    return 0;
+	}
+
+    static const dpht_el_64 ZERO;
+};
+
+const dpht_el_64 dpht_el_64::ZERO{0};
 
 // Experiment: removing virtual functions.
 
