@@ -89,18 +89,23 @@ const int TASK_RECEIVED = 1;
 // by the build script.
 
 #ifndef _BINS
-#error "The macro constant _BINS need to be passed by the compiler!"
+#error "The macro constant _BINS needs to be passed by the compiler!"
 #define _BINS 2 // This line is a hack to make G++ spit out only the error above.
 #endif
 
 #ifndef _R
-#error "The macro constant _R need to be passed by the compiler!"
+#error "The macro constant _R needs to be passed by the compiler!"
 #define _R 4 // ditto
 #endif
 
 #ifndef _S
-#error "The macro constant _S need to be passed by the compiler!"
+#error "The macro constant _S needs to be passed by the compiler!"
 #define _S 3 // ditto 
+#endif
+
+#ifndef _I_S
+#error "The macro constant _I_S needs to be passed by the compiler!"
+#define _I_S {} // ditto 
 #endif
 
 #endif // _CONSTANTS_HPP
