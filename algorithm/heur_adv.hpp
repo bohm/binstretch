@@ -7,82 +7,11 @@
 #include <cstring>
 
 #include "common.hpp"
-#include "dynprog.hpp"
+#include "dynprog/algo.hpp"
+#include "dynprog/wrappers.hpp"
+
 
 // Adversarial heuristics.
-
-// Compute all feasible configurations and return them.
-std::vector<loadconf> dynprog(const binconf &conf, thread_attr *tat)
-{
-    tat->newloadqueue->clear();
-    tat->oldloadqueue->clear();
-    std::vector<loadconf> *poldq = tat->oldloadqueue;
-    std::vector<loadconf> *pnewq = tat->newloadqueue;
-    std::vector<loadconf> ret;
-    uint64_t salt = rand_64bit();
-    bool initial_phase = true;
-    memset(tat->loadht, 0, LOADSIZE*8);
-
-    // We currently avoid the heuristics of handling separate sizes.
-    for (bin_int size=S; size>=1; size--)
-    {
-	bin_int k = conf.items[size];
-	while (k > 0)
-	{
-	    if (initial_phase)
-	    {
-		loadconf first;
-		for (int i = 1; i <= BINS; i++)
-		{
-		    first.loads[i] = 0;
-		}	
-		first.hashinit();
-		first.assign_and_rehash(size, 1);
-		pnewq->push_back(first);
-		initial_phase = false;
-	    } else {
-		for (loadconf& tuple: *poldq)
-		{
-		    for (int i=BINS; i >= 1; i--)
-		    {
-			// same as with Algorithm, we can skip when sequential bins have the same load
-			if (i < BINS && tuple.loads[i] == tuple.loads[i + 1])
-			{
-			    continue;
-			}
-			
-			if (tuple.loads[i] + size > S) {
-			    break;
-			}
-
-			uint64_t debug_loadhash = tuple.loadhash;
-			int newpos = tuple.assign_and_rehash(size, i);
-	
-			if(! loadconf_hashfind(tuple.loadhash ^ salt, tat->loadht))
-			{
-			    pnewq->push_back(tuple);
-			    loadconf_hashpush(tuple.loadhash ^ salt, tat->loadht);
-			}
-
-		        tuple.unassign_and_rehash(size, newpos);
-			assert(tuple.loadhash == debug_loadhash);
-		    }
-		}
-		if (pnewq->size() == 0)
-		{
-		    return ret; // Empty ret.
-		}
-	    }
-
-	    std::swap(poldq, pnewq);
-	    pnewq->clear();
-	    k--;
-	}
-    }
-
-    ret = *poldq;
-    return ret;
-}
 
 // Check if a loadconf a is compatible with the large item loadconf b. (Requirement: no two things from lb fit together.)
 bool compatible(const loadconf& a, const loadconf& lb)
@@ -126,20 +55,20 @@ int dynprog_and_check_vectors(const binconf &b, const std::vector<loadconf> &v, 
     return check_loadconf_vectors( dynprog(b, tat), v);
 }
 
-std::pair<bool, loadconf> large_item_heuristic(binconf *b, thread_attr *tat)
+// Build load configurations (essentially sequences of items) which work for the LI heuristic.
+std::vector<loadconf> build_lih_choices(const binconf &b)
 {
-    std::vector<std::pair<bin_int, bin_int> > required_items;
-    std::vector<loadconf> large_choices;
+     std::vector<loadconf> large_choices;
     bool oddness = false;
     loadconf ret;
 
     // lb2: size of an item that cannot fit twice into the last bin
-    int not_twice_into_last = (R - b->loads[BINS]+1)/2;
+    int not_twice_into_last = (R - b.loads[BINS]+1)/2;
 
     // If the remaining capacity on the last bin is odd, we can technically send one item
     // that is smaller than half of the last bin and one slightly larger.
     // E.g.: capacity 19 = one 9 and (several) 10s
-    if ( (R - b->loads[BINS]) % 2 == 1)
+    if ( (R - b.loads[BINS]) % 2 == 1)
     {
 	oddness = true;
     }
@@ -147,7 +76,7 @@ std::pair<bool, loadconf> large_item_heuristic(binconf *b, thread_attr *tat)
     for (int i = BINS; i >= 1; i--)
     {
 	// ideal item: cannot fit even once into bin i (and not twice into the last)
-	int not_once_into_current = R - b->loads[i];
+	int not_once_into_current = R - b.loads[i];
 	int items_to_send = BINS - i + 1;
 	
 	if (not_once_into_current > S)
@@ -176,8 +105,14 @@ std::pair<bool, loadconf> large_item_heuristic(binconf *b, thread_attr *tat)
 	    large_choices.push_back(large);
 	}
     }
+    return large_choices;
+}
 
-    int success = dynprog_and_check_vectors(*b, large_choices, tat);
+std::pair<bool, loadconf> large_item_heuristic(const binconf& b, thread_attr *tat)
+{
+    loadconf ret;
+    std::vector<loadconf> large_choices = build_lih_choices(b);
+    int success = dynprog_and_check_vectors(b, large_choices, tat);
 
     if (success == -1)
     {
@@ -187,6 +122,40 @@ std::pair<bool, loadconf> large_item_heuristic(binconf *b, thread_attr *tat)
     }
 }
 
+
+// Large item heuristic with configurations already computed (does not call dynprog).
+std::pair<bool, loadconf> large_item_heuristic(const binconf& b, const std::vector<loadconf> &confs)
+{
+    loadconf ret;
+    std::vector<loadconf> large_choices = build_lih_choices(b);
+    int success = check_loadconf_vectors(large_choices, confs);
+
+    if (success == -1)
+    {
+	return std::make_pair(false, ret);
+    } else {
+	return std::make_pair(true, large_choices[success]);
+    }
+}
+
+bin_int dynprog_max_with_lih(const binconf& conf, thread_attr *tat)
+{
+    tat->lih_hit = false;
+    std::vector<loadconf> feasible_packings = dynprog(conf, tat);
+
+    std::tie(tat->lih_hit, tat->lih_match) = large_item_heuristic(conf, feasible_packings);
+
+    bin_int max_overall = MAX_INFEASIBLE;
+    for (const loadconf& tuple : feasible_packings)
+    {
+	max_overall = std::max((bin_int) (S - tuple.loads[BINS]), max_overall);
+    }
+
+    return max_overall;
+}
+
+
+// --- Five/nine heuristic. ---
 
 std::pair<bool, bin_int> five_nine_heuristic(binconf *b, thread_attr *tat)
 {

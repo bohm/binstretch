@@ -15,7 +15,6 @@
 #include "hash.hpp"
 #include "caching.hpp"
 #include "fits.hpp"
-#include "dynprog.hpp"
 #include "gs.hpp"
 #include "tasks.hpp"
 

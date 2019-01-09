@@ -18,7 +18,7 @@
 #include "cache/dp.hpp"
 #include "cache/state.hpp"
 #include "fits.hpp"
-#include "dynprog.hpp"
+#include "dynprog/algo.hpp"
 #include "maxfeas.hpp"
 #include "heur_adv.hpp"
 #include "gs.hpp"
@@ -117,7 +117,7 @@ template<mm_state MODE> victory adversary_heuristics(binconf *b, thread_attr *ta
 	
 	tat->meas.large_item_calls++;
 
-	auto [success, heurconf] = large_item_heuristic(b, tat);
+	auto [success, heurconf] = large_item_heuristic(*b, tat);
 	if (success)
 	{
 	    tat->meas.large_item_hits++;
@@ -275,10 +275,17 @@ template<mm_state MODE> victory adversary(binconf *b, int depth, thread_attr *ta
     // finds the maximum feasible item that can be added using dyn. prog.
     bin_int old_max_feasible = tat->prev_max_feasible;
     bin_int dp = MAXIMUM_FEASIBLE(b, depth, lower_bound, old_max_feasible, tat);
+
     win = victory::alg;
     below = victory::alg;
     
     tat->prev_max_feasible = dp;
+    if (tat->lih_hit)
+    {
+	tat->lih_hit = false;
+	return victory::adv;
+    }
+
     int maximum_feasible = dp; // possibly also INFEASIBLE == -1
     print<DEBUG>("Trying player zero choices, with maxload starting at %d\n", maximum_feasible);
 

@@ -84,6 +84,8 @@ struct measure_attr
     uint64_t tub = 0;
     uint64_t large_item_hits = 0;
     uint64_t large_item_calls = 0;
+    uint64_t large_item_misses = 0;
+
     uint64_t five_nine_hits = 0;
     uint64_t five_nine_calls = 0;
 
@@ -121,8 +123,8 @@ struct measure_attr
 	    gsheurhit += other.gsheurhit;
 	    gsheurmiss += other.gsheurmiss;
 	    //    uint64_t tub = 0;
-	    //large_item_hit += other.large_item_hit;
-	    //large_item_miss += other.large_item_miss;
+	    large_item_hits += other.large_item_hits;
+	    large_item_misses += other.large_item_misses;
 
 	    for (int i = 0; i < SITUATIONS; i++)
 	    {
@@ -155,6 +157,8 @@ struct measure_attr
 	    {
 		fprintf(stderr, "Good situation %s: hits %" PRIu64 ", misses %" PRIu64 ".\n", gsnames[i].c_str(), gshit[i], gsmiss[i]);
 	    }
+
+	    fprintf(stderr, "Large item hits: %" PRIu64 " and misses: %" PRIu64 ".\n", large_item_hits, large_item_misses);
 
 	    fprintf(stderr, "Game state cache:\n");
 	    state_meas.print();
@@ -207,6 +211,11 @@ public:
     // --- measure attributes ---
     measure_attr meas; // measurements for one computation
     measure_attr g_meas; // persistent measurements per process
+
+    // A slightly hacky addition: we underhandedly pass large item heuristic
+    // when computing dynprog_max_via_vector.
+    bool lih_hit = false;
+    loadconf lih_match;
 
     // --- debug ---
     int maxfeas_return_point = -1;

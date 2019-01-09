@@ -7,7 +7,7 @@
 #include "hash.hpp"
 #include "tree.hpp"
 #include "fits.hpp"
-#include "dynprog.hpp"
+#include "dynprog/wrappers.hpp"
 #include "gs.hpp"
 #include "tasks.hpp"
 
