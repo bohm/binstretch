@@ -19,8 +19,6 @@
 // Currently, selecting dynprog_max_via_vector adds about 40 seconds to the computation time
 // of a lower bound for 86/63.
 
-#define DYNPROG_MAX dynprog_max_direct
-
 // A forward declaration (full one in heur_adv.hpp).
 bin_int dynprog_max_with_lih(const binconf& conf, thread_attr *tat);
 

@@ -293,7 +293,7 @@ template<mm_state MODE> victory adversary(binconf *b, int depth, thread_attr *ta
 
     // counts the number of current iterations taken
     int stepcounter = 0;
-    for (int item_size = strategy_start(maximum_feasible);
+    for (int item_size = strategy_start(maximum_feasible, b->last_item);
      	 !strategy_end(maximum_feasible, lower_bound, stepcounter, item_size);
 	 strategy_step(maximum_feasible, lower_bound, stepcounter, item_size))
     {

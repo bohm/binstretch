@@ -84,6 +84,7 @@ const int TASK_RECEIVED = 1;
 
 #define STRATEGY_BASIC 0
 #define STRATEGY_NINETEEN_FREQ 1
+#define STRATEGY_BOUNDED 2
 
 // Sanity check for definition of the variables that should be passed
 // by the build script.

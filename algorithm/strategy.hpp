@@ -6,7 +6,7 @@
 #if STRATEGY == STRATEGY_BASIC
 // Basic strategy (from max_feasible to lower bound)
 
-int strategy_start(int maximum_feasible)
+int strategy_start(int maximum_feasible, int last_item)
 {
     return maximum_feasible;
 }
@@ -30,6 +30,34 @@ void strategy_step(int maximum_feasible, int lower_bound, int& stepcounter, int&
 
 #endif
 
+// Strategy that bounds the sendable item by the previously sent one as well
+#if STRATEGY == STRATEGY_BOUNDED
+
+const int JUMP = 5;
+int strategy_start(int maximum_feasible, int last_item)
+{
+    return std::min(maximum_feasible, last_item + JUMP);
+}
+
+// Basic strategy tries all numbers in the interval.
+bool strategy_skip(int maximum_feasible, int lower_bound, int stepcounter, int proposed_size)
+{
+    return false;
+}
+
+
+bool strategy_end(int maximum_feasible, int lower_bound, int stepcounter, int proposed_size)
+{
+    return proposed_size < lower_bound;
+}
+
+void strategy_step(int maximum_feasible, int lower_bound, int& stepcounter, int& step)
+{
+    step--;
+}
+
+
+#endif
 
 #if STRATEGY == STRATEGY_NINETEEN_FREQ
 
@@ -40,7 +68,7 @@ const int freqs[15] = { 11, 9, 10, 12, 6, 7, 5, 4, 3, 8, 13, 2, 1, 14, -1};
 // const int invfreq[15] = { -1, 12, 11, 8, 7, 6, 4, 5, 9, 1, 2, 0, 3, 13};
 // 19/14 simple frequency strategy.
 
-int strategy_start(int maximum_feasible)
+int strategy_start(int maximum_feasible, int last_item)
 {
     return freqs[0];
 }
