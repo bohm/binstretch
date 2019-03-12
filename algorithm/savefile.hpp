@@ -71,13 +71,7 @@ void adversary_vertex::print_extended(FILE *stream)
 	fprintf(stream, ",sapling=true");
     } else if (heuristic)
     {
-	if (heuristic_type == LARGE_ITEM)
-	{
-	    fprintf(stream, ",heur=\"%s\"", heuristic_desc.c_str());
-	} else if (heuristic_type == FIVE_NINE)
-	{
-	    fprintf(stream, ",heur=\"FN%s\"", heuristic_desc.c_str());
-	}
+	fprintf(stream, ",heur=\"%s\"", heur_strategy->print().c_str() );
     }
 
     fprintf(stream, "];\n");
@@ -118,7 +112,7 @@ void savefile(const char* filename, adversary_vertex *r)
 void savefile(adversary_vertex *r)
 {
     char outfile[50];
-    sprintf(outfile, "bs%d_%d_%dbins.out", R,S,BINS);
+    sprintf(outfile, "bs%d_%d_%dbins.gen", R,S,BINS);
     print<PROGRESS>("Printing the game graph in DOT format into %s.\n", outfile);
     savefile(outfile, r); 
 }

@@ -66,12 +66,17 @@ victory sequencing_adversary(binconf *b, unsigned int depth, thread_attr *tat,
 	return victory::alg;
     }
 
-    if (ADVERSARY_HEURISTICS && adversary_heuristics<mm_state::generating>(b, tat, adv_to_evaluate) == victory::adv)
+    if (ADVERSARY_HEURISTICS)
     {
-	return victory::adv;
+	// The procedure may generate the vertex in question.
+	auto vic = adversary_heuristics<mm_state::generating>(b, tat, adv_to_evaluate);
+	if (vic == victory::adv)
+	{
+	    // strategy was created by the subroutine and is saved to the vertex that was generated.
+	    return victory::adv;
+	}
     }
 
-   
     if (depth == seq.size())
     {
 	add_sapling(adv_to_evaluate);

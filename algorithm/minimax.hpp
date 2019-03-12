@@ -47,6 +47,33 @@ victory check_messages(thread_attr *tat)
     return victory::uncertain;
 }
 
+
+// Computes moves that adversary wishes to make. There may be a strategy
+// involved or we may be in a heuristic situation, where we know what to do.
+
+void compute_next_moves(const binconf *b, int maximum_feasible, int lower_bound,
+			std::vector<int> &cands, thread_attr *tat)
+{
+    if (tat->heuristic_regime)
+    {
+	assert(tat->heuristic_strat != NULL);
+	cands.push_back(tat->heuristic_strat->next_item(b));
+    } else
+    {
+
+	int stepcounter = 0;
+	for (int item_size = strategy_start(maximum_feasible, b->last_item);
+	     !strategy_end(maximum_feasible, lower_bound, stepcounter, item_size);
+	     strategy_step(maximum_feasible, lower_bound, stepcounter, item_size))
+	{
+	    if (!strategy_skip(maximum_feasible, lower_bound, stepcounter, item_size))
+	    {
+		cands.push_back(item_size);
+	    }
+	}
+    }
+}
+	
 /* return values: 0: player 1 cannot pack the sequence starting with binconf b
  * 1: player 1 can pack all possible sequences starting with b.
  * POSTPONED: a task has been generated for the parallel environment.
@@ -61,80 +88,6 @@ victory check_messages(thread_attr *tat)
     * GENERATING (generating the task queue)
     * EXPLORING (general exploration done by individual threads)
 */
-
-template<mm_state MODE> victory adversary_heuristics(binconf *b, thread_attr *tat, adversary_vertex *adv_to_evaluate)
-{
-    //1. a much weaker variant of large item heuristic, but takes O(1) time
-    if (b->totalload() <= S && b->loads[2] >= R-S)
-    {
-	if(MODE == mm_state::generating)
-	{
-	    adv_to_evaluate->win = victory::adv;
-	    adv_to_evaluate->heuristic = true;
-	    adv_to_evaluate->heuristic_type = LARGE_ITEM;
-	    // Build description for this large item setting.
-	    std::ostringstream os;
-	    bool first = true;
-	    for (int i = 1; i <= BINS-1; i++)
-	    {
-		if(first)
-		{
-		    os << S;
-		    first = false;
-		} else {
-		    os << ","; os << S;
-		}
-	    }
-	    
-	    adv_to_evaluate->heuristic_desc = os.str();
-	}
-	return victory::adv;
-    }
-
-    // one heuristic specific for 19/14
-    if (S == 14 && R == 19 && (MODE == mm_state::generating || FIVE_NINE_ACTIVE_EVERYWHERE))
-    {
-	auto [fnh, fives_to_send] = five_nine_heuristic(b,tat);
-	tat->meas.five_nine_calls++;
-	if (fnh)
-	{
-	    tat->meas.five_nine_hits++;
-	    if(MODE == mm_state::generating)
-	    {
-		adv_to_evaluate->win = victory::adv;
-		adv_to_evaluate->heuristic = true;
-		adv_to_evaluate->heuristic_type = FIVE_NINE;
-		// do not set heuristic_item, it is implicit
-		// adv_to_evaluate->heuristic_multi = fives_to_send;
-		adv_to_evaluate->heuristic_desc = ""; // TODO: add meaningful description here.
-	    }
-	    return victory::adv;
-	}
-    }
-
-    if (MODE == mm_state::generating || LARGE_ITEM_ACTIVE_EVERYWHERE)
-    {
-	
-	tat->meas.large_item_calls++;
-
-	auto [success, heurconf] = large_item_heuristic(*b, tat);
-	if (success)
-	{
-	    tat->meas.large_item_hits++;
-
-	    if (MODE == mm_state::generating)
-	    {
-		adv_to_evaluate->win = victory::adv;
-		adv_to_evaluate->heuristic = true;
-		adv_to_evaluate->heuristic_type = LARGE_ITEM;
-		adv_to_evaluate->heuristic_desc = heurconf.print();
-	    }
-	    return victory::adv;
-	}
-    }
-
-    return victory::uncertain;
-}
 
 template<mm_state MODE> victory adversary(binconf *b, int depth, thread_attr *tat, adversary_vertex *adv_to_evaluate, algorithm_vertex *parent_alg)
 {
@@ -166,9 +119,14 @@ template<mm_state MODE> victory adversary(binconf *b, int depth, thread_attr *ta
     }
 
     // Turn off adversary heuristics if convenient (e.g. for machine verification).
-    if (ADVERSARY_HEURISTICS && adversary_heuristics<MODE>(b, tat, adv_to_evaluate) == victory::adv)
+    if (ADVERSARY_HEURISTICS)
     {
-	return victory::adv;
+	victory vic = adversary_heuristics<MODE>(b, tat, adv_to_evaluate);
+	if (vic == victory::adv)
+	{
+	    // strategy was created by the subroutine and is saved to the vertex that was generated.
+	    return victory::adv;
+	}
     }
 
     if (MODE == mm_state::generating)
@@ -291,19 +249,11 @@ template<mm_state MODE> victory adversary(binconf *b, int depth, thread_attr *ta
 
     // for (int item_size = maximum_feasible; item_size>=lower_bound; item_size--)
 
-    // counts the number of current iterations taken
-    int stepcounter = 0;
-    for (int item_size = strategy_start(maximum_feasible, b->last_item);
-     	 !strategy_end(maximum_feasible, lower_bound, stepcounter, item_size);
-	 strategy_step(maximum_feasible, lower_bound, stepcounter, item_size))
+    std::vector<int> candidate_moves;
+    compute_next_moves(b, maximum_feasible, lower_bound, candidate_moves, tat);
+    for (int item_size : candidate_moves)
     {
 
-	// Skip if the current choice is disallowed (by e.g. lower and upper bounds).
-	if (strategy_skip(maximum_feasible, lower_bound, stepcounter, item_size))
-	{
-	    continue;
-	}
-	
         print<DEBUG>("Sending item %d to algorithm.\n", item_size);
 
 	if (MODE == mm_state::generating)

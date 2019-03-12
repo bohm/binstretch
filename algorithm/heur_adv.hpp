@@ -13,6 +13,74 @@
 
 // Adversarial heuristics.
 
+// This class describes what ADV should do when a heuristic succeeds.
+// TODO: Make it non-trivial (currently just reads off a list.)
+class heuristic_strategy
+{
+public:
+    heuristic type;
+    virtual void init(const std::vector<int>& list) = 0;
+    virtual int next_item(const binconf *b) = 0;
+    virtual std::string print() = 0;
+    virtual ~heuristic_strategy() = 0;
+};
+
+heuristic_strategy::~heuristic_strategy()
+{
+}
+
+class heuristic_strategy_list : public heuristic_strategy
+{
+public:
+    std::vector<int> itemlist;
+    unsigned int cur = 0;
+
+    void init(const std::vector<int>& list)
+	{
+	    itemlist = list;
+	}
+    int next_item(const binconf *b)
+	{
+	    assert(itemlist.size() > cur);
+	    return itemlist[cur++];
+	}
+
+    std::string print()
+	{
+	    std::ostringstream os;
+	    bool first = true;
+	    for (int item : itemlist)
+	    {
+		if(first)
+		{
+		    os << item;
+		    first = false;
+		} else {
+		    os << ","; os << item;
+		}
+	    }
+	    return os.str();
+	}
+};
+
+// TODO: Implement init() and next_item() fully.
+class heuristic_strategy_fn : public heuristic_strategy
+{
+    void init(const std::vector<int>& list)
+	{
+	}
+
+    int next_item(const binconf *b)
+	{
+	    return 0;
+	}
+
+    std::string print()
+	{
+	    return "FN";
+	}
+};
+    
 // Check if a loadconf a is compatible with the large item loadconf b. (Requirement: no two things from lb fit together.)
 bool compatible(const loadconf& a, const loadconf& lb)
 {
@@ -218,5 +286,100 @@ std::pair<bool, bin_int> five_nine_heuristic(binconf *b, thread_attr *tat)
  
     return std::pair(false, -1);
 }
+
+template<mm_state MODE> victory adversary_heuristics(binconf *b, thread_attr *tat, adversary_vertex *adv_to_evaluate)
+{
+    //A much weaker variant of large item heuristic, but takes O(1) time.
+    heuristic_strategy *str = NULL;
+    if (b->totalload() <= S && b->loads[2] >= R-S)
+    {
+	if(MODE == mm_state::generating)
+	{
+	    // Build strategy.
+	    str = new heuristic_strategy_list;
+	    std::vector<int> itemlist; 
+	    for (int i = 1; i <= BINS-1; i++)
+	    {
+		itemlist.push_back(S);
+	    }
+	    str->init(itemlist);
+	    str->type = heuristic::simple;
+
+	    adv_to_evaluate->win = victory::adv;
+	    adv_to_evaluate->heuristic = true;
+	    adv_to_evaluate->heur_strategy = str;
+
+	    
+	}
+	return victory::adv;
+    }
+
+    // one heuristic specific for 19/14
+    if (S == 14 && R == 19 && FIVE_NINE_ACTIVE && (MODE == mm_state::generating || FIVE_NINE_ACTIVE_EVERYWHERE))
+    {
+	auto [fnh, fives_to_send] = five_nine_heuristic(b,tat);
+	tat->meas.five_nine_calls++;
+	if (fnh)
+	{
+	    tat->meas.five_nine_hits++;
+	    if(MODE == mm_state::generating)
+	    {
+		// Build strategy.
+		str = new heuristic_strategy_fn;
+		str->type = heuristic::five_nine;
+		
+		adv_to_evaluate->win = victory::adv;
+		adv_to_evaluate->heuristic = true;
+		adv_to_evaluate->heur_strategy = str;
+		// do not set heuristic_item, it is implicit
+		// adv_to_evaluate->heuristic_multi = fives_to_send;
+		// adv_to_evaluate->heuristic_desc = ""; // TODO: add meaningful description here.
+	    }
+	    return victory::adv;
+	}
+    }
+
+    if (MODE == mm_state::generating || LARGE_ITEM_ACTIVE_EVERYWHERE)
+    {
+	
+	tat->meas.large_item_calls++;
+
+	auto [success, heurloadconf] = large_item_heuristic(*b, tat);
+	if (success)
+	{
+	    tat->meas.large_item_hits++;
+
+    
+
+	    
+	    if (MODE == mm_state::generating)
+	    {
+		// Build strategy.
+		str = new heuristic_strategy_list;
+		std::vector<int> itemlist; 
+		for (unsigned int i = 1; i <= BINS; i++)
+		{
+		    if (heurloadconf.loads[i] == 0)
+		    {
+			break;
+		    } else
+		    {
+			itemlist.push_back(heurloadconf.loads[i]);
+		    }
+		}
+		str->init(itemlist);
+		str->type = heuristic::large_item;
+
+		adv_to_evaluate->win = victory::adv;
+		adv_to_evaluate->heuristic = true;
+		adv_to_evaluate->heur_strategy = str;
+	    }
+	    return victory::adv;
+	}
+    }
+
+    return victory::uncertain;
+}
+
 
 #endif // _HEUR_ADV_HPP 1

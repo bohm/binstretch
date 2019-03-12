@@ -229,15 +229,19 @@ bin_int maximum_feasible(binconf *b, const int depth, const bin_int cannot_send_
     // DISABLED: passing ub so that dynprog_max_dangerous takes care of pushing into the cache
     // DISABLED: maximum_feasible = dynprog_max_dangerous(b,lb,ub,tat);
     bin_int maximum_feasible = DYNPROG_MAX(*b,tat);
-    // measurements
+    // measurements for dynprog_max_with_lih only
+    /*
     if (tat->lih_hit)
     {
 	tat->meas.large_item_hits++;
 
-    } else
+    } else 
     {
 	tat->meas.large_item_misses++;
     }
+
+
+    */
     /* bin_int check = dynprog_max_safe(*b,tat);
     if (maximum_feasible != check)
     {

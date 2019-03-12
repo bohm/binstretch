@@ -112,10 +112,14 @@ public:
     victory win = victory::uncertain;
 
     bool heuristic = false;
+    heuristic_strategy *heur_strategy = NULL;
+
     // bin_int heuristic_item = 0;
     // bin_int heuristic_multi = 0;
-    int heuristic_type = 0;
-    std::string heuristic_desc;
+
+    // The following two are now merged in heuristic_strategy
+    // int heuristic_type = 0;
+    // std::string heuristic_desc;
 
     int expansion_depth = 0;
     bool task = false; // task is a separate boolean because an vert_state::expand vertex can be a task itself.

@@ -26,11 +26,11 @@
 const bool PROGRESS = true; // Whether to print progress info to stderr.
 const bool MEASURE = true; // Whether to collect and print measurements to stderr.
 
-const bool OUTPUT = false; // Whether to produce output.
+const bool OUTPUT = true; // Whether to produce output.
 
 // const output_type OUTPUT_TYPE = output_type::dag; // No longer used; we always print a DAG.
 
-const bool REGROW = false; // Whether to regrow or just terminate after first iteration.
+const bool REGROW = true; // Whether to regrow or just terminate after first iteration.
 
 // When producing output, how many times should a tree be regrown.
 // Note that REGROW_LIMIT = 0 still means a full tree will be generated.
@@ -109,8 +109,8 @@ const std::vector<bin_int> INITIAL_ITEMS = {};
 // const std::vector<bin_int> INITIAL_SEQUENCE = {};
 const std::vector<bin_int> INITIAL_SEQUENCE = _I_S;
 
-// const int FIRST_PASS = 0; // enough to get a lb of 19/14 on 6,7 bins.
-const int FIRST_PASS = 1; // enough for 19/14 on 8 bins.
+const int FIRST_PASS = 0; // enough to get a lb of 19/14 on 6,7 bins.
+// const int FIRST_PASS = 1; // enough for 19/14 on 8 bins.
 // const int FIRST_PASS = 6; // enough for 86/63 on 3 bins.
 // const int FIRST_PASS = 8; // enough for 112/82 on 3 bins.
 // const int FIRST_PASS = 10;
@@ -122,6 +122,9 @@ const int ALPHA = (RMOD-S);
 
 // secondary booleans, controlling some heuristics
 const bool LARGE_ITEM_ACTIVE_EVERYWHERE = false;
+
+// TODO: Activate five/nine heuristic when its strategy class is implemented.
+const bool FIVE_NINE_ACTIVE = false;
 const bool FIVE_NINE_ACTIVE_EVERYWHERE = false;
 // Dplog, conflog -- bitwise length of indices of hash tables and lock tables.
 // ht_size = 2^conflog, dpht_size = 2^dplog.

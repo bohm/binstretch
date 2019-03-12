@@ -348,8 +348,6 @@ int gs6(const binconf *b, thread_attr *tat)
     
 }
 
-
-
 int testgs(const binconf *b, thread_attr *tat) {
     if(gs1(b, tat) == 1)
     {

@@ -30,6 +30,12 @@ void print(FILE *stream, const victory& win)
 // Output types are no longer used.
 // enum class output_type {tree, dag, coq};
 
+// Classes that will be defined later.
+class heuristic_strategy;
+
+enum class heuristic {simple, large_item, five_nine };
+
+
 // Minimax states.
 enum class mm_state {generating, exploring, expanding, updating, sequencing, cleanup};
 
