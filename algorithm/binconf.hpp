@@ -680,6 +680,47 @@ public:
 	    int to = sortloads_one_decreased(bin);
 	    rehash_loads_decreased_range(item, bin, to);
 	}
+
+
+    void print(FILE *stream)
+	{
+	    bool firstbin = true;
+	    bool firstitem = true;
+	    
+	    fprintf(stream, "(");
+	    for (int bin = 1; bin <= BINS; bin++)
+	    {
+		if(firstbin)
+		{
+		    firstbin = false;
+		} else
+		{
+		    fprintf(stream, ", ");
+		}
+
+		fprintf(stream, "{");
+		firstitem = true;
+		for (int size = S; size >= 1; size--)
+		{
+		    int count = loadset[bin][size];
+		    while (count > 0)
+		    {
+			if(firstitem)
+			{
+			    firstitem = false;
+			} else
+			{
+			    fprintf(stream, ",");
+			}
+
+			fprintf(stream, "%d", size);
+			count--;
+		    }
+		}
+		fprintf(stream, "}");
+	    }
+	    fprintf(stream, ")");
+	}
 };
 
 

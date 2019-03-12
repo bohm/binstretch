@@ -3,8 +3,10 @@
 
 #include "common.hpp"
 #include "tree.hpp"
+#include "dynprog/wrappers.hpp"
 
 // Saving the tree in an extended format to a file.
+
 
 void print_extended_rec(FILE* stream, adversary_vertex *v);
 void print_extended_rec(FILE* stream, algorithm_vertex *v);
@@ -19,7 +21,8 @@ void print_extended_rec(FILE* stream, adversary_vertex *v)
     v->visited = true;
     v->print_extended(stream);
 
-    // We do the for loop twice so we have edges before the vertex descriptions.
+
+   // We do the for loop twice so we have edges before the vertex descriptions.
     for (adv_outedge* e : v->out)
     {
 	e->print_extended(stream);
@@ -42,6 +45,7 @@ void print_extended_rec(FILE* stream, algorithm_vertex *v)
     v->visited = true;
     v->print_extended(stream);
 
+
     for (alg_outedge* e : v->out)
     {
 	e->print_extended(stream);
@@ -51,6 +55,9 @@ void print_extended_rec(FILE* stream, algorithm_vertex *v)
     {
 	print_extended_rec(stream, e->to);
     }
+
+
+
 }
 
 void adversary_vertex::print_extended(FILE *stream)
@@ -79,7 +86,27 @@ void adversary_vertex::print_extended(FILE *stream)
 
 void algorithm_vertex::print_extended(FILE *stream)
 {
-    fprintf(stream, "%" PRIu64 " [label=\"%d\"];\n", id, next_item);
+    fprintf(stream, "%" PRIu64 " [label=\"%d\"", id, next_item);
+
+    // If the vertex is a leaf, print a feasible optimal bin configuration.
+    if (out.empty())
+    {
+
+	binconf with_new_item;
+	duplicate(&with_new_item, bc);
+	// The following creates an inconsistent bin configuration, but that is okay,
+	// we discard it immediately after.
+	with_new_item.items[next_item]++;
+	auto [feasible, packing] = dynprog_feasible_with_output(with_new_item);
+
+	assert(feasible);
+	fprintf(stream, ",optimal=\"");
+	packing.print(stream);
+	fprintf(stream, "\"");
+    }
+
+    fprintf(stream, "];\n");
+
 }
 
 void adv_outedge::print_extended(FILE* stream)
