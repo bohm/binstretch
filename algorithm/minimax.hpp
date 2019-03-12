@@ -51,14 +51,14 @@ victory check_messages(thread_attr *tat)
 // Computes moves that adversary wishes to make. There may be a strategy
 // involved or we may be in a heuristic situation, where we know what to do.
 
-void compute_next_moves(const binconf *b, int maximum_feasible, int lower_bound,
+void compute_next_moves(const binconf *b, int maximum_feasible, int lower_bound, heuristic_strategy* strat,
 			std::vector<int> &cands, thread_attr *tat)
 {
-    if (tat->heuristic_regime)
+    if(strat != NULL)
     {
-	assert(tat->heuristic_strat != NULL);
-	cands.push_back(tat->heuristic_strat->next_item(b));
-    } else
+	cands.push_back(strat->next_item(b));
+    }
+    else
     {
 
 	int stepcounter = 0;
@@ -95,6 +95,7 @@ template<mm_state MODE> victory adversary(binconf *b, int depth, thread_attr *ta
     adv_outedge *new_edge = NULL;
     victory below = victory::alg;
     victory win = victory::alg;
+    heuristic_strategy *current_strategy = NULL;
 
     if (MODE == mm_state::generating)
     {
@@ -124,7 +125,7 @@ template<mm_state MODE> victory adversary(binconf *b, int depth, thread_attr *ta
 	victory vic = adversary_heuristics<MODE>(b, tat, adv_to_evaluate);
 	if (vic == victory::adv)
 	{
-	    // strategy was created by the subroutine and is saved to the vertex that was generated.
+	    current_strategy = adv_to_evaluate->heur_strategy;
 	    return victory::adv;
 	}
     }
@@ -250,7 +251,8 @@ template<mm_state MODE> victory adversary(binconf *b, int depth, thread_attr *ta
     // for (int item_size = maximum_feasible; item_size>=lower_bound; item_size--)
 
     std::vector<int> candidate_moves;
-    compute_next_moves(b, maximum_feasible, lower_bound, candidate_moves, tat);
+    compute_next_moves(b, maximum_feasible, lower_bound, current_strategy,
+		       candidate_moves, tat);
     for (int item_size : candidate_moves)
     {
 

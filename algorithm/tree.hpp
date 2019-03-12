@@ -261,6 +261,7 @@ adversary_vertex::~adversary_vertex()
     assert(it != generated_graph_adv.end());
     generated_graph_adv.erase(bc->confhash());
     delete bc;
+    delete heur_strategy;
     //print<DEBUG>("Vertex %" PRIu64 "destroyed.\n", this->id);
 }
 

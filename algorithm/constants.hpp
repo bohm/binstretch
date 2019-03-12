@@ -30,17 +30,14 @@ void print(FILE *stream, const victory& win)
 // Output types are no longer used.
 // enum class output_type {tree, dag, coq};
 
-// Classes that will be defined later.
-class heuristic_strategy;
-
+// Types of adversarial heuristics.
 enum class heuristic {simple, large_item, five_nine };
-
 
 // Minimax states.
 enum class mm_state {generating, exploring, expanding, updating, sequencing, cleanup};
 
+// States of a task.
 enum class task_status {available, batched, pruned, alg_win, adv_win, irrelevant};
-
 
 enum class updater_states {postponed, terminating, overdue, irrelevant};
 
@@ -91,6 +88,7 @@ const int TASK_RECEIVED = 1;
 #define STRATEGY_BASIC 0
 #define STRATEGY_NINETEEN_FREQ 1
 #define STRATEGY_BOUNDED 2
+
 
 // Sanity check for definition of the variables that should be passed
 // by the build script.

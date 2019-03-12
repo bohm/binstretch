@@ -221,6 +221,24 @@ int thread_rank_size = 0;
 class binconf;
 class loadconf;
 
+
+// This abstract class describes what ADV should do when a heuristic succeeds.
+// Its implementations are in heur_adv.hpp.
+class heuristic_strategy
+{
+public:
+    heuristic type;
+    virtual void init(const std::vector<int>& list) = 0;
+    virtual int next_item(const binconf *b) = 0;
+    virtual std::string print() = 0;
+    virtual ~heuristic_strategy() = 0;
+};
+
+heuristic_strategy::~heuristic_strategy()
+{
+}
+
+
 // if a maximalization procedure gets an infeasible configuration, it returns MAX_INFEASIBLE.
 const bin_int MAX_INFEASIBLE = -1;
 // when a heuristic is unable to pack (but the configuration still may be feasible)

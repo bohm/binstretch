@@ -13,22 +13,6 @@
 
 // Adversarial heuristics.
 
-// This class describes what ADV should do when a heuristic succeeds.
-// TODO: Make it non-trivial (currently just reads off a list.)
-class heuristic_strategy
-{
-public:
-    heuristic type;
-    virtual void init(const std::vector<int>& list) = 0;
-    virtual int next_item(const binconf *b) = 0;
-    virtual std::string print() = 0;
-    virtual ~heuristic_strategy() = 0;
-};
-
-heuristic_strategy::~heuristic_strategy()
-{
-}
-
 class heuristic_strategy_list : public heuristic_strategy
 {
 public:
