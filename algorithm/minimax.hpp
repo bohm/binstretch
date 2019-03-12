@@ -52,14 +52,16 @@ victory check_messages(thread_attr *tat)
 // involved or we may be in a heuristic situation, where we know what to do.
 
 void compute_next_moves(const binconf *b, int maximum_feasible, int lower_bound, heuristic_strategy* strat,
-			std::vector<int> &cands, thread_attr *tat)
+			int relative_depth, std::vector<int> &cands, thread_attr *tat)
 {
     if(strat != NULL)
     {
-	cands.push_back(strat->next_item(b));
+	print<DEBUG>("Next move computed by active heuristic.\n");
+	cands.push_back(strat->next_item(b, relative_depth));
     }
     else
     {
+	print<DEBUG>("Building next moves based on the default strategy.\n");
 
 	int stepcounter = 0;
 	for (int item_size = strategy_start(maximum_feasible, b->last_item);
@@ -95,7 +97,17 @@ template<mm_state MODE> victory adversary(binconf *b, int depth, thread_attr *ta
     adv_outedge *new_edge = NULL;
     victory below = victory::alg;
     victory win = victory::alg;
-    heuristic_strategy *current_strategy = NULL;
+    bool switch_to_heuristic = false;
+
+    if(MODE == mm_state::generating)
+    {
+	print<DEBUG>("GEN: ");
+    } else {
+	print<DEBUG>("EXP: ");
+    }
+ 
+    print<DEBUG>("Adversary evaluating the position with bin configuration:\n");
+    print_binconf<DEBUG>(b);
 
     if (MODE == mm_state::generating)
     {
@@ -120,13 +132,23 @@ template<mm_state MODE> victory adversary(binconf *b, int depth, thread_attr *ta
     }
 
     // Turn off adversary heuristics if convenient (e.g. for machine verification).
-    if (ADVERSARY_HEURISTICS)
+    if (ADVERSARY_HEURISTICS && !tat->heuristic_regime)
     {
 	victory vic = adversary_heuristics<MODE>(b, tat, adv_to_evaluate);
 	if (vic == victory::adv)
 	{
-	    current_strategy = adv_to_evaluate->heur_strategy;
-	    return victory::adv;
+	    print<DEBUG>("GEN: Adversary heuristic ");
+	    print<DEBUG>(stderr, adv_to_evaluate->heur_strategy->type);
+	    print<DEBUG>(" is successful.\n");
+	    if (MODE == mm_state::exploring || !EXPAND_HEURISTICS)
+	    {
+		return victory::adv;
+	    } else {
+		tat->heuristic_regime = true;
+		tat->heuristic_starting_depth = depth;
+		tat->current_strategy = adv_to_evaluate->heur_strategy;
+		switch_to_heuristic = true;
+	    }
 	}
     }
 
@@ -167,11 +189,11 @@ template<mm_state MODE> victory adversary(binconf *b, int depth, thread_attr *ta
 	}
 
 	// we now do creation of tasks only until the REGROW_LIMIT is reached
-	if (tat->regrow_level <= REGROW_LIMIT && POSSIBLE_TASK(adv_to_evaluate, tat->largest_since_computation_root))
+	if (!tat->heuristic_regime && tat->regrow_level <= REGROW_LIMIT && POSSIBLE_TASK(adv_to_evaluate, tat->largest_since_computation_root))
 	{
-	    // print<true>("This is a valid candidate for a task (depth %d, task_depth %d, comp. depth %d, load %d, task_load %d, comp. root load: %d.\n ",
-	    // 		depth, task_depth, computation_root->depth, b->totalload(), task_load, computation_root->bc->totalload());
-	    // print_binconf<true>(b);
+	    print<DEBUG>("GEN: Current conf is a possible task (depth %d, task_depth %d, comp. depth %d, load %d, task_load %d, comp. root load: %d.\n ",
+	     		depth, task_depth, computation_root->depth, b->totalload(), task_load, computation_root->bc->totalload());
+	     print_binconf<DEBUG>(b);
 
 	    // disabled for now:
 	    // In some corner cases a vertex that is to be expanded becomes itself a task (again).
@@ -251,7 +273,8 @@ template<mm_state MODE> victory adversary(binconf *b, int depth, thread_attr *ta
     // for (int item_size = maximum_feasible; item_size>=lower_bound; item_size--)
 
     std::vector<int> candidate_moves;
-    compute_next_moves(b, maximum_feasible, lower_bound, current_strategy,
+    compute_next_moves(b, maximum_feasible, lower_bound, tat->current_strategy,
+		       depth - tat->heuristic_starting_depth,
 		       candidate_moves, tat);
     for (int item_size : candidate_moves)
     {
@@ -329,6 +352,13 @@ template<mm_state MODE> victory adversary(binconf *b, int depth, thread_attr *ta
 	
     }
 
+    // If we were in heuristics mode, switch back to normal.
+    if (switch_to_heuristic)
+    {
+	tat->heuristic_regime = false;
+	tat->current_strategy = NULL;
+    }
+
     // Sanity check.
     if ((MODE == mm_state::generating) && win == victory::alg)
     {
@@ -345,7 +375,18 @@ template<mm_state MODE> victory algorithm(binconf *b, int k, int depth, thread_a
     adversary_vertex *upcoming_adv = NULL;
     victory below = victory::adv; // Who wins below.
     victory win = victory::adv; // Who wins this configuration.
+
+    if(MODE == mm_state::generating)
+    {
+	print<DEBUG>("GEN: ");
+    } else {
+	print<DEBUG>("EXP: ");
+    }
  
+    print<DEBUG>("Algorithm evaluating the position with new item %d and bin configuration:\n", k);
+    print_binconf<DEBUG>(b);
+ 
+    
     if (MODE == mm_state::generating)
     {
 	if (alg_to_evaluate->visited)
@@ -471,14 +512,18 @@ template<mm_state MODE> victory algorithm(binconf *b, int k, int depth, thread_a
 	    }
 	    
 	    below = adversary<MODE>(b, depth, tat, upcoming_adv, alg_to_evaluate);
+	    print<DEBUG>("Alg packs into bin %d, the new configuration is:", i);
+	    print_binconf<DEBUG>(b);
+	    print<DEBUG>("Resulting in: ");
+	    print<DEBUG>(stderr, below);
+	    print<DEBUG>(".\n");
+	    
 	    // send signal that we should terminate immediately upwards
 	    if (below == victory::irrelevant)
 	    {
 		return below;
 	    }
 		
-	    print<DEBUG>("We have calculated the following position, result is %d\n", below);
-	    print_binconf<DEBUG>(b);
 	    // return b to original form
 	    b->unassign_and_rehash(k,from, previously_last_item);
 	    onlineloads_unassign(tat->ol, k, ol_from);

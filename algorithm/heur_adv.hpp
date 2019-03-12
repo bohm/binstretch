@@ -17,16 +17,26 @@ class heuristic_strategy_list : public heuristic_strategy
 {
 public:
     std::vector<int> itemlist;
-    unsigned int cur = 0;
-
     void init(const std::vector<int>& list)
 	{
 	    itemlist = list;
 	}
-    int next_item(const binconf *b)
+    int next_item(const binconf *b, int relative_depth)
 	{
-	    assert(itemlist.size() > cur);
-	    return itemlist[cur++];
+	    if ( (int) itemlist.size() <= relative_depth)
+	    {
+		fprintf(stderr, "Itemlist is shorter %lu than the item we ask for %d:\n",
+			itemlist.size(), relative_depth);
+		for( int item : itemlist)
+		{
+		    fprintf(stderr, "%d,", item);
+		}
+		fprintf(stderr, "\n");
+		print_binconf<true>(b);
+		assert( (int) itemlist.size() > relative_depth);
+	    }
+	    // assert(itemlist.size() > relative_depth);
+	    return itemlist[relative_depth];
 	}
 
     std::string print()
@@ -54,7 +64,7 @@ class heuristic_strategy_fn : public heuristic_strategy
 	{
 	}
 
-    int next_item(const binconf *b)
+    int next_item(const binconf *b, int relative_depth)
 	{
 	    return 0;
 	}
@@ -292,8 +302,6 @@ template<mm_state MODE> victory adversary_heuristics(binconf *b, thread_attr *ta
 	    adv_to_evaluate->win = victory::adv;
 	    adv_to_evaluate->heuristic = true;
 	    adv_to_evaluate->heur_strategy = str;
-
-	    
 	}
 	return victory::adv;
     }
@@ -323,7 +331,7 @@ template<mm_state MODE> victory adversary_heuristics(binconf *b, thread_attr *ta
 	}
     }
 
-    if (MODE == mm_state::generating || LARGE_ITEM_ACTIVE_EVERYWHERE)
+    if (LARGE_ITEM_ACTIVE && (MODE == mm_state::generating || LARGE_ITEM_ACTIVE_EVERYWHERE))
     {
 	
 	tat->meas.large_item_calls++;
@@ -333,9 +341,6 @@ template<mm_state MODE> victory adversary_heuristics(binconf *b, thread_attr *ta
 	{
 	    tat->meas.large_item_hits++;
 
-    
-
-	    
 	    if (MODE == mm_state::generating)
 	    {
 		// Build strategy.

@@ -206,7 +206,8 @@ public:
     bool overdue_printed = false;
     bool current_overdue = false;
     bool heuristic_regime = false;
-    heuristic_strategy *heuristic_strat = NULL;
+    int heuristic_starting_depth = 0;
+    heuristic_strategy *current_strategy = NULL;
     uint64_t overdue_tasks = 0;
     int regrow_level = 0;
 

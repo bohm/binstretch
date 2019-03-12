@@ -27,11 +27,41 @@ void print(FILE *stream, const victory& win)
     }
 }
 
+template <bool PARAM> void print(FILE *stream, const victory& win)
+{
+    if (PARAM)
+    {
+	print(stream, win);
+    }
+}
+
 // Output types are no longer used.
 // enum class output_type {tree, dag, coq};
 
 // Types of adversarial heuristics.
 enum class heuristic {simple, large_item, five_nine };
+void print(FILE *stream, const heuristic& type)
+{
+    switch(type)
+    {
+    case heuristic::simple:
+	fprintf(stream, "simple"); break;
+    case heuristic::large_item:
+	fprintf(stream, "large item"); break;
+    case heuristic::five_nine:
+	fprintf(stream, "five/nine"); break;
+    }
+}
+
+template <bool PARAM> void print(FILE *stream, const heuristic& type)
+{
+    if (PARAM)
+    {
+	print(stream, type);
+    }
+}
+
+
 
 // Minimax states.
 enum class mm_state {generating, exploring, expanding, updating, sequencing, cleanup};

@@ -50,8 +50,6 @@ const int TASK_DEPTH_STEP = 1; // The amount by which the depth is increased whe
 
 // whether to print the output as a single tree or as multiple trees.
 const bool SINGLE_TREE = true;
-// Use adversarial heuristics for nicer trees and disable them for machine verification.
-const bool ADVERSARY_HEURISTICS = true;
 
 // Onepass mode: Do only one pass of monotonicity on all saplings and report % of successes.
 // Useful to count how many saplings need more monotonicity than FIRST_PASS.
@@ -120,12 +118,6 @@ const int FIRST_PASS = 0; // enough to get a lb of 19/14 on 6,7 bins.
 const int RMOD = (R-1);
 const int ALPHA = (RMOD-S);
 
-// secondary booleans, controlling some heuristics
-const bool LARGE_ITEM_ACTIVE_EVERYWHERE = false;
-
-// TODO: Activate five/nine heuristic when its strategy class is implemented.
-const bool FIVE_NINE_ACTIVE = false;
-const bool FIVE_NINE_ACTIVE_EVERYWHERE = false;
 // Dplog, conflog -- bitwise length of indices of hash tables and lock tables.
 // ht_size = 2^conflog, dpht_size = 2^dplog.
 // Dplog, conflog, dpsize and confsize are now set at runtime.
@@ -139,6 +131,17 @@ int task_depth = TASK_DEPTH_INIT;
 int task_load = TASK_LOAD_INIT;
 
 const unsigned int LOADLOG = 12;
+
+
+// Heuristic constants:
+const bool ADVERSARY_HEURISTICS = true;
+const bool EXPAND_HEURISTICS = true;
+const bool LARGE_ITEM_ACTIVE = true;
+const bool LARGE_ITEM_ACTIVE_EVERYWHERE = false;
+// TODO: Activate five/nine heuristic when its strategy class is implemented.
+const bool FIVE_NINE_ACTIVE = false;
+const bool FIVE_NINE_ACTIVE_EVERYWHERE = false;
+
 
 // batching constants
 const int BATCH_SIZE = 50;
@@ -229,7 +232,7 @@ class heuristic_strategy
 public:
     heuristic type;
     virtual void init(const std::vector<int>& list) = 0;
-    virtual int next_item(const binconf *b) = 0;
+    virtual int next_item(const binconf *b, int relative_depth) = 0;
     virtual std::string print() = 0;
     virtual ~heuristic_strategy() = 0;
 };

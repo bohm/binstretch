@@ -58,7 +58,8 @@ victory sequencing_adversary(binconf *b, unsigned int depth, thread_attr *tat,
 {
     algorithm_vertex *upcoming_alg = NULL;
     adv_outedge *new_edge = NULL;
-    
+    bool switch_to_heuristic = false;
+   
     /* Everything can be packed into one bin, return 1. */
     if ((b->loads[BINS] + (BINS*S - b->totalload())) < R)
     {
@@ -70,11 +71,23 @@ victory sequencing_adversary(binconf *b, unsigned int depth, thread_attr *tat,
     {
 	// The procedure may generate the vertex in question.
 	auto vic = adversary_heuristics<mm_state::generating>(b, tat, adv_to_evaluate);
+
 	if (vic == victory::adv)
 	{
-	    // strategy was created by the subroutine and is saved to the vertex that was generated.
-	    return victory::adv;
+	    print<DEBUG>("Sequencing: Adversary heuristic ");
+	    print(stderr, adv_to_evaluate->heur_strategy->type);
+	    print<DEBUG>(" is successful.\n");
+
+	    if (!EXPAND_HEURISTICS)
+	    {
+		return victory::adv;
+	    } else {
+		tat->heuristic_regime = true;
+		tat->current_strategy = adv_to_evaluate->heur_strategy;
+		switch_to_heuristic = true;
+	    }
 	}
+
     }
 
     if (depth == seq.size())
@@ -112,7 +125,15 @@ victory sequencing_adversary(binconf *b, unsigned int depth, thread_attr *tat,
     {
 	below = sequencing_algorithm(b, item_size, depth+1, tat, upcoming_alg, adv_to_evaluate, seq);
     }
-    
+
+    // If we were in heuristics mode, switch back to normal.
+    if (switch_to_heuristic)
+    {
+	tat->heuristic_regime = false;
+	tat->current_strategy = NULL;
+    }
+
+
     if (below == victory::adv)
     {
 	r = victory::adv;
@@ -190,8 +211,11 @@ victory sequencing_algorithm(binconf *b, int k, unsigned int depth, thread_attr 
 	    if (!already_generated)
 	    {
 		below = sequencing_adversary(b, depth, tat, upcoming_adv, alg_to_evaluate, seq);
-		print<DEBUG>("We have calculated the following position, result is %d\n", below);
+		print<DEBUG>("SEQ: Alg packs into bin %d, the new configuration is:", i);
 		print_binconf<DEBUG>(b);
+		print<DEBUG>("Resulting in: ");
+		print(stderr, below);
+		print<DEBUG>(".\n");
 	    }
 	    
 	    // return b to original form
