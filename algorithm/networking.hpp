@@ -10,7 +10,7 @@
 #include <mpi.h>
 
 #include "common.hpp"
-#include "tree.hpp"
+#include "dag.hpp"
 #include "hash.hpp"
 #include "caching.hpp"
 

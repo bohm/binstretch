@@ -11,7 +11,7 @@
 #include "binconf.hpp"
 #include "optconf.hpp"
 #include "thread_attr.hpp"
-#include "tree.hpp"
+#include "dag.hpp"
 #include "hash.hpp"
 #include "caching.hpp"
 #include "fits.hpp"

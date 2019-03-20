@@ -2,7 +2,7 @@
 #define _SAVEFILE_HPP 1
 
 #include "common.hpp"
-#include "tree.hpp"
+#include "dag.hpp"
 #include "dynprog/wrappers.hpp"
 
 // Saving the tree in an extended format to a file.
@@ -69,6 +69,8 @@ void adversary_vertex::print_extended(FILE *stream)
     }
 
     fprintf(stream, "\"");
+    // Print the fact that it is an adversary vertex
+    fprintf(stream, ",player=adv");
     if (task)
     {
 	assert(out.size() == 0);
@@ -89,6 +91,9 @@ void algorithm_vertex::print_extended(FILE *stream)
     fprintf(stream, "%" PRIu64 " [label=\"%d\"", id, next_item);
 
     // If the vertex is a leaf, print a feasible optimal bin configuration.
+    fprintf(stream, ",player=alg");
+  
+
     if (out.empty())
     {
 
@@ -119,18 +124,32 @@ void alg_outedge::print_extended(FILE* stream)
     fprintf(stream, "%" PRIu64 " -> %" PRIu64 " [bin=%d]\n", from->id, to->id, target_bin);
 }
 
+// Top and bottom of a generated (extended) DOT file.
+
+void preamble(FILE* stream)
+{
+    fprintf(stream, "strict digraph binstretch_lower_bound {\n");
+    fprintf(stream, "overlap = none;\n");
+    fprintf(stream, "bins = %d;\n", BINS);
+    fprintf(stream, "R = %d;\n", R);
+    fprintf(stream, "S = %d;\n", S);
+   
+}
+
+void afterword(FILE *stream)
+{
+    fprintf(stream, "}\n");
+}
+
 void savefile(const char* filename, adversary_vertex *r)
 {
     clear_visited_bits();
     FILE* out = fopen(filename, "w");
     assert(out != NULL);
 
-    fprintf(out, "strict digraph binstretch_dag {\n");
-    fprintf(out, "overlap = none;\n");
-
+    preamble(out);
     print_extended_rec(out, r);
-
-    fprintf(out, "}\n");
+    afterword(out);
     fclose(out);
    
 }

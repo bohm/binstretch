@@ -11,7 +11,7 @@
 #include <queue>
 #include <stack>
 #include "common.hpp"
-#include "tree.hpp"
+#include "dag.hpp"
 
 // Game tree (directed acyclic graph) printing routines.
 

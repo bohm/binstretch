@@ -5,7 +5,7 @@
 
 #include <cstdio>
 #include "common.hpp"
-#include "tree.hpp"
+#include "dag.hpp"
 #include "tree_print.hpp"
 
 void purge_new_alg(algorithm_vertex *v);

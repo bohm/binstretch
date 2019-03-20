@@ -2,7 +2,7 @@
 #define _OVERSEER_HPP 1
 
 #include "common.hpp"
-#include "tree.hpp"
+#include "dag.hpp"
 #include "thread_attr.hpp"
 #include "tasks.hpp"
 #include "networking.hpp"

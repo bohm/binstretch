@@ -1,5 +1,5 @@
-#ifndef _TREE_H
-#define _TREE_H 1
+#ifndef _DAG_HPP
+#define _DAG_HPP 1
 
 #include <cstdio>
 #include <cstdlib>
@@ -405,4 +405,4 @@ template <mm_state MODE> void remove_outedges_except(adversary_vertex *v, int ri
     //assert(v->out.size() == 1);
 }
 
-#endif
+#endif // _DAG_HPP
