@@ -107,7 +107,7 @@ template<mm_state MODE> victory adversary(binconf *b, int depth, thread_attr *ta
 	print<DEBUG>("EXP: ");
     }
  
-    print<DEBUG>("Adversary evaluating the position with bin configuration:\n");
+    print<DEBUG>("Adversary evaluating the position with bin configuration: ");
     print_binconf<DEBUG>(b);
 
     if (MODE == mm_state::generating)
@@ -383,7 +383,7 @@ template<mm_state MODE> victory algorithm(binconf *b, int k, int depth, thread_a
 	print<DEBUG>("EXP: ");
     }
  
-    print<DEBUG>("Algorithm evaluating the position with new item %d and bin configuration:\n", k);
+    print<DEBUG>("Algorithm evaluating the position with new item %d and bin configuration: ", k);
     print_binconf<DEBUG>(b);
  
     

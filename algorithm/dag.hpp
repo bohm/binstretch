@@ -51,8 +51,8 @@ public:
 
     void del_adv_vertex(adversary_vertex *gonner);
     void del_alg_vertex(algorithm_vertex *gonner);
-    // void del_adv_outedge(adv_outedge *gonner);
-    // void del_alg_outedge(alg_outedge *gonner);
+    void del_adv_outedge(adv_outedge *gonner);
+    void del_alg_outedge(alg_outedge *gonner);
 
     void clear_visited();
   
@@ -85,13 +85,26 @@ public:
     ~algorithm_vertex();
     void quickremove_outedges();
     void print_extended(FILE *stream); // defined in savefile.hpp
+
+    template <bool MODE> void print(bool newline = true)
+	{
+	    if (MODE)
+	    {
+		fprintf(stderr, "(algv) bc:");
+		print_binconf_stream(stderr, bc, false);
+		fprintf(stderr, " item: %d", next_item);
+		if (newline) { fprintf(stderr, "\n"); }
+	    }
+	}
+
+    
 };
 
 
 algorithm_vertex* dag::add_alg_vertex(const binconf& b, int next_item)
 {
 	print<GRAPH_DEBUG>("Adding a new ALG vertex with bc:");
-	print_binconf<GRAPH_DEBUG>(b);
+	print_binconf<GRAPH_DEBUG>(b, false);
 	print<GRAPH_DEBUG>("and next item %d.\n", next_item);
 	
 	// Sanity check that we are not inserting a duplicate vertex.
@@ -142,11 +155,23 @@ public:
     void quickremove_outedges();
     void print_extended(FILE *stream); // defined in savefile.hpp
 
+    template <bool MODE> void print(bool newline = true)
+	{
+	    if (MODE)
+	    {
+		fprintf(stderr, "(advv) bc:");
+		print_binconf_stream(stderr, bc, newline);
+	    }
+	}
+ 
 };
 
 
 adversary_vertex* dag::add_adv_vertex(const binconf &b, int depth)
 {
+    	print<GRAPH_DEBUG>("Adding a new ADV vertex with bc:");
+	print_binconf<GRAPH_DEBUG>(b);
+	
 	// Sanity check that we are not inserting a duplicate vertex.
 	auto it = adv_by_hash.find(b.confhash());
 	assert(it == adv_by_hash.end());
@@ -169,6 +194,8 @@ public:
     adv_outedge(adversary_vertex* from, algorithm_vertex* to, int item, uint64_t id)
 	: from(from), to(to), item(item), id(id)
     {
+	pos = from->out.insert(from->out.begin(), this);
+	pos_child = to->in.insert(to->in.begin(), this);
 	//print<DEBUG>("Edge %" PRIu64 " created.\n", this->id);
     }
 
@@ -193,6 +220,8 @@ public:
     alg_outedge(algorithm_vertex* from, adversary_vertex* to, int target, uint64_t id)
 	: from(from), to(to), target_bin(target), id(id)
     {
+	pos = from->out.insert(from->out.begin(), this);
+	pos_child = to->in.insert(to->in.begin(), this);
 	//print<DEBUG>("Edge %" PRIu64 " created.\n", this->id);
     }
 
@@ -206,15 +235,30 @@ public:
 
 adv_outedge* dag::add_adv_outedge(adversary_vertex *from, algorithm_vertex *to, int next_item)
 {
+    print<GRAPH_DEBUG>("Creating ADV outedge with item %d from vertex:", next_item);
+    from->print<GRAPH_DEBUG>();
+
     return new adv_outedge(from, to, next_item, edge_counter++);
+}
+
+// Currently does nothing more than delete the edge; this is not true for the other wrapper methods.
+void dag::del_adv_outedge(adv_outedge *gonner)
+{
+    delete gonner;
 }
 
 alg_outedge* dag::add_alg_outedge(algorithm_vertex *from, adversary_vertex *to, int bin)
 {
+    print<GRAPH_DEBUG>("Creating ALG outedge with target bin %d from vertex: ", bin) ;
+    from->print<GRAPH_DEBUG>();
+
     return new alg_outedge(from, to, bin, edge_counter++);
 }
 
-
+void dag::del_alg_outedge(alg_outedge *gonner)
+{
+    delete gonner;
+}
 
 // Deletes all outedges. Note: does not care about their endvertices or recursion.
 // Use only when deleting the whole graph by iterating generated_graph or when
@@ -358,7 +402,7 @@ template <mm_state MODE> void remove_outedges(dag *d, algorithm_vertex *v)
     for (auto& e: v->out)
     {
 	remove_inedge<MODE>(d, e);
-	delete e;
+	d->del_alg_outedge(e);
     }
 
     v->out.clear();
@@ -369,7 +413,7 @@ template <mm_state MODE> void remove_outedges(dag *d, adversary_vertex *v)
     for (auto& e: v->out)
     {
 	remove_inedge<MODE>(d, e);
-	delete e;
+	d->del_adv_outedge(e);
     }
 
     v->out.clear();
@@ -378,32 +422,37 @@ template <mm_state MODE> void remove_outedges(dag *d, adversary_vertex *v)
 // removes both the outedge and the inedge
 template <mm_state MODE> void remove_edge(dag *d, alg_outedge *e)
 {
+    print<GRAPH_DEBUG>("Removing algorithm's edge with target bin %d from vertex:", e->target_bin) ;
+    e->from->print<GRAPH_DEBUG>();
+	
     remove_inedge<MODE>(d, e);
     e->from->out.erase(e->pos);
-    delete e;
+    d->del_alg_outedge(e);
 }
 
 template <mm_state MODE> void remove_edge(dag *d, adv_outedge *e)
 {
+    print<GRAPH_DEBUG>("Removing adversary outedge with item %d from vertex:", e->item);
+    e->from->print<GRAPH_DEBUG>();
+
     remove_inedge<MODE>(d, e);
     e->from->out.erase(e->pos);
-    delete e;
+    d->del_adv_outedge(e);
 }
 
 // Remove all outedges except the right path.
 template <mm_state MODE> void remove_outedges_except(dag *d, adversary_vertex *v, int right_item)
 {
     print<GRAPH_DEBUG>("Removing all of %zu edges -- except %d -- of vertex ", v->out.size(), right_item);
-    print_binconf<GRAPH_DEBUG>(v->bc);
-	
-    
+    v->print<GRAPH_DEBUG>();
+
     adv_outedge *right_edge = NULL;
     for (auto& e: v->out)
     {
 	if (e->item != right_item)
 	{
 	    remove_inedge<MODE>(d, e);
-	    delete e;
+	    d->del_adv_outedge(e);
 	} else {
 	    right_edge = e;
 	}

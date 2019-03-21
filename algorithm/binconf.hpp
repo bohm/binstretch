@@ -485,19 +485,19 @@ void print_binconf_stream(FILE* stream, const binconf* b, bool newline = true)
     print_binconf_stream(stream, *b, newline);
 }
 
-template <bool MODE> void print_binconf(const binconf &b)
+template <bool MODE> void print_binconf(const binconf &b, bool newline = true)
 {
     if (MODE)
     {
-	print_binconf_stream(stderr, b);
+	print_binconf_stream(stderr, b, newline);
     }
 }
 
-template <bool MODE> void print_binconf(const binconf *b)
+template <bool MODE> void print_binconf(const binconf *b, bool newline = true)
 {
     if (MODE)
     {
-	print_binconf<MODE>(*b);
+	print_binconf<MODE>(*b, newline);
     }
 }
 
