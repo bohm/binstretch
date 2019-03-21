@@ -12,8 +12,10 @@
 #include "queen.hpp"
 #include "overseer.hpp"
 #include "worker.hpp"
+#include "queen.hpp"
 #include "worker_methods.hpp"
 #include "overseer_methods.hpp"
+#include "queen_methods.hpp"
 
 void handle_sigusr1(int signo)
 {
@@ -56,7 +58,8 @@ int main(void)
 	    ov->start();
 	} else {
 	    // queen is now by default two-threaded
-	    ret = queen();
+	    queen = new queen_class();
+	    ret = queen->start();
 	}
     }
 

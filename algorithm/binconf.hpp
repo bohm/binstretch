@@ -376,7 +376,7 @@ public:
 
     // Returns a hash that also encodes the next upcoming item. This allows
     // us to uniquely index algorithm's vertices.
-    uint64_t alghash(bin_int next_item)
+    uint64_t alghash(bin_int next_item) const
 	{
 	    return (loadhash ^ itemhash ^ Zalg[next_item]);
 	}
@@ -437,7 +437,7 @@ bool binconf_equal(const binconf *a, const binconf *b)
 
 
 // debug function for printing bin configurations (into stderr or log files)
-void print_binconf_stream(FILE* stream, const binconf* b, bool newline = true)
+void print_binconf_stream(FILE* stream, const binconf& b, bool newline = true)
 {
     bool first = true;
     for (int i=1; i<=BINS; i++)
@@ -445,27 +445,27 @@ void print_binconf_stream(FILE* stream, const binconf* b, bool newline = true)
 	if(first)
 	{
 	    first = false;
-	    fprintf(stream, "%02d", b->loads[i]);
+	    fprintf(stream, "%02d", b.loads[i]);
 	} else {
-	    fprintf(stream, "-%02d", b->loads[i]);
+	    fprintf(stream, "-%02d", b.loads[i]);
 	}
     }
 
-    fprintf(stream, " [l:%02d]", b->last_item);
+    fprintf(stream, " [l:%02d]", b.last_item);
     fprintf(stream, " (");
     first = true;
     for (int j=1; j<=S; j++)
     {
 	if (first)
 	{
-	    fprintf(stream, "%02d", b->items[j]);
+	    fprintf(stream, "%02d", b.items[j]);
 	    first = false;
 	} else {
 	    if (j%10 == 1)
 	    {
-		fprintf(stream, "|%02d", b->items[j]);
+		fprintf(stream, "|%02d", b.items[j]);
 	    } else {
-		fprintf(stream, ",%02d", b->items[j]);
+		fprintf(stream, ",%02d", b.items[j]);
 	    }
 	}
     }
@@ -479,11 +479,25 @@ void print_binconf_stream(FILE* stream, const binconf* b, bool newline = true)
     }
 }
 
-template <bool MODE> void print_binconf(const binconf *b)
+// debug function for printing bin configurations (into stderr or log files)
+void print_binconf_stream(FILE* stream, const binconf* b, bool newline = true)
+{
+    print_binconf_stream(stream, *b, newline);
+}
+
+template <bool MODE> void print_binconf(const binconf &b)
 {
     if (MODE)
     {
 	print_binconf_stream(stderr, b);
+    }
+}
+
+template <bool MODE> void print_binconf(const binconf *b)
+{
+    if (MODE)
+    {
+	print_binconf<MODE>(*b);
     }
 }
 

@@ -7,6 +7,7 @@
 #include "common.hpp"
 #include "dag.hpp"
 #include "tree_print.hpp"
+#include "queen.hpp"
 
 void purge_new_alg(algorithm_vertex *v);
 void purge_new_adv(adversary_vertex *v);
@@ -26,7 +27,7 @@ void purge_new_adv(adversary_vertex *v)
 	if (down->state == vert_state::fresh) // algorithm vertex can never be a task
 	{
 	    purge_new_alg(down);
-	    remove_inedge<mm_state::generating>(*it);
+	    remove_inedge<mm_state::generating>(qdag, *it);
 	    it = v->out.erase(it); // serves as it++
 	} else {
 	    purge_new_alg(down);
@@ -50,7 +51,7 @@ void purge_new_alg(algorithm_vertex *v)
 	if (down->state == vert_state::fresh || down->task)
 	{
 	    purge_new_adv(down);
-	    remove_inedge<mm_state::generating>(*it);
+	    remove_inedge<mm_state::generating>(qdag, *it);
 	    it = v->out.erase(it); // serves as it++
 	} else {
 	    purge_new_adv(down);
@@ -61,7 +62,7 @@ void purge_new_alg(algorithm_vertex *v)
 
 void purge_new(adversary_vertex *r)
 {
-    clear_visited_bits();
+    qdag->clear_visited();
     purge_new_adv(r);
 }
 
@@ -136,7 +137,7 @@ void relabel_and_fix_alg(algorithm_vertex *v, thread_attr *tat)
 
 void relabel_and_fix(adversary_vertex *r, thread_attr *tat)
 {
-    clear_visited_bits();
+    qdag->clear_visited();
     tat->meas.relabeled_vertices = 0;
     tat->meas.visit_counter = 0;
 
@@ -223,7 +224,7 @@ bool finish_branches_rec(algorithm_vertex *v)
 
 bool finish_branches(adversary_vertex *r)
 {
-    clear_visited_bits();
+    qdag->clear_visited();
     return finish_branches_rec(r);
 }
 
@@ -269,7 +270,7 @@ void finish_sapling_alg(algorithm_vertex *v)
 
 void finish_sapling(adversary_vertex *r)
 {
-    clear_visited_bits();
+    qdag->clear_visited();
     finish_sapling_adv(r);
 }
 
@@ -324,7 +325,7 @@ void reset_values_alg(algorithm_vertex *v)
 
 void reset_values(adversary_vertex *r)
 {
-    clear_visited_bits();
+    qdag->clear_visited();
     reset_values_adv(r);
 }
 

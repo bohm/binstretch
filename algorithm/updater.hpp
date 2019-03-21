@@ -10,6 +10,7 @@
 #include "dynprog/wrappers.hpp"
 #include "gs.hpp"
 #include "tasks.hpp"
+#include "queen.hpp"
 
 #ifndef _UPDATER_H
 #define _UPDATER_H 1
@@ -63,7 +64,7 @@ victory update(adversary_vertex *v, update_attr &uat)
     
     if (v->task)
     {
-	uint64_t hash = v->bc->confhash();
+	uint64_t hash = v->bc.confhash();
 	result = completion_check(hash);
 	if (result == victory::uncertain)
 	{
@@ -92,7 +93,7 @@ victory update(adversary_vertex *v, update_attr &uat)
 		if(v->state != vert_state::fixed)
 		{
 		    adv_outedge *removed_edge = (*it);
-		    remove_inedge<mm_state::updating>(*it);
+		    remove_inedge<mm_state::updating>(qdag, *it);
 		    it = v->out.erase(it); // serves as it++
 		    delete removed_edge;
 		} else {
@@ -109,7 +110,7 @@ victory update(adversary_vertex *v, update_attr &uat)
 	// remove outedges only for a non-task
 	if (result == victory::adv)
 	{
-	    remove_outedges_except<mm_state::updating>(v, right_move);
+	    remove_outedges_except<mm_state::updating>(qdag, v, right_move);
 	}
 
 
@@ -179,7 +180,7 @@ victory update(algorithm_vertex *v, update_attr &uat)
     
     if (result == victory::alg && v->state != vert_state::fixed)
     {
-	remove_outedges<mm_state::updating>(v);
+	remove_outedges<mm_state::updating>(qdag, v);
 	assert( v->out.empty() );
 
     }

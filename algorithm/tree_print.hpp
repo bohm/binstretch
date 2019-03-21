@@ -10,8 +10,10 @@
 #include <chrono>
 #include <queue>
 #include <stack>
+
 #include "common.hpp"
 #include "dag.hpp"
+#include "queen.hpp"
 
 // Game tree (directed acyclic graph) printing routines.
 
@@ -98,14 +100,14 @@ void print_unfinished_rec(algorithm_vertex *v, bool also_print_binconf)
 void print_unfinished(adversary_vertex *r)
 {
     unfinished_counter = 0;
-    clear_visited_bits();
+    qdag->clear_visited();
     print_unfinished_rec(r, false);
 }
 
 void print_unfinished_with_binconf(adversary_vertex *r)
 {
     unfinished_counter = 0;
-    clear_visited_bits();
+    qdag->clear_visited();
     print_unfinished_rec(r, true);
 
 }

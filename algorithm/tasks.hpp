@@ -34,9 +34,9 @@ public:
 	{
 	}
     
-    task(const binconf *other)
+    task(const binconf& other) : bc(other)
 	{
-	    duplicate(&bc, other);
+	    
 	}
 
     void load(const flat_task& ft)
@@ -248,9 +248,9 @@ int tstatus_id(const adversary_vertex *v)
 {
     if (v == NULL) { return -1; }
 
-    if (tmap.find(v->bc->confhash()) != tmap.end())
+    if (tmap.find(v->bc.confhash()) != tmap.end())
     {
-	return tmap[v->bc->confhash()];
+	return tmap[v->bc.confhash()];
     }
 	
     return -1;
@@ -311,7 +311,7 @@ bool possible_task_advanced(adversary_vertex *v, int largest_item)
 
 bool possible_task_size(adversary_vertex *v)
 {
-    if (v->bc->totalload() >= task_load)
+    if (v->bc.totalload() >= task_load)
     {
 	return true;
     }
@@ -333,7 +333,7 @@ bool possible_task_mixed(adversary_vertex *v, int largest_item)
 {
 
     int target_depth = computation_root->depth + task_depth;
-    if (v->bc->totalload() - computation_root->bc->totalload() >= task_load)
+    if (v->bc.totalload() - computation_root->bc.totalload() >= task_load)
     {
 	return true;
     } else if (target_depth - v->depth <= 0)
@@ -401,7 +401,7 @@ void collect_tasks_alg(algorithm_vertex *v, thread_attr *tat)
 
 void collect_tasks(adversary_vertex *r, thread_attr *tat)
 {
-    clear_visited_bits();
+    qdag->clear_visited();
     tcount = 0;
     collect_tasks_adv(r,tat);
 }

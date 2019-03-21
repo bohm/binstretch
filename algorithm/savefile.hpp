@@ -65,7 +65,7 @@ void adversary_vertex::print_extended(FILE *stream)
     fprintf(stream, "%" PRIu64 " [label=\"", id);
     for (int i=1; i<=BINS; i++)
     {
-	fprintf(stream, "%d ", bc->loads[i]);
+	fprintf(stream, "%d ", bc.loads[i]);
     }
 
     fprintf(stream, "\"");
@@ -97,8 +97,7 @@ void algorithm_vertex::print_extended(FILE *stream)
     if (out.empty())
     {
 
-	binconf with_new_item;
-	duplicate(&with_new_item, bc);
+	binconf with_new_item(bc);
 	// The following creates an inconsistent bin configuration, but that is okay,
 	// we discard it immediately after.
 	with_new_item.items[next_item]++;
@@ -143,7 +142,7 @@ void afterword(FILE *stream)
 
 void savefile(const char* filename, adversary_vertex *r)
 {
-    clear_visited_bits();
+    qdag->clear_visited();
     FILE* out = fopen(filename, "w");
     assert(out != NULL);
 

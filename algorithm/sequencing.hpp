@@ -108,19 +108,20 @@ victory sequencing_adversary(binconf *b, unsigned int depth, thread_attr *tat,
     // Check vertex cache if this adversarial vertex is already present.
     // std::map<llu, adversary_vertex*>::iterator it;
     bool already_generated = false;
-    auto it = generated_graph_alg.find(b->alghash(item_size));
-    if (it == generated_graph_alg.end())
+    auto it = qdag->alg_by_hash.find(b->alghash(item_size));
+    if (it == qdag->alg_by_hash.end())
     {
-	upcoming_alg = new algorithm_vertex(b, item_size);
-	new_edge = new adv_outedge(adv_to_evaluate, upcoming_alg, item_size);
+	upcoming_alg = qdag->add_alg_vertex(*b, item_size);
+	new_edge = qdag->add_adv_outedge(adv_to_evaluate, upcoming_alg, item_size);
     } else {
 	already_generated = true;
 	upcoming_alg = it->second;
 	// create new edge
-	new_edge = new adv_outedge(adv_to_evaluate, upcoming_alg, item_size);
+	new_edge = qdag->add_adv_outedge(adv_to_evaluate, upcoming_alg, item_size);
 	below = it->second->win;
     }
-    
+
+
     if (!already_generated)
     {
 	below = sequencing_algorithm(b, item_size, depth+1, tat, upcoming_alg, adv_to_evaluate, seq);
@@ -137,10 +138,10 @@ victory sequencing_adversary(binconf *b, unsigned int depth, thread_attr *tat,
     if (below == victory::adv)
     {
 	r = victory::adv;
-	remove_outedges_except<mm_state::sequencing>(adv_to_evaluate, item_size);
+	remove_outedges_except<mm_state::sequencing>(qdag, adv_to_evaluate, item_size);
     } else if (below == victory::alg)
     {
-	remove_edge<mm_state::sequencing>(new_edge);
+	remove_edge<mm_state::sequencing>(qdag, new_edge);
     } else if (below == victory::uncertain)
     {
 	if (r == victory::alg)
@@ -191,20 +192,18 @@ victory sequencing_algorithm(binconf *b, int k, unsigned int depth, thread_attr 
 	    int from = b->assign_and_rehash(k,i);
 	    int ol_from = onlineloads_assign(tat->ol, k);
 	    // initialize the adversary's next vertex in the tree (corresponding to d)
-	    bool already_generated = false;
 
 	    /* Check vertex cache if this adversarial vertex is already present */
-	    auto it = generated_graph_adv.find(b->confhash());
-	    if (it == generated_graph_adv.end())
+	    bool already_generated = false;
+	    auto it = qdag->adv_by_hash.find(b->confhash());
+	    if (it == qdag->adv_by_hash.end())
 	    {
-		upcoming_adv = new adversary_vertex(b, depth);
-		// create new edge
-		new alg_outedge(alg_to_evaluate, upcoming_adv, i);
+		upcoming_adv = qdag->add_adv_vertex(*b, depth);
+		qdag->add_alg_outedge(alg_to_evaluate, upcoming_adv, i);
 	    } else {
 		already_generated = true;
 		upcoming_adv = it->second;
-		// create new edge
-		new alg_outedge(alg_to_evaluate, upcoming_adv, i);
+		qdag->add_alg_outedge(alg_to_evaluate, upcoming_adv, i);
 		below = it->second->win;
 	    }
 
@@ -226,7 +225,7 @@ victory sequencing_algorithm(binconf *b, int k, unsigned int depth, thread_attr 
 	    if (below == victory::alg)
 	    {
 		r = below;
-		remove_outedges<mm_state::sequencing>(alg_to_evaluate);
+		remove_outedges<mm_state::sequencing>(qdag, alg_to_evaluate);
 		alg_to_evaluate->win = r;
 		return r;
 	    } else if (below == victory::adv)
