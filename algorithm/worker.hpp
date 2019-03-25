@@ -4,7 +4,7 @@
 #include "common.hpp"
 #include "server_properties.hpp"
 #include "binconf.hpp"
-#include "dag.hpp"
+#include "dag/dag.hpp"
 #include "thread_attr.hpp"
 #include "tasks.hpp"
 #include "minimax.hpp"

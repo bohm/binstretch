@@ -3,7 +3,7 @@
 // Loading and storing saplings from/to files.
 #include <filesystem>
 #include <iostream>
-#include "dag.hpp"
+#include "dag/dag.hpp"
 
 namespace fs = std::filesystem;
 

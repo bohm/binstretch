@@ -3,7 +3,7 @@
 
 #include <atomic>
 
-#include "dag.hpp"
+#include "dag/dag.hpp"
 
 // Queen global variables and declarations.
 
@@ -26,4 +26,11 @@ public:
 queen_class* queen = NULL;
 // A global pointer to the main/queen dag.
 dag *qdag = NULL;
+
+// the root of the current computation,
+// may differ from the actual root of the graph.
+adversary_vertex *computation_root;
+adversary_vertex *expansion_root;
+
+
 #endif

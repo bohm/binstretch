@@ -11,7 +11,7 @@ queue update code. */
 #include <mpi.h>
 
 #include "common.hpp"
-#include "dag.hpp"
+#include "dag/dag.hpp"
 #include "dfs.hpp"
 
 // task but in a flat form; used for MPI

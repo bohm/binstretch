@@ -2,7 +2,7 @@
 #define _SAVEFILE_HPP 1
 
 #include "common.hpp"
-#include "dag.hpp"
+#include "dag/dag.hpp"
 #include "dynprog/wrappers.hpp"
 
 // Saving the tree in an extended format to a file.

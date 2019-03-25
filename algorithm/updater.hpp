@@ -5,7 +5,7 @@
 
 #include "common.hpp"
 #include "hash.hpp"
-#include "dag.hpp"
+#include "dag/dag.hpp"
 #include "fits.hpp"
 #include "dynprog/wrappers.hpp"
 #include "gs.hpp"

@@ -5,7 +5,7 @@
 
 #include <cstdio>
 #include "common.hpp"
-#include "dag.hpp"
+#include "dag/dag.hpp"
 #include "tree_print.hpp"
 #include "queen.hpp"
 

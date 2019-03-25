@@ -12,8 +12,8 @@
 #include <queue>
 #include <stack>
 
-#include "common.hpp"
-#include "binconf.hpp"
+#include "../common.hpp"
+#include "../binconf.hpp"
 
 // a game tree (actually a DAG) used for outputting the resulting
 // strategy if the result is positive.
@@ -318,11 +318,6 @@ void dag::del_adv_vertex(adversary_vertex *gonner)
     adv_by_hash.erase(gonner->bc.confhash());
     delete gonner;
 }
-
-// the root of the current computation,
-// may differ from the actual root of the graph.
-adversary_vertex *computation_root;
-adversary_vertex *expansion_root;
 
 // global root vertex
 // adversary_vertex *root_vertex;

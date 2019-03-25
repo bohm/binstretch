@@ -12,7 +12,7 @@
 #include <stack>
 
 #include "common.hpp"
-#include "dag.hpp"
+#include "dag/dag.hpp"
 #include "queen.hpp"
 
 // Game tree (directed acyclic graph) printing routines.
