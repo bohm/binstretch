@@ -34,17 +34,23 @@ class adversary_vertex;
 class dag
 {
 public:
-    std::map<llu, adversary_vertex*> adv_by_hash;
-    std::map<llu, algorithm_vertex*> alg_by_hash;
 
-    // std::map<llu, adversary_vertex*> adv_by_id;
-    // std::map<llu, algorithm_vertex*> alg_by_id;
-
-
+    // Counters for internal IDs.
     uint64_t vertex_counter = 0;
     uint64_t edge_counter = 0;
 
-    adversary_vertex* add_adv_vertex(const binconf& b, int depth);
+    // Mapping based on state hashes.
+    std::map<llu, adversary_vertex*> adv_by_hash;
+    std::map<llu, algorithm_vertex*> alg_by_hash;
+
+    // Mapping based on internal IDs.
+    std::map<llu, adversary_vertex*> adv_by_id;
+    std::map<llu, algorithm_vertex*> alg_by_id;
+
+    adversary_vertex* root = NULL;
+    
+    adversary_vertex* add_root(const binconf &b);
+    adversary_vertex* add_adv_vertex(const binconf& b);
     algorithm_vertex* add_alg_vertex(const binconf& b, int next_item);
     adv_outedge* add_adv_outedge(adversary_vertex *from, algorithm_vertex *to, int next_item);
     alg_outedge* add_alg_outedge(algorithm_vertex *from, adversary_vertex *to, int bin);
@@ -55,7 +61,19 @@ public:
     void del_alg_outedge(alg_outedge *gonner);
 
     void clear_visited();
-  
+
+    /* remove_inedge removes the edge from the list of the incoming edges,
+    but does not touch the outgoing edge list. */
+    template <mm_state MODE> void remove_inedge(alg_outedge *e);
+    template <mm_state MODE> void remove_inedge(adv_outedge *e);
+    
+    template <mm_state MODE> void remove_outedges(algorithm_vertex *v);
+    template <mm_state MODE> void remove_outedges(adversary_vertex *v);
+
+    template <mm_state MODE> void remove_edge(alg_outedge *e);
+    template <mm_state MODE> void remove_edge(adv_outedge *e);
+
+    template <mm_state MODE> void remove_outedges_except(adversary_vertex *v, int right_item);
 };
 
 // FIXED means part of the lower bound (as evaluated by a previous computation)
@@ -83,7 +101,6 @@ public:
 	}
 
     ~algorithm_vertex();
-    void quickremove_outedges();
     void print_extended(FILE *stream); // defined in savefile.hpp
 
     template <bool MODE> void print(bool newline = true)
@@ -100,23 +117,25 @@ public:
     
 };
 
-
 algorithm_vertex* dag::add_alg_vertex(const binconf& b, int next_item)
 {
 	print<GRAPH_DEBUG>("Adding a new ALG vertex with bc:");
 	print_binconf<GRAPH_DEBUG>(b, false);
 	print<GRAPH_DEBUG>("and next item %d.\n", next_item);
 	
-	// Sanity check that we are not inserting a duplicate vertex.
+	uint64_t new_id = vertex_counter++;
+	algorithm_vertex *ptr  = new algorithm_vertex(b, next_item, new_id);
+
+	// Check that we are not inserting a duplicate vertex into either map.
 	auto it = alg_by_hash.find(b.alghash(next_item));
 	assert(it == alg_by_hash.end());
-	algorithm_vertex *ptr  = new algorithm_vertex(b, next_item, vertex_counter++);
+	auto it2 = alg_by_id.find(new_id);
+	assert(it2 == alg_by_id.end());
 	alg_by_hash[b.alghash(next_item)] = ptr;
+	alg_by_id[new_id] = ptr;
+
 	return ptr;
 }
-
-const int LARGE_ITEM = 1;
-const int FIVE_NINE = 2;
 
 class adversary_vertex
 {
@@ -126,7 +145,7 @@ public:
     std::list<alg_outedge*> in; // previous algorithmic states
 
     uint64_t id;
-    int depth; // Depth increases only in adversary's steps.
+    // int depth; // Depth increases only in adversary's steps.
     bool visited = false; // We use this for DFS (e.g. for printing).
     
     vert_state state = vert_state::fresh;
@@ -146,13 +165,12 @@ public:
     bool task = false; // task is a separate boolean because an vert_state::expand vertex can be a task itself.
     bool sapling = false;
 
-    adversary_vertex(const binconf& b, uint64_t id, int depth) : bc(b), id(id), depth(depth)
+    adversary_vertex(const binconf& b, uint64_t id) : bc(b), id(id) //, depth(depth)
     {
     }
 
     ~adversary_vertex();
     
-    void quickremove_outedges();
     void print_extended(FILE *stream); // defined in savefile.hpp
 
     template <bool MODE> void print(bool newline = true)
@@ -166,19 +184,32 @@ public:
  
 };
 
-
-adversary_vertex* dag::add_adv_vertex(const binconf &b, int depth)
+adversary_vertex* dag::add_adv_vertex(const binconf &b)
 {
     	print<GRAPH_DEBUG>("Adding a new ADV vertex with bc:");
 	print_binconf<GRAPH_DEBUG>(b);
-	
-	// Sanity check that we are not inserting a duplicate vertex.
+
+	uint64_t new_id = vertex_counter++;
+	adversary_vertex *ptr  = new adversary_vertex(b, new_id);
+
 	auto it = adv_by_hash.find(b.confhash());
 	assert(it == adv_by_hash.end());
-	adversary_vertex *ptr  = new adversary_vertex(b, vertex_counter++, depth);
+	auto it2 = adv_by_id.find(new_id);
+	assert(it2 == adv_by_id.end());
+
 	adv_by_hash[b.confhash()] = ptr;
+	adv_by_id[new_id] = ptr;
+
 	return ptr;
 }
+
+adversary_vertex* dag::add_root(const binconf &b)
+{
+    adversary_vertex *r = add_adv_vertex(b);
+    root = r;
+    return r;
+}
+
 
 
 class adv_outedge {
@@ -260,21 +291,8 @@ void dag::del_alg_outedge(alg_outedge *gonner)
     delete gonner;
 }
 
-// Deletes all outedges. Note: does not care about their endvertices or recursion.
-// Use only when deleting the whole graph by iterating generated_graph or when
-// you are sure there are no remaining outedges.
-void algorithm_vertex::quickremove_outedges()
-{
-    for (auto& e: out)
-    {
-	delete e;
-    }
-    out.clear();
-}
- 
 algorithm_vertex::~algorithm_vertex()
 {
-    //quickremove_outedges();
 }
 
 void dag::del_alg_vertex(algorithm_vertex *gonner)
@@ -286,25 +304,9 @@ void dag::del_alg_vertex(algorithm_vertex *gonner)
     delete gonner;
 }
 
-// Deletes all outedges. Note: does not care about their endvertices or recursion.
-// Use only when deleting the whole graph by iterating generated_graph.
-void adversary_vertex::quickremove_outedges()
-{
- 	    for (auto&& e: out)
-	    {
-		delete e;
-	    }
-	    out.clear();
-}
-
 adversary_vertex::~adversary_vertex()
 {
-    //quickremove_outedges();
-    // print<true>("Deleting vertex:");
-    // print_binconf<true>(bc);
-	
     delete heur_strategy;
-    //print<DEBUG>("Vertex %" PRIu64 "destroyed.\n", this->id);
 }
 
 
@@ -320,7 +322,6 @@ void dag::del_adv_vertex(adversary_vertex *gonner)
 // the root of the current computation,
 // may differ from the actual root of the graph.
 adversary_vertex *computation_root;
-
 adversary_vertex *expansion_root;
 
 // a simple bool function, currently used in progress reporting
@@ -355,93 +356,85 @@ void dag::clear_visited()
  * a for loop in C++ through a list and erase from the list at the same time.
  */
 
-/* remove_inedge removes the edge from the list of the incoming edges,
-   but does not touch the outgoing edge list. */
-template <mm_state MODE> void remove_inedge(dag *d, alg_outedge *e);
-template <mm_state MODE> void remove_inedge(dag *d, adv_outedge *e);
-
-template <mm_state MODE> void remove_outedges(dag *d, algorithm_vertex *v);
-template <mm_state MODE> void remove_outedges(dag *d, adversary_vertex *v);
-
 /* Forward declaration of remove_task for inclusion purposes. */
 void remove_task(uint64_t hash);
 
-template <mm_state MODE> void remove_inedge(dag* d, adv_outedge *e)
+template <mm_state MODE> void dag::remove_inedge(adv_outedge *e)
 {
     e->to->in.erase(e->pos_child);
 
     /* The vertex is no longer reachable, delete it. */
     if (e->to->in.empty())
     {
-	remove_outedges<MODE>(d, e->to);
-	d->del_alg_vertex(e->to);
+	remove_outedges<MODE>(e->to);
+	del_alg_vertex(e->to);
     }
 }
 
-template <mm_state MODE> void remove_inedge(dag *d, alg_outedge *e)
+template <mm_state MODE> void dag::remove_inedge(alg_outedge *e)
 {
     e->to->in.erase(e->pos_child);
     if (e->to->in.empty())
     {
-	remove_outedges<MODE>(d, e->to);
+	remove_outedges<MODE>(e->to);
 	// when updating the tree, if e->to is task, remove it from the queue
 	if (MODE == mm_state::updating && e->to->task && e->to->win == victory::uncertain)
 	{
 	    remove_task(e->to->bc.confhash());
 	}
 	
-	d->del_adv_vertex(e->to);
+	del_adv_vertex(e->to);
 	// delete e->to;
     }
 }
 
 /* Removes all outgoing edges (including from the inedge lists).
    In order to preserve incoming edges, leaves the vertex be. */
-template <mm_state MODE> void remove_outedges(dag *d, algorithm_vertex *v)
+template <mm_state MODE> void dag::remove_outedges(algorithm_vertex *v)
 {
     for (auto& e: v->out)
     {
-	remove_inedge<MODE>(d, e);
-	d->del_alg_outedge(e);
+	remove_inedge<MODE>(e);
+	del_alg_outedge(e);
     }
 
     v->out.clear();
 }
 
-template <mm_state MODE> void remove_outedges(dag *d, adversary_vertex *v)
+template <mm_state MODE> void dag::remove_outedges(adversary_vertex *v)
 {
     for (auto& e: v->out)
     {
-	remove_inedge<MODE>(d, e);
-	d->del_adv_outedge(e);
+	remove_inedge<MODE>(e);
+	del_adv_outedge(e);
     }
 
     v->out.clear();
 }
 
 // removes both the outedge and the inedge
-template <mm_state MODE> void remove_edge(dag *d, alg_outedge *e)
+template <mm_state MODE> void dag::remove_edge(alg_outedge *e)
 {
     print<GRAPH_DEBUG>("Removing algorithm's edge with target bin %d from vertex:", e->target_bin) ;
     e->from->print<GRAPH_DEBUG>();
 	
-    remove_inedge<MODE>(d, e);
+    remove_inedge<MODE>(e);
     e->from->out.erase(e->pos);
-    d->del_alg_outedge(e);
+    del_alg_outedge(e);
 }
 
-template <mm_state MODE> void remove_edge(dag *d, adv_outedge *e)
+template <mm_state MODE> void dag::remove_edge(adv_outedge *e)
 {
     print<GRAPH_DEBUG>("Removing adversary outedge with item %d from vertex:", e->item);
     e->from->print<GRAPH_DEBUG>();
 
-    remove_inedge<MODE>(d, e);
+    remove_inedge<MODE>(e);
     e->from->out.erase(e->pos);
-    d->del_adv_outedge(e);
+    del_adv_outedge(e);
 }
 
 // Remove all outedges except the right path.
-template <mm_state MODE> void remove_outedges_except(dag *d, adversary_vertex *v, int right_item)
+template <mm_state MODE> void dag::remove_outedges_except(adversary_vertex *v, int right_item)
 {
     print<GRAPH_DEBUG>("Removing all of %zu edges -- except %d -- of vertex ", v->out.size(), right_item);
     v->print<GRAPH_DEBUG>();
@@ -451,8 +444,8 @@ template <mm_state MODE> void remove_outedges_except(dag *d, adversary_vertex *v
     {
 	if (e->item != right_item)
 	{
-	    remove_inedge<MODE>(d, e);
-	    d->del_adv_outedge(e);
+	    remove_inedge<MODE>(e);
+	    del_adv_outedge(e);
 	} else {
 	    right_edge = e;
 	}

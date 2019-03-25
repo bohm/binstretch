@@ -190,10 +190,10 @@ template<mm_state MODE> victory adversary(binconf *b, int depth, thread_attr *ta
 	}
 
 	// we now do creation of tasks only until the REGROW_LIMIT is reached
-	if (!tat->heuristic_regime && tat->regrow_level <= REGROW_LIMIT && POSSIBLE_TASK(adv_to_evaluate, tat->largest_since_computation_root))
+	if (!tat->heuristic_regime && tat->regrow_level <= REGROW_LIMIT && POSSIBLE_TASK(adv_to_evaluate, tat->largest_since_computation_root, depth))
 	{
-	    print<DEBUG>("GEN: Current conf is a possible task (depth %d, task_depth %d, comp. depth %d, load %d, task_load %d, comp. root load: %d.\n ",
-	     		depth, task_depth, computation_root->depth, b->totalload(), task_load, computation_root->bc.totalload());
+	    print<DEBUG>("GEN: Current conf is a possible task (depth %d, task_depth %d, load %d, task_load %d, comp. root load: %d.\n ",
+	     		depth, task_depth, b->totalload(), task_load, computation_root->bc.totalload());
 	     print_binconf<DEBUG>(b);
 
 	    // disabled for now:
@@ -317,7 +317,7 @@ template<mm_state MODE> victory adversary(binconf *b, int depth, thread_attr *ta
 	    if (MODE == mm_state::generating)
 	    {
 		// remove all outedges except the right one
-		remove_outedges_except<mm_state::generating>(qdag, adv_to_evaluate, item_size);
+		qdag->remove_outedges_except<mm_state::generating>(adv_to_evaluate, item_size);
 	    }
 	    break;
 	} else if (below == victory::alg)
@@ -325,7 +325,7 @@ template<mm_state MODE> victory adversary(binconf *b, int depth, thread_attr *ta
 	    if (MODE == mm_state::generating)
 	    {
 		// no decreasing, but remove this branch of the game tree
-		remove_edge<mm_state::generating>(qdag, new_edge);
+		qdag->remove_edge<mm_state::generating>(new_edge);
 		// assert(new_edge == NULL); // TODO: make a better assertion
 	    }
 	} else if (below == victory::uncertain)
@@ -501,7 +501,7 @@ template<mm_state MODE> victory algorithm(binconf *b, int k, int depth, thread_a
 		auto it = qdag->adv_by_hash.find(b->confhash());
 		if (it == qdag->adv_by_hash.end())
 		{
-		    upcoming_adv = qdag->add_adv_vertex(*b, depth);
+		    upcoming_adv = qdag->add_adv_vertex(*b);
 		    // Note: "i" is the position in the previous binconf, not the new one.
 		    qdag->add_alg_outedge(alg_to_evaluate, upcoming_adv, i);
 		} else {
@@ -536,7 +536,7 @@ template<mm_state MODE> victory algorithm(binconf *b, int k, int depth, thread_a
 		    
 		    // Does not delete the algorithm vertex itself,
 		    // because we created it on a higher level of recursion.
-		    remove_outedges<mm_state::generating>(qdag, alg_to_evaluate);
+		    qdag->remove_outedges<mm_state::generating>(alg_to_evaluate);
 		    // assert(current_algorithm == NULL); // sanity check
 
 		    alg_to_evaluate->win = victory::alg;
@@ -594,7 +594,7 @@ victory generate(sapling start_sapling, thread_attr *tat)
     inplace_bc.hashinit();
     onlineloads_init(tat->ol, &inplace_bc);
 
-    victory ret = adversary<mm_state::generating>(&inplace_bc, start_sapling.root->depth, tat, start_sapling.root, NULL);
+    victory ret = adversary<mm_state::generating>(&inplace_bc, 0, tat, start_sapling.root, NULL);
     return ret;
 }
 

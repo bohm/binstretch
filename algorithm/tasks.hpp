@@ -288,20 +288,20 @@ void permute_tarray_tstatus()
 
 
 
-bool possible_task_advanced(adversary_vertex *v, int largest_item)
+bool possible_task_advanced(adversary_vertex *v, int largest_item, int current_depth)
 {
     int target_depth = 0;
     if (largest_item >= S/4)
     {
-	target_depth = computation_root->depth + task_depth;
+	target_depth = task_depth;
     } else if (largest_item >= 3)
     {
-	target_depth = computation_root->depth + task_depth + 1;
+	target_depth = task_depth + 1;
     } else {
-	target_depth = computation_root->depth + task_depth + 3;
+	target_depth = task_depth + 3;
     }
 
-    if (target_depth - v->depth <= 0)
+    if (current_depth >= target_depth)
     {
 	return true;
     } else {
@@ -318,10 +318,9 @@ bool possible_task_size(adversary_vertex *v)
     return false;
 }
 
-bool possible_task_depth(adversary_vertex *v, int largest_item)
+bool possible_task_depth(adversary_vertex *v, int largest_item, int current_depth)
 {
-    int target_depth = computation_root->depth + task_depth;
-    if (target_depth - v->depth <= 0)
+    if (current_depth >= task_depth)
     {
 	return true;
     }
@@ -329,14 +328,13 @@ bool possible_task_depth(adversary_vertex *v, int largest_item)
     return false;
 }
 
-bool possible_task_mixed(adversary_vertex *v, int largest_item)
+bool possible_task_mixed(adversary_vertex *v, int largest_item, int current_depth)
 {
 
-    int target_depth = computation_root->depth + task_depth;
     if (v->bc.totalload() - computation_root->bc.totalload() >= task_load)
     {
 	return true;
-    } else if (target_depth - v->depth <= 0)
+    } else if (current_depth >= task_depth)
     {
 	return true;
     } else {

@@ -47,7 +47,7 @@ victory sequencing(const std::vector<bin_int>& seq, binconf& root, adversary_ver
 	sapling_stack.push(just_root);
 	return victory::uncertain;
     } else {
-	victory ret = sequencing_adversary(&root, root_vertex->depth, &tat, root_vertex, NULL, seq);
+	victory ret = sequencing_adversary(&root, 0, &tat, root_vertex, NULL, seq);
 	return ret;
     }
 }
@@ -138,10 +138,10 @@ victory sequencing_adversary(binconf *b, unsigned int depth, thread_attr *tat,
     if (below == victory::adv)
     {
 	r = victory::adv;
-	remove_outedges_except<mm_state::sequencing>(qdag, adv_to_evaluate, item_size);
+	qdag->remove_outedges_except<mm_state::sequencing>(adv_to_evaluate, item_size);
     } else if (below == victory::alg)
     {
-	remove_edge<mm_state::sequencing>(qdag, new_edge);
+	qdag->remove_edge<mm_state::sequencing>(new_edge);
     } else if (below == victory::uncertain)
     {
 	if (r == victory::alg)
@@ -198,7 +198,7 @@ victory sequencing_algorithm(binconf *b, int k, unsigned int depth, thread_attr 
 	    auto it = qdag->adv_by_hash.find(b->confhash());
 	    if (it == qdag->adv_by_hash.end())
 	    {
-		upcoming_adv = qdag->add_adv_vertex(*b, depth);
+		upcoming_adv = qdag->add_adv_vertex(*b);
 		qdag->add_alg_outedge(alg_to_evaluate, upcoming_adv, i);
 	    } else {
 		already_generated = true;
@@ -225,7 +225,7 @@ victory sequencing_algorithm(binconf *b, int k, unsigned int depth, thread_attr 
 	    if (below == victory::alg)
 	    {
 		r = below;
-		remove_outedges<mm_state::sequencing>(qdag, alg_to_evaluate);
+		qdag->remove_outedges<mm_state::sequencing>(alg_to_evaluate);
 		alg_to_evaluate->win = r;
 		return r;
 	    } else if (below == victory::adv)

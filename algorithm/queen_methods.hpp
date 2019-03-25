@@ -128,7 +128,7 @@ int queen_class::start()
     sync_up(); // Sync before any rounds start.
 
     binconf root = {INITIAL_LOADS, INITIAL_ITEMS};
-    root_vertex = qdag->add_adv_vertex(root, 0);
+    root_vertex = qdag->add_root(root);
  
     if (BINS == 3 && 3*ALPHA >= S)
     {
@@ -170,7 +170,7 @@ int queen_class::start()
 		task_depth += TASK_DEPTH_STEP;
 		task_load += TASK_LOAD_STEP;
 	    }
-	    print<PROGRESS>("Queen: sapling queue size: %zu, current sapling of depth %d and regrow level %d:\n", sapling_stack.size(), computation_root->depth, regrow_level);
+	    print<PROGRESS>("Queen: sapling queue size: %zu, current sapling of regrow level %d:\n", sapling_stack.size(), regrow_level);
 	    print_binconf<PROGRESS>(computation_root->bc);
 
 	    thread_attr tat;
