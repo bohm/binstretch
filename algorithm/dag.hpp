@@ -324,17 +324,8 @@ void dag::del_adv_vertex(adversary_vertex *gonner)
 adversary_vertex *computation_root;
 adversary_vertex *expansion_root;
 
-// a simple bool function, currently used in progress reporting
-// constant-time but assumes the bins are sorted (which they should be)
-bool is_root(const binconf *b)
-{
-    return binconf_equal(b, &(computation_root->bc));
-}
-
-
-
 // global root vertex
-adversary_vertex *root_vertex;
+// adversary_vertex *root_vertex;
 
 // Go through the generated graph and clear all visited flags.
 // Generates a warning until a statically bound variable can be ignored in a standard way.

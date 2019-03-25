@@ -128,7 +128,7 @@ int queen_class::start()
     sync_up(); // Sync before any rounds start.
 
     binconf root = {INITIAL_LOADS, INITIAL_ITEMS};
-    root_vertex = qdag->add_root(root);
+    qdag->add_root(root);
  
     if (BINS == 3 && 3*ALPHA >= S)
     {
@@ -139,7 +139,7 @@ int queen_class::start()
 
     // temporarily turning off load and write
     
-    sequencing(INITIAL_SEQUENCE, root, root_vertex);
+    sequencing(INITIAL_SEQUENCE, root, qdag->root);
 
     if (PROGRESS) { scheduler_start = std::chrono::system_clock::now(); }
 
@@ -353,7 +353,7 @@ int queen_class::start()
     // We now print only once, after a full tree is generated.
     if (OUTPUT && output_useful)
     {
-	savefile(root_vertex);
+	savefile(qdag->root);
     }
 
     // Print measurements and clean up.
