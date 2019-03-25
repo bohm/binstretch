@@ -1,7 +1,8 @@
 #include "../common.hpp"
 #include "../hash.hpp"
 #include "../binconf.hpp"
-#include "../dynprog.hpp"
+#include "../dynprog/algo.hpp"
+#include "../dynprog/wrappers.hpp"
 
 const int DP_RUNS = 200;
 const int BUDGET_LIMIT = BINS*S/2;
@@ -121,7 +122,7 @@ int main(void)
     {
 	binconf rand = random_binconf(BUDGET_LIMIT);
 	int answer_safe = dynprog_max_safe(rand);
-	int answer_max = dynprog_max(&rand, &tat);
+	int answer_max = DYNPROG_MAX(rand, &tat);
 	if (answer_safe != answer_max)
 	{
 	    fprintf(stderr, "Safe answer is %d, max answer is %d", answer_safe, answer_max);

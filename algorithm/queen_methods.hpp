@@ -353,7 +353,7 @@ int queen_class::start()
     // We now print only once, after a full tree is generated.
     if (OUTPUT && output_useful)
     {
-	savefile(qdag->root);
+	savefile(qdag, qdag->root);
     }
 
     // Print measurements and clean up.

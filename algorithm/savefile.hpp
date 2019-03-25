@@ -140,9 +140,15 @@ void afterword(FILE *stream)
     fprintf(stream, "}\n");
 }
 
-void savefile(const char* filename, adversary_vertex *r)
+void savefile(FILE* stream, dag *d, adversary_vertex *r)
 {
-    qdag->clear_visited();
+    d->clear_visited();
+    print_extended_rec(stream, r);
+}
+
+void savefile(const char* filename, dag *d, adversary_vertex *r)
+{
+    d->clear_visited();
     FILE* out = fopen(filename, "w");
     assert(out != NULL);
 
@@ -154,12 +160,12 @@ void savefile(const char* filename, adversary_vertex *r)
 }
 
 // save to a default path
-void savefile(adversary_vertex *r)
+void savefile(dag *d, adversary_vertex *r)
 {
     char outfile[50];
     sprintf(outfile, "bs%d_%d_%dbins.gen", R,S,BINS);
     print<PROGRESS>("Printing the game graph in DOT format into %s.\n", outfile);
-    savefile(outfile, r); 
+    savefile(outfile, d, r); 
 }
 
 
