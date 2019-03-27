@@ -33,7 +33,7 @@ public:
     bool sapling = false;
     bool heuristic = false;
     std::optional<binconf>  bc;
-    adversary_partial(int id, uint64_t name) : id(id), name(name) {};
+    adversary_partial(int id, uint64_t name, bool is_sapling) : id(id), name(name), sapling(is_sapling) {};
 
 };
 
@@ -105,11 +105,17 @@ public:
     bool next_items_present = false;
     bool binconfs_present = false;
 
-    void add_adv_vertex(uint64_t name)
+    void add_adv_vertex(uint64_t name, bool is_sapling = false)
 	{
 	    int id = v_adv.size();
-	    v_adv.emplace_back(adversary_partial(id, name));
+	    v_adv.emplace_back(adversary_partial(id, name, is_sapling));
 	    adv_by_name.insert({name, id});
+	}
+
+    void add_root(uint64_t name, bool is_sapling = false)
+	{
+	    root_name = name;
+	    add_adv_vertex(name, is_sapling);
 	}
 
     void add_alg_vertex(uint64_t name)
@@ -119,11 +125,6 @@ public:
 	    alg_by_name.insert({name, id});
 	}
 
-    void add_root(uint64_t name)
-	{
-	    root_name = name;
-	    add_adv_vertex(name);
-	}
 
     void add_adv_outedge(uint64_t name_from, uint64_t name_to, int next_item)
 	{

@@ -12,13 +12,14 @@
 #include "../loadfile.hpp"
 #include "../savefile.hpp"
 
-int main(void)
+int main(int argc, char** argv)
 {
     // thread_attr tat;
     zobrist_init();
 
     // Load the sample lower bound from a file.
-    partial_dag *d = loadfile("samplelb.gen");
+    assert(argc >= 2);
+    partial_dag *d = loadfile(argv[1]);
     d->populate_edgesets();
     d->populate_next_items();
     binconf empty; empty.hashinit();

@@ -106,11 +106,16 @@ int parse_alg_vertex(const char *line)
     return name;
 }
 
-int parse_adv_vertex(const char *line)
+std::tuple<int,bool> parse_adv_vertex(const char *line)
 {
     int name = -1;
     sscanf(line, "%d", &name);
-    return name;
+    bool is_sapling = false;
+    if (strstr(line, "sapling=true") != nullptr)
+    {
+	is_sapling = true;
+    }
+    return std::make_tuple(name, is_sapling);
 
 }
 
@@ -136,22 +141,23 @@ partial_dag* loadfile(const char* filename)
     {
 	fgets(line, 255, fin);
 	line_type l = recognize(line);
-	int name = -1, name_from = -1, name_to = -1, bin = -1, next_item = -1; 
+	int name = -1, name_from = -1, name_to = -1, bin = -1, next_item = -1;
+	bool is_sapling = false;
 
 	switch(l)
 	{
 	case line_type::adversary_vertex:
-	    name = parse_adv_vertex(line);
+	    std::tie(name, is_sapling) = parse_adv_vertex(line);
 	    if(name == -1)
 	    {
 		ERROR("Unable to parse adv. vertex line: %s\n", line);
 	    }
 	    if (first_adversary)
 	    {
-		pd->add_root(name);
+		pd->add_root(name, is_sapling);
 		first_adversary = false;
 	    } else {
-		pd->add_adv_vertex(name);
+		pd->add_adv_vertex(name, is_sapling);
 	    }
 	    break;
 	case line_type::algorithm_vertex:
