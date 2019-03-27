@@ -1,0 +1,192 @@
+#ifndef _LOADFILE_HPP
+#define _LOADFILE_HPP 1
+
+#include <optional>
+#include <cstring>
+
+#include "common.hpp"
+#include "dag/dag.hpp"
+#include "dag/partial.hpp"
+
+// Read an input file and load the aforementioned tree into memory.
+
+void ERROR(const char *format, ...)
+{
+    va_list argptr;
+    va_start(argptr, format);
+    vfprintf(stderr, format, argptr);
+    va_end(argptr);
+
+    abort();
+}
+
+enum class line_type { adversary_vertex, algorithm_vertex, algorithm_outedge, adversary_outedge, command, header, footer, other};
+
+
+line_type recognize(const char *line)
+{
+    // Current (slightly hacky) rules.
+
+    if (strstr(line, "player=adv") != nullptr)
+    {
+	return line_type::adversary_vertex;
+    } else if (strstr(line, "player=alg") != nullptr)
+    {
+	return line_type::algorithm_vertex;
+    } else if (strstr(line, "next") != nullptr)
+    {
+	return line_type::adversary_outedge;
+    } else if (strstr(line, "bin") != nullptr)
+    {
+	return line_type::algorithm_outedge;
+    } else if (strstr(line, "strict digraph") != nullptr)
+    {
+	return line_type::header;
+    } else if (strcmp(line, "}") != 0)
+    {
+	return line_type::footer;
+    }
+
+    return line_type::other;
+}
+
+// Parses a main command which is not a part of the graph,
+// such as bins = 4; or R = 19;
+void parse_command(const char* line)
+{
+    char start[255] = {0}, end[255] = {0};
+    sscanf(line, "%s = %s;", start, end);
+
+    if (strcmp(start, "R") == 0)
+    {
+	int r = 0;
+	sscanf(end, "%d", &r);
+	assert(r == R);
+	return;
+    } else if (strcmp(start, "S") == 0)
+    {
+	int s = 0;
+	sscanf(end, "%d", &s);
+	assert(s == S);
+	return;
+    } else if (strcmp(start, "bins") == 0)
+    {
+	int bins = 0;
+	sscanf(end, "%d", &bins);
+	assert(bins == BINS);
+	return;
+    } else if (strcmp(start, "overlap") == 0)
+    {
+	// expected and harmless
+	return;
+    } else {
+	ERROR("Parsed an unrecognizable command: %s.\n", line);
+	return;
+    }
+}
+
+std::tuple<int,int,int> parse_adv_outedge(const char *line)
+{
+    int name_from = -1, name_to = -1, next_item = -1;
+    sscanf(line, "%d -> %d [next=%d]", &name_from, &name_to, &next_item);
+    return std::make_tuple(name_from, name_to, next_item);
+}
+
+std::tuple<int,int,int> parse_alg_outedge(const char *line)
+{
+    int name_from = -1, name_to = -1, target_bin = -1;
+    sscanf(line, "%d -> %d [bin=%d]", &name_from, &name_to, &target_bin);
+    return std::make_tuple(name_from, name_to, target_bin);
+}
+
+int parse_alg_vertex(const char *line)
+{
+    int name = -1;
+    sscanf(line, "%d", &name);
+    return name;
+}
+
+int parse_adv_vertex(const char *line)
+{
+    int name = -1;
+    sscanf(line, "%d", &name);
+    return name;
+
+}
+
+// Builds a partial dag out of an input file.
+// Currently very simple/lenient -- only recognizes each line and then runs the appropriate
+// parser. Skips any line which it does not recognize.
+partial_dag* loadfile(const char* filename)
+{
+
+    char line[256];
+
+    partial_dag *pd = new partial_dag;
+    
+    FILE* fin = fopen(filename, "r");
+    if (fin == NULL)
+    {
+	ERROR("Unable to open file %s\n", filename);
+    }
+
+    bool first_adversary = true;
+    
+    while(!feof(fin))
+    {
+	fgets(line, 255, fin);
+	line_type l = recognize(line);
+	int name = -1, name_from = -1, name_to = -1, bin = -1, next_item = -1; 
+
+	switch(l)
+	{
+	case line_type::adversary_vertex:
+	    name = parse_adv_vertex(line);
+	    if(name == -1)
+	    {
+		ERROR("Unable to parse adv. vertex line: %s\n", line);
+	    }
+	    if (first_adversary)
+	    {
+		pd->add_root(name);
+		first_adversary = false;
+	    } else {
+		pd->add_adv_vertex(name);
+	    }
+	    break;
+	case line_type::algorithm_vertex:
+	    name = parse_alg_vertex(line);
+	    if(name == -1)
+	    {
+		ERROR("Unable to parse alg. vertex line: %s\n", line);
+	    }
+	    pd->add_alg_vertex(name);
+	    break;
+	case line_type::adversary_outedge:
+	    std::tie(name_from, name_to, next_item) = parse_adv_outedge(line);
+	    if (name_from == -1 || name_to == -1 || next_item == -1)
+	    {
+		ERROR("Unable to parse adversary outedge line: %s\n", line);
+	    }
+	    pd->add_adv_outedge(name_from, name_to, next_item);
+	    break;
+	case line_type::algorithm_outedge:
+	    std::tie(name_from, name_to, bin) = parse_alg_outedge(line);
+	    if (name_from == -1 || name_to == -1 || bin == -1)
+	    {
+		ERROR("Unable to parse algorithm outedge line: %s\n", line);
+	    }
+	    pd->add_alg_outedge(name_from, name_to, bin);
+	    break;
+	default:
+	    print<true>("Skipping auxiliary line %s.\n", line);
+	    break;
+	} 
+    }
+    fclose(fin);
+    return pd;
+}
+
+
+
+#endif // _LOADFILE_HPP
