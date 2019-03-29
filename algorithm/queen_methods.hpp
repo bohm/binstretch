@@ -7,6 +7,7 @@
 #include "sequencing.hpp"
 #include "tasks.hpp"
 #include "server_properties.hpp"
+#include "loadfile.hpp"
 #include "savefile.hpp"
 #include "queen.hpp"
 
@@ -110,7 +111,6 @@ int queen_class::start()
     fprintf(stderr, "Queen: reporting for duty: %s, rank %d out of %d instances\n",
 	    processor_name, world_rank, world_size);
 
-    qdag = new dag;
     zobrist_init();
     broadcast_zobrist();
     compute_thread_ranks();
@@ -127,19 +127,21 @@ int queen_class::start()
 
     sync_up(); // Sync before any rounds start.
 
-    binconf root = {INITIAL_LOADS, INITIAL_ITEMS};
-    qdag->add_root(root);
- 
-    if (BINS == 3 && 3*ALPHA >= S)
+    if (LOAD_TREETOP)
     {
-	fprintf(stderr, "All good situation heuristics will be applied.\n");
-    } else {
-	fprintf(stderr, "Only some good situations will be applied.\n");
+	partial_dag *d = loadfile(TREETOP_FILE);
+	d->populate_edgesets();
+	d->populate_next_items();
+	binconf empty; empty.hashinit();
+	d->populate_binconfs(empty);
+        qdag = d->finalize();
+	build_sapling_queue(qdag);
+    } else { // Sequence the treetop.
+	qdag = new dag;
+	binconf root = {INITIAL_LOADS, INITIAL_ITEMS};
+	qdag->add_root(root);
+	sequencing(INITIAL_SEQUENCE, root, qdag->root);
     }
-
-    // temporarily turning off load and write
-    
-    sequencing(INITIAL_SEQUENCE, root, qdag->root);
 
     if (PROGRESS) { scheduler_start = std::chrono::system_clock::now(); }
 

@@ -26,12 +26,6 @@ victory sequencing_algorithm(binconf *b, int k, unsigned int depth, thread_attr 
 			 algorithm_vertex *alg_to_evaluate, adversary_vertex *parent_adv,
 			 const std::vector<bin_int>& seq);
 
-void add_sapling(adversary_vertex* v)
-{
-    sapling s; s.root = v; s.regrow_level = 0;
-    sapling_stack.push(s);
-}
-
 
 // Generates a tree with saplings (not tasks) from a sequence of items
 victory sequencing(const std::vector<bin_int>& seq, binconf& root, adversary_vertex* root_vertex)

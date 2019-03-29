@@ -21,16 +21,19 @@ void print_extended_rec(FILE* stream, adversary_vertex *v)
     v->visited = true;
     v->print_extended(stream);
 
-
-   // We do the for loop twice so we have edges before the vertex descriptions.
-    for (adv_outedge* e : v->out)
+    // Possibly stop printing if v is heuristically solved.
+    if (PRINT_HEURISTICS_IN_FULL || !v->heuristic)
     {
-	e->print_extended(stream);
-    }
+	// We do the for loop twice so we have edges before the vertex descriptions.
+	for (adv_outedge* e : v->out)
+	{
+	    e->print_extended(stream);
+	}
 
-    for (adv_outedge* e : v ->out)
-    {
-	print_extended_rec(stream, e->to);
+	for (adv_outedge* e : v ->out)
+	{
+	    print_extended_rec(stream, e->to);
+	}
     }
 }
 
@@ -55,9 +58,87 @@ void print_extended_rec(FILE* stream, algorithm_vertex *v)
     {
 	print_extended_rec(stream, e->to);
     }
+}
 
+// print extended via dfs
+// using vertex_variant = std::variant<adversary_vertex*, algorithm_vertex *>;
+// A mild todo might be to remove the following structure and add std::variant in a clean way
+struct vertex_wrapper
+{
+    bool wraps_adversary;
+    adversary_vertex* adv_p = NULL;
+    algorithm_vertex* alg_p = NULL;
+};
 
+void print_extended_bfs(FILE* stream, dag *d)
+{
+    std::queue<vertex_wrapper> vc;
+    vertex_wrapper start;
+    start.wraps_adversary = true;
+    start.adv_p = d->root;
+    vc.push(start);
 
+    d->clear_visited();
+    
+    while(!vc.empty())
+    {
+	vertex_wrapper cur = vc.front();
+	vc.pop();
+	if (cur.wraps_adversary)
+	{
+	    adversary_vertex *v = cur.adv_p;
+	    if (v->visited)
+	    {
+		continue;
+	    }
+
+	    v->visited = true;
+	    v->print_extended(stream);
+
+	    // Possibly stop printing if v is heuristically solved.
+	    if (PRINT_HEURISTICS_IN_FULL || !v->heuristic)
+	    {
+
+		// We do the for loop twice so we have edges before the vertex descriptions.
+		for (adv_outedge* e : v->out)
+		{
+		   e->print_extended(stream);
+		}
+		
+		for (adv_outedge* e : v ->out)
+		{
+		    vertex_wrapper new_ver;
+		    new_ver.wraps_adversary = false;
+		    new_ver.alg_p = e->to;
+		    vc.push(new_ver);
+		}
+	    }
+	} else
+	{
+	    algorithm_vertex *v = cur.alg_p;
+	    if (v->visited)
+	    {
+		continue;
+	    }
+
+	    v->visited = true;
+	    v->print_extended(stream);
+
+	    // We do the for loop twice so we have edges before the vertex descriptions.
+	    for (alg_outedge* e : v->out)
+	    {
+		e->print_extended(stream);
+	    }
+
+	    for (alg_outedge* e : v ->out)
+	    {
+		vertex_wrapper new_ver;
+		new_ver.wraps_adversary = true;
+		new_ver.adv_p = e->to;
+		vc.push(new_ver);
+	    }
+	}
+    }
 }
 
 void adversary_vertex::print_extended(FILE *stream)
@@ -129,7 +210,7 @@ void preamble(FILE* stream)
 {
     fprintf(stream, "strict digraph binstretch_lower_bound {\n");
     fprintf(stream, "overlap = none;\n");
-    fprintf(stream, "bins = %d;\n", BINS);
+    fprintf(stream, "BINS = %d;\n", BINS);
     fprintf(stream, "R = %d;\n", R);
     fprintf(stream, "S = %d;\n", S);
    
@@ -153,7 +234,8 @@ void savefile(const char* filename, dag *d, adversary_vertex *r)
     assert(out != NULL);
 
     preamble(out);
-    print_extended_rec(out, r);
+    // print_extended_rec(out, r);
+    print_extended_bfs(out, d);
     afterword(out);
     fclose(out);
    

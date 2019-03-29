@@ -46,7 +46,8 @@ int main(void)
     MPI_Comm_size(shmcomm, &shm_size);
     MPI_Comm_rank(shmcomm, &shm_rank);
     shm_log = quicklog(shm_size);
-    
+
+
     int ret = -1;
     if (QUEEN_ONLY)
     {
@@ -57,6 +58,13 @@ int main(void)
 	    ov = new overseer();
 	    ov->start();
 	} else {
+	    if (BINS == 3 && 3*ALPHA >= S)
+	    {
+		fprintf(stderr, "All good situation heuristics will be applied.\n");
+	    } else {
+		fprintf(stderr, "Only some good situations will be applied.\n");
+	    }
+
 	    // queen is now by default two-threaded
 	    queen = new queen_class();
 	    ret = queen->start();

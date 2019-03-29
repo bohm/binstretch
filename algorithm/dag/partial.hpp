@@ -322,6 +322,9 @@ dag* partial_dag::finalize()
 	// uint64_t gid = global_id(true, p);
 	assert(v_adv[p].bc);
 	d->add_adv_vertex(v_adv[p].bc.value());
+
+	// Set additional properties
+	d->adv_by_id.at(p)->sapling = v_adv[p].sapling;
     }
    
     for (uint64_t p = 0; p < v_alg.size(); p++)

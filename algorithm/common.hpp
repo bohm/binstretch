@@ -132,6 +132,10 @@ int task_load = TASK_LOAD_INIT;
 
 const unsigned int LOADLOG = 12;
 
+// Printing constants.
+const bool LOAD_TREETOP = true;
+const char *TREETOP_FILE = "treetop.dag";
+const bool PRINT_HEURISTICS_IN_FULL = false;
 
 // Heuristic constants:
 const bool ADVERSARY_HEURISTICS = true;
