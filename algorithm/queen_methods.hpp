@@ -151,8 +151,20 @@ int queen_class::start()
 	sapling_stack.pop();
 	bool lower_bound_complete = false;
 	computation_root = currently_growing.root;
-	computation_root->state = vert_state::expand;
-	computation_root->win = victory::uncertain;
+
+	// If the vertex is solved (because it is reachable from some other sapling),
+	// just move on.
+	if (computation_root->win != victory::uncertain)
+	{
+	    print<PROGRESS>("Queen: sapling queue size: %zu, current sapling (see below) skipped, already computed.\n",
+			    sapling_stack.size());
+	    print_binconf<PROGRESS>(computation_root->bc);
+
+	    assert(computation_root->win == victory::adv);
+	    continue;
+	} else {
+	    computation_root->state = vert_state::expand;
+	}
 
 	// Currently we cannot expand a vertex with outedges.
 	assert(computation_root->out.size() == 0);

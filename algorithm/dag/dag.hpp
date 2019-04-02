@@ -50,7 +50,7 @@ public:
     adversary_vertex* root = NULL;
     
     adversary_vertex* add_root(const binconf &b);
-    adversary_vertex* add_adv_vertex(const binconf& b);
+    adversary_vertex* add_adv_vertex(const binconf& b, std::string heurstring);
     algorithm_vertex* add_alg_vertex(const binconf& b, int next_item);
     adv_outedge* add_adv_outedge(adversary_vertex *from, algorithm_vertex *to, int next_item);
     alg_outedge* add_alg_outedge(algorithm_vertex *from, adversary_vertex *to, int bin);
@@ -96,46 +96,18 @@ public:
     victory win = victory::uncertain;
     vert_state state = vert_state::fresh;
 
+    std::string label;
+    std::string cosmetics; // A string of properties that are not important during the run but will be printed.
+    
     algorithm_vertex(const binconf& b, int next_item, uint64_t id) :  bc(b), next_item(next_item), id(id)
 	{
 	}
 
     ~algorithm_vertex();
-    void print_extended(FILE *stream); // defined in savefile.hpp
 
-    template <bool MODE> void print(bool newline = true)
-	{
-	    if (MODE)
-	    {
-		fprintf(stderr, "(algv) bc:");
-		print_binconf_stream(stderr, bc, false);
-		fprintf(stderr, " item: %d", next_item);
-		if (newline) { fprintf(stderr, "\n"); }
-	    }
-	}
-
-    
-};
-
-algorithm_vertex* dag::add_alg_vertex(const binconf& b, int next_item)
-{
-	print<GRAPH_DEBUG>("Adding a new ALG vertex with bc:");
-	print_binconf<GRAPH_DEBUG>(b, false);
-	print<GRAPH_DEBUG>("and next item %d.\n", next_item);
+    void print(FILE* stream); // defined in savefile.hpp
 	
-	uint64_t new_id = vertex_counter++;
-	algorithm_vertex *ptr  = new algorithm_vertex(b, next_item, new_id);
-
-	// Check that we are not inserting a duplicate vertex into either map.
-	auto it = alg_by_hash.find(b.alghash(next_item));
-	assert(it == alg_by_hash.end());
-	auto it2 = alg_by_id.find(new_id);
-	assert(it2 == alg_by_id.end());
-	alg_by_hash[b.alghash(next_item)] = ptr;
-	alg_by_id[new_id] = ptr;
-
-	return ptr;
-}
+};
 
 class adversary_vertex
 {
@@ -165,32 +137,54 @@ public:
     bool task = false; // task is a separate boolean because an vert_state::expand vertex can be a task itself.
     bool sapling = false;
 
-    adversary_vertex(const binconf& b, uint64_t id) : bc(b), id(id) //, depth(depth)
+    // Properties of the vertex that are not used during the lower bound search but may be used when the
+    // graph is visualised.
+    std::string label;
+    std::string cosmetics;
+    std::string heurstring;
+    
+    adversary_vertex(const binconf& b, uint64_t id, std::string heur) : bc(b), id(id) //, depth(depth)
     {
+	if(!heur.empty())
+	{
+	    heuristic = true;
+	    heurstring = heur;
+	}
     }
 
     ~adversary_vertex();
     
-    void print_extended(FILE *stream); // defined in savefile.hpp
-
-    template <bool MODE> void print(bool newline = true)
-	{
-	    if (MODE)
-	    {
-		fprintf(stderr, "(advv) bc:");
-		print_binconf_stream(stderr, bc, newline);
-	    }
-	}
- 
+    void print(FILE* stream); // defined in savefile.hpp
 };
 
-adversary_vertex* dag::add_adv_vertex(const binconf &b)
+algorithm_vertex* dag::add_alg_vertex(const binconf& b, int next_item)
+{
+	print<GRAPH_DEBUG>("Adding a new ALG vertex with bc:");
+	print_binconf<GRAPH_DEBUG>(b, false);
+	print<GRAPH_DEBUG>("and next item %d.\n", next_item);
+	
+	uint64_t new_id = vertex_counter++;
+	algorithm_vertex *ptr  = new algorithm_vertex(b, next_item, new_id);
+
+	// Check that we are not inserting a duplicate vertex into either map.
+	auto it = alg_by_hash.find(b.alghash(next_item));
+	assert(it == alg_by_hash.end());
+	auto it2 = alg_by_id.find(new_id);
+	assert(it2 == alg_by_id.end());
+	alg_by_hash[b.alghash(next_item)] = ptr;
+	alg_by_id[new_id] = ptr;
+
+	return ptr;
+}
+
+adversary_vertex* dag::add_adv_vertex(const binconf &b, std::string heurstring = "")
 {
     	print<GRAPH_DEBUG>("Adding a new ADV vertex with bc:");
 	print_binconf<GRAPH_DEBUG>(b);
 
 	uint64_t new_id = vertex_counter++;
-	adversary_vertex *ptr  = new adversary_vertex(b, new_id);
+	adversary_vertex *ptr  = new adversary_vertex(b, new_id, heurstring);
+
 
 	auto it = adv_by_hash.find(b.confhash());
 	assert(it == adv_by_hash.end());
@@ -235,7 +229,7 @@ public:
 	//print<DEBUG>("Edge %" PRIu64 " destroyed.\n", this->id);
     }
 
-    void print_extended(FILE *stream); // defined in savefile.hpp
+    void print(FILE *stream); // defined in savefile.hpp
 };
 
 class alg_outedge {
@@ -261,13 +255,13 @@ public:
 	//print<DEBUG>("Edge %" PRIu64 " destroyed.\n", this->id);
     }
 
-    void print_extended(FILE *stream); // defined in savefile.hpp
+    void print(FILE *stream); // defined in savefile.hpp
 };
 
 adv_outedge* dag::add_adv_outedge(adversary_vertex *from, algorithm_vertex *to, int next_item)
 {
     print<GRAPH_DEBUG>("Creating ADV outedge with item %d from vertex:", next_item);
-    from->print<GRAPH_DEBUG>();
+    if (GRAPH_DEBUG) { from->print(stderr); }
 
     return new adv_outedge(from, to, next_item, edge_counter++);
 }
@@ -281,7 +275,7 @@ void dag::del_adv_outedge(adv_outedge *gonner)
 alg_outedge* dag::add_alg_outedge(algorithm_vertex *from, adversary_vertex *to, int bin)
 {
     print<GRAPH_DEBUG>("Creating ALG outedge with target bin %d from vertex: ", bin) ;
-    from->print<GRAPH_DEBUG>();
+    if (GRAPH_DEBUG) { from->print(stderr); }
 
     return new alg_outedge(from, to, bin, edge_counter++);
 }
@@ -402,7 +396,7 @@ template <mm_state MODE> void dag::remove_outedges(adversary_vertex *v)
 template <mm_state MODE> void dag::remove_edge(alg_outedge *e)
 {
     print<GRAPH_DEBUG>("Removing algorithm's edge with target bin %d from vertex:", e->target_bin) ;
-    e->from->print<GRAPH_DEBUG>();
+    if (GRAPH_DEBUG) { e->from->print(stderr); }
 	
     remove_inedge<MODE>(e);
     e->from->out.erase(e->pos);
@@ -412,7 +406,7 @@ template <mm_state MODE> void dag::remove_edge(alg_outedge *e)
 template <mm_state MODE> void dag::remove_edge(adv_outedge *e)
 {
     print<GRAPH_DEBUG>("Removing adversary outedge with item %d from vertex:", e->item);
-    e->from->print<GRAPH_DEBUG>();
+    if (GRAPH_DEBUG) { e->from->print(stderr); }
 
     remove_inedge<MODE>(e);
     e->from->out.erase(e->pos);
@@ -423,7 +417,7 @@ template <mm_state MODE> void dag::remove_edge(adv_outedge *e)
 template <mm_state MODE> void dag::remove_outedges_except(adversary_vertex *v, int right_item)
 {
     print<GRAPH_DEBUG>("Removing all of %zu edges -- except %d -- of vertex ", v->out.size(), right_item);
-    v->print<GRAPH_DEBUG>();
+    if (GRAPH_DEBUG) { v->print(stderr); }
 
     adv_outedge *right_edge = NULL;
     for (auto& e: v->out)

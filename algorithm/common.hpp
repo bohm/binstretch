@@ -30,16 +30,16 @@ const bool OUTPUT = true; // Whether to produce output.
 
 // const output_type OUTPUT_TYPE = output_type::dag; // No longer used; we always print a DAG.
 
-const bool REGROW = true; // Whether to regrow or just terminate after first iteration.
+const bool REGROW = false; // Whether to regrow or just terminate after first iteration.
 
 // When producing output, how many times should a tree be regrown.
 // Note that REGROW_LIMIT = 0 still means a full tree will be generated.
 // const int REGROW_LIMIT = 65535;
-const int REGROW_LIMIT = 4;
+const int REGROW_LIMIT = 8;
 
-const int TASK_LOAD_INIT = 8; // A bound on total load of a configuration before we split it into a task.
+const int TASK_LOAD_INIT = 0; // A bound on total load of a configuration before we split it into a task.
 const int TASK_LOAD_STEP = 6; // The amount by which the load can increase when regrowing the tree.
-const int TASK_DEPTH_INIT = 5; //The maximum depth of a vertex in the tree before it is made into a task.
+const int TASK_DEPTH_INIT = 0; //The maximum depth of a vertex in the tree before it is made into a task.
 const int TASK_DEPTH_STEP = 1; // The amount by which the depth is increased when regrowing.
 
 
@@ -135,7 +135,7 @@ const unsigned int LOADLOG = 12;
 // Printing constants.
 const bool LOAD_TREETOP = true;
 const char *TREETOP_FILE = "treetop.dag";
-const bool PRINT_HEURISTICS_IN_FULL = false;
+const bool PRINT_HEURISTICS_IN_FULL = true;
 
 // Heuristic constants:
 const bool ADVERSARY_HEURISTICS = true;

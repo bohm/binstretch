@@ -52,7 +52,7 @@ std::tuple<unsigned int, unsigned int, unsigned int> server_properties(char *ser
 	// has *many* more cores but they are occupied right now
 	// return std::make_tuple(31, 31, 63);
 	// return std::make_tuple(28, 28, 32);
-	return std::make_tuple(28, 28, 63);
+	return std::make_tuple(28, 28, 48);
 
     } else if (strcmp(server_name, "kamenozrout") == 0)
     {
@@ -83,7 +83,7 @@ std::tuple<unsigned int, unsigned int, unsigned int> server_properties(char *ser
 
     } else if ( (strcmp(server_name, "optilog-pc-02") == 0) )
     {
-	return std::make_tuple(29, 29, 4);
+	return std::make_tuple(30, 30, 4);
     } else if ( (strcmp(server_name, "triton") == 0) )
     {
 	return std::make_tuple(31,31, 16);

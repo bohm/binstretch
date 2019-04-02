@@ -6,8 +6,61 @@
 #include <cstdio>
 #include "common.hpp"
 #include "dag/dag.hpp"
-#include "tree_print.hpp"
+// #include "tree_print.hpp"
 #include "queen.hpp"
+
+// DFS only on vertices.
+void dfs_adv(dag *d, adversary_vertex *v,
+	     void (*adversary_function)(adversary_vertex *v), void (*algorithm_function)(algorithm_vertex *v) );
+
+void dfs_alg(dag *d, algorithm_vertex *v,
+	     void (*adversary_function)(adversary_vertex *v), void (*algorithm_function)(algorithm_vertex *v) );
+
+void dfs_adv(dag *d, adversary_vertex *v,
+	     void (*adversary_function)(adversary_vertex *v), void (*algorithm_function)(algorithm_vertex *v) )
+{
+    if (v->visited)
+    {
+	return;
+    }
+
+    v->visited = true;
+    
+    adversary_function(v);
+
+    for (adv_outedge* e : v ->out)
+    {
+	dfs_alg(d, e->to, adversary_function, algorithm_function);
+    }
+   
+}
+
+void dfs_alg(dag *d, algorithm_vertex *v,
+	     void (*adversary_function)(adversary_vertex *v), void (*algorithm_function)(algorithm_vertex *v) )
+{
+    if (v->visited)
+    {
+	return;
+    }
+
+    v->visited = true;
+    
+    algorithm_function(v);
+
+    for (alg_outedge* e : v ->out)
+    {
+	dfs_adv(d, e->to, adversary_function, algorithm_function);
+    }
+
+}
+
+void dfs(dag *d,
+	 void (*adversary_function)(adversary_vertex *v), void (*algorithm_function)(algorithm_vertex *v) )
+{
+    d->clear_visited();
+    dfs_adv(d, d->root, adversary_function, algorithm_function);
+}
+
 
 void purge_new_alg(algorithm_vertex *v);
 void purge_new_adv(adversary_vertex *v);

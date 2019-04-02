@@ -32,8 +32,9 @@ public:
     bool visited = false;
     bool sapling = false;
     bool heuristic = false;
+    std::string heurstring;
     std::optional<binconf>  bc;
-    adversary_partial(int id, uint64_t name, bool is_sapling) : id(id), name(name), sapling(is_sapling) {};
+    adversary_partial(int id, uint64_t name, bool is_sapling, std::string heurstring) : id(id), name(name), sapling(is_sapling), heurstring(heurstring) {};
 
 };
 
@@ -105,17 +106,17 @@ public:
     bool next_items_present = false;
     bool binconfs_present = false;
 
-    void add_adv_vertex(uint64_t name, bool is_sapling = false)
+    void add_adv_vertex(uint64_t name, bool is_sapling = false, std::string heurstring = "")
 	{
 	    int id = v_adv.size();
-	    v_adv.emplace_back(adversary_partial(id, name, is_sapling));
+	    v_adv.emplace_back(adversary_partial(id, name, is_sapling, heurstring));
 	    adv_by_name.insert({name, id});
 	}
 
-    void add_root(uint64_t name, bool is_sapling = false)
+    void add_root(uint64_t name, bool is_sapling = false, std::string heurstring = "")
 	{
 	    root_name = name;
-	    add_adv_vertex(name, is_sapling);
+	    add_adv_vertex(name, is_sapling, heurstring);
 	}
 
     void add_alg_vertex(uint64_t name)
@@ -238,7 +239,11 @@ void partial_dag::populate_next_items_alg(uint64_t name)
 
     assert(current_vert.next_item == -1);
     // Sanity checks for algorithm vertices.
-    assert(current_vert.in.size() == 1);
+    if (current_vert.in.size() != 1)
+    {
+	print<GRAPH_DEBUG>("Vertex with name %" PRIu64 " has an unexpected number of incoming edges (%d).\n", name, current_vert.in.size());
+	assert(current_vert.in.size() >= 1);
+    }
 
     current_vert.next_item = e_advout[ current_vert.in[0] ].next_item;
 
@@ -321,7 +326,7 @@ dag* partial_dag::finalize()
     {
 	// uint64_t gid = global_id(true, p);
 	assert(v_adv[p].bc);
-	d->add_adv_vertex(v_adv[p].bc.value());
+	d->add_adv_vertex(v_adv[p].bc.value(), v_adv[p].heurstring);
 
 	// Set additional properties
 	d->adv_by_id.at(p)->sapling = v_adv[p].sapling;

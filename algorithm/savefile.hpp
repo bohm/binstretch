@@ -7,11 +7,10 @@
 
 // Saving the tree in an extended format to a file.
 
+void print_lowerbound_dfs(FILE* stream, adversary_vertex *v);
+void print_lowerbound_dfs(FILE* stream, algorithm_vertex *v);
 
-void print_extended_rec(FILE* stream, adversary_vertex *v);
-void print_extended_rec(FILE* stream, algorithm_vertex *v);
-
-void print_extended_rec(FILE* stream, adversary_vertex *v)
+void print_lowerbound_dfs(FILE* stream, adversary_vertex *v)
 {
     if (v->visited)
     {
@@ -19,7 +18,7 @@ void print_extended_rec(FILE* stream, adversary_vertex *v)
     }
 
     v->visited = true;
-    v->print_extended(stream);
+    v->print(stream);
 
     // Possibly stop printing if v is heuristically solved.
     if (PRINT_HEURISTICS_IN_FULL || !v->heuristic)
@@ -27,18 +26,18 @@ void print_extended_rec(FILE* stream, adversary_vertex *v)
 	// We do the for loop twice so we have edges before the vertex descriptions.
 	for (adv_outedge* e : v->out)
 	{
-	    e->print_extended(stream);
+	    e->print(stream);
 	}
 
 	for (adv_outedge* e : v ->out)
 	{
-	    print_extended_rec(stream, e->to);
+	    print_lowerbound_dfs(stream, e->to);
 	}
     }
 }
 
 // Algorithm vertices currently have no data in themselves, the decisions are coded in the edges.
-void print_extended_rec(FILE* stream, algorithm_vertex *v)
+void print_lowerbound_dfs(FILE* stream, algorithm_vertex *v)
 {
     if (v->visited)
     {
@@ -46,17 +45,17 @@ void print_extended_rec(FILE* stream, algorithm_vertex *v)
     }
 
     v->visited = true;
-    v->print_extended(stream);
+    v->print(stream);
 
 
     for (alg_outedge* e : v->out)
     {
-	e->print_extended(stream);
+	e->print(stream);
     }
 
     for (alg_outedge* e : v ->out)
     {
-	print_extended_rec(stream, e->to);
+	print_lowerbound_dfs(stream, e->to);
     }
 }
 
@@ -70,7 +69,7 @@ struct vertex_wrapper
     algorithm_vertex* alg_p = NULL;
 };
 
-void print_extended_bfs(FILE* stream, dag *d)
+void print_lowerbound_bfs(FILE* stream, dag *d)
 {
     std::queue<vertex_wrapper> vc;
     vertex_wrapper start;
@@ -93,7 +92,7 @@ void print_extended_bfs(FILE* stream, dag *d)
 	    }
 
 	    v->visited = true;
-	    v->print_extended(stream);
+	    v->print(stream);
 
 	    // Possibly stop printing if v is heuristically solved.
 	    if (PRINT_HEURISTICS_IN_FULL || !v->heuristic)
@@ -102,7 +101,7 @@ void print_extended_bfs(FILE* stream, dag *d)
 		// We do the for loop twice so we have edges before the vertex descriptions.
 		for (adv_outedge* e : v->out)
 		{
-		   e->print_extended(stream);
+		    e->print(stream);
 		}
 		
 		for (adv_outedge* e : v ->out)
@@ -122,12 +121,12 @@ void print_extended_bfs(FILE* stream, dag *d)
 	    }
 
 	    v->visited = true;
-	    v->print_extended(stream);
+	    v->print(stream);
 
 	    // We do the for loop twice so we have edges before the vertex descriptions.
 	    for (alg_outedge* e : v->out)
 	    {
-		e->print_extended(stream);
+		e->print(stream);
 	    }
 
 	    for (alg_outedge* e : v ->out)
@@ -141,17 +140,24 @@ void print_extended_bfs(FILE* stream, dag *d)
     }
 }
 
-void adversary_vertex::print_extended(FILE *stream)
+void adversary_vertex::print(FILE *stream)
 {
-    fprintf(stream, "%" PRIu64 " [label=\"", id);
+    // Print loads.
+    fprintf(stream, "%" PRIu64 " [loads=\"", id);
     for (int i=1; i<=BINS; i++)
     {
-	fprintf(stream, "%d ", bc.loads[i]);
+	if(i != 1)
+	{
+	    fprintf(stream, " ");
+	}
+	fprintf(stream, "%d", bc.loads[i]);
     }
-
     fprintf(stream, "\"");
+
     // Print the fact that it is an adversary vertex
     fprintf(stream, ",player=adv");
+
+    // Print additional parameters (mostly used for re-loading the tree and such).
     if (task)
     {
 	assert(out.size() == 0);
@@ -162,19 +168,32 @@ void adversary_vertex::print_extended(FILE *stream)
     } else if (heuristic)
     {
 	fprintf(stream, ",heur=\"%s\"", heur_strategy->print().c_str() );
+
     }
 
     fprintf(stream, "];\n");
 }
 
-void algorithm_vertex::print_extended(FILE *stream)
+void algorithm_vertex::print(FILE *stream)
 {
-    fprintf(stream, "%" PRIu64 " [label=\"%d\"", id, next_item);
+    // Print loads
+    fprintf(stream, "%" PRIu64 " [loads=\"", id);
+    for (int i=1; i<=BINS; i++)
+    {
+	if(i != 1)
+	{
+	    fprintf(stream, " ");
+	}
+	fprintf(stream, "%d", bc.loads[i]);
+    }
+    fprintf(stream, "\"");
+
+    // Plus next item.
+    fprintf(stream, ",next_item=%d", next_item);
 
     // If the vertex is a leaf, print a feasible optimal bin configuration.
     fprintf(stream, ",player=alg");
   
-
     if (out.empty())
     {
 
@@ -191,15 +210,14 @@ void algorithm_vertex::print_extended(FILE *stream)
     }
 
     fprintf(stream, "];\n");
-
 }
 
-void adv_outedge::print_extended(FILE* stream)
+void adv_outedge::print(FILE* stream)
 {
     fprintf(stream, "%" PRIu64 " -> %" PRIu64 " [next=%d]\n", from->id, to->id, item);
 }
 
-void alg_outedge::print_extended(FILE* stream)
+void alg_outedge::print(FILE* stream)
 {
     fprintf(stream, "%" PRIu64 " -> %" PRIu64 " [bin=%d]\n", from->id, to->id, target_bin);
 }
@@ -221,21 +239,23 @@ void afterword(FILE *stream)
     fprintf(stream, "}\n");
 }
 
-void savefile(FILE* stream, dag *d, adversary_vertex *r)
+void savefile(FILE* stream, dag *d)
 {
     d->clear_visited();
-    print_extended_rec(stream, r);
+    print_lowerbound_bfs(stream, d);
 }
 
 void savefile(const char* filename, dag *d, adversary_vertex *r)
 {
     d->clear_visited();
+
+    print<PROGRESS>("Printing the game graph into %s.\n", filename);
+
     FILE* out = fopen(filename, "w");
     assert(out != NULL);
 
     preamble(out);
-    // print_extended_rec(out, r);
-    print_extended_bfs(out, d);
+    print_lowerbound_bfs(out, d);
     afterword(out);
     fclose(out);
    

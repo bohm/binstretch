@@ -33,10 +33,10 @@ line_type recognize(const char *line)
     } else if (strstr(line, "player=alg") != nullptr)
     {
 	return line_type::algorithm_vertex;
-    } else if (strstr(line, "next") != nullptr)
+    } else if (strstr(line, "->") != nullptr && strstr(line, "next") != nullptr)
     {
 	return line_type::adversary_outedge;
-    } else if (strstr(line, "bin") != nullptr)
+    } else if (strstr(line, "->") != nullptr && strstr(line, "bin") != nullptr)
     {
 	return line_type::algorithm_outedge;
     } else if (strstr(line, "strict digraph") != nullptr)
@@ -69,7 +69,7 @@ void parse_command(const char* line)
 	sscanf(end, "%d", &s);
 	assert(s == S);
 	return;
-    } else if (strcmp(start, "bins") == 0)
+    } else if (strcmp(start, "BINS") == 0)
     {
 	int bins = 0;
 	sscanf(end, "%d", &bins);
@@ -106,7 +106,7 @@ int parse_alg_vertex(const char *line)
     return name;
 }
 
-std::tuple<int,bool> parse_adv_vertex(const char *line)
+std::tuple<int,bool,std::string> parse_adv_vertex(const char *line)
 {
     int name = -1;
     sscanf(line, "%d", &name);
@@ -115,7 +115,21 @@ std::tuple<int,bool> parse_adv_vertex(const char *line)
     {
 	is_sapling = true;
     }
-    return std::make_tuple(name, is_sapling);
+
+    // Check for heur="", and load the content.
+    std::stringstream ss;
+    const char *startheur = strstr(line, "heur=\"");
+    if (startheur != nullptr)
+    {
+	const char *after = startheur + 6;
+	while (after != nullptr && (*after) != '\"')
+	{
+	    ss << *after;
+	    after++;
+	}
+    }
+    
+    return std::make_tuple(name, is_sapling, ss.str());
 
 }
 
@@ -143,21 +157,22 @@ partial_dag* loadfile(const char* filename)
 	line_type l = recognize(line);
 	int name = -1, name_from = -1, name_to = -1, bin = -1, next_item = -1;
 	bool is_sapling = false;
+	std::string heurstring;
 
 	switch(l)
 	{
 	case line_type::adversary_vertex:
-	    std::tie(name, is_sapling) = parse_adv_vertex(line);
+	    std::tie(name, is_sapling, heurstring) = parse_adv_vertex(line);
 	    if(name == -1)
 	    {
 		ERROR("Unable to parse adv. vertex line: %s\n", line);
 	    }
 	    if (first_adversary)
 	    {
-		pd->add_root(name, is_sapling);
+		pd->add_root(name, is_sapling, heurstring);
 		first_adversary = false;
 	    } else {
-		pd->add_adv_vertex(name, is_sapling);
+		pd->add_adv_vertex(name, is_sapling, heurstring);
 	    }
 	    break;
 	case line_type::algorithm_vertex:
