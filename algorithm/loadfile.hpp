@@ -99,11 +99,26 @@ std::tuple<int,int,int> parse_alg_outedge(const char *line)
     return std::make_tuple(name_from, name_to, target_bin);
 }
 
-int parse_alg_vertex(const char *line)
+std::tuple<int,std::string> parse_alg_vertex(const char *line)
 {
     int name = -1;
     sscanf(line, "%d", &name);
-    return name;
+    // Check for optimal="", and load the content.
+    std::stringstream ss;
+    const char *startoptimal = strstr(line, "optimal=\"");
+    if (startoptimal != nullptr)
+    {
+	const char *after = startoptimal + 9;
+	while (after != nullptr && (*after) != '\"')
+	{
+	    ss << *after;
+	    after++;
+	}
+    }
+
+    return std::make_tuple(name, ss.str());
+
+
 }
 
 std::tuple<int,bool,std::string> parse_adv_vertex(const char *line)
@@ -158,6 +173,7 @@ partial_dag* loadfile(const char* filename)
 	int name = -1, name_from = -1, name_to = -1, bin = -1, next_item = -1;
 	bool is_sapling = false;
 	std::string heurstring;
+	std::string optimal;
 
 	switch(l)
 	{
@@ -176,12 +192,14 @@ partial_dag* loadfile(const char* filename)
 	    }
 	    break;
 	case line_type::algorithm_vertex:
-	    name = parse_alg_vertex(line);
+	    std::tie(name, optimal) = parse_alg_vertex(line);
 	    if(name == -1)
 	    {
 		ERROR("Unable to parse alg. vertex line: %s\n", line);
 	    }
-	    pd->add_alg_vertex(name);
+	    
+	    pd->add_alg_vertex(name, optimal);
+	    
 	    break;
 	case line_type::adversary_outedge:
 	    std::tie(name_from, name_to, next_item) = parse_adv_outedge(line);

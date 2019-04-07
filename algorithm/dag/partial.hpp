@@ -19,7 +19,8 @@ public:
     uint64_t name; // Their id as listed in the input file. May not be consecutive.
     bool visited = false;
     std::optional<binconf>  bc;
-    algorithm_partial(int id, uint64_t name) : id(id), name(name) {};
+    std::string optimal;
+    algorithm_partial(int id, uint64_t name, std::string optimal) : id(id), name(name), optimal(optimal) {};
 };
 
 class adversary_partial
@@ -119,10 +120,10 @@ public:
 	    add_adv_vertex(name, is_sapling, heurstring);
 	}
 
-    void add_alg_vertex(uint64_t name)
+    void add_alg_vertex(uint64_t name, std::string optimal = "")
 	{
 	    int id = v_alg.size();
-	    v_alg.emplace_back(algorithm_partial(id, name));
+	    v_alg.emplace_back(algorithm_partial(id, name, optimal));
 	    alg_by_name.insert({name, id});
 	}
 
@@ -336,7 +337,7 @@ dag* partial_dag::finalize()
     {
 	// uint64_t gid = global_id(false, p);
 	assert(v_alg[p].bc);
-	d->add_alg_vertex(v_alg[p].bc.value(), v_alg[p].next_item);
+	d->add_alg_vertex(v_alg[p].bc.value(), v_alg[p].next_item, v_alg[p].optimal);
     }
 
     // Set root.

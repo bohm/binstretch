@@ -12,27 +12,6 @@
 #include "../algorithm/loadfile.hpp"
 #include "../algorithm/savefile.hpp"
 
-void treeify_adv(const dag *orig, dag *processing,
-		 adversary_vertex *newly_created, adversary_vertex *same_in_old)
-{
-}
-
-void treeify_alg(const dag *orig, dag *processing,
-		 algorithm_vertex *newly_created, algorithm_vertex *same_in_old)
-{
-}
-
-// Traverse a dag as a tree and add the corresponding edges and vertices.
-dag* subtree(dag *orig, adversary_vertex *root_in_old)
-{
-    orig->clear_visited();
-    dag *ret = new dag;
-    adversary_vertex *newroot = ret->add_root(root_in_old->bc);
-    treeify_adv(orig, ret, newroot, root_in_old);
-    return ret;
-}
-
-
 std::string build_label(adversary_vertex *v)
 {
     std::stringstream ss;
@@ -231,6 +210,19 @@ void cutdepth_alg(algorithm_vertex *v)
 }
 
 
+// A simple linear time check for a parameter present on input.
+bool parameter_present(int argc, char **argv, const char* parameter)
+{
+    for(int i = 0; i < argc; i++)
+    {
+	if (strcmp(argv[i], parameter) == 0)
+	{
+	    return true;
+	}
+    }
+    
+    return false;
+}
 
 int main(int argc, char **argv)
 {
@@ -262,13 +254,14 @@ int main(int argc, char **argv)
 	    cut = true; 
 	    sscanf(argv[2], "%d", &cut_at_depth);
 	    assert(cut_at_depth >= 1);
-	} else
+	}
+	else 
 	{
 	    usage();
 	    return -1;
 	}
     }
-    
+
     fprintf(stderr, "Finalizing %s into %s.\n", infile.c_str(), outfile.c_str());
     zobrist_init();
     partial_dag *d = loadfile(infile.c_str());
@@ -280,7 +273,8 @@ int main(int argc, char **argv)
     canvas = d->finalize();
 
     // Paint and cut vertices.
-    cut_heuristics(canvas);
+    // cut_heuristics(canvas);
+
     if (cut)
     {
 	dfs(canvas, cutdepth_adv, cutdepth_alg);

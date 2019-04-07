@@ -50,8 +50,8 @@ public:
     adversary_vertex* root = NULL;
     
     adversary_vertex* add_root(const binconf &b);
-    adversary_vertex* add_adv_vertex(const binconf& b, std::string heurstring);
-    algorithm_vertex* add_alg_vertex(const binconf& b, int next_item);
+    adversary_vertex* add_adv_vertex(const binconf& b, std::string heurstring, bool allow_duplicates);
+    algorithm_vertex* add_alg_vertex(const binconf& b, int next_item, std::string optimal, bool allow_duplicates);
     adv_outedge* add_adv_outedge(adversary_vertex *from, algorithm_vertex *to, int next_item);
     alg_outedge* add_alg_outedge(algorithm_vertex *from, adversary_vertex *to, int bin);
 
@@ -98,8 +98,10 @@ public:
 
     std::string label;
     std::string cosmetics; // A string of properties that are not important during the run but will be printed.
-    
-    algorithm_vertex(const binconf& b, int next_item, uint64_t id) :  bc(b), next_item(next_item), id(id)
+    std::string optimal; // An optimal packing (again, only important when loading a lower bound from a file). 
+
+    algorithm_vertex(const binconf& b, int next_item, uint64_t id, std::string optimal) :  bc(b), next_item(next_item), id(id),
+											   optimal(optimal)
 	{
 	}
 
@@ -136,13 +138,14 @@ public:
     int expansion_depth = 0;
     bool task = false; // task is a separate boolean because an vert_state::expand vertex can be a task itself.
     bool sapling = false;
+    bool split_off = false; // Useful only in the Coq formatter/rooster.cpp.
 
     // Properties of the vertex that are not used during the lower bound search but may be used when the
     // graph is visualised.
     std::string label;
     std::string cosmetics;
     std::string heurstring;
-    
+
     adversary_vertex(const binconf& b, uint64_t id, std::string heur) : bc(b), id(id) //, depth(depth)
     {
 	if(!heur.empty())
@@ -157,27 +160,32 @@ public:
     void print(FILE* stream); // defined in savefile.hpp
 };
 
-algorithm_vertex* dag::add_alg_vertex(const binconf& b, int next_item)
+algorithm_vertex* dag::add_alg_vertex(const binconf& b, int next_item, std::string optimal = "", bool allow_duplicates = false)
 {
 	print<GRAPH_DEBUG>("Adding a new ALG vertex with bc:");
 	print_binconf<GRAPH_DEBUG>(b, false);
 	print<GRAPH_DEBUG>("and next item %d.\n", next_item);
 	
 	uint64_t new_id = vertex_counter++;
-	algorithm_vertex *ptr  = new algorithm_vertex(b, next_item, new_id);
+	algorithm_vertex *ptr  = new algorithm_vertex(b, next_item, new_id, optimal);
 
 	// Check that we are not inserting a duplicate vertex into either map.
-	auto it = alg_by_hash.find(b.alghash(next_item));
-	assert(it == alg_by_hash.end());
+	// Do not use adv_by_hash if duplicates are allowed.
+	if (!allow_duplicates)
+	{
+	    auto it = alg_by_hash.find(b.alghash(next_item));
+	    assert(it == alg_by_hash.end());
+	    alg_by_hash[b.alghash(next_item)] = ptr;
+	}
+
 	auto it2 = alg_by_id.find(new_id);
 	assert(it2 == alg_by_id.end());
-	alg_by_hash[b.alghash(next_item)] = ptr;
 	alg_by_id[new_id] = ptr;
 
 	return ptr;
 }
 
-adversary_vertex* dag::add_adv_vertex(const binconf &b, std::string heurstring = "")
+adversary_vertex* dag::add_adv_vertex(const binconf &b, std::string heurstring = "", bool allow_duplicates = false)
 {
     	print<GRAPH_DEBUG>("Adding a new ADV vertex with bc:");
 	print_binconf<GRAPH_DEBUG>(b);
@@ -185,13 +193,18 @@ adversary_vertex* dag::add_adv_vertex(const binconf &b, std::string heurstring =
 	uint64_t new_id = vertex_counter++;
 	adversary_vertex *ptr  = new adversary_vertex(b, new_id, heurstring);
 
+	// Do not use adv_by_hash if duplicates are allowed.
+	if (!allow_duplicates)
+	{
+	    auto it = adv_by_hash.find(b.confhash());
+	    assert(it == adv_by_hash.end());
+	    adv_by_hash[b.confhash()] = ptr;
+	}
 
-	auto it = adv_by_hash.find(b.confhash());
-	assert(it == adv_by_hash.end());
+	// ID should always be unique.
 	auto it2 = adv_by_id.find(new_id);
 	assert(it2 == adv_by_id.end());
 
-	adv_by_hash[b.confhash()] = ptr;
 	adv_by_id[new_id] = ptr;
 
 	return ptr;
