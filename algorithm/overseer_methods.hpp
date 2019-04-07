@@ -97,11 +97,7 @@ void overseer::process_finished_tasks()
 	    task_status solution = tstatus[ftask_id].load();
 	    if (solution == task_status::alg_win || solution == task_status::adv_win)
 	    {
-		int solution_pair[2];
-		solution_pair[0] = ftask_id;
-		solution_pair[1] = static_cast<int>(solution);
-		// print<true>("Sending solution (%d, %d).\n", ftask_id, solution);
-		MPI_Send(&solution_pair, 2, MPI_INT, QUEEN, net::SOLUTION, MPI_COMM_WORLD);
+		send_solution_pair(ftask_id, static_cast<int>(solution));
 	    }
 	    ftask_id = finished_tasks[p].pop_if_able();
 	}
@@ -110,16 +106,16 @@ void overseer::process_finished_tasks()
 
 void overseer::start()
 {
-    int name_len;
     int monotonicity_last_round;
-    MPI_Get_processor_name(processor_name, &name_len);
+
+    std::string machine_name = mpi_name();
     printf("Overseer reporting for duty: %s, rank %d out of %d instances\n",
-	   processor_name, world_rank, world_size);
+	   machine_name.c_str(), world_rank, world_size);
     
     // lower and upper limit of the interval for this particular overseer
     // set global constants used for allocating caches and worker count
     std::tuple<unsigned int, unsigned int, unsigned int> settings
-	= server_properties(processor_name);
+	= server_properties(machine_name.c_str());
     // set global variables based on the settings
     conflog = std::get<0>(settings);
     ht_size = 1LLU << conflog;
@@ -130,7 +126,7 @@ void overseer::start()
     worker_count = std::get<2>(settings);
 
     print<true>("Overseer %d at server %s: conflog %d, dplog %d, worker_count %d\n",
-		world_rank, processor_name, conflog, dplog, worker_count);
+		world_rank, machine_name.c_str(), conflog, dplog, worker_count);
     broadcast_zobrist();
     compute_thread_ranks();
     finished_tasks = new semiatomic_q[worker_count];
@@ -212,7 +208,7 @@ void overseer::start()
 		check_root_solved();
 		if (root_solved)
 		{
-		    print<PROGRESS>("Overseer %d (on %s): Received root solved, ending round.\n", world_rank, processor_name);
+		    print<PROGRESS>("Overseer %d (on %s): Received root solved, ending round.\n", world_rank, machine_name.c_str());
 
 		    sleep_until_all_workers_waiting();
 		    break;
@@ -227,7 +223,7 @@ void overseer::start()
 		// if (!batch_requested && next_task.load() >= BATCH_SIZE)
 		if (!batch_requested && this->running_low())
 		{
-		    print<TASK_DEBUG>("Overseer %d (on %s): Requesting a new batch (next_task: %u, tasklist: %u). \n", world_rank, processor_name, next_task.load(), tasks.size());
+		    print<TASK_DEBUG>("Overseer %d (on %s): Requesting a new batch (next_task: %u, tasklist: %u). \n", world_rank, machine_name.c_str(), next_task.load(), tasks.size());
 
 		    request_new_batch();
 		    batch_requested = true;

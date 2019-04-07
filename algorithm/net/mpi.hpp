@@ -1,6 +1,8 @@
-#ifndef _NETWORKING_HPP
-#define _NETWORKING_HPP 1
+#ifndef _NET_MPI_HPP
+#define _NET_MPI_HPP 1
 
+// Networking methods that utilize OpenMPI for communication between
+// the overseers and queen.
 #include <cstdio>
 #include <cstdlib>
 #include <cassert>
@@ -9,10 +11,11 @@
 
 #include <mpi.h>
 
-#include "common.hpp"
-#include "dag/dag.hpp"
-#include "hash.hpp"
-#include "caching.hpp"
+#include "../common.hpp"
+#include "../dag/dag.hpp"
+#include "../hash.hpp"
+#include "../caching.hpp"
+#include "../tasks.hpp"
 
 namespace net
 {
@@ -51,6 +54,28 @@ void sync_up()
 {
     MPI_Barrier(MPI_COMM_WORLD);
 
+}
+
+void networking_init()
+{
+    int provided = 0;
+    MPI_Init_thread(NULL, NULL, MPI_THREAD_FUNNELED, &provided);
+    assert(provided == MPI_THREAD_FUNNELED);
+    MPI_Comm_size(MPI_COMM_WORLD, &world_size);
+    MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
+}
+
+void networking_end()
+{
+    MPI_Finalize();
+}
+
+std::string mpi_name()
+{
+    int name_len = 0;
+    char processor_name[MPI_MAX_PROCESSOR_NAME];
+    MPI_Get_processor_name(processor_name, &name_len);
+    return std::string(processor_name);
 }
 
 void broadcast_zobrist()
@@ -494,6 +519,13 @@ void send_out_tasks()
     }
 }
 
+void send_solution_pair(int ftask_id, int solution)
+{
+    int solution_pair[2];
+    solution_pair[0] = ftask_id; solution_pair[1] = solution;
+    MPI_Send(&solution_pair, 2, MPI_INT, QUEEN, net::SOLUTION, MPI_COMM_WORLD);
+}
+
 // batching model
 bool *running_low;
 
@@ -551,8 +583,8 @@ void receive_batch(int *current_batch)
 
 bool try_receiving_batch(std::array<int, BATCH_SIZE>& upcoming_batch)
 {
-    print<TASK_DEBUG>("Overseer %d (on %s): Attempting to receive a new batch. \n",
-		      world_rank, processor_name);
+    print<TASK_DEBUG>("Overseer %d: Attempting to receive a new batch. \n",
+		      world_rank);
 
 
     int batch_incoming = 0;

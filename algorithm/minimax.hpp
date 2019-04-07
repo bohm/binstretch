@@ -23,7 +23,6 @@
 #include "heur_adv.hpp"
 #include "gs.hpp"
 #include "tasks.hpp"
-#include "networking.hpp"
 #include "strategy.hpp"
 #include "queen.hpp"
 

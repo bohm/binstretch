@@ -5,7 +5,7 @@
 
 // recommended worker counts and cache sizes for servers
 
-std::tuple<unsigned int, unsigned int, unsigned int> server_properties(char *server_name)
+std::tuple<unsigned int, unsigned int, unsigned int> server_properties(const char *server_name)
 {
     // workstations:
     if (strcmp(server_name,"scam") == 0)

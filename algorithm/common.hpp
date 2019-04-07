@@ -17,7 +17,7 @@
 #include <array>
 #include <unordered_set>
 #include <numeric>
-#include <mpi.h>
+
 #define __STDC_FORMAT_MACROS
 #include <inttypes.h>
 
@@ -30,16 +30,16 @@ const bool OUTPUT = true; // Whether to produce output.
 
 // const output_type OUTPUT_TYPE = output_type::dag; // No longer used; we always print a DAG.
 
-const bool REGROW = false; // Whether to regrow or just terminate after first iteration.
+const bool REGROW = true; // Whether to regrow or just terminate after first iteration.
 
 // When producing output, how many times should a tree be regrown.
 // Note that REGROW_LIMIT = 0 still means a full tree will be generated.
 // const int REGROW_LIMIT = 65535;
 const int REGROW_LIMIT = 8;
 
-const int TASK_LOAD_INIT = 0; // A bound on total load of a configuration before we split it into a task.
+const int TASK_LOAD_INIT = 8; // A bound on total load of a configuration before we split it into a task.
 const int TASK_LOAD_STEP = 6; // The amount by which the load can increase when regrowing the tree.
-const int TASK_DEPTH_INIT = 0; //The maximum depth of a vertex in the tree before it is made into a task.
+const int TASK_DEPTH_INIT = 5; //The maximum depth of a vertex in the tree before it is made into a task.
 const int TASK_DEPTH_STEP = 1; // The amount by which the depth is increased when regrowing.
 
 
@@ -53,6 +53,7 @@ const bool SINGLE_TREE = true;
 
 // Onepass mode: Do only one pass of monotonicity on all saplings and report % of successes.
 // Useful to count how many saplings need more monotonicity than FIRST_PASS.
+
 // const bool ONEPASS = false;
 const bool ONEPASS = false;
 
@@ -107,8 +108,8 @@ const std::vector<bin_int> INITIAL_ITEMS = {};
 // const std::vector<bin_int> INITIAL_SEQUENCE = {};
 const std::vector<bin_int> INITIAL_SEQUENCE = _I_S;
 
-const int FIRST_PASS = 0; // enough to get a lb of 19/14 on 6,7 bins.
-// const int FIRST_PASS = 1; // enough for 19/14 on 8 bins.
+// const int FIRST_PASS = 0; // enough to get a lb of 19/14 on 6,7 bins.
+const int FIRST_PASS = 1; // enough for 19/14 on 8 bins.
 // const int FIRST_PASS = 6; // enough for 86/63 on 3 bins.
 // const int FIRST_PASS = 8; // enough for 112/82 on 3 bins.
 // const int FIRST_PASS = 10;
@@ -133,7 +134,7 @@ int task_load = TASK_LOAD_INIT;
 const unsigned int LOADLOG = 12;
 
 // Printing constants.
-const bool LOAD_TREETOP = true;
+const bool LOAD_TREETOP = false;
 const char *TREETOP_FILE = "treetop.dag";
 const bool PRINT_HEURISTICS_IN_FULL = true;
 
@@ -200,11 +201,7 @@ char outfile[50];
 // MPI-related globals
 int world_size = 0;
 int world_rank = 0;
-char processor_name[MPI_MAX_PROCESSOR_NAME];
-MPI_Comm shmcomm; // shared memory communicator
-int shm_rank = 0;
-int shm_size = 0;
-uint64_t shm_log = 0;
+
 std::atomic<bool> root_solved{false};
 std::atomic<bool> termination_signal{false};
 

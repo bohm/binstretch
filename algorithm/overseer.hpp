@@ -5,7 +5,6 @@
 #include "dag/dag.hpp"
 #include "thread_attr.hpp"
 #include "tasks.hpp"
-#include "networking.hpp"
 #include "server_properties.hpp"
 #include "worker.hpp"
 

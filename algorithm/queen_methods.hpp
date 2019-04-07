@@ -2,7 +2,6 @@
 #define _QUEEN_METHODS_HPP 1
 
 #include "common.hpp"
-#include "networking.hpp"
 #include "updater.hpp"
 #include "sequencing.hpp"
 #include "tasks.hpp"
@@ -102,14 +101,13 @@ int queen_class::start()
 {
     std::chrono::time_point<std::chrono::system_clock> iteration_start, iteration_end,
 	scheduler_start, scheduler_end;
-    int name_len;
     int sapling_no = 0;
     int ret = 0;
     bool output_useful = false; // Set to true when it is clear output will be printed.
-    
-    MPI_Get_processor_name(processor_name, &name_len);
+
+    std::string machine_name = mpi_name();
     fprintf(stderr, "Queen: reporting for duty: %s, rank %d out of %d instances\n",
-	    processor_name, world_rank, world_size);
+	    machine_name.c_str(), world_rank, world_size);
 
     zobrist_init();
     broadcast_zobrist();
