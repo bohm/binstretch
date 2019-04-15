@@ -325,19 +325,24 @@ dag* partial_dag::finalize()
     
     for (uint64_t p = 0; p < v_adv.size(); p++)
     {
-	// uint64_t gid = global_id(true, p);
+	uint64_t gid = global_id(true, p);
 	assert(v_adv[p].bc);
 	d->add_adv_vertex(v_adv[p].bc.value(), v_adv[p].heurstring);
 
 	// Set additional properties
-	d->adv_by_id.at(p)->sapling = v_adv[p].sapling;
+	d->adv_by_id.at(gid)->sapling = v_adv[p].sapling;
+	d->adv_by_id.at(gid)->old_name = (int) v_adv[p].name;
+
     }
    
     for (uint64_t p = 0; p < v_alg.size(); p++)
     {
-	// uint64_t gid = global_id(false, p);
+	uint64_t gid = global_id(false, p);
 	assert(v_alg[p].bc);
 	d->add_alg_vertex(v_alg[p].bc.value(), v_alg[p].next_item, v_alg[p].optimal);
+
+	d->alg_by_id.at(gid)->old_name = (int) v_alg[p].name;
+
     }
 
     // Set root.

@@ -15,11 +15,57 @@
 #include "../algorithm/loadfile.hpp"
 #include "../algorithm/savefile.hpp"
 
+const bool ROOSTER_DEBUG = true;
+
 // Output file as a global parameter (too lazy for currying).
 FILE* outf = NULL;
 dag *canvas = NULL;
 
-std::queue<adversary_vertex*> splitq;
+// queue of all the candidates for splitting.
+std::list<adversary_vertex*> candidateq;
+
+// A queue lacks the clear() method, so we supply our own.
+void clear( std::queue<adversary_vertex*> &q )
+{
+   std::queue<adversary_vertex*> empty;
+   std::swap( q, empty );
+}
+
+// --- Debugging methods. ---
+
+template <bool FLAG> void print_candidates(std::list<adversary_vertex*> &cq)
+{
+    if (FLAG)
+    {
+	int i = 0;
+	for (adversary_vertex* cand_adv : cq)
+	{
+	    assert(cand_adv != NULL);
+	    fprintf(stderr, "Candidate vertex in position %d, indegree %zu, outdegree %zu:\n",
+		    i, cand_adv->in.size(), cand_adv->out.size());
+	    cand_adv->print(stderr);
+	    i++;
+	}
+    }
+}
+
+template <bool FLAG> void print_splits(std::list<dag*> &splits)
+{
+    if (FLAG)
+    {
+	int i = 0;
+	for (dag* d : splits)
+	{
+	    assert(d != NULL);
+	    if (i > 0) { fprintf(stderr, "----------\n"); }
+	    fprintf(stderr, "Dag in position %d", i);
+	    print_lowerbound_bfs(stderr, d);
+	    i++;
+	}
+    }
+}
+
+// --- Splitting. ---
 
 bool split_candidate_in_subtree(algorithm_vertex *v);
 bool split_candidate_in_subtree(adversary_vertex *v);
@@ -29,7 +75,7 @@ bool split_candidate_in_subtree(adversary_vertex *v)
     if (v->visited)
     {
 	// return false if v is already split, otherwise return true.
-	return !v->split;
+	return !v->split_off;
     }
     v->visited = true;
 
@@ -55,7 +101,7 @@ bool split_candidate_in_subtree(adversary_vertex *v)
 
     if (v_candidate && !candidate_below)
     {
-	splitq.push(v);
+	candidateq.push_back(v);
 	return true; // In this subtree, there was a candidate.
     }
     // v itself is not a candidate, but there may be one below.
@@ -65,9 +111,19 @@ bool split_candidate_in_subtree(adversary_vertex *v)
 bool split_candidate_in_subtree(algorithm_vertex *v)
 {
     // Algorithm's vertices should be unique.
-    assert(v->visited == false && v->in.size() == 1);
     v->visited = true;
-
+    if (v->in.size() != 1)
+    {
+	fprintf(stderr, "This algorithm vertex (original name %d) has indegree %zu != 1:\n", v->old_name, v->in.size());
+	v->print(stderr, ROOSTER_DEBUG);
+	fprintf(stderr, "Its predecessors:\n");
+	for (adv_outedge *e : v->in)
+	{
+	    e->from->print(stderr, ROOSTER_DEBUG); 
+	}
+	assert(v->in.size() == 1);
+    }
+	
     bool candidate_below = false;
     for (auto &e : v->out)
     {
@@ -84,35 +140,25 @@ bool split_candidate_in_subtree(algorithm_vertex *v)
 std::list<dag*> reduce_indegrees(dag *d)
 {
     std::list<dag*> splits;
-    while(true)
-    {
-	leafq.clear();
-	splitoffq.clear();
-	build_leaf_queue();
-	assert(leafq.size() >= 1);
-	for (auto& vw : leafq)
-	{
-	    if (vw.wraps_adversary)
-	    {
-		find_splitoff_vertex(vw.adv_p);
-	    } else {
-		find_splitoff_vertex(vw.alg_p);
-	    }
-	}
+    candidateq.clear();
+    d->clear_visited();
+    split_candidate_in_subtree(d->root);
 
-	if(splitoffq.empty())
+    while (!candidateq.empty())
+    {
+	print_candidates<ROOSTER_DEBUG>(candidateq);
+	for (adversary_vertex* splitroot: candidateq)
 	{
-	    break;
-	} else
-	{
-	    for (auto& splitroot: splitoffq)
-	    {
-		dag *st = subdag(d, splitroot.adv_p);
-		splitroot.adv_p->split_off = true;
-		d->remove_outedges(splitroot.adv_p);
-		splits.push_back(st);
-	    }
+	    dag *st = subdag(d, splitroot);
+	    // Use mm_state::generating, as we do not care about tasks.
+	    d->remove_outedges<mm_state::generating>(splitroot);
+	    splitroot->split_off = true;
+	    splits.push_back(st);
 	}
+	candidateq.clear();
+
+	d->clear_visited();
+	split_candidate_in_subtree(d->root);
     }
     return splits;
 }
@@ -264,6 +310,8 @@ int main(int argc, char **argv)
     }
 
     fprintf(stderr, "Converting %s into a Coq form %s.\n", infile.c_str(), outfile.c_str());
+
+    print<ROOSTER_DEBUG>("Loading the dag from the file representation.\n");
     zobrist_init();
     partial_dag *d = loadfile(infile.c_str());
     d->populate_edgesets();
@@ -273,11 +321,15 @@ int main(int argc, char **argv)
     // assign the dag into the global pointer
     canvas = d->finalize();
 
-    dag *tree = subtree(canvas, canvas->root);
-    delete canvas;
-    canvas = tree;
+    
+    print<ROOSTER_DEBUG>("Splitting the dag into graphs with small indegree.\n");
+    std::list<dag*> splits = reduce_indegrees(canvas);
+    print_splits<ROOSTER_DEBUG>(splits);
+    // dag *tree = subtree(canvas, canvas->root);
+    // delete canvas;
+    // canvas = tree;
 
-    roost(canvas, outfile);
+    // roost(canvas, outfile);
 
     return 0;
 }

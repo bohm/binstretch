@@ -189,7 +189,7 @@ void cut_heuristics(dag *d)
 
 void usage()
 {
-    fprintf(stderr, "Usage: ./painter [-d NUM] infile.dag outfile.dot\n");
+    fprintf(stderr, "Usage: ./painter [--shortheur] [-d NUM] infile.dag outfile.dot\n");
 }
 
 int cut_at_depth;
@@ -224,6 +224,42 @@ bool parameter_present(int argc, char **argv, const char* parameter)
     return false;
 }
 
+// Given a position "pos", checks if the parameter "noheur" is present.
+bool parse_parameter_noheur(int argc, char **argv, int pos)
+{
+    if (strcmp(argv[pos], "--shortheur") == 0)
+    {
+	return true;
+    }
+    return false;
+}
+
+std::pair<bool,int> parse_parameter_cutdepth(int argc, char **argv, int pos)
+{
+    int cut_at_depth = 0;
+
+    if (strcmp(argv[pos], "-d") == 0)
+    {
+	if (pos == argc-1)
+	{
+	    fprintf(stderr, "-d cannot be the last parameter given.\n");
+	    usage();
+	    exit(-1);
+	}
+	    
+	sscanf(argv[pos+1], "%d", &cut_at_depth);
+	
+	if (cut_at_depth < 1)
+	{
+	    fprintf(stderr, "The numeric value for -d could not be parsed.\n");
+	    usage();
+	    exit(-1);
+	}
+	return std::make_pair(true, cut_at_depth);
+    }
+    return std::make_pair(false, 0);
+}
+
 int main(int argc, char **argv)
 {
 
@@ -231,34 +267,36 @@ int main(int argc, char **argv)
     if(argc < 3)
     {
 	usage();
-	return -1;
+	exit(-1);
     }
     
     std::string infile(argv[argc-2]);
     std::string outfile(argv[argc-1]);
-
-    if(infile == outfile)
+    bool noheur = false;
+    bool cut = false;
+    cut_at_depth = 0; // global variable, again for currying
+ 
+    if (infile == outfile)
     {
 	fprintf(stderr, "The program does currently not support in-place editing.\n");
 	usage();
 	return -1;
     }
 
-    bool cut = false;
-    cut_at_depth = 0; // global variable, again for currying
-    
-    if(argc > 3)
+    // Parse all parameters except for the last two, which must be infile and outfile.
+    for (int i = 0; i < argc-2; i++)
     {
-        if (strcmp(argv[1],"-d") == 0)
+	if (parse_parameter_noheur(argc, argv, i))
 	{
-	    cut = true; 
-	    sscanf(argv[2], "%d", &cut_at_depth);
-	    assert(cut_at_depth >= 1);
+	    noheur = true;
 	}
-	else 
+
+	auto [parsed_cut, parsed_depth] = parse_parameter_cutdepth(argc, argv, i);
+
+	if (parsed_cut)
 	{
-	    usage();
-	    return -1;
+	    cut = true;
+	    cut_at_depth = parsed_depth;
 	}
     }
 
@@ -273,7 +311,10 @@ int main(int argc, char **argv)
     canvas = d->finalize();
 
     // Paint and cut vertices.
-    // cut_heuristics(canvas);
+    if (noheur)
+    {
+	cut_heuristics(canvas);
+    }
 
     if (cut)
     {

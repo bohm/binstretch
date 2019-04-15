@@ -140,7 +140,7 @@ void print_lowerbound_bfs(FILE* stream, dag *d)
     }
 }
 
-void adversary_vertex::print(FILE *stream)
+void adversary_vertex::print(FILE *stream, bool debug)
 {
     // Print loads.
     fprintf(stream, "%" PRIu64 " [loads=\"", id);
@@ -154,6 +154,21 @@ void adversary_vertex::print(FILE *stream)
     }
     fprintf(stream, "\"");
 
+    // Print also the binconf, if it is a debug print
+    if (debug)
+    {
+	fprintf(stream, ",binconf=\"");
+	print_binconf_stream(stream, bc, false);
+	fprintf(stream, "\"");
+
+// Print also the old name, if any.
+	if (old_name != -1)
+	{
+	    fprintf(stream, ",old_name=\"%d\"", old_name);
+	}
+
+    }
+    
     // Print the fact that it is an adversary vertex
     fprintf(stream, ",player=adv");
 
@@ -167,14 +182,19 @@ void adversary_vertex::print(FILE *stream)
 	fprintf(stream, ",sapling=true");
     } else if (heuristic)
     {
-	fprintf(stream, ",heur=\"%s\"", heur_strategy->print().c_str() );
-
+	if (heur_strategy != NULL)
+	{
+	    fprintf(stream, ",heur=\"%s\"", heur_strategy->print().c_str() );
+	} else
+	{
+	    fprintf(stream, ",heur=\"%s\"", heurstring.c_str());
+	}
     }
 
     fprintf(stream, "];\n");
 }
 
-void algorithm_vertex::print(FILE *stream)
+void algorithm_vertex::print(FILE *stream, bool debug)
 {
     // Print loads
     fprintf(stream, "%" PRIu64 " [loads=\"", id);
@@ -191,6 +211,21 @@ void algorithm_vertex::print(FILE *stream)
     // Plus next item.
     fprintf(stream, ",next_item=%d", next_item);
 
+    if (debug)
+    {
+	
+	// Print also the binconf, if it is a debug print
+	fprintf(stream, ",binconf=\"");
+	print_binconf_stream(stream, bc, false);
+	fprintf(stream, "\"");
+
+	// Print also the old name, if any.
+	if (old_name != -1)
+	{
+	    fprintf(stream, ",old_name=\"%d\"", old_name);
+	}
+    }
+ 
     // If the vertex is a leaf, print a feasible optimal bin configuration.
     fprintf(stream, ",player=alg");
   

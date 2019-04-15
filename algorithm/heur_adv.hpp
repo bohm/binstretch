@@ -309,7 +309,16 @@ template<mm_state MODE> victory adversary_heuristics(binconf *b, thread_attr *ta
     // one heuristic specific for 19/14
     if (S == 14 && R == 19 && FIVE_NINE_ACTIVE && (MODE == mm_state::generating || FIVE_NINE_ACTIVE_EVERYWHERE))
     {
+
+	// GCC does not support [[maybe_unused]], so disabling unused for this call.
+	// Reference: https://stackoverflow.com/questions/47005032/structured-bindings-and-range-based-for-supress-unused-warning-in-gcc
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-variable"
+
 	auto [fnh, fives_to_send] = five_nine_heuristic(b,tat);
+#pragma GCC diagnostic pop
+
+
 	tat->meas.five_nine_calls++;
 	if (fnh)
 	{

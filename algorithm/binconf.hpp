@@ -374,6 +374,13 @@ public:
 	    return (loadhash ^ itemhash ^ Zlow[lowest_sendable(last_item)]);
 	}
 
+    // A hash that ignores next item. This is used by some post-processing functions
+    // but should be avoided in the main lower bound search.
+    uint64_t loaditemhash() const
+	{
+	    return loadhash ^ itemhash;
+	}
+    
     // Returns a hash that also encodes the next upcoming item. This allows
     // us to uniquely index algorithm's vertices.
     uint64_t alghash(bin_int next_item) const

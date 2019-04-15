@@ -168,7 +168,7 @@ partial_dag* loadfile(const char* filename)
     
     while(!feof(fin))
     {
-	fgets(line, 255, fin);
+	std::ignore = fgets(line, 255, fin);
 	line_type l = recognize(line);
 	int name = -1, name_from = -1, name_to = -1, bin = -1, next_item = -1;
 	bool is_sapling = false;
