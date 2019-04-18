@@ -20,17 +20,42 @@
 // of a lower bound for 86/63.
 
 // A forward declaration (full one in heur_adv.hpp).
-bin_int dynprog_max_with_lih(const binconf& conf, thread_attr *tat);
+bin_int dynprog_max_with_lih(const binconf& conf, thread_attr *tat = NULL);
 
 
-// 
-bin_int dynprog_max_direct(const binconf &conf, thread_attr *tat)
+//
+
+#define STANDALONE_CLEANUP()			\
+    if (STANDALONE)				\
+    {						\
+	delete poldq;				\
+	delete pnewq;				\
+	delete[] loadht;			\
+    }						
+	
+template<bool STANDALONE> bin_int dynprog_max_direct(const binconf &conf, thread_attr *tat = nullptr)
 {
-    tat->newloadqueue->clear();
-    tat->oldloadqueue->clear();
-    std::vector<loadconf> *poldq = tat->oldloadqueue;
-    std::vector<loadconf> *pnewq = tat->newloadqueue;
-    memset(tat->loadht, 0, LOADSIZE*8);
+    std::vector<loadconf> *poldq = nullptr;
+    std::vector<loadconf> *pnewq = nullptr;
+    uint64_t *loadht = nullptr;
+
+    if (STANDALONE)
+    {
+	poldq = new std::vector<loadconf>();
+	poldq->reserve(LOADSIZE);
+	pnewq = new std::vector<loadconf>();
+	pnewq->reserve(LOADSIZE);
+	loadht = new uint64_t[LOADSIZE];
+    } else
+    {
+	poldq = tat->oldloadqueue;
+	pnewq = tat->newloadqueue;
+	loadht = tat->loadht;
+	tat->newloadqueue->clear();
+	tat->oldloadqueue->clear();
+    }
+    
+    memset(loadht, 0, LOADSIZE*8);
 
     uint64_t salt = rand_64bit();
     bool initial_phase = true;
@@ -50,11 +75,14 @@ bin_int dynprog_max_direct(const binconf &conf, thread_attr *tat)
     {
 	if (conf.items[S] > BINS)
 	{
+	    STANDALONE_CLEANUP();
 	    return MAX_INFEASIBLE;
 	}
 
 	if (smallest_item == S)
 	{
+	    
+	    STANDALONE_CLEANUP();
 	    if (conf.items[S] == BINS)
 	    {
 		return 0; // feasible, but nothing can be sent
@@ -122,7 +150,7 @@ bin_int dynprog_max_direct(const binconf &conf, thread_attr *tat)
 			uint64_t debug_loadhash = tuple.loadhash;
 			int newpos = tuple.assign_and_rehash(size, i);
 	
-			if(! loadconf_hashfind(tuple.loadhash ^ salt, tat->loadht))
+			if(! loadconf_hashfind(tuple.loadhash ^ salt, loadht))
 			{
 			    if(size == smallest_item && k == 1)
 			    {
@@ -131,7 +159,7 @@ bin_int dynprog_max_direct(const binconf &conf, thread_attr *tat)
 			    }
 
 			    pnewq->push_back(tuple);
-			    loadconf_hashpush(tuple.loadhash ^ salt, tat->loadht);
+			    loadconf_hashpush(tuple.loadhash ^ salt, loadht);
 			}
 
 		        tuple.unassign_and_rehash(size, newpos);
@@ -140,12 +168,15 @@ bin_int dynprog_max_direct(const binconf &conf, thread_attr *tat)
 		}
 		if (pnewq->size() == 0)
 		{
+		    STANDALONE_CLEANUP();
 		    return MAX_INFEASIBLE;
 		} else
 		{
-		    MEASURE_ONLY(tat->meas.largest_queue_observed =
-				 std::max(tat->meas.largest_queue_observed, pnewq->size()));
-
+		    if (!STANDALONE)
+		    {
+			MEASURE_ONLY(tat->meas.largest_queue_observed =
+				     std::max(tat->meas.largest_queue_observed, pnewq->size()));
+		    }
 		}
 	    }
 
@@ -163,11 +194,13 @@ bin_int dynprog_max_direct(const binconf &conf, thread_attr *tat)
 
 	if (free_volume < 0)
 	{
+	    STANDALONE_CLEANUP();
 	    return MAX_INFEASIBLE;
 	}
 
 	if (free_volume == 0)
 	{
+	    STANDALONE_CLEANUP();
 	    return 0;
 	}
 
@@ -177,7 +210,8 @@ bin_int dynprog_max_direct(const binconf &conf, thread_attr *tat)
 	    max_overall = std::max(empty_space_on_last, max_overall);
 	}
     }
-    
+
+    STANDALONE_CLEANUP();
     return max_overall;
 }
 

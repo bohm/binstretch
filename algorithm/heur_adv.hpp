@@ -57,21 +57,72 @@ public:
 	}
 };
 
-// TODO: Implement init() and next_item() fully.
+int first_with_load(const binconf& b, int threshold)
+{
+    for (int i = BINS; i >= 1; i--)
+    {
+	if( b.loads[i] >= threshold)
+	{
+	    return i;
+	}
+    }
+
+    return -1;
+}
+
 class heuristic_strategy_fn : public heuristic_strategy
 {
+    int fives = 0;
     void init(const std::vector<int>& list)
 	{
+	    if (list.size() != 1)
+	    {
+		fprintf(stderr, "Heuristic strategy FN is given a list of size %zu.\n",list.size());
+		assert(list.size() == 1);
+	    }
+
+	    if (list[0] < 1)
+	    {
+		fprintf(stderr, "Heuristic strategy FN is given %d fives as hint.\n", list[0]);
+		assert(list[0] >= 1);
+	    }
+	    fives = list[0];
 	}
 
     int next_item(const binconf *b, int relative_depth)
 	{
-	    return 0;
+	    // We will do some computation on b, so we duplicate it.
+	    binconf c(*b);
+	    // Find first bin with load at least five.
+	    int above_five = first_with_load(c, 5);
+	    // If you can send BINS - above_five + 1 items of size 14, do so.
+	    if (pack_query_compute(c, 14, BINS - above_five + 1))
+	    {
+		return 14;
+	    }
+
+	    // If not, find first bin above ten.
+	    int above_ten = first_with_load(c,10);
+
+	    // If there is one, just send nines as long as you can.
+	    // (TODO: Assert that you can.)
+	    if (above_ten != -1)
+	    {
+		assert(pack_query_compute(c, 9, 1));
+		return 9;
+	    }
+
+	    // If there is no bin above ten and we cannot send 14's,
+	    // we must still be sending 5's.
+	    assert(relative_depth <= fives);
+	    return 5;
 	}
 
     std::string print()
 	{
-	    return "FN";
+	    std::ostringstream os;
+	    os << "FN(" << fives << ")";
+	    return os.str();
 	}
 };
     
@@ -217,14 +268,24 @@ bin_int dynprog_max_with_lih(const binconf& conf, thread_attr *tat)
 }
 
 
-// --- Five/nine heuristic. ---
+// --- Five/nine heuristic, specific for 19/14. ---
 
+// Overall conditions: once every bin is non-empty, then
+// two items of size 9 do not fit together into any bin.
+// Additionally, once a bin accepts:
+// * one item of size 5 -- cannot take 14
+// * two items of size 5 -- cannot take 9.
+// Idea of FN: send fives until a sequence of nines or a sequence of 14's
+// gives a lower bound of 19.
+
+// Idea of the heuristic: send items of size 5 until either
+// * one bin accepts two or * all bins have load > 5.
 std::pair<bool, bin_int> five_nine_heuristic(binconf *b, thread_attr *tat)
 {
     // print<true>("Computing FN for: "); print_binconf<true>(b);
 
     // It doesn't make too much sense to send BINS times 5, so we disallow it.
-    // Also, b->loads[BINS] has to be non-zero, so that nines do not fit together into
+    // Also, b->loads[BINS] has to be non-zero, so that two nines do not fit together into
     // any bin of capacity 18.
     
     if (b->loads[1] < 5 || b->loads[BINS] == 0)
@@ -237,7 +298,7 @@ std::pair<bool, bin_int> five_nine_heuristic(binconf *b, thread_attr *tat)
     // uint64_t loadhash_start = b->loadhash;
     // uint64_t itemhash_start = b->itemhash;
 
-    bool bins_times_nine_threat = pack_query_compute(*b,9, tat, BINS);
+    bool bins_times_nine_threat = pack_query_compute(*b,9, BINS, tat);
     bool fourteen_feasible = false;
     if (bins_times_nine_threat)
     {
@@ -256,7 +317,7 @@ std::pair<bool, bin_int> five_nine_heuristic(binconf *b, thread_attr *tat)
 	int fourteen_sequence = BINS - last_bin_above_five + 1;
 	while (bins_times_nine_threat && fourteen_sequence >= 1 && last_bin_above_five <= BINS)
 	{
-	    fourteen_feasible = pack_query_compute(*b,14,tat,fourteen_sequence);
+	    fourteen_feasible = pack_query_compute(*b,14, fourteen_sequence, tat);
 	    //print<true>("Itemhash after pack 14: %" PRIu64 ".\n", b->itemhash);
 
 	    if (fourteen_feasible)
@@ -271,7 +332,7 @@ std::pair<bool, bin_int> five_nine_heuristic(binconf *b, thread_attr *tat)
 	    add_item_inplace(*b,5);
 	    fives++;
 
-	    bins_times_nine_threat = pack_query_compute(*b,9,tat,BINS);
+	    bins_times_nine_threat = pack_query_compute(*b,9, BINS, tat);
 	}
 
 	// return b to normal
@@ -306,40 +367,6 @@ template<mm_state MODE> victory adversary_heuristics(binconf *b, thread_attr *ta
 	return victory::adv;
     }
 
-    // one heuristic specific for 19/14
-    if (S == 14 && R == 19 && FIVE_NINE_ACTIVE && (MODE == mm_state::generating || FIVE_NINE_ACTIVE_EVERYWHERE))
-    {
-
-	// GCC does not support [[maybe_unused]], so disabling unused for this call.
-	// Reference: https://stackoverflow.com/questions/47005032/structured-bindings-and-range-based-for-supress-unused-warning-in-gcc
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-variable"
-
-	auto [fnh, fives_to_send] = five_nine_heuristic(b,tat);
-#pragma GCC diagnostic pop
-
-
-	tat->meas.five_nine_calls++;
-	if (fnh)
-	{
-	    tat->meas.five_nine_hits++;
-	    if(MODE == mm_state::generating)
-	    {
-		// Build strategy.
-		str = new heuristic_strategy_fn;
-		str->type = heuristic::five_nine;
-		
-		adv_to_evaluate->win = victory::adv;
-		adv_to_evaluate->heuristic = true;
-		adv_to_evaluate->heur_strategy = str;
-		// do not set heuristic_item, it is implicit
-		// adv_to_evaluate->heuristic_multi = fives_to_send;
-		// adv_to_evaluate->heuristic_desc = ""; // TODO: add meaningful description here.
-	    }
-	    return victory::adv;
-	}
-    }
-
     if (LARGE_ITEM_ACTIVE && (MODE == mm_state::generating || LARGE_ITEM_ACTIVE_EVERYWHERE))
     {
 	
@@ -368,6 +395,33 @@ template<mm_state MODE> victory adversary_heuristics(binconf *b, thread_attr *ta
 		str->init(itemlist);
 		str->type = heuristic::large_item;
 
+		adv_to_evaluate->win = victory::adv;
+		adv_to_evaluate->heuristic = true;
+		adv_to_evaluate->heur_strategy = str;
+	    }
+	    return victory::adv;
+	}
+    }
+
+    // one heuristic specific for 19/14
+    if (S == 14 && R == 19 && FIVE_NINE_ACTIVE && (MODE == mm_state::generating || FIVE_NINE_ACTIVE_EVERYWHERE))
+    {
+
+	auto [fnh, fives_to_send] = five_nine_heuristic(b,tat);
+	tat->meas.five_nine_calls++;
+	if (fnh)
+	{
+	    tat->meas.five_nine_hits++;
+	    if(MODE == mm_state::generating)
+	    {
+		// Build strategy.
+		std::vector<int> fvs;
+		fvs.push_back(fives_to_send);
+		
+		str = new heuristic_strategy_fn;
+		str->init(fvs);
+		str->type = heuristic::five_nine;
+	
 		adv_to_evaluate->win = victory::adv;
 		adv_to_evaluate->heuristic = true;
 		adv_to_evaluate->heur_strategy = str;

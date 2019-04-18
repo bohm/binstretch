@@ -21,6 +21,17 @@ Message sequence:
 
  */
 
+// Parse input parameters to the program (overseers ignore them).
+queen_class::queen_class(int argc, char** argv)
+{
+    if (LOAD_TREETOP)
+    {
+        assert(argc == 2);
+	assert(strlen(argv[1]) <= 255);
+	strcpy(treetop_file, argv[1]);
+    }
+}
+
 void queen_class::updater(adversary_vertex* sapling)
 {
 
@@ -127,7 +138,7 @@ int queen_class::start()
 
     if (LOAD_TREETOP)
     {
-	partial_dag *d = loadfile(TREETOP_FILE);
+	partial_dag *d = loadfile(treetop_file);
 	d->populate_edgesets();
 	d->populate_next_items();
 	binconf empty; empty.hashinit();

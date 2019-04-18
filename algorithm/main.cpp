@@ -27,7 +27,7 @@ void handle_sigusr1(int signo)
 
 }
 
-int main(void)
+int main(int argc, char** argv)
 {
     // set up to handle the SIGUSR1 signal
     if (signal(SIGUSR1, handle_sigusr1) == SIG_ERR)
@@ -56,7 +56,7 @@ int main(void)
 	    }
 
 	    // queen is now by default two-threaded
-	    queen = new queen_class();
+	    queen = new queen_class(argc, argv);
 	    ret = queen->start();
 	}
     }

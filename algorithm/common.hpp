@@ -30,23 +30,23 @@ const bool OUTPUT = true; // Whether to produce output.
 
 // const output_type OUTPUT_TYPE = output_type::dag; // No longer used; we always print a DAG.
 
+// Whether to load the initial tree from a file or try a full search from scratch.
+const bool LOAD_TREETOP = false;
+
 const bool REGROW = true; // Whether to regrow or just terminate after first iteration.
 
 // When producing output, how many times should a tree be regrown.
 // Note that REGROW_LIMIT = 0 still means a full tree will be generated.
 // const int REGROW_LIMIT = 65535;
-const int REGROW_LIMIT = 8;
+const int REGROW_LIMIT = 10;
 
 const int TASK_LOAD_INIT = 8; // A bound on total load of a configuration before we split it into a task.
 const int TASK_LOAD_STEP = 6; // The amount by which the load can increase when regrowing the tree.
 const int TASK_DEPTH_INIT = 5; //The maximum depth of a vertex in the tree before it is made into a task.
-const int TASK_DEPTH_STEP = 1; // The amount by which the depth is increased when regrowing.
-
+const int TASK_DEPTH_STEP = 2; // The amount by which the depth is increased when regrowing.
 
 // const int TASK_LOAD_INIT = 0;
 // const int TASK_DEPTH_INIT = 1;
-
-
 
 // whether to print the output as a single tree or as multiple trees.
 const bool SINGLE_TREE = true;
@@ -108,10 +108,10 @@ const std::vector<bin_int> INITIAL_ITEMS = {};
 // const std::vector<bin_int> INITIAL_SEQUENCE = {};
 const std::vector<bin_int> INITIAL_SEQUENCE = _I_S;
 
-// const int FIRST_PASS = 0; // enough to get a lb of 19/14 on 6,7 bins.
+const int FIRST_PASS = 0; // enough to get a lb of 19/14 on 6,7 bins.
 // const int FIRST_PASS = 1; // enough for 19/14 on 8 bins.
 // const int FIRST_PASS = 6; // enough for 86/63 on 3 bins.
-const int FIRST_PASS = 8; // enough for 112/82 on 3 bins.
+// const int FIRST_PASS = 8; // enough for 112/82 on 3 bins.
 // const int FIRST_PASS = 10;
 // const int FIRST_PASS = S-1; // Full monotonicity.
 
@@ -134,8 +134,6 @@ int task_load = TASK_LOAD_INIT;
 const unsigned int LOADLOG = 12;
 
 // Printing constants.
-const bool LOAD_TREETOP = false;
-const char *TREETOP_FILE = "treetop.dag";
 const bool PRINT_HEURISTICS_IN_FULL = true;
 
 // Heuristic constants:
@@ -144,7 +142,7 @@ const bool EXPAND_HEURISTICS = true;
 const bool LARGE_ITEM_ACTIVE = true;
 const bool LARGE_ITEM_ACTIVE_EVERYWHERE = false;
 // TODO: Activate five/nine heuristic when its strategy class is implemented.
-const bool FIVE_NINE_ACTIVE = false;
+const bool FIVE_NINE_ACTIVE = true;
 const bool FIVE_NINE_ACTIVE_EVERYWHERE = false;
 
 

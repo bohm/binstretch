@@ -21,7 +21,7 @@ std::tuple<bin_int, bin_int, bool> improve_bounds(binconf *b, bin_int lb, bin_in
     
     for (bin_int q = ub; q >= lb; q--)
     {
-	data = pack_and_query(*b,q,tat);
+	data = pack_and_query(*b,q);
 	if (data != MB_NOT_CACHED)
 	{
 	    if (data == MB_FEASIBLE)
@@ -53,7 +53,7 @@ std::tuple<bin_int, bin_int, bool> improve_bounds_binary(binconf *b, bin_int lb,
     maybebool data;
     while (lb <= ub)
     {
-	data = pack_and_query(*b,mid,tat);
+	data = pack_and_query(*b,mid);
 	if (data != MB_NOT_CACHED)
 	{
 	    if (data == MB_FEASIBLE)
@@ -126,7 +126,7 @@ bin_int maximum_feasible(binconf *b, const int depth, const bin_int cannot_send_
 	// query lb first
 	if (!DISABLE_DP_CACHE)
 	{
-	    data = pack_and_query(*b,lb,tat);
+	    data = pack_and_query(*b,lb);
 	    if (!(data == MB_NOT_CACHED))
 	    {
 		if (data == MB_FEASIBLE)
@@ -182,11 +182,11 @@ bin_int maximum_feasible(binconf *b, const int depth, const bin_int cannot_send_
     if (bestfit > ub)
     {
 	print_binconf_stream(stderr, b);
-	fprintf(stderr, "lb %" PRIi16 ", ub %" PRIi16 ", bestfit: %" PRIi16 ", maxfeas: %" PRIi16 ", initial_ub %" PRIi16".\n", lb, ub, bestfit, DYNPROG_MAX(*b,tat), initial_ub);
+	fprintf(stderr, "lb %" PRIi16 ", ub %" PRIi16 ", bestfit: %" PRIi16 ", maxfeas: %" PRIi16 ", initial_ub %" PRIi16".\n", lb, ub, bestfit, DYNPROG_MAX<false>(*b,tat), initial_ub);
 	fprintf(stderr, "dphash %" PRIu64 ", pack_and_query [%" PRIi16 ", %" PRIi16 "]:", b->dphash(), ub, initial_ub);
 	for (bin_int dbug = ub; dbug <= initial_ub; dbug++)
 	{
-	    fprintf(stderr, "%d,", pack_and_query(*b,dbug,tat));
+	    fprintf(stderr, "%d,", pack_and_query(*b,dbug));
 	}
 	fprintf(stderr, "\nhashes: [");
 	for (bin_int dbug = ub; dbug <= initial_ub; dbug++)
@@ -208,7 +208,7 @@ bin_int maximum_feasible(binconf *b, const int depth, const bin_int cannot_send_
 	    for(bin_int x = lb; x <= bestfit; x++)
 	    {
 		// disabling information about empty bins
-		pack_and_encache(*b,x,true,tat);
+		pack_and_encache(*b,x,true);
 		//pack_and_hash<PERMANENT>(b, x, empty_by_bestfit, FEASIBLE, tat);
 	    }
 	}
@@ -228,7 +228,7 @@ bin_int maximum_feasible(binconf *b, const int depth, const bin_int cannot_send_
     MEASURE_ONLY(tat->meas.dynprog_calls++);
     // DISABLED: passing ub so that dynprog_max_dangerous takes care of pushing into the cache
     // DISABLED: maximum_feasible = dynprog_max_dangerous(b,lb,ub,tat);
-    bin_int maximum_feasible = DYNPROG_MAX(*b,tat);
+    bin_int maximum_feasible = DYNPROG_MAX<false>(*b,tat); // STANDALONE is false
     // measurements for dynprog_max_with_lih only
     /*
     if (tat->lih_hit)
@@ -254,12 +254,12 @@ bin_int maximum_feasible(binconf *b, const int depth, const bin_int cannot_send_
     {
 	for (bin_int i = maximum_feasible+1; i <= cache_ub; i++)
 	{
-	    pack_and_encache(*b,i,false,tat);
+	    pack_and_encache(*b,i,false);
 	}
 		
 	for (bin_int i = cache_lb; i <= maximum_feasible; i++)
 	{
-	    pack_and_encache(*b,i,true,tat);
+	    pack_and_encache(*b,i,true);
 	}
     }
 

@@ -7,7 +7,6 @@
 #include <random>
 #include <limits>
 #include <thread>
-#include <mpi.h>
 
 #include "common.hpp"
 #include "binconf.hpp"

@@ -12,6 +12,11 @@
 #include "../algorithm/loadfile.hpp"
 #include "../algorithm/savefile.hpp"
 
+// Global parameters (so we do not have to pass them via recursive functions).
+FILE* outf = NULL;
+dag *canvas = NULL;
+bool color = true;
+
 std::string build_label(adversary_vertex *v)
 {
     std::stringstream ss;
@@ -96,10 +101,6 @@ std::string build_cosmetics(algorithm_vertex *v)
     return cosm.str();
 }
 
-// Output file as a global parameter (too lazy for currying).
-FILE* outf = NULL;
-dag *canvas = NULL;
-
 void paint_adv_outedge(adv_outedge *e)
 {
     assert(outf != NULL);
@@ -126,8 +127,11 @@ void paint_adv(adversary_vertex *v)
 	fprintf(outf, ",sapling=true");
     }
 
-    v->cosmetics = build_cosmetics(v);
-    fprintf(outf, "%s", v->cosmetics.c_str());
+    if (color)
+    {
+	v->cosmetics = build_cosmetics(v);
+	fprintf(outf, "%s", v->cosmetics.c_str());
+    }
     fprintf(outf, "];\n");
 
     // Print its outedges, too.
@@ -142,8 +146,11 @@ void paint_alg(algorithm_vertex *v)
     v->label = build_label(v);
     fprintf(outf, "%" PRIu64 " [label=\"%s\",player=alg", v->id, v->label.c_str());
 
-    v->cosmetics = build_cosmetics(v);
-    fprintf(outf, "%s", v->cosmetics.c_str());
+    if (color)
+    {
+	v->cosmetics = build_cosmetics(v);
+	fprintf(outf, "%s", v->cosmetics.c_str());
+    }
     fprintf(outf, "];\n");
 
     // Print its outedges, too.
@@ -189,7 +196,7 @@ void cut_heuristics(dag *d)
 
 void usage()
 {
-    fprintf(stderr, "Usage: ./painter [--shortheur] [-d NUM] infile.dag outfile.dot\n");
+    fprintf(stderr, "Usage: ./painter [--nocolor] [--shortheur] [-d NUM] infile.dag outfile.dot\n");
 }
 
 int cut_at_depth;
@@ -233,6 +240,16 @@ bool parse_parameter_noheur(int argc, char **argv, int pos)
     }
     return false;
 }
+
+bool parse_parameter_nocolor(int argc, char **argv, int pos)
+{
+    if (strcmp(argv[pos], "--nocolor") == 0)
+    {
+	return true;
+    }
+    return false;
+}
+
 
 std::pair<bool,int> parse_parameter_cutdepth(int argc, char **argv, int pos)
 {
@@ -289,6 +306,9 @@ int main(int argc, char **argv)
 	if (parse_parameter_noheur(argc, argv, i))
 	{
 	    noheur = true;
+	} else if (parse_parameter_nocolor(argc, argv, i))
+	{
+	    color = false;
 	}
 
 	auto [parsed_cut, parsed_depth] = parse_parameter_cutdepth(argc, argv, i);

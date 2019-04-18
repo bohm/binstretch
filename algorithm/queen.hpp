@@ -17,6 +17,8 @@ int losing_saplings = 0;
 class queen_class
 {
 public:
+    char treetop_file[256];
+    queen_class(int argc, char **argv);
     void updater(adversary_vertex *sapling);
     int start();
 };

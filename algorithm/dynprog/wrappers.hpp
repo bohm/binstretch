@@ -35,21 +35,25 @@ void remove_item_inplace(binconf& h, const bin_int item, const bin_int multiplic
 	h.dp_changehash(item, h.items[item]+multiplicity, h.items[item]);
 }
 
-bool compute_feasibility(const binconf &h, thread_attr *tat)
+bool compute_feasibility(const binconf &h, thread_attr *tat = nullptr)
 {
-    return (DYNPROG_MAX(h,tat) != MAX_INFEASIBLE);
+    if (tat != nullptr)
+    {
+	return (DYNPROG_MAX<false>(h,tat) != MAX_INFEASIBLE);
+    }
+    return (DYNPROG_MAX<true>(h,tat) != MAX_INFEASIBLE);
 }
 
 // dp_encache in caching.hpp
 
-void pack_and_encache(binconf &h, const bin_int item, const bool feasibility, thread_attr *tat, const bin_int multiplicity = 1)
+void pack_and_encache(binconf &h, const bin_int item, const bool feasibility, const bin_int multiplicity = 1)
 {
     add_item_inplace(h,item,multiplicity);
     dp_encache(h,feasibility);
     remove_item_inplace(h,item,multiplicity);
 }
 
-maybebool pack_and_query(binconf &h, const bin_int item, thread_attr *tat, const bin_int multiplicity = 1)
+maybebool pack_and_query(binconf &h, const bin_int item, const bin_int multiplicity = 1)
 {
     add_item_inplace(h,item, multiplicity);
     maybebool ret = dp_query(h);
@@ -57,7 +61,7 @@ maybebool pack_and_query(binconf &h, const bin_int item, thread_attr *tat, const
     return ret;
 }
 
-bool pack_query_compute(binconf &h, const bin_int item, thread_attr *tat, const bin_int multiplicity = 1)
+bool pack_query_compute(binconf &h, const bin_int item, const bin_int multiplicity = 1, thread_attr *tat = NULL)
 {
     add_item_inplace(h,item, multiplicity);
     maybebool q = dp_query(h);
