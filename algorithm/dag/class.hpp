@@ -62,6 +62,11 @@ public:
 
     void clear_visited();
 
+    // Erase unreachable vertices.
+    void mark_reachable(adversary_vertex *v);
+    void mark_reachable(algorithm_vertex *v);
+    void erase_unreachable();
+    
     /* remove_inedge removes the edge from the list of the incoming edges,
     but does not touch the outgoing edge list. */
     template <mm_state MODE> void remove_inedge(alg_outedge *e);

@@ -97,9 +97,15 @@ algorithm_vertex::~algorithm_vertex()
 void dag::del_alg_vertex(algorithm_vertex *gonner)
 {
     assert(gonner != NULL);
+    // Remove from alg_by_hash.
     auto it = alg_by_hash.find(gonner->bc.alghash(gonner->next_item));
     assert(it != alg_by_hash.end());
     alg_by_hash.erase(gonner->bc.alghash(gonner->next_item));
+    // Remove from alg_by_id.
+    auto it2 = alg_by_id.find(gonner->id);
+    assert(it2 != alg_by_id.end());
+    alg_by_id.erase(gonner->id);
+    
     delete gonner;
 }
 
@@ -112,9 +118,17 @@ adversary_vertex::~adversary_vertex()
 void dag::del_adv_vertex(adversary_vertex *gonner)
 {
     assert(gonner != NULL);
+
+    // Remove from adv_by_hash.
     auto it = adv_by_hash.find(gonner->bc.confhash());
     assert(it != adv_by_hash.end());
     adv_by_hash.erase(gonner->bc.confhash());
+
+    // Remove from adv_by_id.
+    auto it2 = adv_by_id.find(gonner->id);
+    assert(it2 != adv_by_id.end());
+    adv_by_id.erase(gonner->id);
+
     delete gonner;
 }
 
@@ -248,4 +262,85 @@ template <mm_state MODE> void dag::remove_outedges_except(adversary_vertex *v, i
     //v->out.remove_if( [right_item](adv_outedge *e){ return (e->item != right_item); } );
     //assert(v->out.size() == 1);
 }
+
+// Just mark reachable vertices as visited.
+
+void dag::mark_reachable(adversary_vertex *v)
+{
+    if (v->visited)
+    {
+	return;
+    }
+    v->visited = true;
+    for (adv_outedge* e : v ->out)
+    {
+	mark_reachable(e->to);
+    }
+
+}
+
+void dag::mark_reachable(algorithm_vertex *v)
+{
+    if (v->visited)
+    {
+	return;
+    }
+
+    v->visited = true;
+
+    for (alg_outedge* e : v ->out)
+    {
+	mark_reachable(e->to);
+    }
+
+}
+
+void dag::erase_unreachable()
+{
+    clear_visited();
+    mark_reachable(root);
+
+    // With all visited vertices now marked, we can just iterate over vertices
+    // and remove all unreachable vertices and edges.
+
+    for (auto it = adv_by_hash.begin(), next_it = it; it != adv_by_hash.end(); it = next_it)
+    {
+	++next_it;
+
+	adversary_vertex *v = it->second;
+
+	// The following may invalidate the iterator (that is why we do the next_it trick).
+	if (!v->visited)
+	{
+	    // First, non-recursively remove outedges.
+	    for (auto& e: v->out)
+	    {
+		// Remove the outedge from the incoming list of the target vertex.
+		e->to->in.erase(e->pos_child);
+		del_adv_outedge(e);
+	    }
+
+	    del_adv_vertex(v); // Then, remove the vertex itself.
+	}
+    }
+
+    for (auto it = alg_by_hash.begin(), next_it = it; it != alg_by_hash.end(); it = next_it)
+    {
+	++next_it;
+
+	algorithm_vertex *v = it->second;
+
+	if (!v->visited)
+	{
+	    for (auto& e: v->out)
+	    {
+		e->to->in.erase(e->pos_child);
+		del_alg_outedge(e);
+	    }
+
+	    del_alg_vertex(v);
+	}
+    }
+}
+
 #endif

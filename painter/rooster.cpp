@@ -149,7 +149,7 @@ std::list<dag*> reduce_indegrees(dag *d)
 	print_candidates<ROOSTER_DEBUG>(candidateq);
 	for (adversary_vertex* splitroot: candidateq)
 	{
-	    dag *st = subdag(d, splitroot);
+	    dag *st = d->subdag(splitroot);
 	    // Use mm_state::generating, as we do not care about tasks.
 	    d->remove_outedges<mm_state::generating>(splitroot);
 	    splitroot->split_off = true;
@@ -161,6 +161,63 @@ std::list<dag*> reduce_indegrees(dag *d)
 	split_candidate_in_subtree(d->root);
     }
     return splits;
+}
+
+// --- Merging adversary nodes. ---
+// We merge assuming that the tree is a valid lower bound (would not work otherwise).
+void merge_two(dag *d, adversary_vertex *remaining, adversary_vertex *removal)
+{
+    // Basic sanity checks.
+    assert(remaining->bc.confhash() != removal->bc.confhash());
+    assert(remaining->bc.loaditemhash() == removal->bc.loaditemhash());
+
+    // Reroute edges correctly.
+    for (auto& e : removal->in)
+    {
+	e->to = remaining;
+    }
+
+    // Remove outedges non-recursively.
+    for (auto& e: removal->out)
+    {
+	e->to->in.erase(e->pos_child);
+	d->del_adv_outedge(e);
+    }
+    
+    d->del_adv_vertex(removal); // Then, remove the vertex itself.
+}
+
+
+void merge_ignoring_last_item(dag *d)
+{
+    // Build a set of hashes for each adversary vertex, ignoring the last item.
+    std::map<uint64_t, adversary_vertex*> no_last_items;
+
+    // Create a copy of adv_by_hash, because we will be editing it inside the loop.
+    std::map<uint64_t, adversary_vertex*> adv_by_hash_copy(d->adv_by_hash);
+    for (auto & [hash, advv] : adv_by_hash_copy)
+    {
+	// If hash is already removed, continue.
+	if (d->adv_by_hash.find(hash) == d->adv_by_hash.end())
+	{
+	    continue;
+	}
+	
+	uint64_t loaditemhash = advv->bc.loaditemhash();
+
+	if (no_last_items.find(loaditemhash) == no_last_items.end() )
+	{
+	    // Loaditemhash is unique, just insert into map.
+	    no_last_items.insert(std::make_pair(loaditemhash, advv));
+	} else
+	{
+	    // Collision, merge the two nodes.
+	    merge_two(d, no_last_items.at(loaditemhash), advv);
+	    // Remove all unreachable vertices from the tree. This will take O(n) time
+	    // but may result in much less merging.
+	    d->erase_unreachable();
+	}
+    }
 }
 
 // --- Printing methods. ---
@@ -321,7 +378,9 @@ int main(int argc, char **argv)
     // assign the dag into the global pointer
     canvas = d->finalize();
 
-    
+    // Merge vertices which have the same loaditemhash.
+    merge_ignoring_last_item(canvas);
+   
     print<ROOSTER_DEBUG>("Splitting the dag into graphs with small indegree.\n");
     std::list<dag*> splits = reduce_indegrees(canvas);
     print_splits<ROOSTER_DEBUG>(splits);
