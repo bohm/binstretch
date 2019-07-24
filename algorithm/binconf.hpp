@@ -173,6 +173,12 @@ public:
 	    return std::accumulate(loads.begin(), loads.end(), 0);
 	}
 
+    // computes the dynamic programming hash.
+    uint64_t dphash() const
+	{
+	    return loadhash;
+	}
+
     loadconf()
 	{
 	}
@@ -357,14 +363,6 @@ public:
 	    itemhash ^= Zi[dynitem*(MAX_ITEMS+1) + items[dynitem]];
 	}
     
-
-    // computes the dynamic programming hash, which is
-    // as if items[1] == 0 and items[S] == 0.
-    uint64_t dphash() const
-	{
-	    // DISABLED: return (itemhash ^ Zi[1*(MAX_ITEMS+1) + items[1]] ^ Zi[S*(MAX_ITEMS+1) + items[S]]);
-	    return itemhash;
-	}
 
     // Returns (main cache) binconf hash, assuming hash is consistent,
     // which it should be, if we are assigning properly.

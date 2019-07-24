@@ -371,8 +371,6 @@ int queen_class::start()
 	print<PROGRESS>("Full evaluation time: %Lfs.\n", scheduler_time.count());
     }
 
-
-    
     // We now print only once, after a full tree is generated.
     if (OUTPUT && output_useful)
     {
