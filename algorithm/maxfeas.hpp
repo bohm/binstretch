@@ -183,7 +183,7 @@ bin_int maximum_feasible(binconf *b, const int depth, const bin_int cannot_send_
     {
 	print_binconf_stream(stderr, b);
 	fprintf(stderr, "lb %" PRIi16 ", ub %" PRIi16 ", bestfit: %" PRIi16 ", maxfeas: %" PRIi16 ", initial_ub %" PRIi16".\n", lb, ub, bestfit, DYNPROG_MAX<false>(*b,tat), initial_ub);
-	fprintf(stderr, "dphash %" PRIu64 ", pack_and_query [%" PRIi16 ", %" PRIi16 "]:", b->dphash(), ub, initial_ub);
+	fprintf(stderr, "ihash %" PRIu64 ", pack_and_query [%" PRIi16 ", %" PRIi16 "]:", b->ihash(), ub, initial_ub);
 	for (bin_int dbug = ub; dbug <= initial_ub; dbug++)
 	{
 	    fprintf(stderr, "%d,", pack_and_query(*b,dbug));
@@ -193,7 +193,7 @@ bin_int maximum_feasible(binconf *b, const int depth, const bin_int cannot_send_
 	{
 	    bin_int dbug_items = b->items[dbug];
 	    // print itemhash as if there was one more item of type dbug
-	    fprintf(stderr, "%" PRIu64 ", ", b->dphash() ^ Zi[dbug*(MAX_ITEMS+1) + dbug_items] ^  Zi[dbug*(MAX_ITEMS+1) + dbug_items+1]);
+	    fprintf(stderr, "%" PRIu64 ", ", b->ihash() ^ Zi[dbug*(MAX_ITEMS+1) + dbug_items] ^  Zi[dbug*(MAX_ITEMS+1) + dbug_items+1]);
 	}
 
 	fprintf(stderr, "].\n");

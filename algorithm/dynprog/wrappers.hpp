@@ -21,7 +21,7 @@ bin_int dynprog_max_via_vector(const binconf& conf, thread_attr *tat)
 
 void add_item_inplace(binconf& h, const bin_int item, const bin_int multiplicity = 1)
 {
-    	h.dp_changehash(item, h.items[item], h.items[item] + multiplicity);
+    	h.i_changehash(item, h.items[item], h.items[item] + multiplicity);
 	h.items[item] += multiplicity; // in some sense, it is an inconsistent state, since "item" is not packed in "h"
 	h._itemcount += multiplicity;
 	h._totalload += multiplicity*item;
@@ -32,7 +32,7 @@ void remove_item_inplace(binconf& h, const bin_int item, const bin_int multiplic
     	h._totalload -= multiplicity*item;
 	h._itemcount -= multiplicity;
 	h.items[item] -= multiplicity;
-	h.dp_changehash(item, h.items[item]+multiplicity, h.items[item]);
+	h.i_changehash(item, h.items[item]+multiplicity, h.items[item]);
 }
 
 bool compute_feasibility(const binconf &h, thread_attr *tat = nullptr)

@@ -11,7 +11,8 @@ dp_cache *dpc = NULL;
 
 void dp_encache(const binconf &d, const bool feasibility)
 {
-    uint64_t hash = d.dphash();
+    // We use itemhash here as we are querying whether a list of items is feasible or not.
+    uint64_t hash = d.ihash();
     dpht_el_64 ins;
     ins.set(hash, feasibility, PERMANENT);
     dpc->insert(ins, hash);
@@ -19,7 +20,7 @@ void dp_encache(const binconf &d, const bool feasibility)
 
 maybebool dp_query(const binconf &d)
 {
-    uint64_t hash = d.dphash();
+    uint64_t hash = d.ihash();
     auto [found, data] = dpc->lookup(hash);
 
     if (found)

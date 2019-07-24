@@ -173,12 +173,6 @@ public:
 	    return std::accumulate(loads.begin(), loads.end(), 0);
 	}
 
-    // computes the dynamic programming hash.
-    uint64_t dphash() const
-	{
-	    return loadhash;
-	}
-
     loadconf()
 	{
 	}
@@ -341,29 +335,33 @@ public:
 	    itemhash ^= Zi[item*(MAX_ITEMS+1) + items[item]];
 	}
 
-    void dp_changehash(int dynitem, int old_count, int new_count)
+    // Returns the hash used for querying feasibility (the adversary guarantee) of an item list.
+    uint64_t ihash() const
+	{
+	    return itemhash;
+	}
+
+    void i_changehash(int dynitem, int old_count, int new_count)
 	{
 	    itemhash ^= Zi[dynitem*(MAX_ITEMS+1) + old_count];
 	    itemhash ^= Zi[dynitem*(MAX_ITEMS+1) + new_count];
 	}
     
-// rehash for dynamic programming purposes, assuming we have added
-// one item of size "dynitem"
-    void dp_rehash(int dynitem)
+    // Rehash for dynamic programming purposes, assuming we have added
+    // one item of size "dynitem".
+    void i_hash_as_if_added(int dynitem)
 	{
 	    itemhash ^= Zi[dynitem*(MAX_ITEMS+1) + items[dynitem] -1];
 	    itemhash ^= Zi[dynitem*(MAX_ITEMS+1) + items[dynitem]];
-	    
 	}
     
-// opposite of dp_rehash -- rehashes after removing one item "dynitem"
-    void dp_unhash(int dynitem)
+    // Rehashes as if removing one item "dynitem".
+    void i_hash_as_if_removed(int dynitem)
 	{
 	    itemhash ^= Zi[dynitem*(MAX_ITEMS+1) + items[dynitem] + 1];
 	    itemhash ^= Zi[dynitem*(MAX_ITEMS+1) + items[dynitem]];
 	}
     
-
     // Returns (main cache) binconf hash, assuming hash is consistent,
     // which it should be, if we are assigning properly.
     // Parameter lowest -- lowest item that can be sent.

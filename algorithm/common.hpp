@@ -141,8 +141,7 @@ const bool ADVERSARY_HEURISTICS = true;
 const bool EXPAND_HEURISTICS = true;
 const bool LARGE_ITEM_ACTIVE = true;
 const bool LARGE_ITEM_ACTIVE_EVERYWHERE = false;
-// TODO: Activate five/nine heuristic when its strategy class is implemented.
-const bool FIVE_NINE_ACTIVE = false;
+const bool FIVE_NINE_ACTIVE = true;
 const bool FIVE_NINE_ACTIVE_EVERYWHERE = false;
 
 
