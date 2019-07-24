@@ -141,18 +141,16 @@ public:
     
     void analysis();
     
-    std::pair<bool, bool> lookup(uint64_t h);
     std::pair<bool, bool> lookup(const binconf &itemlist);
-
-    void insert(dpht_el_64 e, uint64_t h);
     void insert(const binconf& itemlist, const bool feasibility);
 
 };
 
-std::pair<bool, bool> dp_cache_64::lookup(uint64_t h)
+std::pair<bool, bool> dp_cache_64::lookup(const binconf &itemlist)
 {
     dpht_el_64 candidate;
-    uint64_t pos = trim(h);
+    uint64_t hash = itemlist.ihash();
+    uint64_t pos = trim(hash);
 
     // Use linear probing to check for the hashed value.
     for (int i = 0; i < LINPROBE_LIMIT; i++)
@@ -166,7 +164,7 @@ std::pair<bool, bool> dp_cache_64::lookup(uint64_t h)
 	    break;
 	}
 
-	if (candidate.match(h))
+	if (candidate.match(hash))
 	{
 	    MEASURE_ONLY(meas.lookup_hit++);
 	    return std::make_pair(true, candidate.value());
@@ -183,20 +181,15 @@ std::pair<bool, bool> dp_cache_64::lookup(uint64_t h)
     return std::make_pair(false, false);
 }
 
-// Lookup wrapper.
-std::pair<bool, bool> dp_cache_64::lookup(const binconf &itemlist)
+void dp_cache_64::insert(const binconf& itemlist, const bool feasibility)
 {
     uint64_t hash = itemlist.ihash();
-    return lookup(hash);
-
-}
-    
-void dp_cache_64::insert(dpht_el_64 e, uint64_t h)
-{
-    dpht_el_64 candidate;
-    uint64_t pos = trim(h);
-
+    uint64_t pos = trim(hash);
     int limit = LINPROBE_LIMIT;
+    dpht_el_64 inserted;
+    inserted.set(hash, feasibility);
+    dpht_el_64 candidate;
+
     if (pos + limit > size())
     {
 	// printf("Pos is over size: %" PRIu64 " vs. %" PRIu64 "\n.", pos, size());
@@ -209,10 +202,10 @@ void dp_cache_64::insert(dpht_el_64 e, uint64_t h)
 	if (candidate.empty())
 	{
 	    MEASURE_ONLY(meas.insert_into_empty++);
-	    store(pos + i, e);
+	    store(pos + i, inserted);
 	    return;
 	}
-	else if (candidate.match(h))
+	else if (candidate.match(hash))
 	{
 	    // ht[logpart + i].store(new_el, std::memory_order_release);
 	    MEASURE_ONLY(meas.insert_duplicate++);
@@ -221,18 +214,9 @@ void dp_cache_64::insert(dpht_el_64 e, uint64_t h)
     }
 
     // if the cache is full, choose a random position
-    store(pos + (rand() % limit), e);
+    store(pos + (rand() % limit), inserted);
     MEASURE_ONLY(meas.insert_randomly++);
     return;
-}
-
-// Insertion wrapper.
-void dp_cache_64::insert(const binconf& itemlist, const bool feasibility)
-{
-    uint64_t hash = itemlist.ihash();
-    dpht_el_64 ins;
-    ins.set(hash, feasibility);
-    insert(ins, hash);
 }
 
 void dp_cache_64::analysis()
