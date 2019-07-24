@@ -14,7 +14,7 @@ public:
     uint64_t _data;
 
     // 64-bit dpht_el does not make use of permanence.
-    inline void set(uint64_t hash, uint8_t feasible, uint16_t permanence)
+    inline void set(uint64_t hash, uint8_t feasible)
 	{
 	    assert(feasible == 0 || feasible == 1);
 	    _data = (zero_last_bit(hash) | feasible);
@@ -142,7 +142,10 @@ public:
     void analysis();
     
     std::pair<bool, bool> lookup(uint64_t h);
+    std::pair<bool, bool> lookup(const binconf &itemlist);
+
     void insert(dpht_el_64 e, uint64_t h);
+    void insert(const binconf& itemlist, const bool feasibility);
 
 };
 
@@ -180,6 +183,14 @@ std::pair<bool, bool> dp_cache_64::lookup(uint64_t h)
     return std::make_pair(false, false);
 }
 
+// Lookup wrapper.
+std::pair<bool, bool> dp_cache_64::lookup(const binconf &itemlist)
+{
+    uint64_t hash = itemlist.ihash();
+    return lookup(hash);
+
+}
+    
 void dp_cache_64::insert(dpht_el_64 e, uint64_t h)
 {
     dpht_el_64 candidate;
@@ -215,6 +226,14 @@ void dp_cache_64::insert(dpht_el_64 e, uint64_t h)
     return;
 }
 
+// Insertion wrapper.
+void dp_cache_64::insert(const binconf& itemlist, const bool feasibility)
+{
+    uint64_t hash = itemlist.ihash();
+    dpht_el_64 ins;
+    ins.set(hash, feasibility);
+    insert(ins, hash);
+}
 
 void dp_cache_64::analysis()
 {

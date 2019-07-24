@@ -44,34 +44,32 @@ bool compute_feasibility(const binconf &h, thread_attr *tat = nullptr)
     return (DYNPROG_MAX<true>(h,tat) != MAX_INFEASIBLE);
 }
 
-// dp_encache in caching.hpp
-
 void pack_and_encache(binconf &h, const bin_int item, const bool feasibility, const bin_int multiplicity = 1)
 {
     add_item_inplace(h,item,multiplicity);
-    dp_encache(h,feasibility);
+    dpc->insert(h,feasibility);
     remove_item_inplace(h,item,multiplicity);
 }
 
-maybebool pack_and_query(binconf &h, const bin_int item, const bin_int multiplicity = 1)
+std::pair <bool, bool> pack_and_query(binconf &h, const bin_int item, const bin_int multiplicity = 1)
 {
     add_item_inplace(h,item, multiplicity);
-    maybebool ret = dp_query(h);
+    auto retpair = dpc->lookup(h);
     remove_item_inplace(h,item, multiplicity);
-    return ret;
+    return retpair;
 }
 
 bool pack_query_compute(binconf &h, const bin_int item, const bin_int multiplicity = 1, thread_attr *tat = NULL)
 {
     add_item_inplace(h,item, multiplicity);
-    maybebool q = dp_query(h);
+    auto [located, feasible] = dpc->lookup(h);
     bool ret;
-    if (q == MB_NOT_CACHED)
+    if (!located)
     {
 	ret = compute_feasibility(h,tat);
-	dp_encache(h,ret);
-    } else { // ret == FEASIBLE/INFEASIBLE
-        ret = q;
+	dpc->insert(h,ret);
+    } else { // Found in cache.
+        ret = feasible;
     }
     remove_item_inplace(h,item, multiplicity);
     return ret;
@@ -81,11 +79,13 @@ bool pack_query_compute(binconf &h, const bin_int item, const bin_int multiplici
 
 void dp_cache_print(binconf &h, thread_attr *tat)
 {
-    fprintf(stderr, "Cache print: %hd", dp_query(h));
+    auto [located, feasible] = dpc->lookup(h);
+    fprintf(stderr, "Cache print without item: (%d, %d), with items [0,S]: ", located, feasible);
     for (int i = 1; i <= S; i++)
     {
 	add_item_inplace(h, i);
-	fprintf(stderr, ", %hd", dp_query(h));
+	auto [with_i_located, with_i_feasible] = dpc->lookup(h);
+	fprintf(stderr, "(%d,%d),", with_i_located, with_i_feasible);
 	remove_item_inplace(h,i);
     }
     fprintf(stderr, "\n");

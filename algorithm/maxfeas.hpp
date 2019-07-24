@@ -17,21 +17,18 @@ std::tuple<bin_int, bin_int, bool> improve_bounds(binconf *b, bin_int lb, bin_in
 	return std::make_tuple(lb, ub, lb_certainly_feasible);
     }
 
-    maybebool data;
-    
     for (bin_int q = ub; q >= lb; q--)
     {
-	data = pack_and_query(*b,q);
-	if (data != MB_NOT_CACHED)
+	auto [located, feasible] = pack_and_query(*b,q);
+	if (located)
 	{
-	    if (data == MB_FEASIBLE)
+	    if (feasible)
 	    {
 		lb = q;
 		lb_certainly_feasible = true;
 		break;
-	    } else // (data == INFEASIBLE)
+	    } else // located and not feasible
 	    {
-		assert(data == MB_INFEASIBLE);
 		ub = q-1;
 	    }
 	}
@@ -50,13 +47,12 @@ std::tuple<bin_int, bin_int, bool> improve_bounds_binary(binconf *b, bin_int lb,
     }
 
     bin_int mid = (lb+ub+1)/2;
-    maybebool data;
     while (lb <= ub)
     {
-	data = pack_and_query(*b,mid);
-	if (data != MB_NOT_CACHED)
+	auto [located, feasible] = pack_and_query(*b,mid);
+	if (located)
 	{
-	    if (data == MB_FEASIBLE)
+	    if (feasible)
 	    {
 		lb = mid;
 		lb_certainly_feasible = true;
@@ -68,7 +64,6 @@ std::tuple<bin_int, bin_int, bool> improve_bounds_binary(binconf *b, bin_int lb,
 		
 	    } else
 	    {
-		assert(data == MB_INFEASIBLE);
 		ub = mid-1;
 	    }
 	} else
@@ -94,7 +89,6 @@ bin_int maximum_feasible(binconf *b, const int depth, const bin_int cannot_send_
     print_binconf<DEBUG>(b);
     print<DEBUG>("\n"); 
 
-    maybebool data = MB_NOT_CACHED;
     tat->maxfeas_return_point = -1;
 
     bin_int lb = onlineloads_bestfit(tat->ol); // definitely can pack at least lb
@@ -126,16 +120,14 @@ bin_int maximum_feasible(binconf *b, const int depth, const bin_int cannot_send_
 	// query lb first
 	if (!DISABLE_DP_CACHE)
 	{
-	    data = pack_and_query(*b,lb);
-	    if (!(data == MB_NOT_CACHED))
+	    auto [located, feasible] = pack_and_query(*b,lb);
+	    if (located)
 	    {
-		if (data == MB_FEASIBLE)
+		if (feasible)
 		{
 		    lb_certainly_feasible = true;
 		} else
 		{
-		    // nothing is feasible
-		    assert(data == MB_INFEASIBLE);
 		    tat->maxfeas_return_point = 1;
 
 		    return MAX_INFEASIBLE;
@@ -186,7 +178,8 @@ bin_int maximum_feasible(binconf *b, const int depth, const bin_int cannot_send_
 	fprintf(stderr, "ihash %" PRIu64 ", pack_and_query [%" PRIi16 ", %" PRIi16 "]:", b->ihash(), ub, initial_ub);
 	for (bin_int dbug = ub; dbug <= initial_ub; dbug++)
 	{
-	    fprintf(stderr, "%d,", pack_and_query(*b,dbug));
+	    auto [located, feasible] = pack_and_query(*b,dbug);
+	    fprintf(stderr, "(%d,%d),", located, feasible);
 	}
 	fprintf(stderr, "\nhashes: [");
 	for (bin_int dbug = ub; dbug <= initial_ub; dbug++)
