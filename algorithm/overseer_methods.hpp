@@ -133,7 +133,7 @@ void overseer::start()
     std::thread* threads = new std::thread[worker_count];
 
     // conf_el::parallel_init(&ht, ht_size, worker_count); // Init worker cache in parallel.
-    dpc = new dp_cache(dpht_size, dplog, worker_count);
+    dpc = new guar_cache(dpht_size, dplog, worker_count);
     stc = new state_cache(ht_size, conflog, worker_count);
     
     // dpht_el::parallel_init(&dpht, dpht_size, worker_count);

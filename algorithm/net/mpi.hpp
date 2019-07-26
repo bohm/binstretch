@@ -14,7 +14,6 @@
 #include "../common.hpp"
 #include "../dag/dag.hpp"
 #include "../hash.hpp"
-#include "../caching.hpp"
 #include "../tasks.hpp"
 
 namespace net

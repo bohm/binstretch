@@ -3,17 +3,17 @@
 #include "../common.hpp"
 #include "../hash.hpp"
 
-#ifndef _CACHE_DP_HPP
-#define _CACHE_DP_HPP 1
+#ifndef _CACHE_GUAR_64
+#define _CACHE_GUAR_64
 
 // A DP cache that does only Zobrist hashing of 63 bits of hash and 1 bit of information.
 
-class dpht_el_64
+class guar_el_64
 {
 public:
     uint64_t _data;
 
-    // 64-bit dpht_el does not make use of permanence.
+    // 64-bit guar_el does not make use of permanence.
     inline void set(uint64_t hash, uint8_t feasible)
 	{
 	    assert(feasible == 0 || feasible == 1);
@@ -57,15 +57,15 @@ public:
 	    return 0;
 	}
 
-    static const dpht_el_64 ZERO;
+    static const guar_el_64 ZERO;
 };
 
-const dpht_el_64 dpht_el_64::ZERO{0};
+const guar_el_64 guar_el_64::ZERO{0};
 
-class dp_cache_64
+class guar_cache_64
 {
 private:
-    std::atomic<dpht_el_64> *ht;
+    std::atomic<guar_el_64> *ht;
     uint64_t htsize;
     int logsize;
 public:
@@ -73,7 +73,7 @@ public:
 private:
     void atomic_init_point(uint64_t point)
 	{
-	    std::atomic_init(&ht[point], dpht_el_64::ZERO);
+	    std::atomic_init(&ht[point], guar_el_64::ZERO);
 	}
 
     void parallel_init_segment(uint64_t start, uint64_t end, uint64_t size)
@@ -84,12 +84,12 @@ private:
 	    }
 	}
 
-    dpht_el_64 access(uint64_t pos)
+    guar_el_64 access(uint64_t pos)
 	{
 	    return ht[pos].load(std::memory_order_acquire); 
 	}
 
-    void store(uint64_t pos, const dpht_el_64 & e)
+    void store(uint64_t pos, const guar_el_64 & e)
 	{
 	    ht[pos].store(e, std::memory_order_release);
 	}
@@ -106,12 +106,13 @@ public:
 	}
 
 
-    dp_cache_64(uint64_t size, int ls, int threads) : htsize(size), logsize(ls)
+    guar_cache_64(uint64_t size, int ls, int threads) : htsize(size), logsize(ls)
 	{
+	    // const int threads = 4;
 	    assert(logsize >= 0 && logsize <= 64);
 	    assert((uint64_t) 1 << logsize == htsize);
 
-	    ht = new std::atomic<dpht_el_64>[htsize];
+	    ht = new std::atomic<guar_el_64>[htsize];
 	    assert(ht != NULL);
  
 	    uint64_t segment = size / threads;
@@ -121,7 +122,7 @@ public:
 	    std::vector<std::thread> th;
 	    for (int w = 0; w < threads; w++)
 	    {
-		th.push_back(std::thread(&dp_cache_64::parallel_init_segment, this, start, end, size));
+		th.push_back(std::thread(&guar_cache_64::parallel_init_segment, this, start, end, size));
 		start += segment;
 		end += segment;
 		start = std::min(start, size);
@@ -134,7 +135,7 @@ public:
 	    }
 	}
 
-    ~dp_cache_64()
+    ~guar_cache_64()
 	{
 	    delete ht;
 	}
@@ -146,9 +147,9 @@ public:
 
 };
 
-std::pair<bool, bool> dp_cache_64::lookup(const binconf &itemlist)
+std::pair<bool, bool> guar_cache_64::lookup(const binconf &itemlist)
 {
-    dpht_el_64 candidate;
+    guar_el_64 candidate;
     uint64_t hash = itemlist.ihash();
     uint64_t pos = trim(hash);
 
@@ -181,14 +182,14 @@ std::pair<bool, bool> dp_cache_64::lookup(const binconf &itemlist)
     return std::make_pair(false, false);
 }
 
-void dp_cache_64::insert(const binconf& itemlist, const bool feasibility)
+void guar_cache_64::insert(const binconf& itemlist, const bool feasibility)
 {
     uint64_t hash = itemlist.ihash();
     uint64_t pos = trim(hash);
     int limit = LINPROBE_LIMIT;
-    dpht_el_64 inserted;
+    guar_el_64 inserted;
     inserted.set(hash, feasibility);
-    dpht_el_64 candidate;
+    guar_el_64 candidate;
 
     if (pos + limit > size())
     {
@@ -219,7 +220,7 @@ void dp_cache_64::insert(const binconf& itemlist, const bool feasibility)
     return;
 }
 
-void dp_cache_64::analysis()
+void guar_cache_64::analysis()
 {
     for (uint64_t i = 0; i < htsize; i++)
     {
@@ -233,4 +234,4 @@ void dp_cache_64::analysis()
     }
 }
 
-#endif // _CACHE_DP_HPP
+#endif // _CACHE_GUAR_64

@@ -132,7 +132,7 @@ int queen_class::start()
     dpht_size = 1LLU << dplog;
 
     // Init queen memory (the queen does not use the main solved cache):
-    dpc = new dp_cache(dpht_size, dplog, 4); 
+    dpc = new guar_cache(dpht_size, dplog, 4); 
 
     sync_up(); // Sync before any rounds start.
 

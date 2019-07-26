@@ -12,8 +12,8 @@
 #include "../thread_attr.hpp"
 #include "../fits.hpp"
 #include "../hash.hpp"
-#include "../caching.hpp"
-#include "../cache/dp.hpp"
+#include "../cache/loadconf.hpp"
+#include "../cache/guarantee.hpp"
 
 // We select the right algorithm for computing the maximum feasible option.
 // Currently, selecting dynprog_max_via_vector adds about 40 seconds to the computation time

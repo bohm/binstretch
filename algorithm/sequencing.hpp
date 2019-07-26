@@ -13,7 +13,6 @@
 #include "thread_attr.hpp"
 #include "dag/dag.hpp"
 #include "hash.hpp"
-#include "caching.hpp"
 #include "fits.hpp"
 #include "gs.hpp"
 #include "tasks.hpp"

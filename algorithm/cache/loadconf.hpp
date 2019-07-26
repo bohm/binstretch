@@ -1,20 +1,10 @@
 #include <cstdio>
 
-#include "common.hpp"
-#include "hash.hpp"
+// Caching routines for a small feasibility cache that
+// may contain duplicates (used in the dynamic program).
 
-// Functions for caching results (transposition tables in chess).
-
-#ifndef _CACHING_HPP
-#define _CACHING_HPP 1
-
-const int FULL_NOT_FOUND = -2;
-const int NOT_FOUND = -1;
-
-const int INSERTED = 0;
-const int INSERTED_RANDOMLY = -1;
-const int ALREADY_INSERTED = -2;
-const int OVERWRITE_OF_PROGRESS = -3;
+#ifndef _CACHE_LOADCONF
+#define _CACHE_LOADCONF
 
 // checks for a load in the hash table used by dynprog_test_loadhash()
 // dumb/fast collision detection (treats them as not-found objects)
@@ -30,4 +20,4 @@ void loadconf_hashpush(uint64_t loadhash, uint64_t *loadht)
 }
 
 
-#endif // _CACHING_HPP
+#endif // _CACHE_LOADCONF
