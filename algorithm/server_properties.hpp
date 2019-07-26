@@ -79,8 +79,8 @@ std::tuple<unsigned int, unsigned int, unsigned int> server_properties(const cha
     }
     else if ( (strcmp(server_name, "t1000") == 0) )
     {
-	return std::make_tuple(28, 28, 8);
-	// return std::make_tuple(25, 20, 4);
+	//return std::make_tuple(28, 28, 8);
+	return std::make_tuple(25, 20, 8);
 	
     } else if ( (strcmp(server_name, "optilog-pc-02") == 0) )
     {
