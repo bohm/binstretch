@@ -136,12 +136,17 @@ public:
 	    return pos / GUAR_BLOCK_SIZE;
 	}
 
-    guar_cache_locks(uint64_t size, int ls, int threads_unused) : htsize(size), logsize(ls)
+    // Parameter logbytes: how many 2^bytes we are given for the cache.
+    guar_cache_locks(uint64_t logbytes)
 	{
-	    assert(logsize >= 0 && logsize <= 64);
-	    assert((uint64_t) 1 << logsize == htsize);
+	    assert(logbytes >= 0 && logbytes <= 64);
 
-	    fprintf(stderr, "Allocating %llu elements of the guarantee cache.\n", htsize);
+	    uint64_t bytes = two_to(logbytes);
+	    htsize = power_of_two_below(bytes / sizeof(guar_el_full));
+	    logsize = quicklog(htsize);
+	    print<PROGRESS>("Given %llu logbytes (%llu bytes) and el. size %zu, set guar. cache (locks) to %llu els (logsize %llu).\n",
+			    logbytes, bytes, sizeof(guar_el_full), htsize, logsize);
+
 	    ht = new guar_el_full[htsize];
 	    assert(ht != NULL);
 
@@ -150,7 +155,7 @@ public:
  
 	    uint64_t segment = GUAR_BLOCK_SIZE;
 	    uint64_t start = 0;
-	    uint64_t end = std::min(size, segment);
+	    uint64_t end = std::min(htsize, segment);
 	    
 	    std::vector<std::thread> th;
 	    for (int w = 0; w < blocks; w++)
@@ -158,8 +163,8 @@ public:
 		th.push_back(std::thread(&guar_cache_locks::init_block, this, w, start, end));
 		start += segment;
 		end += segment;
-		start = std::min(start, size);
-		end = std::min(end, size);
+		start = std::min(start, htsize);
+		end = std::min(end, htsize);
 	    }
 
 	    for (int w = 0; w < blocks; w++)

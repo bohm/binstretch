@@ -106,27 +106,33 @@ public:
 	}
 
 
-    guar_cache_64(uint64_t size, int ls, int threads) : htsize(size), logsize(ls)
+    // Parameter logbytes: how many 2^bytes we are given for the cache.
+    guar_cache_64(uint64_t logbytes)
 	{
-	    // const int threads = 4;
+	    const int threads = 8; // A small todo: smarter thread number selection.
+	    uint64_t bytes = two_to(logbytes);
+	    htsize = power_of_two_below(bytes / sizeof(guar_el_64));
+	    logsize = quicklog(htsize);
+	    print<PROGRESS>("Given %llu logbytes (%llu bytes) and el. size %zu, we set the guarantee cache (64-bit) to %llu els.\n",
+			    logbytes, bytes, sizeof(guar_el_64), htsize);
 	    assert(logsize >= 0 && logsize <= 64);
-	    assert((uint64_t) 1 << logsize == htsize);
+	    assert(1LLU << logsize == htsize);
 
 	    ht = new std::atomic<guar_el_64>[htsize];
 	    assert(ht != NULL);
  
-	    uint64_t segment = size / threads;
+	    uint64_t segment = htsize / threads;
 	    uint64_t start = 0;
-	    uint64_t end = std::min(size, segment);
+	    uint64_t end = std::min(htsize, segment);
 
 	    std::vector<std::thread> th;
 	    for (int w = 0; w < threads; w++)
 	    {
-		th.push_back(std::thread(&guar_cache_64::parallel_init_segment, this, start, end, size));
+		th.push_back(std::thread(&guar_cache_64::parallel_init_segment, this, start, end, htsize));
 		start += segment;
 		end += segment;
-		start = std::min(start, size);
-		end = std::min(end, size);
+		start = std::min(start, htsize);
+		end = std::min(end, htsize);
 	    }
 
 	    for (int w = 0; w < threads; w++)

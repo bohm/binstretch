@@ -120,7 +120,6 @@ void overseer::start()
     conflog = std::get<0>(settings);
     ht_size = 1LLU << conflog;
     dplog = std::get<1>(settings);
-    dpht_size = 1LLU << dplog;
 
     // If we want to have a reserve CPU slot for the overseer itself, we should subtract 1.
     worker_count = std::get<2>(settings);
@@ -133,7 +132,7 @@ void overseer::start()
     std::thread* threads = new std::thread[worker_count];
 
     // conf_el::parallel_init(&ht, ht_size, worker_count); // Init worker cache in parallel.
-    dpc = new guar_cache(dpht_size, dplog, worker_count);
+    dpc = new guar_cache(dplog);
     stc = new state_cache(ht_size, conflog, worker_count);
     
     // dpht_el::parallel_init(&dpht, dpht_size, worker_count);

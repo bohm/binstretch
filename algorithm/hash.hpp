@@ -103,6 +103,19 @@ uint64_t quicklog(uint64_t x)
     return ret;
 }
 
+// Powering 2^X.
+uint64_t two_to(uint64_t x)
+{
+    return 1LLU << x;
+}
+
+// A math routine computing the largest power of two less than x.
+uint64_t power_of_two_below(uint64_t x)
+{
+    return two_to(quicklog(x));
+}
+
+
 void hashtable_cleanup()
 {
 
@@ -126,7 +139,7 @@ void printBits64(llu num)
 {
    for(unsigned int bit=0;bit<(sizeof(llu) * 8); bit++)
    {
-      fprintf(stderr, "%llu", num & 0x01);
+      fprintf(stderr, "%" PRIu64, num & 0x01);
       num = num >> 1;
    }
    fprintf(stderr, "\n");

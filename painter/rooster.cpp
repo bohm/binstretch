@@ -51,6 +51,8 @@ template <bool FLAG> void print_candidates(std::list<adversary_vertex*> &cq)
 
 template <bool FLAG> void print_splits(std::list<dag*> &splits)
 {
+    print<ROOSTER_DEBUG>("Printing splits:\n");
+    
     if (FLAG)
     {
 	int i = 0;
@@ -190,6 +192,7 @@ void merge_two(dag *d, adversary_vertex *remaining, adversary_vertex *removal)
 
 void merge_ignoring_last_item(dag *d)
 {
+    print<ROOSTER_DEBUG>("Merging nodes which have the same values except for the last item.\n");
     // Build a set of hashes for each adversary vertex, ignoring the last item.
     std::map<uint64_t, adversary_vertex*> no_last_items;
 
@@ -212,12 +215,15 @@ void merge_ignoring_last_item(dag *d)
 	} else
 	{
 	    // Collision, merge the two nodes.
+	    print<ROOSTER_DEBUG>("Merging two nodes.\n");
 	    merge_two(d, no_last_items.at(loaditemhash), advv);
 	    // Remove all unreachable vertices from the tree. This will take O(n) time
 	    // but may result in much less merging.
 	    d->erase_unreachable();
 	}
     }
+    print<ROOSTER_DEBUG>("Finished merge.\n");
+
 }
 
 // --- Printing methods. ---
@@ -326,8 +332,9 @@ void coq_afterword(FILE *stream)
     fprintf(stream, ".\n");
 }
 
-void roost(dag *d, std::string outfile)
+void generate_coq(dag *d, std::string outfile)
 {
+    print<ROOSTER_DEBUG>("Generating Coq output.\n");
     outf = fopen(outfile.c_str(), "w");
     assert(outf != NULL);
 
@@ -340,6 +347,14 @@ void roost(dag *d, std::string outfile)
 }
 
 
+bool parse_parameter_reduce(int argc, char **argv, int pos)
+{
+    if (strcmp(argv[pos], "--reduce") == 0)
+    {
+	return true;
+    }
+    return false;
+}
 
 void usage()
 {
@@ -348,14 +363,20 @@ void usage()
 
 int main(int argc, char **argv)
 {
-
-    // Sanitize parameters.
-    if(argc != 3)
+    bool reduce = false;
+    
+    if(argc < 3)
     {
 	usage();
 	return -1;
     }
-    
+
+    // Parse all parameters except for the last two, which must be infile and outfile.
+    for (int i = 0; i < argc-2; i++)
+    {
+	reduce = parse_parameter_reduce(argc, argv, i);
+    }
+
     std::string infile(argv[argc-2]);
     std::string outfile(argv[argc-1]);
 
@@ -365,6 +386,7 @@ int main(int argc, char **argv)
 	usage();
 	return -1;
     }
+
 
     fprintf(stderr, "Converting %s into a Coq form %s.\n", infile.c_str(), outfile.c_str());
 
@@ -380,15 +402,21 @@ int main(int argc, char **argv)
 
     // Merge vertices which have the same loaditemhash.
     merge_ignoring_last_item(canvas);
-   
-    print<ROOSTER_DEBUG>("Splitting the dag into graphs with small indegree.\n");
-    std::list<dag*> splits = reduce_indegrees(canvas);
-    print_splits<ROOSTER_DEBUG>(splits);
-    // dag *tree = subtree(canvas, canvas->root);
-    // delete canvas;
-    // canvas = tree;
 
-    // roost(canvas, outfile);
+    if (reduce)
+    {
+	print<ROOSTER_DEBUG>("Splitting the dag into graphs with small indegree.\n");
+	std::list<dag*> splits = reduce_indegrees(canvas);
+	print_splits<ROOSTER_DEBUG>(splits);
+    }
+    else
+    {
+	print<ROOSTER_DEBUG>("Transforming the dag into a tree.\n");
+	dag *tree = canvas->subtree(canvas->root);
+	delete canvas;
+	canvas = tree;
+	generate_coq(canvas, outfile);
+    }
 
     return 0;
 }

@@ -129,10 +129,8 @@ int queen_class::start()
     // std::tuple<unsigned int, unsigned int, unsigned int> settings = server_properties(processor_name);
     // out of the settings, queen does not spawn workers or use ht, only dpht
     dplog = QUEEN_DPLOG;
-    dpht_size = 1LLU << dplog;
-
     // Init queen memory (the queen does not use the main solved cache):
-    dpc = new guar_cache(dpht_size, dplog, 4); 
+    dpc = new guar_cache(dplog); 
 
     sync_up(); // Sync before any rounds start.
 

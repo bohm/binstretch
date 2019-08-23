@@ -3,7 +3,7 @@
 
 // System constants that do not need to be modified.
 
-typedef unsigned long long int llu;
+typedef uint64_t llu;
 typedef signed char tiny;
 
 // Victory states.
@@ -106,8 +106,7 @@ const int PERMANENT = 1;
 const int QUEEN = 0;
 
 // bitsize of queen's dpcache
-const unsigned int QUEEN_DPLOG = 15;
-
+const unsigned int QUEEN_DPLOG = 23;
 
 // worker's get_task() constants
 const int NO_MORE_TASKS = -1;

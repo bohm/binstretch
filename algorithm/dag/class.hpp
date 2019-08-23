@@ -40,12 +40,12 @@ public:
     uint64_t edge_counter = 0;
 
     // Mapping based on state hashes.
-    std::map<llu, adversary_vertex*> adv_by_hash;
-    std::map<llu, algorithm_vertex*> alg_by_hash;
+    std::map<uint64_t, adversary_vertex*> adv_by_hash;
+    std::map<uint64_t, algorithm_vertex*> alg_by_hash;
 
     // Mapping based on internal IDs.
-    std::map<llu, adversary_vertex*> adv_by_id;
-    std::map<llu, algorithm_vertex*> alg_by_id;
+    std::map<uint64_t, adversary_vertex*> adv_by_id;
+    std::map<uint64_t, algorithm_vertex*> alg_by_id;
 
     adversary_vertex* root = NULL;
     
