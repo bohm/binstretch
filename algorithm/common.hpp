@@ -70,9 +70,9 @@ const long double TASKLOG_THRESHOLD = 60.0; // in seconds
 // than 127 items or not. We allow it to go negative for signalling -1/-2.
 typedef int16_t bin_int;
 
-const bin_int S = _S;
-const bin_int R = _R;
-const bin_int BINS = _BINS;
+const bin_int S = IS;
+const bin_int R = IR;
+const bin_int BINS = IBINS;
 
 // If you want to generate a specific lower bound, you can create an initial bin configuration here.
 // You can also insert an initial sequence here.
@@ -106,7 +106,7 @@ const std::vector<bin_int> INITIAL_ITEMS = {};
 // const std::vector<bin_int> INITIAL_SEQUENCE = {2};
 
 // const std::vector<bin_int> INITIAL_SEQUENCE = {};
-const std::vector<bin_int> INITIAL_SEQUENCE = _I_S;
+const std::vector<bin_int> INITIAL_SEQUENCE = II_S;
 
 const int FIRST_PASS = 0; // enough to get a lb of 19/14 on 6,7 bins.
 // const int FIRST_PASS = 1; // enough for 19/14 on 8 bins.
@@ -288,6 +288,23 @@ template <bool PARAM> void print(const char *format, ...)
 	va_end(argptr);
     }
 }
+
+// A smarter assertion function, from https://stackoverflow.com/a/37264642 .
+void assert_with_message(const char* expression, bool evaluation, const char* message)
+{
+    if (!evaluation)
+    {
+        fprintf(stderr, "Assert failed:\t%s\n", message);
+	fprintf(stderr, "Expression:\t%s\n", expression);
+        abort();
+    }
+}
+    
+#ifndef NDEBUG
+#define assert_message(expr, msg) assert_with_message(#expr, expr, msg);
+#else
+#define assert_message(expr, msg) ;
+#endif
 
 #define MEASURE_ONLY(x) if (MEASURE) {x;}
 #define REGROW_ONLY(x) if (REGROW) {x;}

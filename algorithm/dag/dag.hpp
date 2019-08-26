@@ -6,5 +6,6 @@
 #include "class.hpp" // Base class.
 #include "basics.hpp" // Basic methods.
 #include "cloning.hpp" // Cloning methods.
+#include "print.hpp" // Printing.
 
 #endif

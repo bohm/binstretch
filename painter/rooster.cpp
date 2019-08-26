@@ -3,14 +3,10 @@
 #include <string>
 #include <algorithm>
 
-// Set constants which are usually set at build time by the user.
-#define _I_S {}
-
 #include "../algorithm/common.hpp"
 #include "../algorithm/hash.hpp"
 #include "../algorithm/binconf.hpp"
 #include "../algorithm/dag/dag.hpp"
-#include "../algorithm/dag/cloning.hpp"
 #include "../algorithm/dfs.hpp"
 #include "../algorithm/loadfile.hpp"
 #include "../algorithm/savefile.hpp"

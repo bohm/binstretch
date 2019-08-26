@@ -128,7 +128,7 @@ public:
 
     ~algorithm_vertex();
 
-    void print(FILE* stream, bool debug = false); // defined in savefile.hpp
+    void print(FILE* stream, bool debug = false);
 	
 };
 
@@ -179,7 +179,7 @@ public:
 
     ~adversary_vertex();
     
-    void print(FILE* stream, bool debug = false); // defined in savefile.hpp
+    void print(FILE* stream, bool debug = false);
 };
 
 
@@ -206,7 +206,7 @@ public:
 	//print<DEBUG>("Edge %" PRIu64 " destroyed.\n", this->id);
     }
 
-    void print(FILE *stream); // defined in savefile.hpp.
+    void print(FILE *stream);
 };
 
 class alg_outedge {
@@ -232,7 +232,7 @@ public:
 	//print<DEBUG>("Edge %" PRIu64 " destroyed.\n", this->id);
     }
 
-    void print(FILE *stream); // defined in savefile.hpp
+    void print(FILE *stream);
 };
 
 #endif // _DAG_CLASS_HPP

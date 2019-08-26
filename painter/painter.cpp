@@ -1,9 +1,6 @@
 #include <cstdio>
 #include <cstdlib>
 
-// Set constants which are usually set at build time by the user.
-#define _I_S {}
-
 #include "../algorithm/common.hpp"
 #include "../algorithm/hash.hpp"
 #include "../algorithm/binconf.hpp"

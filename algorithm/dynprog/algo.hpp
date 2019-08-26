@@ -175,7 +175,7 @@ template<bool STANDALONE> bin_int dynprog_max_direct(const binconf &conf, thread
 		    if (!STANDALONE)
 		    {
 			MEASURE_ONLY(tat->meas.largest_queue_observed =
-				     std::max(tat->meas.largest_queue_observed, pnewq->size()));
+				     std::max<uint64_t>(tat->meas.largest_queue_observed, pnewq->size()));
 		    }
 		}
 	    }

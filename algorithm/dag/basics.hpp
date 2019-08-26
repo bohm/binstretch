@@ -17,7 +17,16 @@ algorithm_vertex* dag::add_alg_vertex(const binconf& b, int next_item, std::stri
 	if (!allow_duplicates)
 	{
 	    auto it = alg_by_hash.find(b.alghash(next_item));
-	    assert(it == alg_by_hash.end());
+
+	    if (it != alg_by_hash.end())
+	    {
+		fprintf(stderr, "Algorithmic vertex to be created: ");
+		ptr->print(stderr, true);
+		fprintf(stderr, "is already present in the DAG as: ");
+		it->second->print(stderr, true);
+		assert(it == alg_by_hash.end());
+	    }
+	    
 	    alg_by_hash[b.alghash(next_item)] = ptr;
 	}
 
@@ -40,7 +49,14 @@ adversary_vertex* dag::add_adv_vertex(const binconf &b, std::string heurstring =
 	if (!allow_duplicates)
 	{
 	    auto it = adv_by_hash.find(b.confhash());
-	    assert(it == adv_by_hash.end());
+	    if (it != adv_by_hash.end())
+	    {
+		fprintf(stderr, "Adversary vertex to be created: ");
+		ptr->print(stderr, true);
+		fprintf(stderr, "is already present in the DAG as: ");
+		it->second->print(stderr, true);
+		assert(it == adv_by_hash.end());
+	    }
 	    adv_by_hash[b.confhash()] = ptr;
 	}
 
