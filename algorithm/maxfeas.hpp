@@ -85,9 +85,9 @@ std::tuple<bin_int, bin_int, bool> improve_bounds_binary(binconf *b, bin_int lb,
 bin_int maximum_feasible(binconf *b, const int depth, const bin_int cannot_send_less, bin_int initial_ub, thread_attr *tat)
 {
     MEASURE_ONLY(tat->meas.maximum_feasible_counter++);
-    print<DEBUG>("Starting dynprog maximization of configuration:\n");
+    print_if<DEBUG>("Starting dynprog maximization of configuration:\n");
     print_binconf<DEBUG>(b);
-    print<DEBUG>("\n"); 
+    print_if<DEBUG>("\n"); 
 
     tat->maxfeas_return_point = -1;
 
@@ -239,7 +239,7 @@ bin_int maximum_feasible(binconf *b, const int depth, const bin_int cannot_send_
     if (maximum_feasible != check)
     {
 	print_binconf<true>(b);
-	print<true>("dynprog_max: %" PRIi16 "; safe value: % " PRIi16 ".\n", maximum_feasible, check);
+	print_if<true>("dynprog_max: %" PRIi16 "; safe value: % " PRIi16 ".\n", maximum_feasible, check);
 	assert(maximum_feasible == check);
     } */
     

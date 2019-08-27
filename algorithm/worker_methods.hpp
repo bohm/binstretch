@@ -38,7 +38,7 @@ int worker::get_task()
 	    assigned_tid = ov->tasks[assigned_index];
 	}
 	lk.unlock();
-	// print<true>("Worker %d was assigned batch index %d.\n", thread_rank + tid, assigned_index);
+	// print_if<true>("Worker %d was assigned batch index %d.\n", thread_rank + tid, assigned_index);
 
 	// actively wait for tasks
 	// TODO: make this into a passive
@@ -51,7 +51,7 @@ int worker::get_task()
 	    return NO_MORE_TASKS;
 	} else if (tstatus[assigned_tid].load() == task_status::pruned)
 	{
-	    // print<true>("Worker %d skipping task %d, PRUNED.\n", thread_rank + tid, assigned_tid);
+	    // print_if<true>("Worker %d skipping task %d, PRUNED.\n", thread_rank + tid, assigned_tid);
 	    continue;
 	} else {
 	    return assigned_tid;
@@ -107,11 +107,11 @@ void worker::start()
 	lk.unlock();
 	waiting.store(false);
 
-	print<DEBUG>("Worker %d (%d) waking up frow sleep.\n");
+	print_if<DEBUG>("Worker %d (%d) waking up frow sleep.\n");
 
 	if (ov->final_round)
 	{
-	    print<DEBUG>("Worker %d (%d) terminating, final round.\n");
+	    print_if<DEBUG>("Worker %d (%d) terminating, final round.\n");
 	    return;
 	}
 
@@ -120,22 +120,22 @@ void worker::start()
 	while(!root_solved)
 	{
 	    current_task_id = get_task(); // this will actively wait for a task, if necessary
-	    // print<true>("Worker %d processing task %d.\n", thread_rank + tid, current_task_id);
+	    // print_if<true>("Worker %d processing task %d.\n", thread_rank + tid, current_task_id);
 
 	    if (root_solved)
 	    {
-		print<TASK_DEBUG>("Worker %d: root solved, breaking.\n", thread_rank + tid);
+		print_if<TASK_DEBUG>("Worker %d: root solved, breaking.\n", thread_rank + tid);
 		break;
 	    }
 
 	    if (current_task_id == NO_MORE_TASKS)
 	    {
-		print<TASK_DEBUG>("Worker %d: No more tasks, breaking.\n", thread_rank + tid);
+		print_if<TASK_DEBUG>("Worker %d: No more tasks, breaking.\n", thread_rank + tid);
 
 		// no_more_tasks = true;
 		break;
 	    } else {
-		print<TASK_DEBUG>("Worker %d: Taken up task %d.\n", thread_rank + tid, current_task_id);
+		print_if<TASK_DEBUG>("Worker %d: Taken up task %d.\n", thread_rank + tid, current_task_id);
 
 	    }
 	    assert(current_task_id >= 0 && current_task_id < tcount);
@@ -150,10 +150,10 @@ void worker::start()
 	    victory solution = victory::irrelevant;
 	    if  (tstatus[current_task_id].load() != task_status::pruned)
 	    {
-		// print<true>("Worker %d processing task %d.\n", thread_rank + tid, current_task_id);
+		// print_if<true>("Worker %d processing task %d.\n", thread_rank + tid, current_task_id);
 		solution = solve(&current_task, current_task_id);
 	    } else {
-		// print<true>("Worker %d skipping task %d, irrelevant.\n", thread_rank + tid, current_task_id);
+		// print_if<true>("Worker %d skipping task %d, irrelevant.\n", thread_rank + tid, current_task_id);
 	    }
 	    // note: solution may still be irrelevant if a signal came mid-computation
 
@@ -181,7 +181,7 @@ void worker::start()
 	    }
 	}
 
-	print<DEBUG>("Worker %d (%d) detected root solved, waiting until the next round.\n");
+	print_if<DEBUG>("Worker %d (%d) detected root solved, waiting until the next round.\n");
     }
 }
 

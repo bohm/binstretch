@@ -36,6 +36,8 @@ void dag::clone_subtree(dag *processing, adversary_vertex *vertex_to_process,
     vertex_to_process->cosmetics = original->cosmetics;
     vertex_to_process->sapling = original->sapling;
     vertex_to_process->label = original->label;
+    vertex_to_process->reference = original->reference;
+ 
     
     // Process children.
     for (adv_outedge *e: original->out)
@@ -79,6 +81,7 @@ void dag::clone_subdag(dag *processing, adversary_vertex *vertex_to_process,
     vertex_to_process->cosmetics = original->cosmetics;
     vertex_to_process->sapling = original->sapling;
     vertex_to_process->label = original->label;
+    vertex_to_process->reference = original->reference;
     
     // Process children.
     for (adv_outedge *e: original->out)

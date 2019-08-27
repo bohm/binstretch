@@ -67,9 +67,9 @@ victory sequencing_adversary(binconf *b, unsigned int depth, thread_attr *tat,
 
 	if (vic == victory::adv)
 	{
-	    print<DEBUG>("Sequencing: Adversary heuristic ");
+	    print_if<DEBUG>("Sequencing: Adversary heuristic ");
 	    print(stderr, adv_to_evaluate->heur_strategy->type);
-	    print<DEBUG>(" is successful.\n");
+	    print_if<DEBUG>(" is successful.\n");
 
 	    if (!EXPAND_HEURISTICS)
 	    {
@@ -95,8 +95,8 @@ victory sequencing_adversary(binconf *b, unsigned int depth, thread_attr *tat,
     int item_size = seq[depth];
     victory below = victory::alg;
     victory r = victory::alg;
-    print<DEBUG>("Trying player zero choices, with maxload starting at %d\n", maximum_feasible);
-    print<DEBUG>("Sending item %d to algorithm.\n", item_size);
+    print_if<DEBUG>("Trying player zero choices, with maxload starting at %d\n", maximum_feasible);
+    print_if<DEBUG>("Sending item %d to algorithm.\n", item_size);
     // algorithm's vertex for the next step
     // Check vertex cache if this adversarial vertex is already present.
     // std::map<llu, adversary_vertex*>::iterator it;
@@ -203,11 +203,11 @@ victory sequencing_algorithm(binconf *b, int k, unsigned int depth, thread_attr 
 	    if (!already_generated)
 	    {
 		below = sequencing_adversary(b, depth, tat, upcoming_adv, alg_to_evaluate, seq);
-		print<DEBUG>("SEQ: Alg packs into bin %d, the new configuration is:", i);
+		print_if<DEBUG>("SEQ: Alg packs into bin %d, the new configuration is:", i);
 		print_binconf<DEBUG>(b);
-		print<DEBUG>("Resulting in: ");
+		print_if<DEBUG>("Resulting in: ");
 		print(stderr, below);
-		print<DEBUG>(".\n");
+		print_if<DEBUG>(".\n");
 	    }
 	    
 	    // return b to original form

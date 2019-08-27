@@ -48,7 +48,7 @@ void queen_class::updater(adversary_vertex* sapling)
 	if (collected_cumulative.load(std::memory_order_acquire) / PROGRESS_AFTER > last_printed)
 	{
 	    last_printed = collected_cumulative / PROGRESS_AFTER;
-	    print<PROGRESS>("Queen collects task number %u. \n", collected_cumulative.load(std::memory_order_acquire));
+	    print_if<PROGRESS>("Queen collects task number %u. \n", collected_cumulative.load(std::memory_order_acquire));
 	}
 	
 	// update main tree and task map
@@ -63,7 +63,7 @@ void queen_class::updater(adversary_vertex* sapling)
 	    updater_result.store(update(sapling, uat), std::memory_order_release);
 	    if (cycle_counter >= 100)
 	    {
-		print<VERBOSE>("Update: Visited %" PRIu64 " verts, unfinished tasks in tree: %" PRIu64 ".\n",
+		print_if<VERBOSE>("Update: Visited %" PRIu64 " verts, unfinished tasks in tree: %" PRIu64 ".\n",
 			   uat.vertices_visited, uat.unfinished_tasks);
 
 		if (VERBOSE && uat.unfinished_tasks <= 10)
@@ -82,7 +82,7 @@ void queen_class::updater(adversary_vertex* sapling)
 	    // TODO: make these work again.
 	    if (updater_result == victory::uncertain && uat.unfinished_tasks == 0)
 	    {
-		print<true>("The tree is in a strange state.\n");
+		print_if<true>("The tree is in a strange state.\n");
 		// fprintf(stderr, "A debug tree will be created with extra id 99.\n");
 		// print_debug_dag(computation_root, 0, 99);
 		assert(updater_result != victory::uncertain || uat.unfinished_tasks > 0);
@@ -90,7 +90,7 @@ void queen_class::updater(adversary_vertex* sapling)
 
 	    if (debug_print_requested.load(std::memory_order_acquire) == true)
 	    {
-		print<true>("Queen: printing the current state of the tree, as requested.\n");
+		print_if<true>("Queen: printing the current state of the tree, as requested.\n");
 		// fprintf(stderr, "A debug tree will be created with extra id 100.\n");
 		// print_debug_dag(computation_root, 0, 100);
 		debug_print_requested.store(false, std::memory_order_release);
@@ -101,7 +101,7 @@ void queen_class::updater(adversary_vertex* sapling)
 		fprintf(stderr, "We have evaluated the tree: ");
 		print(stderr, updater_result.load(std::memory_order_acquire));
 		fprintf(stderr, "\n");
-		print<MEASURE>("Prune/receive collisions: %" PRIu64 ".\n", g_meas.pruned_collision);
+		print_if<MEASURE>("Prune/receive collisions: %" PRIu64 ".\n", g_meas.pruned_collision);
 		g_meas.pruned_collision = 0;
 	    }
 	}
@@ -163,7 +163,7 @@ int queen_class::start()
 	// just move on.
 	if (computation_root->win != victory::uncertain)
 	{
-	    print<PROGRESS>("Queen: sapling queue size: %zu, current sapling (see below) skipped, already computed.\n",
+	    print_if<PROGRESS>("Queen: sapling queue size: %zu, current sapling (see below) skipped, already computed.\n",
 			    sapling_stack.size());
 	    print_binconf<PROGRESS>(computation_root->bc);
 
@@ -191,7 +191,7 @@ int queen_class::start()
 		task_depth += TASK_DEPTH_STEP;
 		task_load += TASK_LOAD_STEP;
 	    }
-	    print<PROGRESS>("Queen: sapling queue size: %zu, current sapling of regrow level %d:\n", sapling_stack.size(), regrow_level);
+	    print_if<PROGRESS>("Queen: sapling queue size: %zu, current sapling of regrow level %d:\n", sapling_stack.size(), regrow_level);
 	    print_binconf<PROGRESS>(computation_root->bc);
 
 	    thread_attr tat;
@@ -200,7 +200,7 @@ int queen_class::start()
 	    // do not change monotonicity when regrowing (regrow_level >= 1)
 	    for (; monotonicity <= S-1; monotonicity++)
 	    {
-		print<PROGRESS>("Queen: Switching to monotonicity %d.\n", monotonicity);
+		print_if<PROGRESS>("Queen: Switching to monotonicity %d.\n", monotonicity);
 
 		if (PROGRESS) { iteration_start = std::chrono::system_clock::now(); }
 
@@ -242,7 +242,7 @@ int queen_class::start()
 		    }
 		} else {
 		    // queen needs to start the round
-		    print<COMM_DEBUG>("Queen: Starting the round.\n");
+		    print_if<COMM_DEBUG>("Queen: Starting the round.\n");
 		    clear_batches();
 		    round_start_and_finality(false);
 		    // queen sends the current monotonicity to the workers
@@ -256,7 +256,7 @@ int queen_class::start()
 		    // note: do not push into irrel_taskq before permutation is done;
 		    // the numbers will not make any sense.
 		
-		    print<PROGRESS>("Queen: Generated %d tasks.\n", tcount);
+		    print_if<PROGRESS>("Queen: Generated %d tasks.\n", tcount);
 		    broadcast_tarray_tstatus();
 		    taskpointer = 0;
 		
@@ -290,7 +290,7 @@ int queen_class::start()
 		{
 		    iteration_end = std::chrono::system_clock::now();
 		    std::chrono::duration<long double> iteration_time = iteration_end - iteration_start;
-		    print<PROGRESS>("Iteration time: %Lfs.\n", iteration_time.count());
+		    print_if<PROGRESS>("Iteration time: %Lfs.\n", iteration_time.count());
 		}
 		
 		if (updater_result == victory::adv)
@@ -357,7 +357,7 @@ int queen_class::start()
     }
 
     // We are terminating, start final round.
-    print<COMM_DEBUG>("Queen: starting final round.\n");
+    print_if<COMM_DEBUG>("Queen: starting final round.\n");
     round_start_and_finality(true);
     receive_measurements();
     round_end();
@@ -366,7 +366,7 @@ int queen_class::start()
     {
 	scheduler_end = std::chrono::system_clock::now();
 	std::chrono::duration<long double> scheduler_time = scheduler_end - scheduler_start;
-	print<PROGRESS>("Full evaluation time: %Lfs.\n", scheduler_time.count());
+	print_if<PROGRESS>("Full evaluation time: %Lfs.\n", scheduler_time.count());
     }
 
     // We now print only once, after a full tree is generated.

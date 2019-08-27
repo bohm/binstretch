@@ -165,7 +165,7 @@ void send_root_solved()
 {
     for (int i = 1; i < world_size; i++)
     {
-	print<COMM_DEBUG>("Queen: Sending root solved to overseer %d.\n", i);
+	print_if<COMM_DEBUG>("Queen: Sending root solved to overseer %d.\n", i);
 	MPI_Send(&ROOT_SOLVED_SIGNAL, 1, MPI_INT, i, net::ROOT_SOLVED, MPI_COMM_WORLD);
     }
 }
@@ -191,7 +191,7 @@ void compute_thread_ranks()
 	MPI_Recv(&thread_rank, 1, MPI_INT, QUEEN, net::THREAD_RANK, MPI_COMM_WORLD, &stat);
 	MPI_Bcast(&thread_rank_size, 1, MPI_INT, QUEEN, MPI_COMM_WORLD);
 
-	print<true>("Overseer %d has %d threads, ranked [%d,%d] of %d total.\n",
+	print_if<true>("Overseer %d has %d threads, ranked [%d,%d] of %d total.\n",
 		    world_rank, worker_count, thread_rank,
 		    thread_rank + worker_count - 1, thread_rank_size);
     } else if (BEING_QUEEN)
@@ -235,7 +235,7 @@ void transmit_irrelevant_task(int taskno)
 {
     // MPI_Request blankreq;
     int target_overseer = overseer_map[taskno/chunk];
-    // print<DEBUG>("Transmitting task %d as irrelevant.\n", taskno);
+    // print_if<DEBUG>("Transmitting task %d as irrelevant.\n", taskno);
     MPI_Send(&taskno, 1, MPI_INT, target_overseer, net::SENDING_IRRELEVANT, MPI_COMM_WORLD);
 }
 
@@ -264,14 +264,14 @@ void fetch_irrelevant_tasks(const int& overseer_lb, const int& overseer_ub)
 	MPI_Recv(&ir_task, 1, MPI_INT, QUEEN, net::SENDING_IRRELEVANT, MPI_COMM_WORLD, &stat);
 	if (!(ir_task >= overseer_lb && ir_task < overseer_ub))
 	{
-	    print<true>("Overseer %d fetched task %d which is out of bounds [%d,%d).\n",
+	    print_if<true>("Overseer %d fetched task %d which is out of bounds [%d,%d).\n",
 			world_rank, ir_task, overseer_lb, overseer_ub);
-	    print<true>("Chunk size: %d.\n", chunk);
+	    print_if<true>("Chunk size: %d.\n", chunk);
 	    assert(ir_task >= overseer_lb && ir_task < overseer_ub);
 	}
 	// mark task as irrelevant
 	tstatus[ir_task].store(TASK_PRUNED);
-        print<DEBUG>("Worker %d: marking %d as irrelevant.\n", world_rank, ir_task);
+        print_if<DEBUG>("Worker %d: marking %d as irrelevant.\n", world_rank, ir_task);
 	MPI_Iprobe(QUEEN, net::SENDING_IRRELEVANT, MPI_COMM_WORLD, &irrel_task_incoming, &stat);
     }
 }
@@ -395,7 +395,7 @@ void broadcast_tarray_tstatus()
 
     if (BEING_OVERSEER)
     {
-	print<COMM_DEBUG>("Received tcount %d.\n", tcount);
+	print_if<COMM_DEBUG>("Received tcount %d.\n", tcount);
 	init_tarray();
 	init_tstatus();
     }
@@ -433,13 +433,13 @@ void broadcast_tarray_tstatus()
 
     if (BEING_OVERSEER)
     {
-	print<COMM_DEBUG>("Overseer %d: tarray and tstatus synchronized.\n", world_rank);
+	print_if<COMM_DEBUG>("Overseer %d: tarray and tstatus synchronized.\n", world_rank);
     }
 
 
     if (BEING_QUEEN)
     {
-	print<PROGRESS>("Tasks synchronized.\n");
+	print_if<PROGRESS>("Tasks synchronized.\n");
     }
 }
 
@@ -576,13 +576,13 @@ void transmit_batch(int *batch, int overseer)
 void receive_batch(int *current_batch)
 {
     MPI_Status stat;
-    print<COMM_DEBUG>("Overseer %d receives the new batch.\n", world_rank);
+    print_if<COMM_DEBUG>("Overseer %d receives the new batch.\n", world_rank);
     MPI_Recv(current_batch, BATCH_SIZE, MPI_INT, QUEEN, net::SENDING_BATCH, MPI_COMM_WORLD, &stat);
 }
 
 bool try_receiving_batch(std::array<int, BATCH_SIZE>& upcoming_batch)
 {
-    print<TASK_DEBUG>("Overseer %d: Attempting to receive a new batch. \n",
+    print_if<TASK_DEBUG>("Overseer %d: Attempting to receive a new batch. \n",
 		      world_rank);
 
 
@@ -591,7 +591,7 @@ bool try_receiving_batch(std::array<int, BATCH_SIZE>& upcoming_batch)
     MPI_Iprobe(QUEEN, net::SENDING_BATCH, MPI_COMM_WORLD, &batch_incoming, &stat);
     if (batch_incoming)
     {
-	print<COMM_DEBUG>("Overseer %d receives the new batch.\n", world_rank);
+	print_if<COMM_DEBUG>("Overseer %d receives the new batch.\n", world_rank);
 	MPI_Recv(upcoming_batch.data(), BATCH_SIZE, MPI_INT, QUEEN, net::SENDING_BATCH, MPI_COMM_WORLD, &stat);
 	return true;
     } else

@@ -40,7 +40,7 @@ victory check_messages(thread_attr *tat)
 
     if (tstatus[tat->task_id].load() == task_status::pruned)
     {
-	//print<true>("Worker %d works on an irrelevant thread.\n", world_rank);
+	//print_if<true>("Worker %d works on an irrelevant thread.\n", world_rank);
 	return victory::irrelevant;
     }
     return victory::uncertain;
@@ -55,12 +55,12 @@ void compute_next_moves(const binconf *b, int maximum_feasible, int lower_bound,
 {
     if(strat != NULL)
     {
-	print<DEBUG>("Next move computed by active heuristic.\n");
+	print_if<DEBUG>("Next move computed by active heuristic.\n");
 	cands.push_back(strat->next_item(b, relative_depth));
     }
     else
     {
-	print<DEBUG>("Building next moves based on the default strategy.\n");
+	print_if<DEBUG>("Building next moves based on the default strategy.\n");
 
 	int stepcounter = 0;
 	for (int item_size = strategy_start(maximum_feasible, b->last_item);
@@ -100,12 +100,12 @@ template<mm_state MODE> victory adversary(binconf *b, int depth, thread_attr *ta
 
     if(MODE == mm_state::generating)
     {
-	print<DEBUG>("GEN: ");
+	print_if<DEBUG>("GEN: ");
     } else {
-	print<DEBUG>("EXP: ");
+	print_if<DEBUG>("EXP: ");
     }
  
-    print<DEBUG>("Adversary evaluating the position with bin configuration: ");
+    print_if<DEBUG>("Adversary evaluating the position with bin configuration: ");
     print_binconf<DEBUG>(b);
 
     if (MODE == mm_state::generating)
@@ -136,9 +136,9 @@ template<mm_state MODE> victory adversary(binconf *b, int depth, thread_attr *ta
 	victory vic = adversary_heuristics<MODE>(b, tat, adv_to_evaluate);
 	if (vic == victory::adv)
 	{
-	    print<DEBUG>("GEN: Adversary heuristic ");
-	    print<DEBUG>(stderr, adv_to_evaluate->heur_strategy->type);
-	    print<DEBUG>(" is successful.\n");
+	    print_if<DEBUG>("GEN: Adversary heuristic ");
+	    print_if<DEBUG>(stderr, adv_to_evaluate->heur_strategy->type);
+	    print_if<DEBUG>(" is successful.\n");
 	    if (MODE == mm_state::exploring || !EXPAND_HEURISTICS)
 	    {
 		return victory::adv;
@@ -183,14 +183,14 @@ template<mm_state MODE> victory adversary(binconf *b, int depth, thread_attr *ta
 	// assert
 	if (adv_to_evaluate->state != vert_state::fresh && adv_to_evaluate->state != vert_state::expand)
 	{
-	    print<true>("Assert failed: adversary vertex state is %d.\n", adv_to_evaluate->state);
+	    print_if<true>("Assert failed: adversary vertex state is %d.\n", adv_to_evaluate->state);
 	    assert(adv_to_evaluate->state == vert_state::fresh || adv_to_evaluate->state == vert_state::expand); // no other state should go past this point
 	}
 
 	// we now do creation of tasks only until the REGROW_LIMIT is reached
 	if (!tat->heuristic_regime && tat->regrow_level <= REGROW_LIMIT && POSSIBLE_TASK(adv_to_evaluate, tat->largest_since_computation_root, depth))
 	{
-	    print<DEBUG>("GEN: Current conf is a possible task (depth %d, task_depth %d, load %d, task_load %d, comp. root load: %d.\n ",
+	    print_if<DEBUG>("GEN: Current conf is a possible task (depth %d, task_depth %d, load %d, task_load %d, comp. root load: %d.\n ",
 	     		depth, task_depth, b->totalload(), task_load, computation_root->bc.totalload());
 	     print_binconf<DEBUG>(b);
 
@@ -267,7 +267,7 @@ template<mm_state MODE> victory adversary(binconf *b, int depth, thread_attr *ta
     }
 
     int maximum_feasible = dp; // possibly also INFEASIBLE == -1
-    print<DEBUG>("Trying player zero choices, with maxload starting at %d\n", maximum_feasible);
+    print_if<DEBUG>("Trying player zero choices, with maxload starting at %d\n", maximum_feasible);
 
     // for (int item_size = maximum_feasible; item_size>=lower_bound; item_size--)
 
@@ -278,7 +278,7 @@ template<mm_state MODE> victory adversary(binconf *b, int depth, thread_attr *ta
     for (int item_size : candidate_moves)
     {
 
-        print<DEBUG>("Sending item %d to algorithm.\n", item_size);
+        print_if<DEBUG>("Sending item %d to algorithm.\n", item_size);
 
 	if (MODE == mm_state::generating)
 	{
@@ -376,12 +376,12 @@ template<mm_state MODE> victory algorithm(binconf *b, int k, int depth, thread_a
 
     if(MODE == mm_state::generating)
     {
-	print<DEBUG>("GEN: ");
+	print_if<DEBUG>("GEN: ");
     } else {
-	print<DEBUG>("EXP: ");
+	print_if<DEBUG>("EXP: ");
     }
  
-    print<DEBUG>("Algorithm evaluating the position with new item %d and bin configuration: ", k);
+    print_if<DEBUG>("Algorithm evaluating the position with new item %d and bin configuration: ", k);
     print_binconf<DEBUG>(b);
  
     
@@ -510,11 +510,11 @@ template<mm_state MODE> victory algorithm(binconf *b, int k, int depth, thread_a
 	    }
 	    
 	    below = adversary<MODE>(b, depth, tat, upcoming_adv, alg_to_evaluate);
-	    print<DEBUG>("Alg packs into bin %d, the new configuration is:", i);
+	    print_if<DEBUG>("Alg packs into bin %d, the new configuration is:", i);
 	    print_binconf<DEBUG>(b);
-	    print<DEBUG>("Resulting in: ");
-	    print<DEBUG>(stderr, below);
-	    print<DEBUG>(".\n");
+	    print_if<DEBUG>("Resulting in: ");
+	    print_if<DEBUG>(stderr, below);
+	    print_if<DEBUG>(".\n");
 	    
 	    // send signal that we should terminate immediately upwards
 	    if (below == victory::irrelevant)

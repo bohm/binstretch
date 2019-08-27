@@ -242,7 +242,7 @@ void partial_dag::populate_next_items_alg(uint64_t name)
     // Sanity checks for algorithm vertices.
     if (current_vert.in.size() != 1)
     {
-	print<GRAPH_DEBUG>("Vertex with name %" PRIu64 " has an unexpected number of incoming edges (%d).\n", name, current_vert.in.size());
+	print_if<GRAPH_DEBUG>("Vertex with name %" PRIu64 " has an unexpected number of incoming edges (%d).\n", name, current_vert.in.size());
 	assert(current_vert.in.size() >= 1);
     }
 

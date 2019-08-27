@@ -17,9 +17,6 @@ const bool ROOSTER_DEBUG = true;
 FILE* outf = NULL;
 dag *canvas = NULL;
 
-// queue of all the candidates for splitting.
-std::list<adversary_vertex*> candidateq;
-
 // A queue lacks the clear() method, so we supply our own.
 void clear( std::queue<adversary_vertex*> &q )
 {
@@ -29,15 +26,16 @@ void clear( std::queue<adversary_vertex*> &q )
 
 // --- Debugging methods. ---
 
-template <bool FLAG> void print_candidates(std::list<adversary_vertex*> &cq)
+template <bool FLAG> void print_candidates(std::list<adversary_vertex*> &cq, int iteration)
 {
     if (FLAG)
     {
 	int i = 0;
+	fprintf(stderr, "Iteration %d: Printing candidate for split-off:\n", iteration);
 	for (adversary_vertex* cand_adv : cq)
 	{
 	    assert(cand_adv != NULL);
-	    fprintf(stderr, "Candidate vertex in position %d, indegree %zu, outdegree %zu:\n",
+	    fprintf(stderr, "Candidate in position %d, indegree %zu, outdegree %zu:\n",
 		    i, cand_adv->in.size(), cand_adv->out.size());
 	    cand_adv->print(stderr);
 	    i++;
@@ -47,7 +45,7 @@ template <bool FLAG> void print_candidates(std::list<adversary_vertex*> &cq)
 
 template <bool FLAG> void print_splits(std::list<dag*> &splits)
 {
-    print<ROOSTER_DEBUG>("Printing splits:\n");
+    print_if<ROOSTER_DEBUG>("Printing splits:\n");
     
     if (FLAG)
     {
@@ -57,7 +55,7 @@ template <bool FLAG> void print_splits(std::list<dag*> &splits)
 	    assert(d != NULL);
 	    if (i > 0) { fprintf(stderr, "----------\n"); }
 	    fprintf(stderr, "Dag in position %d", i);
-	    print_lowerbound_bfs(stderr, d);
+	    d->print_lowerbound_bfs(stderr);
 	    i++;
 	}
     }
@@ -65,16 +63,25 @@ template <bool FLAG> void print_splits(std::list<dag*> &splits)
 
 // --- Splitting. ---
 
-bool split_candidate_in_subtree(algorithm_vertex *v);
-bool split_candidate_in_subtree(adversary_vertex *v);
+bool find_splittable(std::list<adversary_vertex*>& candidateq, adversary_vertex *v);
+bool find_splittable(std::list<adversary_vertex*>& candidateq, algorithm_vertex *v);
 
-bool split_candidate_in_subtree(adversary_vertex *v)
+bool find_splittable(std::list<adversary_vertex*>& candidateq, adversary_vertex *v)
 {
+
+    // If the examined vertex is a reference, it is never splittable on its own.
+    if (v->reference)
+    {
+	return false;
+    }
+
+    // Now, it is not a reference. If it is visited already, it has indegree >= 2,
+    // and we added it in a previous visit. Just return true (there is a candidate in this subtree).
     if (v->visited)
     {
-	// return false if v is already split, otherwise return true.
-	return !v->split_off;
+	return true;
     }
+    
     v->visited = true;
 
     bool v_candidate = true;
@@ -90,7 +97,7 @@ bool split_candidate_in_subtree(adversary_vertex *v)
     bool candidate_below = false; 
     for (auto &e : v->out)
     {
-	bool subtree = split_candidate_in_subtree(e->to);
+	bool subtree = find_splittable(candidateq, e->to);
 	if (subtree)
 	{
 	    candidate_below = true;
@@ -106,7 +113,7 @@ bool split_candidate_in_subtree(adversary_vertex *v)
     return candidate_below;
 }
 
-bool split_candidate_in_subtree(algorithm_vertex *v)
+bool find_splittable(std::list<adversary_vertex*>& candidateq, algorithm_vertex *v)
 {
     // Algorithm's vertices should be unique.
     v->visited = true;
@@ -125,7 +132,7 @@ bool split_candidate_in_subtree(algorithm_vertex *v)
     bool candidate_below = false;
     for (auto &e : v->out)
     {
-	bool subtree = split_candidate_in_subtree(e->to);
+	bool subtree = find_splittable(candidateq, e->to);
 	if (subtree)
 	{
 	    candidate_below = true;
@@ -137,26 +144,36 @@ bool split_candidate_in_subtree(algorithm_vertex *v)
 
 std::list<dag*> reduce_indegrees(dag *d)
 {
+    // List of all splits.
     std::list<dag*> splits;
-    candidateq.clear();
-    d->clear_visited();
-    split_candidate_in_subtree(d->root);
+    // Queue of all the candidates for splitting.
+    std::list<adversary_vertex*> candidateq;
 
+    d->clear_visited();
+    find_splittable(candidateq, d->root);
+
+    int iteration = 0;
     while (!candidateq.empty())
     {
-	print_candidates<ROOSTER_DEBUG>(candidateq);
+	print_candidates<ROOSTER_DEBUG>(candidateq, iteration);
 	for (adversary_vertex* splitroot: candidateq)
 	{
 	    dag *st = d->subdag(splitroot);
+	    splits.push_back(st);
 	    // Use mm_state::generating, as we do not care about tasks.
 	    d->remove_outedges<mm_state::generating>(splitroot);
-	    splitroot->split_off = true;
-	    splits.push_back(st);
+	    fprintf(stderr, "Removing outedges of vertex: ");
+	    splitroot->print(stderr, true);
+	    fprintf(stderr, "Current outdegree: %zu, current indegree: %zu.\n", splitroot->out.size(), splitroot->in.size());
+	    splitroot->reference = true; // We set the vertex to the "reference" state only after copying the subdag.
 	}
 	candidateq.clear();
 
+	print_splits<ROOSTER_DEBUG>(splits);
+
 	d->clear_visited();
-	split_candidate_in_subtree(d->root);
+	find_splittable(candidateq, d->root);
+	iteration++;
     }
     return splits;
 }
@@ -188,7 +205,7 @@ void merge_two(dag *d, adversary_vertex *remaining, adversary_vertex *removal)
 
 void merge_ignoring_last_item(dag *d)
 {
-    print<ROOSTER_DEBUG>("Merging nodes which have the same values except for the last item.\n");
+    print_if<ROOSTER_DEBUG>("Merging nodes which have the same values except for the last item.\n");
     // Build a set of hashes for each adversary vertex, ignoring the last item.
     std::map<uint64_t, adversary_vertex*> no_last_items;
 
@@ -211,14 +228,14 @@ void merge_ignoring_last_item(dag *d)
 	} else
 	{
 	    // Collision, merge the two nodes.
-	    print<ROOSTER_DEBUG>("Merging two nodes.\n");
+	    print_if<ROOSTER_DEBUG>("Merging two nodes.\n");
 	    merge_two(d, no_last_items.at(loaditemhash), advv);
 	    // Remove all unreachable vertices from the tree. This will take O(n) time
 	    // but may result in much less merging.
 	    d->erase_unreachable();
 	}
     }
-    print<ROOSTER_DEBUG>("Finished merge.\n");
+    print_if<ROOSTER_DEBUG>("Finished merge.\n");
 
 }
 
@@ -330,7 +347,7 @@ void coq_afterword(FILE *stream)
 
 void generate_coq(dag *d, std::string outfile)
 {
-    print<ROOSTER_DEBUG>("Generating Coq output.\n");
+    print_if<ROOSTER_DEBUG>("Generating Coq output.\n");
     outf = fopen(outfile.c_str(), "w");
     assert(outf != NULL);
 
@@ -386,7 +403,7 @@ int main(int argc, char **argv)
 
     fprintf(stderr, "Converting %s into a Coq form %s.\n", infile.c_str(), outfile.c_str());
 
-    print<ROOSTER_DEBUG>("Loading the dag from the file representation.\n");
+    print_if<ROOSTER_DEBUG>("Loading the dag from the file representation.\n");
     zobrist_init();
     partial_dag *d = loadfile(infile.c_str());
     d->populate_edgesets();
@@ -401,13 +418,13 @@ int main(int argc, char **argv)
 
     if (reduce)
     {
-	print<ROOSTER_DEBUG>("Splitting the dag into graphs with small indegree.\n");
+	print_if<ROOSTER_DEBUG>("Splitting the dag into graphs with small indegree.\n");
 	std::list<dag*> splits = reduce_indegrees(canvas);
 	print_splits<ROOSTER_DEBUG>(splits);
     }
     else
     {
-	print<ROOSTER_DEBUG>("Transforming the dag into a tree.\n");
+	print_if<ROOSTER_DEBUG>("Transforming the dag into a tree.\n");
 	dag *tree = canvas->subtree(canvas->root);
 	delete canvas;
 	canvas = tree;

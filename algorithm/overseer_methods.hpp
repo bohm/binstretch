@@ -39,7 +39,7 @@ bool overseer::all_workers_waiting()
 // Actively polls until all workers are waiting.
 void overseer::sleep_until_all_workers_waiting()
 {
-    print<COMM_DEBUG>("Overseer %d sleeping until all workers are waiting.\n", world_rank);
+    print_if<COMM_DEBUG>("Overseer %d sleeping until all workers are waiting.\n", world_rank);
     while (true)
     {
 	if (all_workers_waiting())
@@ -48,13 +48,13 @@ void overseer::sleep_until_all_workers_waiting()
 	}
 	std::this_thread::sleep_for(std::chrono::milliseconds(TICK_SLEEP));
     }
-    print<COMM_DEBUG>("Overseer %d wakes up.\n", world_rank);
+    print_if<COMM_DEBUG>("Overseer %d wakes up.\n", world_rank);
 }
 
 // Actively polls until all workers are ready.
 void overseer::sleep_until_all_workers_ready()
 {
-    print<COMM_DEBUG>("Overseer %d sleeping until all workers are ready.\n", world_rank);
+    print_if<COMM_DEBUG>("Overseer %d sleeping until all workers are ready.\n", world_rank);
     
     while (true)
     {
@@ -76,7 +76,7 @@ void overseer::sleep_until_all_workers_ready()
 		std::this_thread::sleep_for(std::chrono::milliseconds(TICK_SLEEP));
 	}
     }
-    print<COMM_DEBUG>("Overseer %d wakes up.\n", world_rank);
+    print_if<COMM_DEBUG>("Overseer %d wakes up.\n", world_rank);
     
 }
 
@@ -87,12 +87,12 @@ void overseer::process_finished_tasks()
 	int ftask_id = finished_tasks[p].pop_if_able();
 	if (ftask_id == -1)
 	{
-	    //print<true>("Queue empty for worker %d.\n", p);
+	    //print_if<true>("Queue empty for worker %d.\n", p);
 	}
 	
 	while (ftask_id != -1)
 	{
-	    // print<true>("Popped task id %d for worker %d.\n", ftask_id, p);
+	    // print_if<true>("Popped task id %d for worker %d.\n", ftask_id, p);
 		
 	    task_status solution = tstatus[ftask_id].load();
 	    if (solution == task_status::alg_win || solution == task_status::adv_win)
@@ -124,7 +124,7 @@ void overseer::start()
     // If we want to have a reserve CPU slot for the overseer itself, we should subtract 1.
     worker_count = std::get<2>(settings);
 
-    print<true>("Overseer %d at server %s: conflog %d, dplog %d, worker_count %d\n",
+    print_if<true>("Overseer %d at server %s: conflog %d, dplog %d, worker_count %d\n",
 		world_rank, machine_name.c_str(), conflog, dplog, worker_count);
     broadcast_zobrist();
     compute_thread_ranks();
@@ -155,23 +155,23 @@ void overseer::start()
 
     while(true)
     {
-	print<COMM_DEBUG>("Overseer %d: waiting for round start.\n", world_rank);
+	print_if<COMM_DEBUG>("Overseer %d: waiting for round start.\n", world_rank);
 	// Listen for the start of the round.
 	final_round.store(round_start_and_finality());
 
 	if (!final_round)
 	{
-	    print<COMM_DEBUG>("Overseer %d waits for monotonicity.\n", world_rank);
+	    print_if<COMM_DEBUG>("Overseer %d waits for monotonicity.\n", world_rank);
 	    monotonicity_last_round = monotonicity;
 	    monotonicity = broadcast_monotonicity();
 	    if(monotonicity > monotonicity_last_round)
 	    {
-		print<COMM_DEBUG>("Overseer %d received increased monotonicity: %d.\n", world_rank, monotonicity);
+		print_if<COMM_DEBUG>("Overseer %d received increased monotonicity: %d.\n", world_rank, monotonicity);
 		stc->clear_cache_of_ones(worker_count);
 
 	    } else if (monotonicity < monotonicity_last_round)
 	    {
-		print<COMM_DEBUG>("Overseer %d received decreased monotonicity: %d.\n", world_rank, monotonicity);
+		print_if<COMM_DEBUG>("Overseer %d received decreased monotonicity: %d.\n", world_rank, monotonicity);
 		stc->clear_cache(worker_count);
 
 	    }
@@ -179,7 +179,7 @@ void overseer::start()
 
 // receive (new) task array
 	    broadcast_tarray_tstatus();
-	    print<COMM_DEBUG>("Tarray + tstatus initialized.\n");
+	    print_if<COMM_DEBUG>("Tarray + tstatus initialized.\n");
 
 	    // Set batch pointer as if the last batch is completed;
 	    // this will cause the processing loop to ask for a new batch.
@@ -207,7 +207,7 @@ void overseer::start()
 		check_root_solved();
 		if (root_solved)
 		{
-		    print<PROGRESS>("Overseer %d (on %s): Received root solved, ending round.\n", world_rank, machine_name.c_str());
+		    print_if<PROGRESS>("Overseer %d (on %s): Received root solved, ending round.\n", world_rank, machine_name.c_str());
 
 		    sleep_until_all_workers_waiting();
 		    break;
@@ -222,7 +222,7 @@ void overseer::start()
 		// if (!batch_requested && next_task.load() >= BATCH_SIZE)
 		if (!batch_requested && this->running_low())
 		{
-		    print<TASK_DEBUG>("Overseer %d (on %s): Requesting a new batch (next_task: %u, tasklist: %u). \n", world_rank, machine_name.c_str(), next_task.load(), tasks.size());
+		    print_if<TASK_DEBUG>("Overseer %d (on %s): Requesting a new batch (next_task: %u, tasklist: %u). \n", world_rank, machine_name.c_str(), next_task.load(), tasks.size());
 
 		    request_new_batch();
 		    batch_requested = true;
@@ -254,13 +254,13 @@ void overseer::start()
 	    cleanup();
 	    round_end(); 
 	} else { // final_round == true
-	    print<COMM_DEBUG>("Overseer %d: received final round, terminating.\n", world_rank);
+	    print_if<COMM_DEBUG>("Overseer %d: received final round, terminating.\n", world_rank);
 	    worker_needed_cv.notify_all();
 
 	    for (int w = 0; w < worker_count; w++)
 	    {
 		threads[w].join();
-		print<DEBUG>("Worker %d joined back.\n", w);
+		print_if<DEBUG>("Worker %d joined back.\n", w);
 		collected_meas.add(wrkr[w]->measurements);
 		delete wrkr[w];
 	    }
@@ -272,13 +272,13 @@ void overseer::start()
 	    collected_meas.dpht_meas.add(dpc->meas);
 
 	    MEASURE_ONLY(stc->analysis());
-	    MEASURE_ONLY(print<true>("Overseer %d: State cache size: %" PRIu64
+	    MEASURE_ONLY(print_if<true>("Overseer %d: State cache size: %" PRIu64
 				     ", filled elements: %" PRIu64 " and empty: %" PRIu64 ".\n",
 				     world_rank, stc->size(), stc->meas.filled_positions,
 				     stc->meas.empty_positions));
 
 	    MEASURE_ONLY(dpc->analysis());
-	    MEASURE_ONLY(print<true>("Overseer %d: d.p. cache size: %" PRIu64
+	    MEASURE_ONLY(print_if<true>("Overseer %d: d.p. cache size: %" PRIu64
 				     ", filled elements: %" PRIu64 " and empty: %" PRIu64 ".\n",
 				     world_rank, dpc->size(), dpc->meas.filled_positions,
 				     dpc->meas.empty_positions));

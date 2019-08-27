@@ -113,7 +113,7 @@ public:
 	    uint64_t bytes = two_to(logbytes);
 	    htsize = power_of_two_below(bytes / sizeof(guar_el_64));
 	    logsize = quicklog(htsize);
-	    print<PROGRESS>("Given %llu logbytes (%llu bytes) and el. size %zu, we set the guarantee cache (64-bit) to %llu els.\n",
+	    print_if<PROGRESS>("Given %llu logbytes (%llu bytes) and el. size %zu, we set the guarantee cache (64-bit) to %llu els.\n",
 			    logbytes, bytes, sizeof(guar_el_64), htsize);
 	    assert(logsize >= 0 && logsize <= 64);
 	    assert(1LLU << logsize == htsize);

@@ -282,7 +282,7 @@ bin_int dynprog_max_with_lih(const binconf& conf, thread_attr *tat)
 // * one bin accepts two or * all bins have load > 5.
 std::pair<bool, bin_int> five_nine_heuristic(binconf *b, thread_attr *tat)
 {
-    // print<true>("Computing FN for: "); print_binconf<true>(b);
+    // print_if<true>("Computing FN for: "); print_binconf<true>(b);
 
     // It doesn't make too much sense to send BINS times 5, so we disallow it.
     // Also, b->loads[BINS] has to be non-zero, so that two nines do not fit together into
@@ -318,7 +318,7 @@ std::pair<bool, bin_int> five_nine_heuristic(binconf *b, thread_attr *tat)
 	while (bins_times_nine_threat && fourteen_sequence >= 1 && last_bin_above_five <= BINS)
 	{
 	    fourteen_feasible = pack_query_compute(*b,14, fourteen_sequence, tat);
-	    //print<true>("Itemhash after pack 14: %" PRIu64 ".\n", b->itemhash);
+	    //print_if<true>("Itemhash after pack 14: %" PRIu64 ".\n", b->itemhash);
 
 	    if (fourteen_feasible)
 	    {

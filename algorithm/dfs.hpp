@@ -137,7 +137,7 @@ void relabel_and_fix_adv(adversary_vertex *v, thread_attr *tat)
     {
 	if (v->out.size() != 0 || v->win != victory::adv)
 	{
-	    print<true>("Trouble with vertex %" PRIu64  " with %zu children, value %d and bc:\n", v->id, v->out.size(), v->win);
+	    print_if<true>("Trouble with vertex %" PRIu64  " with %zu children, value %d and bc:\n", v->id, v->out.size(), v->win);
 	    print_binconf_stream(stderr, v->bc);
 	    // fprintf(stderr, "A debug tree will be created with extra id 99.\n");
 	    // print_debug_dag(computation_root, 0, 99);
@@ -195,7 +195,7 @@ void relabel_and_fix(adversary_vertex *r, thread_attr *tat)
     tat->meas.visit_counter = 0;
 
     relabel_and_fix_adv(r, tat);
-    print<true>("Visited %d verts, marked %d vertices to expand.\n", tat->meas.visit_counter, tat->meas.relabeled_vertices);
+    print_if<true>("Visited %d verts, marked %d vertices to expand.\n", tat->meas.visit_counter, tat->meas.relabeled_vertices);
 }
 
 // Marks all branches without tasks in them as vert_state::finished.

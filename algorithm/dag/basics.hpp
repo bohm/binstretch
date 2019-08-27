@@ -5,9 +5,9 @@
 
 algorithm_vertex* dag::add_alg_vertex(const binconf& b, int next_item, std::string optimal = "", bool allow_duplicates = false)
 {
-	print<GRAPH_DEBUG>("Adding a new ALG vertex with bc:");
+	print_if<GRAPH_DEBUG>("Adding a new ALG vertex with bc:");
 	print_binconf<GRAPH_DEBUG>(b, false);
-	print<GRAPH_DEBUG>("and next item %d.\n", next_item);
+	print_if<GRAPH_DEBUG>("and next item %d.\n", next_item);
 	
 	uint64_t new_id = vertex_counter++;
 	algorithm_vertex *ptr  = new algorithm_vertex(b, next_item, new_id, optimal);
@@ -39,7 +39,7 @@ algorithm_vertex* dag::add_alg_vertex(const binconf& b, int next_item, std::stri
 
 adversary_vertex* dag::add_adv_vertex(const binconf &b, std::string heurstring = "", bool allow_duplicates = false)
 {
-    	print<GRAPH_DEBUG>("Adding a new ADV vertex with bc:");
+    	print_if<GRAPH_DEBUG>("Adding a new ADV vertex with bc:");
 	print_binconf<GRAPH_DEBUG>(b);
 
 	uint64_t new_id = vertex_counter++;
@@ -81,7 +81,7 @@ adversary_vertex* dag::add_root(const binconf &b)
 
 adv_outedge* dag::add_adv_outedge(adversary_vertex *from, algorithm_vertex *to, int next_item)
 {
-    print<GRAPH_DEBUG>("Creating ADV outedge with item %d from vertex:", next_item);
+    print_if<GRAPH_DEBUG>("Creating ADV outedge with item %d from vertex:", next_item);
     if (GRAPH_DEBUG) { from->print(stderr); }
 
     return new adv_outedge(from, to, next_item, edge_counter++);
@@ -95,7 +95,7 @@ void dag::del_adv_outedge(adv_outedge *gonner)
 
 alg_outedge* dag::add_alg_outedge(algorithm_vertex *from, adversary_vertex *to, int bin)
 {
-    print<GRAPH_DEBUG>("Creating ALG outedge with target bin %d from vertex: ", bin) ;
+    print_if<GRAPH_DEBUG>("Creating ALG outedge with target bin %d from vertex: ", bin) ;
     if (GRAPH_DEBUG) { from->print(stderr); }
 
     return new alg_outedge(from, to, bin, edge_counter++);
@@ -236,7 +236,7 @@ template <mm_state MODE> void dag::remove_outedges(adversary_vertex *v)
 // removes both the outedge and the inedge
 template <mm_state MODE> void dag::remove_edge(alg_outedge *e)
 {
-    print<GRAPH_DEBUG>("Removing algorithm's edge with target bin %d from vertex:", e->target_bin) ;
+    print_if<GRAPH_DEBUG>("Removing algorithm's edge with target bin %d from vertex:", e->target_bin) ;
     if (GRAPH_DEBUG) { e->from->print(stderr); }
 	
     remove_inedge<MODE>(e);
@@ -246,7 +246,7 @@ template <mm_state MODE> void dag::remove_edge(alg_outedge *e)
 
 template <mm_state MODE> void dag::remove_edge(adv_outedge *e)
 {
-    print<GRAPH_DEBUG>("Removing adversary outedge with item %d from vertex:", e->item);
+    print_if<GRAPH_DEBUG>("Removing adversary outedge with item %d from vertex:", e->item);
     if (GRAPH_DEBUG) { e->from->print(stderr); }
 
     remove_inedge<MODE>(e);
@@ -257,7 +257,7 @@ template <mm_state MODE> void dag::remove_edge(adv_outedge *e)
 // Remove all outedges except the right path.
 template <mm_state MODE> void dag::remove_outedges_except(adversary_vertex *v, int right_item)
 {
-    print<GRAPH_DEBUG>("Removing all of %zu edges -- except %d -- of vertex ", v->out.size(), right_item);
+    print_if<GRAPH_DEBUG>("Removing all of %zu edges -- except %d -- of vertex ", v->out.size(), right_item);
     if (GRAPH_DEBUG) { v->print(stderr); }
 
     adv_outedge *right_edge = NULL;

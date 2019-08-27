@@ -80,7 +80,14 @@ public:
 
     template <mm_state MODE> void remove_outedges_except(adversary_vertex *v, int right_item);
 
+    // Printing subroutines.
+    void print_lowerbound_dfs(FILE* stream, adversary_vertex *v,  bool debug = false);
+    void print_lowerbound_dfs(FILE* stream, algorithm_vertex *v, bool debug = false);
+    void print_lowerbound_bfs(FILE* stream, bool debug = false);
 
+    void print(FILE* stream, bool debug = false);
+
+    // Cloning subroutines.
     dag* subdag(adversary_vertex *newroot);
     dag* subtree(adversary_vertex *newroot);
 
@@ -159,7 +166,10 @@ public:
     int expansion_depth = 0;
     bool task = false; // task is a separate boolean because an vert_state::expand vertex can be a task itself.
     bool sapling = false;
-    bool split_off = false; // Useful only in the Coq formatter/rooster.cpp.
+
+    bool reference = false; // In some cases (not in the main search algorithm), the DAG below is not present,
+    // but the vertex is only a reference to another DAG in a list.
+    // Currently useful only in the Coq formatter rooster.cpp.
 
     // Properties of the vertex that are not used during the lower bound search but may be used when the
     // graph is visualised.
@@ -206,7 +216,7 @@ public:
 	//print<DEBUG>("Edge %" PRIu64 " destroyed.\n", this->id);
     }
 
-    void print(FILE *stream);
+    void print(FILE *stream, bool debug);
 };
 
 class alg_outedge {
@@ -232,7 +242,7 @@ public:
 	//print<DEBUG>("Edge %" PRIu64 " destroyed.\n", this->id);
     }
 
-    void print(FILE *stream);
+    void print(FILE *stream, bool debug);
 };
 
 #endif // _DAG_CLASS_HPP

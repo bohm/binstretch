@@ -278,7 +278,7 @@ void print_sequence(FILE *stream, const std::vector<bin_int>& seq)
 }
 
 
-template <bool PARAM> void print(const char *format, ...)
+template <bool PARAM> void print_if(const char *format, ...)
 {
     if (PARAM)
     {

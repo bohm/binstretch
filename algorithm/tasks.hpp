@@ -409,7 +409,7 @@ void collect_tasks_adv(adversary_vertex *v, thread_attr *tat)
     {
 	if(v->win != victory::uncertain || ((v->state != vert_state::fresh) && (v->state != vert_state::expand)) )
 	{
-	    print<true>("Trouble with task vertex %" PRIu64 ": it has winning value not UNCERTAIN, but %d.\n",
+	    print_if<true>("Trouble with task vertex %" PRIu64 ": it has winning value not UNCERTAIN, but %d.\n",
 			v->id, v->win);
 	    // print_debug_dag(computation_root, tat->regrow_level, 99);
 	    assert(v->win == victory::uncertain && ((v->state == vert_state::fresh) || (v->state == vert_state::expand)) );
@@ -537,7 +537,7 @@ void check_batch_finished(int overseer)
 	    continue;
 	} else
 	{
-	    print<true>("Task status of task %d sent in batch position %d to overseer %d is %d even though overseer asks for a new batch.\n",
+	    print_if<true>("Task status of task %d sent in batch position %d to overseer %d is %d even though overseer asks for a new batch.\n",
 			batches[overseer][t], t, overseer, task_status );
             assert(task_status == TASK_PRUNED || task_status == 0 || task_status == 1);
 	}
@@ -560,10 +560,10 @@ void compose_batch(int *batch)
 	    task_status status = tstatus[taskpointer].load(std::memory_order_acquire);
 	    if (status == task_status::available)
 	    {
-		print<TASK_DEBUG>("Added task %d into the next batch.\n", taskpointer);
+		print_if<TASK_DEBUG>("Added task %d into the next batch.\n", taskpointer);
 		batch[i] = taskpointer++;
 	    } else {
-		print<TASK_DEBUG>("Task %d has status %d, skipping.\n", taskpointer, status);
+		print_if<TASK_DEBUG>("Task %d has status %d, skipping.\n", taskpointer, status);
 		taskpointer++;
 		continue;
 	    }
