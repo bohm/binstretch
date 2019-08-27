@@ -158,18 +158,26 @@ std::list<dag*> reduce_indegrees(dag *d)
 	print_candidates<ROOSTER_DEBUG>(candidateq, iteration);
 	for (adversary_vertex* splitroot: candidateq)
 	{
+	    // print_if<ROOSTER_DEBUG>("Subdag to be split off:\n");
+	    // if (ROOSTER_DEBUG) { d->print_subdag(splitroot, stderr, true); }
+	    
 	    dag *st = d->subdag(splitroot);
 	    splits.push_back(st);
 	    // Use mm_state::generating, as we do not care about tasks.
 	    d->remove_outedges<mm_state::generating>(splitroot);
-	    fprintf(stderr, "Removing outedges of vertex: ");
-	    splitroot->print(stderr, true);
-	    fprintf(stderr, "Current outdegree: %zu, current indegree: %zu.\n", splitroot->out.size(), splitroot->in.size());
+	    // fprintf(stderr, "Removing outedges of vertex: ");
+	    // splitroot->print(stderr, true);
+	    // fprintf(stderr, "Current outdegree: %zu, current indegree: %zu.\n", splitroot->out.size(), splitroot->in.size());
+
 	    splitroot->reference = true; // We set the vertex to the "reference" state only after copying the subdag.
+
+	    // fprintf(stderr, "Subdag that was split off:\n");
+	    // st->print(stderr, true);
+
 	}
 	candidateq.clear();
 
-	print_splits<ROOSTER_DEBUG>(splits);
+	// print_splits<ROOSTER_DEBUG>(splits);
 
 	d->clear_visited();
 	find_splittable(candidateq, d->root);

@@ -42,6 +42,9 @@ void adversary_vertex::print(FILE *stream, bool debug)
     } else if (sapling)
     {
 	fprintf(stream, ",sapling=true");
+    } else if (reference) // Reference to another tree in a list -- only makes sense for rooster.cpp.
+    {
+	fprintf(stream, ",reference=true");
     } else if (heuristic)
     {
 	if (heur_strategy != NULL)
@@ -119,7 +122,7 @@ void alg_outedge::print(FILE* stream, bool debug)
     fprintf(stream, "%" PRIu64 " -> %" PRIu64 " [bin=%d]\n", from->id, to->id, target_bin);
 }
 
-void dag::print_lowerbound_dfs(FILE* stream, adversary_vertex *v, bool debug)
+void dag::print_lowerbound_dfs(adversary_vertex *v, FILE* stream, bool debug)
 {
     if (v->visited)
     {
@@ -140,13 +143,13 @@ void dag::print_lowerbound_dfs(FILE* stream, adversary_vertex *v, bool debug)
 
 	for (adv_outedge* e : v ->out)
 	{
-	    print_lowerbound_dfs(stream, e->to);
+	    print_lowerbound_dfs(e->to, stream, debug);
 	}
     }
 }
 
 // Algorithm vertices currently have no data in themselves, the decisions are coded in the edges.
-void dag::print_lowerbound_dfs(FILE* stream, algorithm_vertex *v, bool debug)
+void dag::print_lowerbound_dfs(algorithm_vertex *v, FILE* stream, bool debug)
 {
     if (v->visited)
     {
@@ -164,7 +167,7 @@ void dag::print_lowerbound_dfs(FILE* stream, algorithm_vertex *v, bool debug)
 
     for (alg_outedge* e : v ->out)
     {
-	print_lowerbound_dfs(stream, e->to);
+	print_lowerbound_dfs(e->to, stream, debug);
     }
 }
 
@@ -249,6 +252,8 @@ void dag::print_lowerbound_bfs(FILE* stream, bool debug)
     }
 }
 
+// Three methods currently used in debugging.
+// Do not call in the middle of another DFS (when you use visited bits), that will mess things up.
 
 void dag::print(FILE* stream, bool debug)
 {
@@ -257,6 +262,24 @@ void dag::print(FILE* stream, bool debug)
     fprintf(stream, "--- End of dag ---\n");
 }
 
+void dag::print_subdag(adversary_vertex *v, FILE *stream, bool debug)
+{
+    fprintf(stream, "--- Printing subdag rooted at a vertex. ---\n");
+    v->print(stream, debug);
+    fprintf(stream, "---\n");
+    clear_visited();
+    print_lowerbound_dfs(v, stream, debug);
+    fprintf(stream, "--- End of subdag. ---\n");
+}
 
+void dag::print_subdag(algorithm_vertex *v, FILE *stream, bool debug)
+{
+    fprintf(stream, "--- Printing subdag rooted at a vertex. ---\n");
+    v->print(stream, debug);
+    fprintf(stream, "---\n");
+    clear_visited();
+    print_lowerbound_dfs(v, stream, debug);
+    fprintf(stream, "--- End of subdag. ---\n");
+}
 
 #endif

@@ -82,7 +82,8 @@ void dag::clone_subdag(dag *processing, adversary_vertex *vertex_to_process,
     vertex_to_process->sapling = original->sapling;
     vertex_to_process->label = original->label;
     vertex_to_process->reference = original->reference;
-    
+    vertex_to_process->old_name = original->old_name;
+   
     // Process children.
     for (adv_outedge *e: original->out)
     {
@@ -95,7 +96,7 @@ void dag::clone_subdag(dag *processing, adversary_vertex *vertex_to_process,
 	    processing->add_adv_outedge(vertex_to_process, to, e->item);
 	} else  // not visited, create it and recurse
 	{
-	    algorithm_vertex *to = processing->add_alg_vertex(e->to->bc, e->to->next_item, e->to->optimal, true);
+	    algorithm_vertex *to = processing->add_alg_vertex(e->to->bc, e->to->next_item, e->to->optimal, false);
 	    processing->add_adv_outedge(vertex_to_process, to, e->item);
 	    clone_subdag(processing, to, e->to);
 	}
@@ -111,6 +112,8 @@ void dag::clone_subdag(dag *processing, algorithm_vertex *vertex_to_process,
     // Copy cosmetics and other details.
     vertex_to_process->cosmetics = original->cosmetics;
     vertex_to_process->label = original->label;
+    vertex_to_process->optimal = original->optimal;
+    vertex_to_process->old_name = original->old_name;
     
     // Process children.
     for (alg_outedge *e: original->out)
@@ -124,7 +127,7 @@ void dag::clone_subdag(dag *processing, algorithm_vertex *vertex_to_process,
 	} else
 	{
 	    // Create the target vertex in the new graph
-	    adversary_vertex *to = processing->add_adv_vertex(e->to->bc, e->to->heurstring, true);
+	    adversary_vertex *to = processing->add_adv_vertex(e->to->bc, e->to->heurstring, false);
 	    processing->add_alg_outedge(vertex_to_process, to, e->target_bin);
 	    clone_subdag(processing, to, e->to);
 	}

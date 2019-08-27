@@ -81,11 +81,13 @@ public:
     template <mm_state MODE> void remove_outedges_except(adversary_vertex *v, int right_item);
 
     // Printing subroutines.
-    void print_lowerbound_dfs(FILE* stream, adversary_vertex *v,  bool debug = false);
-    void print_lowerbound_dfs(FILE* stream, algorithm_vertex *v, bool debug = false);
+    void print_lowerbound_dfs(adversary_vertex *v, FILE* stream, bool debug = false);
+    void print_lowerbound_dfs(algorithm_vertex *v, FILE* stream, bool debug = false);
     void print_lowerbound_bfs(FILE* stream, bool debug = false);
 
     void print(FILE* stream, bool debug = false);
+    void print_subdag(adversary_vertex *v, FILE* stream, bool debug = false);
+    void print_subdag(algorithm_vertex *v, FILE* stream, bool debug = false);
 
     // Cloning subroutines.
     dag* subdag(adversary_vertex *newroot);

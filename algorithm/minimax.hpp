@@ -137,7 +137,7 @@ template<mm_state MODE> victory adversary(binconf *b, int depth, thread_attr *ta
 	if (vic == victory::adv)
 	{
 	    print_if<DEBUG>("GEN: Adversary heuristic ");
-	    print_if<DEBUG>(stderr, adv_to_evaluate->heur_strategy->type);
+	    print_if<DEBUG>("%d", static_cast<int>(adv_to_evaluate->heur_strategy->type));
 	    print_if<DEBUG>(" is successful.\n");
 	    if (MODE == mm_state::exploring || !EXPAND_HEURISTICS)
 	    {
@@ -513,7 +513,7 @@ template<mm_state MODE> victory algorithm(binconf *b, int k, int depth, thread_a
 	    print_if<DEBUG>("Alg packs into bin %d, the new configuration is:", i);
 	    print_binconf<DEBUG>(b);
 	    print_if<DEBUG>("Resulting in: ");
-	    print_if<DEBUG>(stderr, below);
+	    print_if<DEBUG>("%d", static_cast<int>(below));
 	    print_if<DEBUG>(".\n");
 	    
 	    // send signal that we should terminate immediately upwards
