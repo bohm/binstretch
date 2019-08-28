@@ -92,7 +92,7 @@ void dag::clone_subdag(dag *processing, adversary_vertex *vertex_to_process,
 	{
 	    // Note: based on the structure, duplicate algorithm vertices should not exist,
 	    // but we check regardless.
-	    algorithm_vertex *to = processing->alg_by_hash.at(original->bc.alghash(e->item));
+	    algorithm_vertex *to = processing->alg_by_hash.at(e->to->bc.alghash(e->item));
 	    processing->add_adv_outedge(vertex_to_process, to, e->item);
 	} else  // not visited, create it and recurse
 	{
@@ -122,7 +122,7 @@ void dag::clone_subdag(dag *processing, algorithm_vertex *vertex_to_process,
 	if (e->to->visited)
 	{
 	    // Vertex exists, just add edge and do not recurse.
-	    adversary_vertex *to = processing->adv_by_hash.at(original->bc.confhash());
+	    adversary_vertex *to = processing->adv_by_hash.at(e->to->bc.confhash());
 	    processing->add_alg_outedge(vertex_to_process, to, e->target_bin);
 	} else
 	{

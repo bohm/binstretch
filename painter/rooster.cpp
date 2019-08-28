@@ -262,13 +262,102 @@ void print_packing_in_coq_format(std::string packing)
     fprintf(outf, "[ %s ]", nocurly.c_str());
 }
 
+void rooster_print_items(FILE* stream, const std::array<bin_int, S+1> & items)
+{
+    fprintf(stream, "[");
+    bool first = true;
+    for (int i = S; i >= 1; i --)
+    {
+	int count = items[i];
+	while (count > 0)
+	{
+	    if (!first)
+	    {
+		fprintf(stream, ";");
+	    } else {
+		first = false;
+	    }
+
+	    fprintf(stream, "%d", i);
+	    count--;
+	}
+    }
+    fprintf(stream, "]");
+}
+
+void print_coq_tree_adv(adversary_vertex *v); // Forward declaration.
+
+// A wrapper around printing a list of children.
+// The resulting list should look like (conspointer x (cons y ( conspointer z leaf ) ) )
+
+void print_children(FILE *stream, std::list<alg_outedge*>& right_edge_out)
+{
+    fprintf(stream, "\n(");
+    int open = 1;
+    bool first = true;
+
+    for (auto &next: right_edge_out)
+    {
+	if (!first)
+	{
+	    fprintf(stream, "\n(");
+	    open++;
+	} else {
+	    first = false;
+	}
+	
+	if (next->to->reference)
+	{
+	    fprintf(stream, "conspointer ");
+	} else {
+	    fprintf(stream, "cons ");
+	}
+
+	print_coq_tree_adv(next->to);
+    }
+    
+    fprintf(stream, "\nleaf");
+    while (open > 0)
+    {
+	fprintf(stream, ") ");
+	open--;
+    }
+}
+
 // Prints a dag (requires a tree) in the format required by Coq.
 // Cannot call dfs() directly, becaues dfs() had no "afterword()" clause.
 
 void print_coq_tree_adv(adversary_vertex *v)
 {
+
+    // If a vertex is a reference, it does not start with the "node" keyword.
+    // We just print a pointer to the record list and terminate.
+    if (v->reference)
+    {
+	fprintf(outf, "[");
+
+	bool first = true;
+	for (int i=1; i<=BINS; i++)
+	{
+	    if (v->bc.loads[i] > 0)
+	    {
+		if(first)
+		{
+		    first = false;
+		}
+	    else {
+		fprintf(outf, ";");
+	    }
+		
+		fprintf(outf, "%d", v->bc.loads[i]);
+	    }
+	}
+	fprintf(outf, "] ");
+	return;
+    }
+
     // Constructor.
-    fprintf(outf, "\n node " );
+    fprintf(outf, "\n( node "); // one extra bracket pair
 
     // bin loads
     fprintf(outf, "[");
@@ -320,8 +409,10 @@ void print_coq_tree_adv(adversary_vertex *v)
 
 	// Print empty packing for a non-leaf.
 	fprintf(outf, " [] ");
-	// List of children
-	fprintf(outf, "[[");
+
+	// Print children. Old code below.
+	print_children(outf, right_edge->to->out);
+	/* fprintf(outf, "[[");
 
 	bool first = true;
 	for (auto& next: right_edge->to->out)
@@ -338,33 +429,60 @@ void print_coq_tree_adv(adversary_vertex *v)
 
 	// End of children list.
 	fprintf(outf, " ]]");
+	*/
     }
+
+    fprintf(outf, ")"); // one extra bracket pair
+
 }
 
+void print_record(FILE *stream, dag *d)
+{
+    fprintf(stream, "rec ");
+    rooster_print_items(stream, d->root->bc.items);
+    fprintf(stream, " (");
+    print_coq_tree_adv(d->root);
+    fprintf(stream, "\n)");
+}
 
 void coq_preamble(FILE *stream)
 {
     fprintf(stream, "Require Import binstretching.\n");
-    fprintf(stream, "Definition lowerbound :=\n");
 }
 
 void coq_afterword(FILE *stream)
 {
-    fprintf(stream, ".\n");
 }
 
-void generate_coq(dag *d, std::string outfile)
+void generate_coq_tree(FILE* stream, dag *d, const char* treename)
 {
-    print_if<ROOSTER_DEBUG>("Generating Coq output.\n");
-    outf = fopen(outfile.c_str(), "w");
-    assert(outf != NULL);
-
-    coq_preamble(outf);
+    print_if<ROOSTER_DEBUG>("Generating Coq main tree.\n");
+    fprintf(stream, "Definition %s :=", treename);
     print_coq_tree_adv(d->root);
-    coq_afterword(outf);
-    
-    fclose(outf);
-    outf = NULL;
+    fprintf(stream, "\n.\n");
+}
+
+void generate_coq_records(FILE *stream, std::list<dag *> l)
+{
+    print_if<ROOSTER_DEBUG>("Generating Coq record list.\n");
+    fprintf(stream, "\n(* Record list. *)\n");
+    fprintf(stream, "Definition lb_R :=\n");
+    fprintf(stream, "[");
+    bool first = true;
+
+    for (dag *rec : l)
+    {
+	if (!first)
+	{
+	    fprintf(outf, "; (* End of record entry. *)\n");
+	} else {
+	    first = false;
+	}
+
+	print_record(stream, rec);
+    }
+	
+    fprintf(stream, "].\n");
 }
 
 
@@ -424,11 +542,20 @@ int main(int argc, char **argv)
     // Merge vertices which have the same loaditemhash.
     merge_ignoring_last_item(canvas);
 
+    outf = fopen(outfile.c_str(), "w");
+    assert(outf != NULL);
+    coq_preamble(outf);
+
     if (reduce)
     {
 	print_if<ROOSTER_DEBUG>("Splitting the dag into graphs with small indegree.\n");
 	std::list<dag*> splits = reduce_indegrees(canvas);
-	print_splits<ROOSTER_DEBUG>(splits);
+	// We now reverse the list, as the lowest records in the tree need to be on the bottom.
+	splits.reverse();
+
+	generate_coq_tree(outf, canvas, "lb_T");
+	generate_coq_records(outf, splits);
+	// print_splits<ROOSTER_DEBUG>(splits);
     }
     else
     {
@@ -436,8 +563,12 @@ int main(int argc, char **argv)
 	dag *tree = canvas->subtree(canvas->root);
 	delete canvas;
 	canvas = tree;
-	generate_coq(canvas, outfile);
+	generate_coq_tree(outf, canvas, "lowerbound");
     }
+
+    coq_afterword(outf);
+    fclose(outf);
+    outf = NULL;
 
     return 0;
 }
