@@ -155,9 +155,11 @@ std::list<dag*> reduce_indegrees(dag *d)
     int iteration = 0;
     while (!candidateq.empty())
     {
-	print_candidates<ROOSTER_DEBUG>(candidateq, iteration);
+	// print_candidates<ROOSTER_DEBUG>(candidateq, iteration);
+	int splt_counter = 0;
 	for (adversary_vertex* splitroot: candidateq)
 	{
+	    print_if<ROOSTER_DEBUG>("Splitting candidate %d of %zu\n", splt_counter, candidateq.size() );
 	    // print_if<ROOSTER_DEBUG>("Subdag to be split off:\n");
 	    // if (ROOSTER_DEBUG) { d->print_subdag(splitroot, stderr, true); }
 	    
@@ -173,6 +175,7 @@ std::list<dag*> reduce_indegrees(dag *d)
 
 	    // fprintf(stderr, "Subdag that was split off:\n");
 	    // st->print(stderr, true);
+	    splt_counter++;
 
 	}
 	candidateq.clear();
@@ -180,10 +183,48 @@ std::list<dag*> reduce_indegrees(dag *d)
 	// print_splits<ROOSTER_DEBUG>(splits);
 
 	d->clear_visited();
+	print_if<ROOSTER_DEBUG>("Finding new candidates.\n");
 	find_splittable(candidateq, d->root);
 	iteration++;
+	print_if<ROOSTER_DEBUG>("%zu candidates found in iteration %d.\n", candidateq.size(), iteration);
+
     }
     return splits;
+}
+
+std::list<adversary_vertex*> cloneless_reduce_indegrees(dag *d)
+{
+    std::list<adversary_vertex*> final_list;
+
+    // Queue of all the candidates of one iteration.
+    std::list<adversary_vertex*> candidateq;
+
+    d->clear_visited();
+    find_splittable(candidateq, d->root);
+
+    int iteration = 0;
+    while (!candidateq.empty())
+    {
+	// print_candidates<ROOSTER_DEBUG>(candidateq, iteration);
+	int splt_counter = 0;
+	for (adversary_vertex* splitroot: candidateq)
+	{
+	    // print_if<ROOSTER_DEBUG>("Splitting candidate %d of %zu\n", splt_counter, candidateq.size() );
+
+	    final_list.push_back(splitroot);
+	    splitroot->reference = true;
+	    splt_counter++;
+
+	}
+	candidateq.clear();
+	d->clear_visited();
+	print_if<ROOSTER_DEBUG>("Finding new candidates.\n");
+	find_splittable(candidateq, d->root);
+	iteration++;
+	print_if<ROOSTER_DEBUG>("%zu candidates found in iteration %d.\n", candidateq.size(), iteration);
+
+    }
+    return final_list;
 }
 
 // --- Merging adversary nodes. ---
@@ -285,7 +326,7 @@ void rooster_print_items(FILE* stream, const std::array<bin_int, S+1> & items)
     fprintf(stream, "]");
 }
 
-void print_coq_tree_adv(adversary_vertex *v); // Forward declaration.
+void print_coq_tree_adv(adversary_vertex *v, bool ignore_reference = false); // Forward declaration.
 
 // A wrapper around printing a list of children.
 // The resulting list should look like (conspointer x (cons y ( conspointer z leaf ) ) )
@@ -327,12 +368,13 @@ void print_children(FILE *stream, std::list<alg_outedge*>& right_edge_out)
 // Prints a dag (requires a tree) in the format required by Coq.
 // Cannot call dfs() directly, becaues dfs() had no "afterword()" clause.
 
-void print_coq_tree_adv(adversary_vertex *v)
+void print_coq_tree_adv(adversary_vertex *v, bool ignore_reference)
 {
 
     // If a vertex is a reference, it does not start with the "node" keyword.
     // We just print a pointer to the record list and terminate.
-    if (v->reference)
+    // We print a node as normal if ignore_reference == true.
+    if (v->reference && !ignore_reference)
     {
 	fprintf(outf, "[");
 
@@ -445,6 +487,17 @@ void print_record(FILE *stream, dag *d)
     fprintf(stream, "\n)");
 }
 
+// Cloneless version.
+void print_record(FILE *stream, adversary_vertex *v)
+{
+    fprintf(stream, "rec ");
+    rooster_print_items(stream, v->bc.items);
+    fprintf(stream, " (");
+    // Ignore the possible reference on the root vertex.
+    print_coq_tree_adv(v, true);
+    fprintf(stream, "\n)");
+}
+
 void coq_preamble(FILE *stream)
 {
     fprintf(stream, "Require Import binstretching.\n");
@@ -483,6 +536,53 @@ void generate_coq_records(FILE *stream, std::list<dag *> l)
     }
 	
     fprintf(stream, "].\n");
+}
+
+// Cloneless and with segmentation.
+void generate_coq_records(FILE *stream, std::list<adversary_vertex*> full_list)
+{
+    int segment_counter = 0;
+    bool first = true;
+    print_if<ROOSTER_DEBUG>("Generating Coq record list.\n");
+    fprintf(stream, "\n(* Record list. *)\n");
+
+    while(!full_list.empty())
+    {
+	int record_counter = 0;
+	first = true;
+	segment_counter++;
+	
+	fprintf(stream, "Definition lb_R_%d :=\n", segment_counter);
+	fprintf(stream, "[");
+	while(!full_list.empty() && record_counter <= 10000)
+	{
+	    if (!first)
+	    {
+		fprintf(outf, "; (* End of record entry. *)\n");
+	    } else {
+		first = false;
+	    }
+	    adversary_vertex *v = full_list.front();
+	    print_record(stream, v);
+	    full_list.pop_front();
+	    
+	    record_counter++;
+	}
+	fprintf(stream, "].\n");
+    }
+
+    // Write the full list as a concatenation.
+
+    fprintf(stream, "\nDefinition lb_R := ");
+    for (int i = 1; i <= segment_counter; i++)
+    {
+	fprintf(stream, "lb_R_%d", i);
+	if (i < segment_counter)
+	{
+	    fprintf(stream, " ++ ");
+	}
+    }
+    fprintf(stream, ".\n");
 }
 
 
@@ -549,12 +649,16 @@ int main(int argc, char **argv)
     if (reduce)
     {
 	print_if<ROOSTER_DEBUG>("Splitting the dag into graphs with small indegree.\n");
-	std::list<dag*> splits = reduce_indegrees(canvas);
+	// std::list<dag*> splits = reduce_indegrees(canvas);
 	// We now reverse the list, as the lowest records in the tree need to be on the bottom.
-	splits.reverse();
+	// splits.reverse();
+
+	std::list<adversary_vertex*> full_list = cloneless_reduce_indegrees(canvas);
+	full_list.reverse();
 
 	generate_coq_tree(outf, canvas, "lb_T");
-	generate_coq_records(outf, splits);
+	// generate_coq_records(outf, splits);
+	generate_coq_records(outf, full_list );
 	// print_splits<ROOSTER_DEBUG>(splits);
     }
     else
