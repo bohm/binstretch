@@ -242,11 +242,14 @@ void merge_two(dag *d, adversary_vertex *remaining, adversary_vertex *removal)
     }
 
     // Remove outedges non-recursively.
-    for (auto& e: removal->out)
+    /* for (auto& e: removal->out)
     {
 	e->to->in.erase(e->pos_child);
 	d->del_adv_outedge(e);
-    }
+    }*/
+
+    // Remove outedges recursively.
+    d->remove_outedges<mm_state::generating>(removal);
     
     d->del_adv_vertex(removal); // Then, remove the vertex itself.
 }
@@ -278,10 +281,12 @@ void merge_ignoring_last_item(dag *d)
 	{
 	    // Collision, merge the two nodes.
 	    print_if<ROOSTER_DEBUG>("Merging two nodes.\n");
+	    advv->print(stderr, true);
+	    no_last_items.at(loaditemhash)->print(stderr,true); 
 	    merge_two(d, no_last_items.at(loaditemhash), advv);
 	    // Remove all unreachable vertices from the tree. This will take O(n) time
 	    // but may result in much less merging.
-	    d->erase_unreachable();
+	    // d->erase_unreachable();
 	}
     }
     print_if<ROOSTER_DEBUG>("Finished merge.\n");
@@ -478,17 +483,8 @@ void print_coq_tree_adv(adversary_vertex *v, bool ignore_reference)
 
 }
 
-void print_record(FILE *stream, dag *d)
-{
-    fprintf(stream, "rec ");
-    rooster_print_items(stream, d->root->bc.items);
-    fprintf(stream, " (");
-    print_coq_tree_adv(d->root);
-    fprintf(stream, "\n)");
-}
-
 // Cloneless version.
-void print_record(FILE *stream, adversary_vertex *v)
+void print_record(FILE *stream, adversary_vertex *v, bool nocomment = false)
 {
     fprintf(stream, "rec ");
     rooster_print_items(stream, v->bc.items);
@@ -507,7 +503,7 @@ void coq_afterword(FILE *stream)
 {
 }
 
-void generate_coq_tree(FILE* stream, dag *d, const char* treename)
+void generate_coq_tree(FILE* stream, dag *d, const char* treename, bool nocomment = false)
 {
     print_if<ROOSTER_DEBUG>("Generating Coq main tree.\n");
     fprintf(stream, "Definition %s :=", treename);
@@ -515,36 +511,16 @@ void generate_coq_tree(FILE* stream, dag *d, const char* treename)
     fprintf(stream, "\n.\n");
 }
 
-void generate_coq_records(FILE *stream, std::list<dag *> l)
-{
-    print_if<ROOSTER_DEBUG>("Generating Coq record list.\n");
-    fprintf(stream, "\n(* Record list. *)\n");
-    fprintf(stream, "Definition lb_R :=\n");
-    fprintf(stream, "[");
-    bool first = true;
-
-    for (dag *rec : l)
-    {
-	if (!first)
-	{
-	    fprintf(outf, "; (* End of record entry. *)\n");
-	} else {
-	    first = false;
-	}
-
-	print_record(stream, rec);
-    }
-	
-    fprintf(stream, "].\n");
-}
-
 // Cloneless and with segmentation.
-void generate_coq_records(FILE *stream, std::list<adversary_vertex*> full_list)
+void generate_coq_records(FILE *stream, std::list<adversary_vertex*> full_list, bool nocomment = false)
 {
     int segment_counter = 0;
     bool first = true;
     print_if<ROOSTER_DEBUG>("Generating Coq record list.\n");
-    fprintf(stream, "\n(* Record list. *)\n");
+    if(!nocomment)
+    {
+	fprintf(stream, "\n(* Record list. *)\n");
+    }
 
     while(!full_list.empty())
     {
@@ -558,7 +534,12 @@ void generate_coq_records(FILE *stream, std::list<adversary_vertex*> full_list)
 	{
 	    if (!first)
 	    {
-		fprintf(outf, "; (* End of record entry. *)\n");
+		fprintf(outf, ";");
+		if(!nocomment)
+		{
+		    fprintf(outf, " (* End of record entry. *)");
+		}
+		fprintf(outf, "\n");
 	    } else {
 		first = false;
 	    }
@@ -595,14 +576,25 @@ bool parse_parameter_reduce(int argc, char **argv, int pos)
     return false;
 }
 
+bool parse_parameter_nocomment(int argc, char **argv, int pos)
+{
+    if (strcmp(argv[pos], "--nocomment") == 0)
+    {
+	return true;
+    }
+    return false;
+}
+
+
 void usage()
 {
-    fprintf(stderr, "Usage: ./rooster infile.dag outfile.v\n");
+    fprintf(stderr, "Usage: ./rooster [--reduce] [--nocomment] infile.dag outfile.v\n");
 }
 
 int main(int argc, char **argv)
 {
     bool reduce = false;
+    bool nocomment = false; // In this case, rooster avoids printing any comments, only syntax.
     
     if(argc < 3)
     {
@@ -613,7 +605,15 @@ int main(int argc, char **argv)
     // Parse all parameters except for the last two, which must be infile and outfile.
     for (int i = 0; i < argc-2; i++)
     {
-	reduce = parse_parameter_reduce(argc, argv, i);
+	if(parse_parameter_reduce(argc, argv, i))
+	{
+	    reduce = true;
+	}
+
+	if(parse_parameter_nocomment(argc, argv, i))
+	{
+	    nocomment = true;
+	}
     }
 
     std::string infile(argv[argc-2]);
@@ -656,9 +656,9 @@ int main(int argc, char **argv)
 	std::list<adversary_vertex*> full_list = cloneless_reduce_indegrees(canvas);
 	full_list.reverse();
 
-	generate_coq_tree(outf, canvas, "lb_T");
+	generate_coq_tree(outf, canvas, "lb_T", nocomment);
 	// generate_coq_records(outf, splits);
-	generate_coq_records(outf, full_list );
+	generate_coq_records(outf, full_list, nocomment);
 	// print_splits<ROOSTER_DEBUG>(splits);
     }
     else
