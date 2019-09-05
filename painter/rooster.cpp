@@ -61,6 +61,26 @@ template <bool FLAG> void print_splits(std::list<dag*> &splits)
     }
 }
 
+
+// Quick counting of adversary vertices in the graph.
+uint64_t adversary_count = 0;
+
+void count_adversaries(adversary_vertex *v)
+{
+    adversary_count++;
+}
+
+void blank(algorithm_vertex *v)
+{
+}
+
+uint64_t number_of_adversary_vertices(dag *d)
+{
+    adversary_count = 0;
+    dfs(d, count_adversaries, blank);
+    return adversary_count;
+}
+
 // --- Splitting. ---
 
 bool find_splittable(std::list<adversary_vertex*>& candidateq, adversary_vertex *v);
@@ -142,56 +162,6 @@ bool find_splittable(std::list<adversary_vertex*>& candidateq, algorithm_vertex 
     return candidate_below;
 }
 
-std::list<dag*> reduce_indegrees(dag *d)
-{
-    // List of all splits.
-    std::list<dag*> splits;
-    // Queue of all the candidates for splitting.
-    std::list<adversary_vertex*> candidateq;
-
-    d->clear_visited();
-    find_splittable(candidateq, d->root);
-
-    int iteration = 0;
-    while (!candidateq.empty())
-    {
-	// print_candidates<ROOSTER_DEBUG>(candidateq, iteration);
-	int splt_counter = 0;
-	for (adversary_vertex* splitroot: candidateq)
-	{
-	    print_if<ROOSTER_DEBUG>("Splitting candidate %d of %zu\n", splt_counter, candidateq.size() );
-	    // print_if<ROOSTER_DEBUG>("Subdag to be split off:\n");
-	    // if (ROOSTER_DEBUG) { d->print_subdag(splitroot, stderr, true); }
-	    
-	    dag *st = d->subdag(splitroot);
-	    splits.push_back(st);
-	    // Use mm_state::generating, as we do not care about tasks.
-	    d->remove_outedges<mm_state::generating>(splitroot);
-	    // fprintf(stderr, "Removing outedges of vertex: ");
-	    // splitroot->print(stderr, true);
-	    // fprintf(stderr, "Current outdegree: %zu, current indegree: %zu.\n", splitroot->out.size(), splitroot->in.size());
-
-	    splitroot->reference = true; // We set the vertex to the "reference" state only after copying the subdag.
-
-	    // fprintf(stderr, "Subdag that was split off:\n");
-	    // st->print(stderr, true);
-	    splt_counter++;
-
-	}
-	candidateq.clear();
-
-	// print_splits<ROOSTER_DEBUG>(splits);
-
-	d->clear_visited();
-	print_if<ROOSTER_DEBUG>("Finding new candidates.\n");
-	find_splittable(candidateq, d->root);
-	iteration++;
-	print_if<ROOSTER_DEBUG>("%zu candidates found in iteration %d.\n", candidateq.size(), iteration);
-
-    }
-    return splits;
-}
-
 std::list<adversary_vertex*> cloneless_reduce_indegrees(dag *d)
 {
     std::list<adversary_vertex*> final_list;
@@ -209,8 +179,11 @@ std::list<adversary_vertex*> cloneless_reduce_indegrees(dag *d)
 	int splt_counter = 0;
 	for (adversary_vertex* splitroot: candidateq)
 	{
-	    // print_if<ROOSTER_DEBUG>("Splitting candidate %d of %zu\n", splt_counter, candidateq.size() );
-
+	    if (ROOSTER_DEBUG)
+	    {
+		fprintf(stderr, "Record candidate: ");
+		splitroot->print(stderr, true);
+	    }
 	    final_list.push_back(splitroot);
 	    splitroot->reference = true;
 	    splt_counter++;
@@ -286,7 +259,7 @@ void merge_ignoring_last_item(dag *d)
 	    merge_two(d, no_last_items.at(loaditemhash), advv);
 	    // Remove all unreachable vertices from the tree. This will take O(n) time
 	    // but may result in much less merging.
-	    // d->erase_unreachable();
+	    d->erase_unreachable();
 	}
     }
     print_if<ROOSTER_DEBUG>("Finished merge.\n");
@@ -403,7 +376,20 @@ void print_coq_tree_adv(adversary_vertex *v, bool ignore_reference)
 	return;
     }
 
-    // Constructor.
+    
+    if (v->visited)
+    {
+	fprintf(stderr, "Printing a node vertex twice in one tree -- this should not happen.\n");
+	v->print(stderr, true);
+	assert(!v->visited);
+    } else
+    {
+	fprintf(stderr, "Printing vertex: ");
+	v->print(stderr, true);
+    }
+    
+    v->visited = true;
+    
     fprintf(outf, "\n( node "); // one extra bracket pair
 
     // bin loads
@@ -457,26 +443,7 @@ void print_coq_tree_adv(adversary_vertex *v, bool ignore_reference)
 	// Print empty packing for a non-leaf.
 	fprintf(outf, " [] ");
 
-	// Print children. Old code below.
 	print_children(outf, right_edge->to->out);
-	/* fprintf(outf, "[[");
-
-	bool first = true;
-	for (auto& next: right_edge->to->out)
-	{
-	    if(first)
-	    {
-		first = false;
-	    } else {
-		fprintf(outf, "; ");
-	    }
-	    
-	    print_coq_tree_adv(next->to);
-	}
-
-	// End of children list.
-	fprintf(outf, " ]]");
-	*/
     }
 
     fprintf(outf, ")"); // one extra bracket pair
@@ -507,6 +474,7 @@ void generate_coq_tree(FILE* stream, dag *d, const char* treename, bool nocommen
 {
     print_if<ROOSTER_DEBUG>("Generating Coq main tree.\n");
     fprintf(stream, "Definition %s :=", treename);
+    d->clear_visited();
     print_coq_tree_adv(d->root);
     fprintf(stream, "\n.\n");
 }
@@ -522,6 +490,8 @@ void generate_coq_records(FILE *stream, std::list<adversary_vertex*> full_list, 
 	fprintf(stream, "\n(* Record list. *)\n");
     }
 
+    canvas->clear_visited();
+    
     while(!full_list.empty())
     {
 	int record_counter = 0;
@@ -639,8 +609,12 @@ int main(int argc, char **argv)
     // assign the dag into the global pointer
     canvas = d->finalize();
 
+    fprintf(stderr, "The graph has %" PRIu64 " adv. vertices before merge.\n",
+	    number_of_adversary_vertices(canvas));
     // Merge vertices which have the same loaditemhash.
     merge_ignoring_last_item(canvas);
+    fprintf(stderr, "The graph has %" PRIu64 " adv. vertices after merge.\n",
+	    number_of_adversary_vertices(canvas));
 
     outf = fopen(outfile.c_str(), "w");
     assert(outf != NULL);
@@ -660,6 +634,10 @@ int main(int argc, char **argv)
 	// generate_coq_records(outf, splits);
 	generate_coq_records(outf, full_list, nocomment);
 	// print_splits<ROOSTER_DEBUG>(splits);
+	fprintf(stderr, "The graph has %" PRIu64 " adv. vertices after generating.\n",
+		number_of_adversary_vertices(canvas));
+
+
     }
     else
     {
