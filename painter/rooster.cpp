@@ -244,7 +244,7 @@ std::list<adversary_vertex*> cloneless_reduce_indegrees(dag *d)
     int iteration = 0;
     while (!candidateq.empty())
     {
-	// print_candidates<ROOSTER_DEBUG>(candidateq, iteration);
+	// erint_candidates<ROOSTER_DEBUG>(candidateq, iteration);
 	int splt_counter = 0;
 	for (adversary_vertex* splitroot: candidateq)
 	{
@@ -453,15 +453,15 @@ void print_children(FILE *stream, std::list<alg_outedge*>& right_edge_out)
 	
 	if (next->to->reference)
 	{
-	    fprintf(stream, "conspointer ");
+	    fprintf(stream, "conspointerN ");
 	} else {
-	    fprintf(stream, "cons ");
+	    fprintf(stream, "consN ");
 	}
 
 	print_coq_tree_adv(next->to);
     }
     
-    fprintf(stream, "\nleaf");
+    fprintf(stream, "\nleafN");
     while (open > 0)
     {
 	fprintf(stream, ") ");
@@ -522,7 +522,7 @@ void print_coq_tree_adv(adversary_vertex *v, bool ignore_reference)
     
     v->visited = true;
     
-    fprintf(outf, "\n( node "); // one extra bracket pair
+    fprintf(outf, "\n( nodeN "); // one extra bracket pair
 
     // bin loads
     fprintf(outf, "[");
@@ -569,7 +569,7 @@ void print_coq_tree_adv(adversary_vertex *v, bool ignore_reference)
     {
 	print_packing_in_coq_format(right_edge->to->optimal);
 
-	fprintf(outf, " leaf ");
+	fprintf(outf, " leafN ");
     } else {
 
 	// Print empty packing for a non-leaf.
@@ -586,7 +586,7 @@ void print_coq_tree_adv(adversary_vertex *v, bool ignore_reference)
 // Cloneless version.
 void print_record(FILE *stream, adversary_vertex *v, bool nocomment = false)
 {
-    fprintf(stream, "rec ");
+    fprintf(stream, "recN ");
     rooster_print_items(stream, v->bc.items);
     fprintf(stream, " (");
     // Ignore the possible reference on the root vertex.
@@ -613,7 +613,7 @@ void generate_coq_records(FILE *stream, std::list<adversary_vertex*> full_list, 
 	first = true;
 	segment_counter++;
 	
-	fprintf(stream, "Definition lb_R_%d :=\n", segment_counter);
+	fprintf(stream, "Definition lb_R_%d : RecordN := (\n", segment_counter);
 	fprintf(stream, "[");
 	while(!full_list.empty() && record_counter <= 10000)
 	{
@@ -634,12 +634,12 @@ void generate_coq_records(FILE *stream, std::list<adversary_vertex*> full_list, 
 	    
 	    record_counter++;
 	}
-	fprintf(stream, "].\n");
+	fprintf(stream, "])%%N.\n");
     }
 
     // Write the full list as a concatenation.
 
-    fprintf(stream, "\nDefinition lb_R := ");
+    fprintf(stream, "\nDefinition lb_R : RecordN := (");
     for (int i = 1; i <= segment_counter; i++)
     {
 	fprintf(stream, "lb_R_%d", i);
@@ -648,6 +648,7 @@ void generate_coq_records(FILE *stream, std::list<adversary_vertex*> full_list, 
 	    fprintf(stream, " ++ ");
 	}
     }
+    fprintf(stream, ")%%N");
     fprintf(stream, ".\n");
 }
 
@@ -663,10 +664,14 @@ void coq_afterword(FILE *stream)
 void roost_main_tree(FILE *stream, dag *d, const char *treename)
 {
     print_if<ROOSTER_DEBUG>("Generating Coq main tree.\n");
-    fprintf(stream, "Definition %s :=", treename);
+    fprintf(stream, "Definition root_items : list N := ( ");
+    rooster_print_items(stream, d->root->bc.items);
+    fprintf(stream, " )%%N.\n");
+    
+    fprintf(stream, "Definition %s := (", treename);
     d->clear_visited();
     print_coq_tree_adv(d->root);
-    fprintf(stream, "\n.\n");
+    fprintf(stream, ")%%N\n.\n");
 }
 
 void roost_record_file(std::string outfile, dag *d, bool nocomment = false)
@@ -714,6 +719,16 @@ void roost_single_tree(std::string outfile, dag *d)
     outf = NULL;
 }
 
+ /*
+void roost_single_tree(std::string outfile, dag *d)
+{
+    dag *tree = d->subtree(d->root);
+    tree->clear_visited();
+    roost_record_file(outfile, tree);
+    delete tree;
+}
+ */
+ 
 void roost_layerize(std::string outfile_prefix, dag *d, const int target_layer)
 {
     int l = 0;
