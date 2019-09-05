@@ -34,6 +34,12 @@ void adversary_vertex::print(FILE *stream, bool debug)
     // Print the fact that it is an adversary vertex
     fprintf(stream, ",player=adv");
 
+    // If it is a debug print, print also the indegree and outdegree
+    if (debug)
+    {
+	fprintf(stream, ",indegree=%zu,outdegree=%zu", in.size(), out.size());
+    }
+    
     // Print additional parameters (mostly used for re-loading the tree and such).
     if (task)
     {
@@ -92,6 +98,12 @@ void algorithm_vertex::print(FILE *stream, bool debug)
     }
  
     fprintf(stream, ",player=alg");
+
+    // If it is a debug print, print also the indegree and outdegree
+    if (debug)
+    {
+	fprintf(stream, ",indegree=%zu,outdegree=%zu", in.size(), out.size());
+    }
   
     // If the vertex is a leaf, print a feasible optimal bin configuration.
     if (!debug && out.empty())

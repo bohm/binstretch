@@ -81,7 +81,76 @@ uint64_t number_of_adversary_vertices(dag *d)
     return adversary_count;
 }
 
+bool lb_prepared = true;
+
+void check_preparedness_adv(adversary_vertex *v)
+{
+
+    if (v->out.size() > 1)
+    {
+	lb_prepared = false;
+	if (ROOSTER_DEBUG)
+	{
+	    fprintf(stderr, "Adv. vertex has more than one child: ");
+	    v->print(stderr, true);
+	}
+    }
+
+    if (v->out.size() == 0)
+    {
+	lb_prepared = false;
+	if (ROOSTER_DEBUG)
+	{
+	    fprintf(stderr, "Adv. vertex is a leaf (only alg. vertices can be): ");
+	    v->print(stderr, true);
+	}
+
+    }
+}
+
+void check_preparedness_alg(algorithm_vertex *v)
+{
+    if (v->in.size() > 1)
+    {
+	lb_prepared = false;
+	if (ROOSTER_DEBUG)
+	{
+	    fprintf(stderr, "Alg. vertex has more than one parent: ");
+	    v->print(stderr, true);
+	}
+    }
+   
+}
+
+bool check_preparedness(dag *d)
+{
+    lb_prepared = true;
+    dfs(d, check_preparedness_adv, check_preparedness_alg);
+
+    if (ROOSTER_DEBUG && lb_prepared)
+    {
+	fprintf(stderr, "The dag passed the prep check. \n");
+    }
+
+    if (ROOSTER_DEBUG && !lb_prepared)
+    {
+	fprintf(stderr, "The dag failed the prep check. \n");
+    }
+   
+    return lb_prepared;
+}
+
 // --- Splitting. ---
+
+void clear_reference(adversary_vertex *v)
+{
+    v->reference = false;
+}
+
+void clear_references(dag *d)
+{
+    dfs(d, clear_reference, blank);
+}
 
 bool find_splittable(std::list<adversary_vertex*>& candidateq, adversary_vertex *v);
 bool find_splittable(std::list<adversary_vertex*>& candidateq, algorithm_vertex *v);
@@ -179,11 +248,12 @@ std::list<adversary_vertex*> cloneless_reduce_indegrees(dag *d)
 	int splt_counter = 0;
 	for (adversary_vertex* splitroot: candidateq)
 	{
-	    if (ROOSTER_DEBUG)
-	    {
-		fprintf(stderr, "Record candidate: ");
-		splitroot->print(stderr, true);
-	    }
+	    // if (ROOSTER_DEBUG)
+	    //{
+	    //	fprintf(stderr, "Record candidate: ");
+	    //splitroot->print(stderr, true);
+	    //}
+	    
 	    final_list.push_back(splitroot);
 	    splitroot->reference = true;
 	    splt_counter++;
@@ -212,8 +282,10 @@ void merge_two(dag *d, adversary_vertex *remaining, adversary_vertex *removal)
     for (auto& e : removal->in)
     {
 	e->to = remaining;
+	remaining->in.push_back(e);
     }
 
+    removal->in.clear();
     // Remove outedges non-recursively.
     /* for (auto& e: removal->out)
     {
@@ -227,43 +299,97 @@ void merge_two(dag *d, adversary_vertex *remaining, adversary_vertex *removal)
     d->del_adv_vertex(removal); // Then, remove the vertex itself.
 }
 
-
-void merge_ignoring_last_item(dag *d)
+// quick debug
+void print_layer(dag *d, std::list<adversary_vertex *>& layer, int layer_number)
 {
-    print_if<ROOSTER_DEBUG>("Merging nodes which have the same values except for the last item.\n");
+    fprintf(stderr, "Layer %d:\n", layer_number);
+    for (adversary_vertex *vert : layer)
+    {
+	fprintf(stderr, "%" PRIu64 ", ", vert->id);
+    }
+    fprintf(stderr, "\n");
+}
+
+// topological ordering generating layer by layer
+std::list<adversary_vertex *> generate_next_layer(dag *d, std::list<adversary_vertex *>& old_layer)
+{
+    std::list<adversary_vertex *> next_layer;
+    d->clear_visited();
+    for (auto &previous : old_layer)
+    {
+	if (previous->out.size() != 1)
+	{
+	    fprintf(stderr, "Adv. vertex has either 0 or at least 2 children, which is wrong:");
+	    previous->print(stderr, true);
+	    assert(previous->out.size() == 1);
+	}
+
+	adv_outedge *right_edge = *(previous->out.begin());
+	algorithm_vertex *right_move = right_edge->to;
+
+	for (auto next_outedge : right_move->out)
+	{
+	    adversary_vertex *nextv = next_outedge->to;
+		
+	    if (nextv->visited)
+	    {
+		continue;
+	    }
+	    nextv->visited = true;
+	    next_layer.push_back(nextv);
+	}
+    }
+    return next_layer;
+}
+
+// Merges all duplicates (if we ignore the last item) in a layer, returns the remaining vertices in the layer.
+std::list<adversary_vertex *> merge_last_in_layer(dag *d, std::list<adversary_vertex *>& layer)
+{
     // Build a set of hashes for each adversary vertex, ignoring the last item.
     std::map<uint64_t, adversary_vertex*> no_last_items;
+    // Also build a list of the remaining vertices in the layer.
+    std::list<adversary_vertex *> remaining_vertices;
 
-    // Create a copy of adv_by_hash, because we will be editing it inside the loop.
-    std::map<uint64_t, adversary_vertex*> adv_by_hash_copy(d->adv_by_hash);
-    for (auto & [hash, advv] : adv_by_hash_copy)
+    for (adversary_vertex *advv : layer)
     {
-	// If hash is already removed, continue.
-	if (d->adv_by_hash.find(hash) == d->adv_by_hash.end())
-	{
-	    continue;
-	}
-	
 	uint64_t loaditemhash = advv->bc.loaditemhash();
 
 	if (no_last_items.find(loaditemhash) == no_last_items.end() )
 	{
 	    // Loaditemhash is unique, just insert into map.
 	    no_last_items.insert(std::make_pair(loaditemhash, advv));
+	    remaining_vertices.push_back(advv);
 	} else
 	{
 	    // Collision, merge the two nodes.
 	    print_if<ROOSTER_DEBUG>("Merging two nodes.\n");
-	    advv->print(stderr, true);
+	    
 	    no_last_items.at(loaditemhash)->print(stderr,true); 
+	    advv->print(stderr, true);
 	    merge_two(d, no_last_items.at(loaditemhash), advv);
-	    // Remove all unreachable vertices from the tree. This will take O(n) time
-	    // but may result in much less merging.
-	    d->erase_unreachable();
 	}
     }
-    print_if<ROOSTER_DEBUG>("Finished merge.\n");
 
+    return remaining_vertices;
+}
+
+void merge_ignoring_last_item(dag *d)
+{
+    std::list<adversary_vertex *> layer;
+    std::list<adversary_vertex *> layer_after_prune;
+    std::list<adversary_vertex *> newlayer;
+    layer.push_back(d->root);
+
+    int layer_counter = 0;
+    while (!layer.empty())
+    {
+	print_if<ROOSTER_DEBUG>("Merging vertices in layer %d.\n", layer_counter);
+	// print_layer(d, layer, layer_counter);
+	layer_after_prune = merge_last_in_layer(d, layer);
+	newlayer = generate_next_layer(d, layer_after_prune);
+	layer = newlayer;
+	layer_counter++;
+    }
 }
 
 // --- Printing methods. ---
@@ -379,13 +505,19 @@ void print_coq_tree_adv(adversary_vertex *v, bool ignore_reference)
     
     if (v->visited)
     {
-	fprintf(stderr, "Printing a node vertex twice in one tree -- this should not happen.\n");
+	fprintf(stderr, "Printing a node vertex twice in one tree -- this should not happen. The problematic node:\n");
 	v->print(stderr, true);
+	fprintf(stderr, "Its parent vertices:\n");
+	for (alg_outedge *e : v->in)
+	{
+	    e->from->print(stderr, true);
+	}
+	
 	assert(!v->visited);
     } else
     {
-	fprintf(stderr, "Printing vertex: ");
-	v->print(stderr, true);
+	// fprintf(stderr, "Printing vertex: ");
+	// v->print(stderr, true);
     }
     
     v->visited = true;
@@ -450,6 +582,7 @@ void print_coq_tree_adv(adversary_vertex *v, bool ignore_reference)
 
 }
 
+
 // Cloneless version.
 void print_record(FILE *stream, adversary_vertex *v, bool nocomment = false)
 {
@@ -459,24 +592,6 @@ void print_record(FILE *stream, adversary_vertex *v, bool nocomment = false)
     // Ignore the possible reference on the root vertex.
     print_coq_tree_adv(v, true);
     fprintf(stream, "\n)");
-}
-
-void coq_preamble(FILE *stream)
-{
-    fprintf(stream, "Require Import binstretching.\n");
-}
-
-void coq_afterword(FILE *stream)
-{
-}
-
-void generate_coq_tree(FILE* stream, dag *d, const char* treename, bool nocomment = false)
-{
-    print_if<ROOSTER_DEBUG>("Generating Coq main tree.\n");
-    fprintf(stream, "Definition %s :=", treename);
-    d->clear_visited();
-    print_coq_tree_adv(d->root);
-    fprintf(stream, "\n.\n");
 }
 
 // Cloneless and with segmentation.
@@ -536,6 +651,108 @@ void generate_coq_records(FILE *stream, std::list<adversary_vertex*> full_list, 
     fprintf(stream, ".\n");
 }
 
+void coq_preamble(FILE *stream)
+{
+    fprintf(stream, "Require Import binstretching.\n");
+}
+
+void coq_afterword(FILE *stream)
+{
+}
+
+void roost_main_tree(FILE *stream, dag *d, const char *treename)
+{
+    print_if<ROOSTER_DEBUG>("Generating Coq main tree.\n");
+    fprintf(stream, "Definition %s :=", treename);
+    d->clear_visited();
+    print_coq_tree_adv(d->root);
+    fprintf(stream, "\n.\n");
+}
+
+void roost_record_file(std::string outfile, dag *d, bool nocomment = false)
+{
+    check_preparedness(d);
+
+
+    outf = fopen(outfile.c_str(), "w");
+    assert(outf != NULL);
+    coq_preamble(outf);
+
+    print_if<ROOSTER_DEBUG>("Splitting the dag into graphs with small indegree.\n");
+
+    clear_references(d);
+    
+    std::list<adversary_vertex*> full_list = cloneless_reduce_indegrees(d);
+    full_list.reverse();
+
+    roost_main_tree(outf, d, "lb_T");
+    generate_coq_records(outf, full_list, nocomment);
+    
+    // print_splits<ROOSTER_DEBUG>(splits);
+    fprintf(stderr, "The graph has %" PRIu64 " adv. vertices after generating.\n",
+	    number_of_adversary_vertices(d));
+
+    coq_afterword(outf);
+    fclose(outf);
+    outf = NULL;
+
+}
+
+void roost_single_tree(std::string outfile, dag *d)
+{ 
+    outf = fopen(outfile.c_str(), "w");
+    assert(outf != NULL);
+    coq_preamble(outf);
+
+    print_if<ROOSTER_DEBUG>("Transforming the dag into a tree.\n");
+    dag *tree = d->subtree(d->root);
+    roost_main_tree(outf, tree, "lowerbound");
+    delete tree;
+
+    coq_afterword(outf);
+    fclose(outf);
+    outf = NULL;
+}
+
+void roost_layerize(std::string outfile_prefix, dag *d, const int target_layer)
+{
+    int l = 0;
+
+    std::list<adversary_vertex *> layer;
+    std::list<adversary_vertex *> newlayer;
+    layer.push_back(d->root);
+
+    while (l < target_layer)
+    {
+	newlayer = generate_next_layer(d, layer);
+	layer = newlayer;
+	l++;
+    }
+
+    int i = 0;
+    for (adversary_vertex *v : layer)
+    {
+
+	std::string outfile(outfile_prefix);
+	outfile.append("-p");
+	outfile.append(std::to_string(i));
+	outfile.append(".v");
+
+	print_if<ROOSTER_DEBUG>("Creating subdag %d, rooted at:", i);
+	if (ROOSTER_DEBUG)
+	{
+	    v->print(stderr, true);
+	}
+	print_if<ROOSTER_DEBUG>("Printing subdag into file %s.\n", outfile.c_str());
+
+	dag *sub = d->subdag(v);
+	roost_record_file(outfile, sub);
+	delete sub;
+
+	i++;
+    }
+   
+}
 
 bool parse_parameter_reduce(int argc, char **argv, int pos)
 {
@@ -555,16 +772,28 @@ bool parse_parameter_nocomment(int argc, char **argv, int pos)
     return false;
 }
 
+bool parse_parameter_layer(int argc, char **argv, int pos)
+{
+    if (strcmp(argv[pos], "-layer") == 0)
+    {
+	return true;
+    }
+    return false;
+}
 
 void usage()
 {
     fprintf(stderr, "Usage: ./rooster [--reduce] [--nocomment] infile.dag outfile.v\n");
+    fprintf(stderr, "Usage: ./rooster -layer NUM infile.dag outfile-prefix\n");
+
 }
 
 int main(int argc, char **argv)
 {
     bool reduce = false;
     bool nocomment = false; // In this case, rooster avoids printing any comments, only syntax.
+    bool layering = false;
+    int layer_to_split = -1;
     
     if(argc < 3)
     {
@@ -575,19 +804,36 @@ int main(int argc, char **argv)
     // Parse all parameters except for the last two, which must be infile and outfile.
     for (int i = 0; i < argc-2; i++)
     {
-	if(parse_parameter_reduce(argc, argv, i))
+	if (parse_parameter_reduce(argc, argv, i))
 	{
 	    reduce = true;
+	    continue;
 	}
 
-	if(parse_parameter_nocomment(argc, argv, i))
+	if (parse_parameter_nocomment(argc, argv, i))
 	{
 	    nocomment = true;
+	    continue;
+	}
+
+	if (parse_parameter_layer(argc, argv, i))
+	{
+	    if(i > argc-4)
+	    {
+		usage();
+		return -1;
+	    }
+	    
+	    layering = true;
+	    sscanf(argv[i+1], "%d", &layer_to_split);
+	    assert(layer_to_split >= 1);
+	    i++; // Skip next argv.
+	    continue;
 	}
     }
 
-    std::string infile(argv[argc-2]);
-    std::string outfile(argv[argc-1]);
+    std::string infile = argv[argc-2];
+    std::string outfile = argv[argc-1];
 
     if(infile == outfile)
     {
@@ -596,8 +842,7 @@ int main(int argc, char **argv)
 	return -1;
     }
 
-
-    fprintf(stderr, "Converting %s into a Coq form %s.\n", infile.c_str(), outfile.c_str());
+    fprintf(stderr, "Converting %s into a Coq form.\n", infile.c_str());
 
     print_if<ROOSTER_DEBUG>("Loading the dag from the file representation.\n");
     zobrist_init();
@@ -616,41 +861,17 @@ int main(int argc, char **argv)
     fprintf(stderr, "The graph has %" PRIu64 " adv. vertices after merge.\n",
 	    number_of_adversary_vertices(canvas));
 
-    outf = fopen(outfile.c_str(), "w");
-    assert(outf != NULL);
-    coq_preamble(outf);
-
-    if (reduce)
+    if (layering)
     {
-	print_if<ROOSTER_DEBUG>("Splitting the dag into graphs with small indegree.\n");
-	// std::list<dag*> splits = reduce_indegrees(canvas);
-	// We now reverse the list, as the lowest records in the tree need to be on the bottom.
-	// splits.reverse();
-
-	std::list<adversary_vertex*> full_list = cloneless_reduce_indegrees(canvas);
-	full_list.reverse();
-
-	generate_coq_tree(outf, canvas, "lb_T", nocomment);
-	// generate_coq_records(outf, splits);
-	generate_coq_records(outf, full_list, nocomment);
-	// print_splits<ROOSTER_DEBUG>(splits);
-	fprintf(stderr, "The graph has %" PRIu64 " adv. vertices after generating.\n",
-		number_of_adversary_vertices(canvas));
-
-
-    }
-    else
+	roost_layerize(outfile, canvas, layer_to_split);
+    } else if (reduce)
     {
-	print_if<ROOSTER_DEBUG>("Transforming the dag into a tree.\n");
-	dag *tree = canvas->subtree(canvas->root);
-	delete canvas;
-	canvas = tree;
-	generate_coq_tree(outf, canvas, "lowerbound");
+	roost_record_file(outfile, canvas);
+    } else // reduce == false
+    {
+	roost_single_tree(outfile, canvas);
     }
 
-    coq_afterword(outf);
-    fclose(outf);
-    outf = NULL;
 
     return 0;
 }
