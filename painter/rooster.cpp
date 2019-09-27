@@ -17,6 +17,8 @@ const bool ROOSTER_DEBUG = true;
 FILE* outf = NULL;
 dag *canvas = NULL;
 
+bool shorten_heuristics = false;
+
 // A queue lacks the clear() method, so we supply our own.
 void clear( std::queue<adversary_vertex*> &q )
 {
@@ -392,6 +394,29 @@ void merge_ignoring_last_item(dag *d)
     }
 }
 
+// --- Cutting large item heuristical vertices. ---
+
+void cut_large_item_adv(adversary_vertex *v)
+{
+    // Cut only those which are of large item type.
+    if(v->heur_vertex && v->heur_strategy->type == heuristic::large_item)
+    {
+	// Set mm_state so that no tasks are affected.
+	canvas->remove_outedges<mm_state::generating>(v);
+    }
+}
+
+// Does nothing, as no algorithm vertices in the LB are heuristical.
+void cut_large_item_alg(algorithm_vertex *v)
+{
+}
+
+void cut_large_item(dag *d)
+{
+    dfs(d, cut_large_item_adv, cut_large_item_alg);
+}
+
+
 // --- Printing methods. ---
 
 // Additional properties of vertices that we do not want to
@@ -545,36 +570,68 @@ void print_coq_tree_adv(adversary_vertex *v, bool ignore_reference)
     }
     fprintf(outf, "] ");
 
-    // Coq currently does not support printing tasks or heuristics.
-    // assert(!v->task);
-    // assert(!v->heuristic);
-
     // Coq printing currently works only for DAGs with outdegree 1 on alg vertices
-    if (v->out.size() > 1 || v->out.size() == 0)
+    /* if (v->out.size() > 1 || v->out.size() == 0)
     {
 	fprintf(stderr, "Trouble with vertex %" PRIu64  " with %zu children and bc:\n", v->id, v->out.size());
 	print_binconf_stream(stderr, v->bc);
 	assert(v->out.size() == 1);
-    }
-    
-    adv_outedge *right_edge = *(v->out.begin());
-    int right_item = right_edge->item;
+	}*/
+ 
+    bool adversarial_leaf = false;
+    adv_outedge *right_edge = NULL;
+    int right_item = 0;
 
-
-    // Next item.
-    fprintf(outf, " %d ", right_item);
-
-    // If this is an adversarial leaf (all moves win), print a feasible packing.
-    if (right_edge->to->out.empty())
+    // If this is a large item heuristic vertex, and we shorten heuristics, this will be a leaf.
+    if (shorten_heuristics && v->heur_vertex && v->heur_strategy->type == heuristic::large_item)
     {
-	print_packing_in_coq_format(right_edge->to->optimal);
+	adversarial_leaf = true;
+	// TODO: compute the right item to send.
+    } else
+    {
+	// In any other case, we expect the adv. vertex to have exactly one child.
+	if (v->out.size() > 1 || v->out.size() == 0)
+	{
+	    fprintf(stderr, "Trouble with vertex %" PRIu64  " with %zu children and bc:\n", v->id, v->out.size());
+	    print_binconf_stream(stderr, v->bc);
+	    assert(v->out.size() == 1);
+	}
+ 
+	right_edge = *(v->out.begin());
+	right_item = right_edge->item;
 
+	// If after sending this one item there are no more valid packings under R,
+	// this is an adversarial leaf.
+	if (right_edge->to->out.empty())
+	{
+	    adversarial_leaf = true;
+	}
+    }
+
+    fprintf(outf, " %d ", right_item); // Print the next item.
+
+    // If this is an adversarial heuristic leaf:
+    if (adversarial_leaf && v->heur_vertex)
+    {
+	// Print the heuristic steps:
+
+	// And an optimal feasible packing of all the steps.
+	
+	print_packing_in_coq_format(right_edge->to->optimal);
+	fprintf(outf, " leafN ");
+    } else if (adversarial_leaf)
+    {
+	// Or, if it is a standard adversarial leaf, first print that no heuristics are used:
+	fprintf(outf, " [] ");
+	// And then the optimal packing below.
+	print_packing_in_coq_format(right_edge->to->optimal);
 	fprintf(outf, " leafN ");
     } else {
-
-	// Print empty packing for a non-leaf.
+	// Normal vertex, first print that no heuristic is used:
 	fprintf(outf, " [] ");
-
+	// Then, print empty packing for a non-leaf.
+	fprintf(outf, " [] ");
+	// Finally, recursively print children.
 	print_children(outf, right_edge->to->out);
     }
 
@@ -806,7 +863,6 @@ void usage()
 int main(int argc, char **argv)
 {
     bool reduce = false;
-    bool shortheur = false; // If shortheur == true, we do not expand "large item" heuristic vertices.
     bool layering = false;
     int layer_to_split = -1;
     
@@ -827,7 +883,7 @@ int main(int argc, char **argv)
 
 	if (parse_parameter_shortheur(argc, argv, i))
 	{
-	    shortheur = true;
+	    shorten_heuristics = true;
 	    continue;
 	}
 
@@ -878,8 +934,9 @@ int main(int argc, char **argv)
 
     if (shortheur)
     {
-	
+	cut_large_item(canvas);
     }
+    
     if (layering)
     {
 	roost_layerize(outfile, canvas, layer_to_split);

@@ -73,6 +73,14 @@ public:
 	    }
 	    return os.str();
 	}
+
+    // A helper function which exposes the data in a unified way -- as a list of integers.
+    // Similar to print() and used for a similar thing.
+    
+    std::vector<int> contents()
+	{
+	    return itemlist;
+	}
 };
 
 int first_with_load(const binconf& b, int threshold)
@@ -153,6 +161,14 @@ class heuristic_strategy_fn : public heuristic_strategy
 	    std::ostringstream os;
 	    os << "FN(" << fives << ")";
 	    return os.str();
+	}
+
+
+    std::vector<int> contents()
+	{
+	    std::vector<int> ret;
+	    ret.push_back(fives);
+	    return ret;
 	}
 };
  

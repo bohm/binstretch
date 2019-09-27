@@ -233,6 +233,7 @@ public:
     virtual void fromString(const std::string & heurstring) = 0;
     virtual int next_item(const binconf *b, int relative_depth) = 0;
     virtual std::string print() = 0;
+    virtual std::vector<int> contents() = 0;
     virtual ~heuristic_strategy() = 0;
 
     // Recognizes a type of heuristic from the heurstring (e.g. when reading an already produced tree).
