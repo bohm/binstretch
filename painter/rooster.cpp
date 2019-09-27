@@ -778,9 +778,9 @@ bool parse_parameter_reduce(int argc, char **argv, int pos)
     return false;
 }
 
-bool parse_parameter_nocomment(int argc, char **argv, int pos)
+bool parse_parameter_shortheur(int argc, char **argv, int pos)
 {
-    if (strcmp(argv[pos], "--nocomment") == 0)
+    if (strcmp(argv[pos], "--shortheur") == 0)
     {
 	return true;
     }
@@ -798,7 +798,7 @@ bool parse_parameter_layer(int argc, char **argv, int pos)
 
 void usage()
 {
-    fprintf(stderr, "Usage: ./rooster [--reduce] [--nocomment] infile.dag outfile.v\n");
+    fprintf(stderr, "Usage: ./rooster [--reduce] [--shortheur] infile.dag outfile.v\n");
     fprintf(stderr, "Usage: ./rooster -layer NUM infile.dag outfile-prefix\n");
 
 }
@@ -806,7 +806,7 @@ void usage()
 int main(int argc, char **argv)
 {
     bool reduce = false;
-    bool nocomment = false; // In this case, rooster avoids printing any comments, only syntax.
+    bool shortheur = false; // If shortheur == true, we do not expand "large item" heuristic vertices.
     bool layering = false;
     int layer_to_split = -1;
     
@@ -825,9 +825,9 @@ int main(int argc, char **argv)
 	    continue;
 	}
 
-	if (parse_parameter_nocomment(argc, argv, i))
+	if (parse_parameter_shortheur(argc, argv, i))
 	{
-	    nocomment = true;
+	    shortheur = true;
 	    continue;
 	}
 
@@ -876,6 +876,10 @@ int main(int argc, char **argv)
     fprintf(stderr, "The graph has %" PRIu64 " adv. vertices after merge.\n",
 	    number_of_adversary_vertices(canvas));
 
+    if (shortheur)
+    {
+	
+    }
     if (layering)
     {
 	roost_layerize(outfile, canvas, layer_to_split);

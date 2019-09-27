@@ -223,22 +223,43 @@ int thread_rank_size = 0;
 class binconf;
 class loadconf;
 
-
 // This abstract class describes what ADV should do when a heuristic succeeds.
-// Its implementations are in heur_adv.hpp.
+// Its two non-abstract implementations are defined in heur_classes.hpp.
 class heuristic_strategy
 {
 public:
     heuristic type;
     virtual void init(const std::vector<int>& list) = 0;
+    virtual void fromString(const std::string & heurstring) = 0;
     virtual int next_item(const binconf *b, int relative_depth) = 0;
     virtual std::string print() = 0;
     virtual ~heuristic_strategy() = 0;
+
+    // Recognizes a type of heuristic from the heurstring (e.g. when reading an already produced tree).
+    // Currently very trivial rules, as we only have two kinds of heuristics.
+    static heuristic recognizeType(const std::string& heurstring)
+	{
+	    if (heurstring.length() == 0)
+	    {
+		fprintf(stderr, "Currently there are no heuristic strings of length 0.");
+		exit(-1);
+	    }
+	    
+	    if (heurstring[0] == 'F')
+	    {
+		return heuristic::five_nine;
+	    } else
+	    {
+		return heuristic::large_item;
+	    }
+	}
 };
 
 heuristic_strategy::~heuristic_strategy()
 {
 }
+
+
 
 
 // if a maximalization procedure gets an infeasible configuration, it returns MAX_INFEASIBLE.

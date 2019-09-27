@@ -51,15 +51,10 @@ void adversary_vertex::print(FILE *stream, bool debug)
     } else if (reference) // Reference to another tree in a list -- only makes sense for rooster.cpp.
     {
 	fprintf(stream, ",reference=true");
-    } else if (heuristic)
+    } else if (heur_vertex)
     {
-	if (heur_strategy != NULL)
-	{
-	    fprintf(stream, ",heur=\"%s\"", heur_strategy->print().c_str() );
-	} else
-	{
-	    fprintf(stream, ",heur=\"%s\"", heurstring.c_str());
-	}
+	assert(heur_strategy != NULL);
+	fprintf(stream, ",heur=\"%s\"", heur_strategy->print().c_str() );
     }
 
     fprintf(stream, "];\n");
@@ -145,7 +140,7 @@ void dag::print_lowerbound_dfs(adversary_vertex *v, FILE* stream, bool debug)
     v->print(stream, debug);
 
     // Possibly stop printing if v is heuristically solved.
-    if (PRINT_HEURISTICS_IN_FULL || !v->heuristic)
+    if (PRINT_HEURISTICS_IN_FULL || !v->heur_vertex)
     {
 	// We do the for loop twice so we have edges before the vertex descriptions.
 	for (adv_outedge* e : v->out)
@@ -219,7 +214,7 @@ void dag::print_lowerbound_bfs(FILE* stream, bool debug)
 	    v->print(stream, debug);
 
 	    // Possibly stop printing if v is heuristically solved.
-	    if (PRINT_HEURISTICS_IN_FULL || !v->heuristic)
+	    if (PRINT_HEURISTICS_IN_FULL || !v->heur_vertex)
 	    {
 
 		// We do the for loop twice so we have edges before the vertex descriptions.

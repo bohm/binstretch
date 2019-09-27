@@ -13,6 +13,7 @@
 #include <stack>
 
 #include "../common.hpp"
+#include "../heur_classes.hpp"
 #include "../binconf.hpp"
 
 // a game tree (actually a DAG) used for outputting the resulting
@@ -155,7 +156,7 @@ public:
     vert_state state = vert_state::fresh;
     victory win = victory::uncertain;
 
-    bool heuristic = false;
+    bool heur_vertex = false;
     heuristic_strategy *heur_strategy = NULL;
 
     // bin_int heuristic_item = 0;
@@ -178,14 +179,25 @@ public:
     int old_name = -1;
     std::string label;
     std::string cosmetics;
-    std::string heurstring;
+    // std::string heurstring;
 
-    adversary_vertex(const binconf& b, uint64_t id, std::string heur) : bc(b), id(id) //, depth(depth)
+    adversary_vertex(const binconf& b, uint64_t id, std::string heurstring) : bc(b), id(id) //, depth(depth)
     {
-	if(!heur.empty())
+	if(!heurstring.empty())
 	{
-	    heuristic = true;
-	    heurstring = heur;
+	    heur_vertex = true;
+	    heuristic type = heuristic_strategy::recognizeType(heurstring);
+	    if (type == heuristic::large_item)
+	    {
+		heur_strategy = new heuristic_strategy_list;
+		heur_strategy->fromString(heurstring);
+	    } else
+	    {
+		assert(type == heuristic::five_nine);
+		heur_strategy = new heuristic_strategy_fn;
+		heur_strategy->fromString(heurstring);
+	    }
+	    // heurstring = heur;
 	}
     }
 

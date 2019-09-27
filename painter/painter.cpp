@@ -28,10 +28,10 @@ std::string build_label(adversary_vertex *v)
     }
 
     // TODO: print a heuristic as a part of the label.
-    if (v->heuristic)
+    if (v->heur_vertex)
     {
 	ss << " h:";
-	ss << v->heurstring;
+	ss << v->heur_strategy->print();
     }
     return ss.str();
 }
@@ -51,7 +51,7 @@ std::string build_cosmetics(adversary_vertex *v)
 {
     std::stringstream cosm;
 
-    if(v->heuristic)
+    if(v->heur_vertex)
     {
 	// Paint the vertex with a different color if the last bin is still empty.
 	if (v->bc.loads[BINS] == 0)
@@ -174,7 +174,7 @@ void paint(dag *d, std::string outfile)
 // Cut heuristics from the graph.
 void cut_heuristics_adv(adversary_vertex *v)
 {
-    if(v->heuristic)
+    if(v->heur_vertex)
     {
 	// Set mm_state so that no tasks are affected.
 	canvas->remove_outedges<mm_state::generating>(v);

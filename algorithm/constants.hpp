@@ -39,13 +39,15 @@ template <bool PARAM> void print(FILE *stream, const victory& win)
 // enum class output_type {tree, dag, coq};
 
 // Types of adversarial heuristics.
-enum class heuristic {simple, large_item, five_nine };
+// enum class heuristic {simple, large_item, five_nine };
+enum class heuristic {large_item, five_nine };
+
 void print(FILE *stream, const heuristic& type)
 {
     switch(type)
     {
-    case heuristic::simple:
-	fprintf(stream, "simple"); break;
+//     case heuristic::simple:
+// 	fprintf(stream, "simple"); break;
     case heuristic::large_item:
 	fprintf(stream, "large item"); break;
     case heuristic::five_nine:

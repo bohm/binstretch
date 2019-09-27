@@ -32,7 +32,7 @@ void dag::clone_subtree(dag *processing, adversary_vertex *vertex_to_process,
     // We do not care about visited flags, as we are creating a tree out of a DAG.
 
     // Copy cosmetics and other details.
-    vertex_to_process->heurstring = original->heurstring;
+    // vertex_to_process->heurstring = original->heurstring;
     vertex_to_process->cosmetics = original->cosmetics;
     vertex_to_process->sapling = original->sapling;
     vertex_to_process->label = original->label;
@@ -62,8 +62,14 @@ void dag::clone_subtree(dag *processing, algorithm_vertex *vertex_to_process,
     // Process children.
     for (alg_outedge *e: original->out)
     {
-	// Create the target vertex in the new graph
-	adversary_vertex *to = processing->add_adv_vertex(e->to->bc, e->to->heurstring, true);
+	// Create the target vertex in the new graph.
+	// If it was a heuristical vertex, we also add the heurstring.
+	std::string heurstring;
+	if (e->to->heur_vertex)
+	{
+	    heurstring = e->to->heur_strategy->print();
+	}
+	adversary_vertex *to = processing->add_adv_vertex(e->to->bc, heurstring, true);
 	processing->add_alg_outedge(vertex_to_process, to, e->target_bin);
 	clone_subtree(processing, to, e->to);
     }
@@ -77,7 +83,7 @@ void dag::clone_subdag(dag *processing, adversary_vertex *vertex_to_process,
     original->visited = true;
 
     // Copy cosmetics and other details.
-    vertex_to_process->heurstring = original->heurstring;
+    // vertex_to_process->heurstring = original->heurstring;
     vertex_to_process->cosmetics = original->cosmetics;
     vertex_to_process->sapling = original->sapling;
     vertex_to_process->label = original->label;
@@ -127,7 +133,13 @@ void dag::clone_subdag(dag *processing, algorithm_vertex *vertex_to_process,
 	} else
 	{
 	    // Create the target vertex in the new graph
-	    adversary_vertex *to = processing->add_adv_vertex(e->to->bc, e->to->heurstring, false);
+	    // If it was a heuristical vertex, we also add the heurstring.
+	    std::string heurstring;
+	    if (e->to->heur_vertex)
+	    {
+		heurstring = e->to->heur_strategy->print();
+	    }
+	    adversary_vertex *to = processing->add_adv_vertex(e->to->bc, heurstring, false);
 	    processing->add_alg_outedge(vertex_to_process, to, e->target_bin);
 	    clone_subdag(processing, to, e->to);
 	}
