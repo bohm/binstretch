@@ -13,9 +13,61 @@
 
 const bool ROOSTER_DEBUG = true;
 
+
+// Extending dag by several parameters. Logarithmic access complexity,
+// but this should not matter.
+
+class rooster_dag : public dag
+{
+public:
+    std::map<uint64_t, bool> reference_map;
+    std::map<uint64_t, std::string> optimal_solution_map;
+
+
+    rooster_dag(const dag & d) : dag(d) {}
+    rooster_dag(const dag * d) : dag(*d) {}
+
+    void init_references()
+	{
+	    for (const auto& [id, avert]: adv_by_id)
+	    {
+		reference_map[id] = false;
+	    }
+	}
+
+    bool is_reference(adversary_vertex *v)
+	{
+	    if (reference_map.find(v->id) == reference_map.end())
+	    {
+		fprintf(stderr, "Vertex %" PRIu64 " was not found in the reference map.\n");
+		assert(false);
+	    }
+
+	    return reference_map[v->id];
+	}
+
+    void set_reference(adversary_vertex *v)
+	{
+	    reference_map[v->id] = true;
+	}
+
+    void unset_reference(adversary_vertex *v)
+	{
+	    reference_map[v->id] = true;
+	}
+
+
+    rooster_dag * subtree(adversary_vertex *subtree_root)
+	{
+	    dag *d = dag::subtree(subtree_root);
+	    return new rooster_dag(d);
+	}
+};
+
+
 // Output file as a global parameter (too lazy for currying).
 FILE* outf = NULL;
-dag *canvas = NULL;
+rooster_dag *canvas = NULL;
 
 bool shorten_heuristics = false;
 
@@ -144,24 +196,14 @@ bool check_preparedness(dag *d)
 
 // --- Splitting. ---
 
-void clear_reference(adversary_vertex *v)
-{
-    v->reference = false;
-}
+bool find_splittable(rooster_dag *d, std::list<adversary_vertex*>& candidateq, adversary_vertex *v);
+bool find_splittable(rooster_dag *d, std::list<adversary_vertex*>& candidateq, algorithm_vertex *v);
 
-void clear_references(dag *d)
-{
-    dfs(d, clear_reference, blank);
-}
-
-bool find_splittable(std::list<adversary_vertex*>& candidateq, adversary_vertex *v);
-bool find_splittable(std::list<adversary_vertex*>& candidateq, algorithm_vertex *v);
-
-bool find_splittable(std::list<adversary_vertex*>& candidateq, adversary_vertex *v)
+bool find_splittable(rooster_dag *d, std::list<adversary_vertex*>& candidateq, adversary_vertex *v)
 {
 
     // If the examined vertex is a reference, it is never splittable on its own.
-    if (v->reference)
+    if (d->is_reference(v))
     {
 	return false;
     }
@@ -188,7 +230,7 @@ bool find_splittable(std::list<adversary_vertex*>& candidateq, adversary_vertex 
     bool candidate_below = false; 
     for (auto &e : v->out)
     {
-	bool subtree = find_splittable(candidateq, e->to);
+	bool subtree = find_splittable(d, candidateq, e->to);
 	if (subtree)
 	{
 	    candidate_below = true;
@@ -204,7 +246,7 @@ bool find_splittable(std::list<adversary_vertex*>& candidateq, adversary_vertex 
     return candidate_below;
 }
 
-bool find_splittable(std::list<adversary_vertex*>& candidateq, algorithm_vertex *v)
+bool find_splittable(rooster_dag *d, std::list<adversary_vertex*>& candidateq, algorithm_vertex *v)
 {
     // Algorithm's vertices should be unique.
     v->visited = true;
@@ -223,7 +265,7 @@ bool find_splittable(std::list<adversary_vertex*>& candidateq, algorithm_vertex 
     bool candidate_below = false;
     for (auto &e : v->out)
     {
-	bool subtree = find_splittable(candidateq, e->to);
+	bool subtree = find_splittable(d, candidateq, e->to);
 	if (subtree)
 	{
 	    candidate_below = true;
@@ -233,7 +275,7 @@ bool find_splittable(std::list<adversary_vertex*>& candidateq, algorithm_vertex 
     return candidate_below;
 }
 
-std::list<adversary_vertex*> cloneless_reduce_indegrees(dag *d)
+std::list<adversary_vertex*> cloneless_reduce_indegrees(rooster_dag *d)
 {
     std::list<adversary_vertex*> final_list;
 
@@ -241,7 +283,7 @@ std::list<adversary_vertex*> cloneless_reduce_indegrees(dag *d)
     std::list<adversary_vertex*> candidateq;
 
     d->clear_visited();
-    find_splittable(candidateq, d->root);
+    find_splittable(d, candidateq, d->root);
 
     int iteration = 0;
     while (!candidateq.empty())
@@ -257,14 +299,14 @@ std::list<adversary_vertex*> cloneless_reduce_indegrees(dag *d)
 	    //}
 	    
 	    final_list.push_back(splitroot);
-	    splitroot->reference = true;
+	    d->set_reference(splitroot);
 	    splt_counter++;
 
 	}
 	candidateq.clear();
 	d->clear_visited();
 	print_if<ROOSTER_DEBUG>("Finding new candidates.\n");
-	find_splittable(candidateq, d->root);
+	find_splittable(d, candidateq, d->root);
 	iteration++;
 	print_if<ROOSTER_DEBUG>("%zu candidates found in iteration %d.\n", candidateq.size(), iteration);
 
@@ -455,12 +497,12 @@ void rooster_print_items(FILE* stream, const std::array<bin_int, S+1> & items)
     fprintf(stream, "]");
 }
 
-void print_coq_tree_adv(adversary_vertex *v, bool ignore_reference = false); // Forward declaration.
+void print_coq_tree_adv(rooster_dag *rd, adversary_vertex *v, bool ignore_reference = false); // Forward declaration.
 
 // A wrapper around printing a list of children.
 // The resulting list should look like (conspointer x (cons y ( conspointer z leaf ) ) )
 
-void print_children(FILE *stream, std::list<alg_outedge*>& right_edge_out)
+void print_children(FILE *stream, rooster_dag *rd, std::list<alg_outedge*>& right_edge_out)
 {
     fprintf(stream, "\n(");
     int open = 1;
@@ -476,14 +518,14 @@ void print_children(FILE *stream, std::list<alg_outedge*>& right_edge_out)
 	    first = false;
 	}
 	
-	if (next->to->reference)
+	if (rd->is_reference(next->to))
 	{
 	    fprintf(stream, "conspointerN ");
 	} else {
 	    fprintf(stream, "consN ");
 	}
 
-	print_coq_tree_adv(next->to);
+	print_coq_tree_adv(rd, next->to);
     }
     
     fprintf(stream, "\nleafN");
@@ -497,13 +539,13 @@ void print_children(FILE *stream, std::list<alg_outedge*>& right_edge_out)
 // Prints a dag (requires a tree) in the format required by Coq.
 // Cannot call dfs() directly, becaues dfs() had no "afterword()" clause.
 
-void print_coq_tree_adv(adversary_vertex *v, bool ignore_reference)
+void print_coq_tree_adv(rooster_dag *rd, adversary_vertex *v, bool ignore_reference)
 {
 
     // If a vertex is a reference, it does not start with the "node" keyword.
     // We just print a pointer to the record list and terminate.
     // We print a node as normal if ignore_reference == true.
-    if (v->reference && !ignore_reference)
+    if (rd->is_reference(v) && !ignore_reference)
     {
 	fprintf(outf, "[");
 
@@ -616,8 +658,7 @@ void print_coq_tree_adv(adversary_vertex *v, bool ignore_reference)
 	// Print the heuristic steps:
 
 	// And an optimal feasible packing of all the steps.
-	
-	print_packing_in_coq_format(right_edge->to->optimal);
+	// print_packing_in_coq_format(right_edge->to->optimal);
 	fprintf(outf, " leafN ");
     } else if (adversarial_leaf)
     {
@@ -632,7 +673,7 @@ void print_coq_tree_adv(adversary_vertex *v, bool ignore_reference)
 	// Then, print empty packing for a non-leaf.
 	fprintf(outf, " [] ");
 	// Finally, recursively print children.
-	print_children(outf, right_edge->to->out);
+	print_children(outf, rd,  right_edge->to->out);
     }
 
     fprintf(outf, ")"); // one extra bracket pair
@@ -641,18 +682,18 @@ void print_coq_tree_adv(adversary_vertex *v, bool ignore_reference)
 
 
 // Cloneless version.
-void print_record(FILE *stream, adversary_vertex *v, bool nocomment = false)
+void print_record(FILE *stream, rooster_dag *rd, adversary_vertex *v, bool nocomment = false)
 {
     fprintf(stream, "recN ");
     rooster_print_items(stream, v->bc.items);
     fprintf(stream, " (");
     // Ignore the possible reference on the root vertex.
-    print_coq_tree_adv(v, true);
+    print_coq_tree_adv(rd, v, true);
     fprintf(stream, "\n)");
 }
 
 // Cloneless and with segmentation.
-void generate_coq_records(FILE *stream, std::list<adversary_vertex*> full_list, bool nocomment = false)
+void generate_coq_records(FILE *stream, rooster_dag *rd, std::list<adversary_vertex*> full_list, bool nocomment = false)
 {
     int segment_counter = 0;
     bool first = true;
@@ -686,7 +727,7 @@ void generate_coq_records(FILE *stream, std::list<adversary_vertex*> full_list, 
 		first = false;
 	    }
 	    adversary_vertex *v = full_list.front();
-	    print_record(stream, v);
+	    print_record(stream, rd, v);
 	    full_list.pop_front();
 	    
 	    record_counter++;
@@ -718,22 +759,22 @@ void coq_afterword(FILE *stream)
 {
 }
 
-void roost_main_tree(FILE *stream, dag *d, const char *treename)
+void roost_main_tree(FILE *stream, rooster_dag *rd, const char *treename)
 {
     print_if<ROOSTER_DEBUG>("Generating Coq main tree.\n");
     fprintf(stream, "Definition root_items : list N := ( ");
-    rooster_print_items(stream, d->root->bc.items);
+    rooster_print_items(stream, rd->root->bc.items);
     fprintf(stream, " )%%N.\n");
     
     fprintf(stream, "Definition %s := (", treename);
-    d->clear_visited();
-    print_coq_tree_adv(d->root);
+    rd->clear_visited();
+    print_coq_tree_adv(rd, rd->root);
     fprintf(stream, ")%%N\n.\n");
 }
 
-void roost_record_file(std::string outfile, dag *d, bool nocomment = false)
+void roost_record_file(std::string outfile, rooster_dag *rd, bool nocomment = false)
 {
-    check_preparedness(d);
+    check_preparedness(rd);
 
 
     outf = fopen(outfile.c_str(), "w");
@@ -742,17 +783,17 @@ void roost_record_file(std::string outfile, dag *d, bool nocomment = false)
 
     print_if<ROOSTER_DEBUG>("Splitting the dag into graphs with small indegree.\n");
 
-    clear_references(d);
+    rd->init_references();
     
-    std::list<adversary_vertex*> full_list = cloneless_reduce_indegrees(d);
+    std::list<adversary_vertex*> full_list = cloneless_reduce_indegrees(rd);
     full_list.reverse();
 
-    roost_main_tree(outf, d, "lb_T");
-    generate_coq_records(outf, full_list, nocomment);
+    roost_main_tree(outf, rd, "lb_T");
+    generate_coq_records(outf, rd, full_list, nocomment);
     
     // print_splits<ROOSTER_DEBUG>(splits);
     fprintf(stderr, "The graph has %" PRIu64 " adv. vertices after generating.\n",
-	    number_of_adversary_vertices(d));
+	    number_of_adversary_vertices(rd));
 
     coq_afterword(outf);
     fclose(outf);
@@ -760,70 +801,20 @@ void roost_record_file(std::string outfile, dag *d, bool nocomment = false)
 
 }
 
-void roost_single_tree(std::string outfile, dag *d)
+void roost_single_tree(std::string outfile, rooster_dag *rd)
 { 
     outf = fopen(outfile.c_str(), "w");
     assert(outf != NULL);
     coq_preamble(outf);
 
     print_if<ROOSTER_DEBUG>("Transforming the dag into a tree.\n");
-    dag *tree = d->subtree(d->root);
+    rooster_dag *tree = rd->subtree(rd->root);
     roost_main_tree(outf, tree, "lowerbound");
     delete tree;
 
     coq_afterword(outf);
     fclose(outf);
     outf = NULL;
-}
-
- /*
-void roost_single_tree(std::string outfile, dag *d)
-{
-    dag *tree = d->subtree(d->root);
-    tree->clear_visited();
-    roost_record_file(outfile, tree);
-    delete tree;
-}
- */
- 
-void roost_layerize(std::string outfile_prefix, dag *d, const int target_layer)
-{
-    int l = 0;
-
-    std::list<adversary_vertex *> layer;
-    std::list<adversary_vertex *> newlayer;
-    layer.push_back(d->root);
-
-    while (l < target_layer)
-    {
-	newlayer = generate_next_layer(d, layer);
-	layer = newlayer;
-	l++;
-    }
-
-    int i = 0;
-    for (adversary_vertex *v : layer)
-    {
-
-	std::string outfile(outfile_prefix);
-	outfile.append("-p");
-	outfile.append(std::to_string(i));
-	outfile.append(".v");
-
-	print_if<ROOSTER_DEBUG>("Creating subdag %d, rooted at:", i);
-	if (ROOSTER_DEBUG)
-	{
-	    v->print(stderr, true);
-	}
-	print_if<ROOSTER_DEBUG>("Printing subdag into file %s.\n", outfile.c_str());
-
-	dag *sub = d->subdag(v);
-	roost_record_file(outfile, sub);
-	delete sub;
-
-	i++;
-    }
-   
 }
 
 bool parse_parameter_reduce(int argc, char **argv, int pos)
@@ -844,28 +835,14 @@ bool parse_parameter_shortheur(int argc, char **argv, int pos)
     return false;
 }
 
-bool parse_parameter_layer(int argc, char **argv, int pos)
-{
-    if (strcmp(argv[pos], "-layer") == 0)
-    {
-	return true;
-    }
-    return false;
-}
-
 void usage()
 {
     fprintf(stderr, "Usage: ./rooster [--reduce] [--shortheur] infile.dag outfile.v\n");
-    fprintf(stderr, "Usage: ./rooster -layer NUM infile.dag outfile-prefix\n");
-
 }
 
 int main(int argc, char **argv)
 {
     bool reduce = false;
-    bool layering = false;
-    int layer_to_split = -1;
-    
     if(argc < 3)
     {
 	usage();
@@ -884,21 +861,6 @@ int main(int argc, char **argv)
 	if (parse_parameter_shortheur(argc, argv, i))
 	{
 	    shorten_heuristics = true;
-	    continue;
-	}
-
-	if (parse_parameter_layer(argc, argv, i))
-	{
-	    if(i > argc-4)
-	    {
-		usage();
-		return -1;
-	    }
-	    
-	    layering = true;
-	    sscanf(argv[i+1], "%d", &layer_to_split);
-	    assert(layer_to_split >= 1);
-	    i++; // Skip next argv.
 	    continue;
 	}
     }
@@ -923,7 +885,7 @@ int main(int argc, char **argv)
     binconf empty; empty.hashinit();
     d->populate_binconfs(empty);
     // assign the dag into the global pointer
-    canvas = d->finalize();
+    canvas = new rooster_dag(d->finalize());
 
     fprintf(stderr, "The graph has %" PRIu64 " adv. vertices before merge.\n",
 	    number_of_adversary_vertices(canvas));
@@ -932,22 +894,18 @@ int main(int argc, char **argv)
     fprintf(stderr, "The graph has %" PRIu64 " adv. vertices after merge.\n",
 	    number_of_adversary_vertices(canvas));
 
-    if (shortheur)
+    if (shorten_heuristics)
     {
 	cut_large_item(canvas);
     }
     
-    if (layering)
-    {
-	roost_layerize(outfile, canvas, layer_to_split);
-    } else if (reduce)
+    if (reduce)
     {
 	roost_record_file(outfile, canvas);
     } else // reduce == false
     {
 	roost_single_tree(outfile, canvas);
     }
-
 
     return 0;
 }

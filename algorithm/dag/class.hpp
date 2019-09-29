@@ -156,15 +156,8 @@ public:
     vert_state state = vert_state::fresh;
     victory win = victory::uncertain;
 
-    bool heur_vertex = false;
+    bool heur_vertex = false; // Whether the vertex is solvable with a heuristic strategy.
     heuristic_strategy *heur_strategy = NULL;
-
-    // bin_int heuristic_item = 0;
-    // bin_int heuristic_multi = 0;
-
-    // The following two are now merged in heuristic_strategy
-    // int heuristic_type = 0;
-    // std::string heuristic_desc;
 
     int expansion_depth = 0;
     bool task = false; // task is a separate boolean because an vert_state::expand vertex can be a task itself.
@@ -179,7 +172,6 @@ public:
     int old_name = -1;
     std::string label;
     std::string cosmetics;
-    // std::string heurstring;
 
     adversary_vertex(const binconf& b, uint64_t id, std::string heurstring) : bc(b), id(id) //, depth(depth)
     {
