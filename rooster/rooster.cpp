@@ -39,7 +39,7 @@ public:
 	{
 	    if (reference_map.find(v->id) == reference_map.end())
 	    {
-		fprintf(stderr, "Vertex %" PRIu64 " was not found in the reference map.\n");
+		fprintf(stderr, "Vertex %" PRIu64 " was not found in the reference map.\n", v->id);
 		assert(false);
 	    }
 

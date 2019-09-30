@@ -50,6 +50,6 @@ if [[ "$BUILDING_PAINTER" = true ]]; then
 fi
 
 if [[ "$BUILDING_ROOSTER" = true ]]; then
-    echo "Running: g++ -Wall -std=c++17 -O3 -march=native -DIBINS=$1 -DIR=$2 -DIS=$3 -DII_S=$IS rooster.cpp -o $OUTPUT/rooster-$1-bins-$2-$3 -pthread"
-    cd painter; g++ -Wall -std=c++17 -O3 -march=native -DIBINS=$1 -DIR=$2 -DIS=$3 -DII_S=$IS rooster.cpp -o $OUTPUT/rooster-$1-bins-$2-$3 -pthread; cd ..
+    echo "Moving to rooster and running: g++ -Wall -std=c++17 -O3 -march=native -DIBINS=$1 -DIR=$2 -DIS=$3 -DII_S=$IS rooster.cpp -o $OUTPUT/rooster-$1-bins-$2-$3 -pthread"
+    cd rooster; g++ -Wall -std=c++17 -O3 -march=native -DIBINS=$1 -DIR=$2 -DIS=$3 -DII_S=$IS rooster.cpp -o $OUTPUT/rooster-$1-bins-$2-$3 -pthread; cd ..
 fi
