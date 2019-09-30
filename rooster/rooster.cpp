@@ -13,6 +13,7 @@
 
 #include "dag_ext.hpp"
 #include "coq_printing.hpp"
+#include "consistency.hpp"
 
 const bool ROOSTER_DEBUG = true;
 
@@ -66,6 +67,26 @@ template <bool FLAG> void print_splits(std::list<dag*> &splits)
     }
 }
 
+void check_outsize_equal(rooster_dag *d, adversary_vertex *v, unsigned long int outsize)
+{
+    if (v->out.size() != outsize)
+    {
+	fprintf(stderr, "Adv. vertex should have exactly %zu children, but has %zu:\n", outsize, v->out.size());
+	v->print(stderr, true);
+	assert(v->out.size() == outsize);
+    }
+}
+
+void check_outsize_equal(rooster_dag *d, algorithm_vertex *v, unsigned long int outsize)
+{
+    if (v->out.size() != outsize)
+    {
+	fprintf(stderr, "Alg. vertex should have exactly %zu children, but has %zu:\n", outsize, v->out.size());
+	v->print(stderr, true);
+	assert(v->out.size() == outsize);
+    }
+}
+
 
 // Quick counting of adversary vertices in the graph.
 uint64_t adversary_count = 0;
@@ -103,13 +124,15 @@ void check_preparedness_adv(adversary_vertex *v)
 
     if (v->out.size() == 0)
     {
-	lb_prepared = false;
-	if (ROOSTER_DEBUG)
+	if (!v->heur_vertex)
 	{
-	    fprintf(stderr, "Adv. vertex is a leaf (only alg. vertices can be): ");
-	    v->print(stderr, true);
+	    lb_prepared = false;
+	    if (ROOSTER_DEBUG)
+	    {
+		fprintf(stderr, "Adv. non-heuristical vertex is a leaf (only alg. vertices can be): ");
+		v->print(stderr, true);
+	    }
 	}
-
     }
 }
 
@@ -358,9 +381,8 @@ std::list<adversary_vertex *> merge_last_in_layer(dag *d, std::list<adversary_ve
 	{
 	    // Collision, merge the two nodes.
 	    print_if<ROOSTER_DEBUG>("Merging two nodes.\n");
-	    
-	    no_last_items.at(loaditemhash)->print(stderr,true); 
-	    advv->print(stderr, true);
+	    // no_last_items.at(loaditemhash)->print(stderr,true); 
+	    // advv->print(stderr, true);
 	    merge_two(d, no_last_items.at(loaditemhash), advv);
 	}
     }
@@ -387,28 +409,126 @@ void merge_ignoring_last_item(dag *d)
     }
 }
 
-// --- Cutting large item heuristical vertices. ---
+// --- Cutting large item heuristical vertices with a DFS traversal. ---
 
-void cut_large_item_adv(adversary_vertex *v)
+// In order to avoid trouble with removing vertices here and there, we create an array of
+// elements to remove and sort them afterwards by their depth.
+
+struct deletable
 {
-    // Cut only those which are of large item type.
-    if(v->heur_vertex && v->heur_strategy->type == heuristic::large_item)
+    adversary_vertex *vertex = NULL;
+    int depth = 0;
+};
+
+bool compare_deletables(const deletable &a, const deletable &b)
+{
+    return a.depth > b.depth;
+}
+
+void cut_large_item(rooster_dag *rd, adversary_vertex *v, std::vector<deletable>& dels);
+void cut_large_item(rooster_dag *rd, algorithm_vertex *v, std::vector<deletable>& dels);
+
+void cut_large_item(rooster_dag *rd, adversary_vertex *v, std::vector<deletable>& dels)
+{
+    if (v->visited)
     {
+	return;
+    }
+
+    v->visited = true;
+
+    // Cut only those which are of large item type.
+    if (v->heur_vertex && v->heur_strategy->type == heuristic::large_item)
+    {
+	// Borrow an optimal string from a leaf below you.
+	// Currently there are two possible cases from where to borrow:
+
+	// a) you go blindly until the leaf, and borrow the optimal string from it
+	// b) you reach an adversarial vertex which is itself heuristical and processed.
+	// This can happen because of the "last item" merging.
+	// In this case, we just borrow the optimal string from it directly.
+
+	check_outsize_equal(rd, v, 1);
+	std::string borrowed_optimum;
+	algorithm_vertex *leaf_candidate = NULL;
+	adversary_vertex *nextstep = v;
+	while(true)
+	{
+	    
+	    leaf_candidate = nextstep->out.front()->to;
+
+	    // Normal leaf case.
+	    if (leaf_candidate->out.size() == 0)
+	    {
+		assert(!leaf_candidate->optimal.empty());
+		borrowed_optimum = leaf_candidate->optimal;
+		break;
+	    } else
+	    {
+		nextstep = leaf_candidate->out.front()->to;
+	    }
+
+	    // A child is also heuristical.
+	    if (nextstep->out.size() == 0)
+	    {
+		assert(nextstep->heur_vertex == true);
+		assert(rd->optimal_solution_map.find(nextstep->id) != rd->optimal_solution_map.end());
+		borrowed_optimum = rd->optimal_solution_map[nextstep->id];
+		break;
+	    } else
+	    {
+		check_outsize_equal(rd, nextstep, 1);
+	    }
+	}
+
+	assert(!borrowed_optimum.empty());
+	rd->optimal_solution_map[v->id] = borrowed_optimum;
+
+	// Remove all outgoing edges.
 	// Set mm_state so that no tasks are affected.
-	canvas->remove_outedges<mm_state::generating>(v);
+	deletable d;
+	d.vertex = v;
+	d.depth = v->bc.itemcount();
+	dels.push_back(d);
+	// canvas->remove_outedges<mm_state::generating>(v);
+    } else
+    {
+	for (adv_outedge *e : v->out)
+	{
+	    cut_large_item(rd, e->to, dels);
+	}
     }
 }
 
-// Does nothing, as no algorithm vertices in the LB are heuristical.
-void cut_large_item_alg(algorithm_vertex *v)
+void cut_large_item(rooster_dag *rd, algorithm_vertex *v, std::vector<deletable>& dels)
 {
+    if (v->visited)
+    {
+	return;
+    }
+
+    v->visited = true;
+
+    for (alg_outedge *e : v->out)
+    {
+	cut_large_item(rd, e->to, dels);
+    }
+    
 }
 
-void cut_large_item(dag *d)
+void cut_large_item(rooster_dag *rd)
 {
-    dfs(d, cut_large_item_adv, cut_large_item_alg);
-}
+    std::vector<deletable> dels;
+    rd->clear_visited();
+    cut_large_item(rd, rd->root, dels);
 
+    std::sort(dels.begin(), dels.end(), compare_deletables);
+    for (deletable &d : dels)
+    {
+	fprintf(stderr, "Removing outedges of a vertex with %d items.\n", d.vertex->bc.itemcount());
+	canvas->remove_outedges<mm_state::generating>(d.vertex);
+    }
+}
 
 // Cloneless version.
 void print_record(FILE *stream, rooster_dag *rd, adversary_vertex *v, bool nocomment = false)
@@ -625,6 +745,8 @@ int main(int argc, char **argv)
     // assign the dag into the global pointer
     canvas = new rooster_dag(d->finalize());
 
+    check_consistency(canvas); // Deep consistency check.
+
     fprintf(stderr, "The graph has %" PRIu64 " adv. vertices before merge.\n",
 	    number_of_adversary_vertices(canvas));
     // Merge vertices which have the same loaditemhash.
@@ -632,6 +754,8 @@ int main(int argc, char **argv)
     fprintf(stderr, "The graph has %" PRIu64 " adv. vertices after merge.\n",
 	    number_of_adversary_vertices(canvas));
 
+    check_consistency(canvas); // Deep consistency check.
+    
     if (shorten_heuristics)
     {
 	canvas->clear_five_nine();

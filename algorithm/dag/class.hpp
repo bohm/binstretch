@@ -182,11 +182,13 @@ public:
 	    if (type == heuristic::large_item)
 	    {
 		heur_strategy = new heuristic_strategy_list;
+		heur_strategy->type = heuristic::large_item;
 		heur_strategy->fromString(heurstring);
 	    } else
 	    {
 		assert(type == heuristic::five_nine);
 		heur_strategy = new heuristic_strategy_fn;
+		heur_strategy->type = heuristic::five_nine;
 		heur_strategy->fromString(heurstring);
 	    }
 	    // heurstring = heur;

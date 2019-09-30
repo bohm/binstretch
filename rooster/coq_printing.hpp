@@ -18,6 +18,29 @@ void print_packing_in_coq_format(FILE *stream, std::string packing)
     fprintf(stream, "[ %s ]", nocurly.c_str());
 }
 
+void print_bin_loads(FILE *stream, rooster_dag *rd, adversary_vertex *v)
+{
+    fprintf(stream, "[");
+
+    bool first = true;
+    for (int i=1; i<=BINS; i++)
+    {
+	if (v->bc.loads[i] > 0)
+	{
+	    if(first)
+	    {
+		first = false;
+	    }
+	    else {
+		fprintf(stream, ";");
+	    }
+	
+	    fprintf(stream, "%d", v->bc.loads[i]);
+	}
+    }
+    fprintf(stream, "] ");
+}
+
 void rooster_print_items(FILE* stream, const std::array<bin_int, S+1> & items)
 {
     fprintf(stream, "[");
@@ -80,29 +103,55 @@ void print_children(FILE *stream, rooster_dag *rd, std::list<alg_outedge*>& righ
     }
 }
 
-
-void print_bin_loads(FILE *stream, rooster_dag *rd, adversary_vertex *v)
+// Print a heuristical leaf node. 
+void print_coq_tree_heur(FILE *stream, rooster_dag *rd, adversary_vertex *v)
 {
-    fprintf(stream, "[");
 
+    // First, check consistency.
+    assert(v->out.size() == 0); // Temporarily disabled.
+    assert(v->heur_vertex == true && v->heur_strategy != NULL);
+    // Currently only prints large item strategy.
+    assert(v->heur_strategy->type == heuristic::large_item);
+    assert(rd->is_reference(v) == false);
+
+    std::vector<int> heur = v->heur_strategy->contents();
+    assert(heur.size() >= 1);
+
+    int right_item = heur[0];
+    
+    fprintf(stream, "\n( nodeN "); // one extra bracket pair
+
+    print_bin_loads(stream, rd, v);
+
+    fprintf(stream, " %d ", right_item); // Print the next item.
+
+    // Print the heuristic sequence.
+    fprintf(stream, "[");
     bool first = true;
-    for (int i=1; i<=BINS; i++)
+    // We start at 1, because the first item is put as the "right item".
+    for (unsigned long int i = 1; i < heur.size(); i++)
     {
-	if (v->bc.loads[i] > 0)
+	if(first)
 	{
-	    if(first)
-	    {
-		first = false;
-	    }
-	    else {
-		fprintf(stream, ";");
-	    }
-	
-	    fprintf(stream, "%d", v->bc.loads[i]);
+	    first = false;
 	}
+	else {
+	    fprintf(stream, ";");
+	}
+	
+	fprintf(stream, "%d", heur[i]);
     }
     fprintf(stream, "] ");
+
+    // And then the optimal packing which we stored in the node.
+    assert(rd->optimal_solution_map.find(v->id) != rd->optimal_solution_map.end());
+    std::string optimal = rd->optimal_solution_map[v->id];
+    print_packing_in_coq_format(stream, optimal);
+    fprintf(stream, " leafN ");
+
+    fprintf(stream, ")"); // one extra bracket pair
 }
+
 
 // Print a non-reference leaf node. 
 void print_coq_tree_leaf(FILE *stream, rooster_dag *rd, adversary_vertex *v)
@@ -216,7 +265,7 @@ void print_coq_tree_adv(FILE *stream, rooster_dag *rd, adversary_vertex *v)
 
     if (v->heur_vertex)
     {
-	// TODO: implement this part.
+	print_coq_tree_heur(stream, rd, v);
     } else
     {
 	assert(v->out.size() == 1);
