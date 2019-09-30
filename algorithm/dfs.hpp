@@ -61,6 +61,16 @@ void dfs(dag *d,
     dfs_adv(d, d->root, adversary_function, algorithm_function);
 }
 
+// Two empty functions which are useful for when we only want to do DFS on adversary or only on algorithm
+// vertices.
+
+void do_nothing(adversary_vertex *v)
+{
+}
+
+void do_nothing(algorithm_vertex *v)
+{
+}
 
 void purge_new_alg(algorithm_vertex *v);
 void purge_new_adv(adversary_vertex *v);

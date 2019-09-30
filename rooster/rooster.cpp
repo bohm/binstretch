@@ -11,59 +11,10 @@
 #include "../algorithm/loadfile.hpp"
 #include "../algorithm/savefile.hpp"
 
+#include "dag_ext.hpp"
+#include "coq_printing.hpp"
+
 const bool ROOSTER_DEBUG = true;
-
-
-// Extending dag by several parameters. Logarithmic access complexity,
-// but this should not matter.
-
-class rooster_dag : public dag
-{
-public:
-    std::map<uint64_t, bool> reference_map;
-    std::map<uint64_t, std::string> optimal_solution_map;
-
-
-    rooster_dag(const dag & d) : dag(d) {}
-    rooster_dag(const dag * d) : dag(*d) {}
-
-    void init_references()
-	{
-	    for (const auto& [id, avert]: adv_by_id)
-	    {
-		reference_map[id] = false;
-	    }
-	}
-
-    bool is_reference(adversary_vertex *v)
-	{
-	    if (reference_map.find(v->id) == reference_map.end())
-	    {
-		fprintf(stderr, "Vertex %" PRIu64 " was not found in the reference map.\n", v->id);
-		assert(false);
-	    }
-
-	    return reference_map[v->id];
-	}
-
-    void set_reference(adversary_vertex *v)
-	{
-	    reference_map[v->id] = true;
-	}
-
-    void unset_reference(adversary_vertex *v)
-	{
-	    reference_map[v->id] = true;
-	}
-
-
-    rooster_dag * subtree(adversary_vertex *subtree_root)
-	{
-	    dag *d = dag::subtree(subtree_root);
-	    return new rooster_dag(d);
-	}
-};
-
 
 // Output file as a global parameter (too lazy for currying).
 FILE* outf = NULL;
@@ -459,236 +410,23 @@ void cut_large_item(dag *d)
 }
 
 
-// --- Printing methods. ---
-
-// Additional properties of vertices that we do not want to
-// merge into adversary_vertex / algorithm_vertex.
-
-void print_packing_in_coq_format(std::string packing)
-{
-    std::replace(packing.begin(), packing.end(), '{', '[');
-    std::replace(packing.begin(), packing.end(), '}', ']');
-    std::replace(packing.begin(), packing.end(), ',', ';');
-
-    std::string nocurly = packing.substr(1, packing.length() -2);
-    fprintf(outf, "[ %s ]", nocurly.c_str());
-}
-
-void rooster_print_items(FILE* stream, const std::array<bin_int, S+1> & items)
-{
-    fprintf(stream, "[");
-    bool first = true;
-    for (int i = S; i >= 1; i --)
-    {
-	int count = items[i];
-	while (count > 0)
-	{
-	    if (!first)
-	    {
-		fprintf(stream, ";");
-	    } else {
-		first = false;
-	    }
-
-	    fprintf(stream, "%d", i);
-	    count--;
-	}
-    }
-    fprintf(stream, "]");
-}
-
-void print_coq_tree_adv(rooster_dag *rd, adversary_vertex *v, bool ignore_reference = false); // Forward declaration.
-
-// A wrapper around printing a list of children.
-// The resulting list should look like (conspointer x (cons y ( conspointer z leaf ) ) )
-
-void print_children(FILE *stream, rooster_dag *rd, std::list<alg_outedge*>& right_edge_out)
-{
-    fprintf(stream, "\n(");
-    int open = 1;
-    bool first = true;
-
-    for (auto &next: right_edge_out)
-    {
-	if (!first)
-	{
-	    fprintf(stream, "\n(");
-	    open++;
-	} else {
-	    first = false;
-	}
-	
-	if (rd->is_reference(next->to))
-	{
-	    fprintf(stream, "conspointerN ");
-	} else {
-	    fprintf(stream, "consN ");
-	}
-
-	print_coq_tree_adv(rd, next->to);
-    }
-    
-    fprintf(stream, "\nleafN");
-    while (open > 0)
-    {
-	fprintf(stream, ") ");
-	open--;
-    }
-}
-
-// Prints a dag (requires a tree) in the format required by Coq.
-// Cannot call dfs() directly, becaues dfs() had no "afterword()" clause.
-
-void print_coq_tree_adv(rooster_dag *rd, adversary_vertex *v, bool ignore_reference)
-{
-
-    // If a vertex is a reference, it does not start with the "node" keyword.
-    // We just print a pointer to the record list and terminate.
-    // We print a node as normal if ignore_reference == true.
-    if (rd->is_reference(v) && !ignore_reference)
-    {
-	fprintf(outf, "[");
-
-	bool first = true;
-	for (int i=1; i<=BINS; i++)
-	{
-	    if (v->bc.loads[i] > 0)
-	    {
-		if(first)
-		{
-		    first = false;
-		}
-	    else {
-		fprintf(outf, ";");
-	    }
-		
-		fprintf(outf, "%d", v->bc.loads[i]);
-	    }
-	}
-	fprintf(outf, "] ");
-	return;
-    }
-
-    
-    if (v->visited)
-    {
-	fprintf(stderr, "Printing a node vertex twice in one tree -- this should not happen. The problematic node:\n");
-	v->print(stderr, true);
-	fprintf(stderr, "Its parent vertices:\n");
-	for (alg_outedge *e : v->in)
-	{
-	    e->from->print(stderr, true);
-	}
-	
-	assert(!v->visited);
-    } else
-    {
-	// fprintf(stderr, "Printing vertex: ");
-	// v->print(stderr, true);
-    }
-    
-    v->visited = true;
-    
-    fprintf(outf, "\n( nodeN "); // one extra bracket pair
-
-    // bin loads
-    fprintf(outf, "[");
-
-    bool first = true;
-    for (int i=1; i<=BINS; i++)
-    {
-	if (v->bc.loads[i] > 0)
-	{
-	    if(first)
-	    {
-		first = false;
-	    }
-	    else {
-		fprintf(outf, ";");
-	    }
-	
-	    fprintf(outf, "%d", v->bc.loads[i]);
-	}
-    }
-    fprintf(outf, "] ");
-
-    // Coq printing currently works only for DAGs with outdegree 1 on alg vertices
-    /* if (v->out.size() > 1 || v->out.size() == 0)
-    {
-	fprintf(stderr, "Trouble with vertex %" PRIu64  " with %zu children and bc:\n", v->id, v->out.size());
-	print_binconf_stream(stderr, v->bc);
-	assert(v->out.size() == 1);
-	}*/
- 
-    bool adversarial_leaf = false;
-    adv_outedge *right_edge = NULL;
-    int right_item = 0;
-
-    // If this is a large item heuristic vertex, and we shorten heuristics, this will be a leaf.
-    if (shorten_heuristics && v->heur_vertex && v->heur_strategy->type == heuristic::large_item)
-    {
-	adversarial_leaf = true;
-	// TODO: compute the right item to send.
-    } else
-    {
-	// In any other case, we expect the adv. vertex to have exactly one child.
-	if (v->out.size() > 1 || v->out.size() == 0)
-	{
-	    fprintf(stderr, "Trouble with vertex %" PRIu64  " with %zu children and bc:\n", v->id, v->out.size());
-	    print_binconf_stream(stderr, v->bc);
-	    assert(v->out.size() == 1);
-	}
- 
-	right_edge = *(v->out.begin());
-	right_item = right_edge->item;
-
-	// If after sending this one item there are no more valid packings under R,
-	// this is an adversarial leaf.
-	if (right_edge->to->out.empty())
-	{
-	    adversarial_leaf = true;
-	}
-    }
-
-    fprintf(outf, " %d ", right_item); // Print the next item.
-
-    // If this is an adversarial heuristic leaf:
-    if (adversarial_leaf && v->heur_vertex)
-    {
-	// Print the heuristic steps:
-
-	// And an optimal feasible packing of all the steps.
-	// print_packing_in_coq_format(right_edge->to->optimal);
-	fprintf(outf, " leafN ");
-    } else if (adversarial_leaf)
-    {
-	// Or, if it is a standard adversarial leaf, first print that no heuristics are used:
-	fprintf(outf, " [] ");
-	// And then the optimal packing below.
-	print_packing_in_coq_format(right_edge->to->optimal);
-	fprintf(outf, " leafN ");
-    } else {
-	// Normal vertex, first print that no heuristic is used:
-	fprintf(outf, " [] ");
-	// Then, print empty packing for a non-leaf.
-	fprintf(outf, " [] ");
-	// Finally, recursively print children.
-	print_children(outf, rd,  right_edge->to->out);
-    }
-
-    fprintf(outf, ")"); // one extra bracket pair
-
-}
-
-
 // Cloneless version.
 void print_record(FILE *stream, rooster_dag *rd, adversary_vertex *v, bool nocomment = false)
 {
     fprintf(stream, "recN ");
     rooster_print_items(stream, v->bc.items);
     fprintf(stream, " (");
-    // Ignore the possible reference on the root vertex.
-    print_coq_tree_adv(rd, v, true);
+
+    // Temporarily disable the reference boolean on the root vertex.
+    // This way we make sure the record's root is printed in full.
+    bool v_is_ref = rd->is_reference(v);
+    rd->unset_reference(v);
+    print_coq_tree_adv(stream, rd, v);
+    if (v_is_ref)
+    {
+	rd->set_reference(v);
+    }
+    
     fprintf(stream, "\n)");
 }
 
@@ -768,7 +506,7 @@ void roost_main_tree(FILE *stream, rooster_dag *rd, const char *treename)
     
     fprintf(stream, "Definition %s := (", treename);
     rd->clear_visited();
-    print_coq_tree_adv(rd, rd->root);
+    print_coq_tree_adv(stream, rd, rd->root);
     fprintf(stream, ")%%N\n.\n");
 }
 
@@ -817,9 +555,9 @@ void roost_single_tree(std::string outfile, rooster_dag *rd)
     outf = NULL;
 }
 
-bool parse_parameter_reduce(int argc, char **argv, int pos)
+bool parse_parameter_record(int argc, char **argv, int pos)
 {
-    if (strcmp(argv[pos], "--reduce") == 0)
+    if (strcmp(argv[pos], "--record") == 0)
     {
 	return true;
     }
@@ -837,12 +575,12 @@ bool parse_parameter_shortheur(int argc, char **argv, int pos)
 
 void usage()
 {
-    fprintf(stderr, "Usage: ./rooster [--reduce] [--shortheur] infile.dag outfile.v\n");
+    fprintf(stderr, "Usage: ./rooster [--record] [--shortheur] infile.dag outfile.v\n");
 }
 
 int main(int argc, char **argv)
 {
-    bool reduce = false;
+    bool record = false;
     if(argc < 3)
     {
 	usage();
@@ -852,9 +590,9 @@ int main(int argc, char **argv)
     // Parse all parameters except for the last two, which must be infile and outfile.
     for (int i = 0; i < argc-2; i++)
     {
-	if (parse_parameter_reduce(argc, argv, i))
+	if (parse_parameter_record(argc, argv, i))
 	{
-	    reduce = true;
+	    record = true;
 	    continue;
 	}
 
@@ -896,13 +634,17 @@ int main(int argc, char **argv)
 
     if (shorten_heuristics)
     {
+	canvas->clear_five_nine();
 	cut_large_item(canvas);
-    }
+    } else
+    {
+	canvas->clear_all_heur();
+    }	
     
-    if (reduce)
+    if (record)
     {
 	roost_record_file(outfile, canvas);
-    } else // reduce == false
+    } else
     {
 	roost_single_tree(outfile, canvas);
     }
