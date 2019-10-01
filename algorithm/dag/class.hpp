@@ -136,7 +136,9 @@ public:
 	{
 	}
 
-    ~algorithm_vertex();
+    ~algorithm_vertex()
+	{
+	}
 
     void print(FILE* stream, bool debug = false);
 	
@@ -195,7 +197,10 @@ public:
 	}
     }
 
-    ~adversary_vertex();
+    ~adversary_vertex()
+	{
+	    delete heur_strategy;
+	}
     
     void print(FILE* stream, bool debug = false);
 };

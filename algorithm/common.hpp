@@ -181,7 +181,7 @@ const bool VERBOSE = true;
 const bool DEBUG = false;
 const bool COMM_DEBUG = false; // Network debug messages.
 const bool TASK_DEBUG = false; // Debugging creation of tasks, batching, etc.
-const bool GRAPH_DEBUG = false; // Debugging the DAG creation and adding/removing edges.
+const bool GRAPH_DEBUG = true; // Debugging the DAG creation and adding/removing edges.
 
 // completely disable dynamic programming or binconf cache
 // (useful to debug soundness of cache algs)

@@ -11,6 +11,8 @@
 #include "../algorithm/loadfile.hpp"
 #include "../algorithm/savefile.hpp"
 
+#include "../algorithm/dynprog/wrappers.hpp"
+
 #include "dag_ext.hpp"
 #include "coq_printing.hpp"
 #include "consistency.hpp"
@@ -380,7 +382,7 @@ std::list<adversary_vertex *> merge_last_in_layer(dag *d, std::list<adversary_ve
 	} else
 	{
 	    // Collision, merge the two nodes.
-	    print_if<ROOSTER_DEBUG>("Merging two nodes.\n");
+	    print_if<ROOSTER_DEBUG>("Merging nodes %" PRIu64 " and %" PRIu64 ".\n", no_last_items.at(loaditemhash)->id, advv->id);
 	    // no_last_items.at(loaditemhash)->print(stderr,true); 
 	    // advv->print(stderr, true);
 	    merge_two(d, no_last_items.at(loaditemhash), advv);
@@ -440,49 +442,22 @@ void cut_large_item(rooster_dag *rd, adversary_vertex *v, std::vector<deletable>
     // Cut only those which are of large item type.
     if (v->heur_vertex && v->heur_strategy->type == heuristic::large_item)
     {
-	// Borrow an optimal string from a leaf below you.
-	// Currently there are two possible cases from where to borrow:
-
-	// a) you go blindly until the leaf, and borrow the optimal string from it
-	// b) you reach an adversarial vertex which is itself heuristical and processed.
-	// This can happen because of the "last item" merging.
-	// In this case, we just borrow the optimal string from it directly.
-
-	check_outsize_equal(rd, v, 1);
-	std::string borrowed_optimum;
-	algorithm_vertex *leaf_candidate = NULL;
-	adversary_vertex *nextstep = v;
-	while(true)
+	// Since we are cutting a heuristical vertex, we need to present an optimum.
+	// We do this currently by recomputing an optimal solution with all the large items
+	// present.
+	std::vector<int> item_sequence = v->heur_strategy->contents();
+	binconf with_large_items(v->bc);
+	// The following creates an inconsistent bin configuration, but that is okay,
+	// we discard it immediately after.
+	for (int item : item_sequence)
 	{
-	    
-	    leaf_candidate = nextstep->out.front()->to;
-
-	    // Normal leaf case.
-	    if (leaf_candidate->out.size() == 0)
-	    {
-		assert(!leaf_candidate->optimal.empty());
-		borrowed_optimum = leaf_candidate->optimal;
-		break;
-	    } else
-	    {
-		nextstep = leaf_candidate->out.front()->to;
-	    }
-
-	    // A child is also heuristical.
-	    if (nextstep->out.size() == 0)
-	    {
-		assert(nextstep->heur_vertex == true);
-		assert(rd->optimal_solution_map.find(nextstep->id) != rd->optimal_solution_map.end());
-		borrowed_optimum = rd->optimal_solution_map[nextstep->id];
-		break;
-	    } else
-	    {
-		check_outsize_equal(rd, nextstep, 1);
-	    }
+	    with_large_items.items[item]++;
 	}
-
-	assert(!borrowed_optimum.empty());
-	rd->optimal_solution_map[v->id] = borrowed_optimum;
+	
+	auto [feasible, packing] = dynprog_feasible_with_output(with_large_items);
+	assert(feasible);
+	std::string optimum = packing.to_string();
+	rd->optimal_solution_map[v->id] = optimum;
 
 	// Remove all outgoing edges.
 	// Set mm_state so that no tasks are affected.

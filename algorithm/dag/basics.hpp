@@ -5,9 +5,9 @@
 
 algorithm_vertex* dag::add_alg_vertex(const binconf& b, int next_item, std::string optimal = "", bool allow_duplicates = false)
 {
-	print_if<GRAPH_DEBUG>("Adding a new ALG vertex with bc:");
-	print_binconf<GRAPH_DEBUG>(b, false);
-	print_if<GRAPH_DEBUG>("and next item %d.\n", next_item);
+    // print_if<GRAPH_DEBUG>("Adding a new ALG vertex with bc:");
+    // print_binconf<GRAPH_DEBUG>(b, false);
+    // print_if<GRAPH_DEBUG>("and next item %d.\n", next_item);
 	
 	uint64_t new_id = vertex_counter++;
 	algorithm_vertex *ptr  = new algorithm_vertex(b, next_item, new_id, optimal);
@@ -39,8 +39,8 @@ algorithm_vertex* dag::add_alg_vertex(const binconf& b, int next_item, std::stri
 
 adversary_vertex* dag::add_adv_vertex(const binconf &b, std::string heurstring = "", bool allow_duplicates = false)
 {
-    	print_if<GRAPH_DEBUG>("Adding a new ADV vertex with bc:");
-	print_binconf<GRAPH_DEBUG>(b);
+    // print_if<GRAPH_DEBUG>("Adding a new ADV vertex with bc:");
+    // print_binconf<GRAPH_DEBUG>(b);
 
 	uint64_t new_id = vertex_counter++;
 	adversary_vertex *ptr  = new adversary_vertex(b, new_id, heurstring);
@@ -81,8 +81,8 @@ adversary_vertex* dag::add_root(const binconf &b)
 
 adv_outedge* dag::add_adv_outedge(adversary_vertex *from, algorithm_vertex *to, int next_item)
 {
-    print_if<GRAPH_DEBUG>("Creating ADV outedge with item %d from vertex:", next_item);
-    if (GRAPH_DEBUG) { from->print(stderr); }
+    // print_if<GRAPH_DEBUG>("Creating ADV outedge with item %d from vertex:", next_item);
+    // if (GRAPH_DEBUG) { from->print(stderr); }
 
     return new adv_outedge(from, to, next_item, edge_counter++);
 }
@@ -95,8 +95,8 @@ void dag::del_adv_outedge(adv_outedge *gonner)
 
 alg_outedge* dag::add_alg_outedge(algorithm_vertex *from, adversary_vertex *to, int bin)
 {
-    print_if<GRAPH_DEBUG>("Creating ALG outedge with target bin %d from vertex: ", bin) ;
-    if (GRAPH_DEBUG) { from->print(stderr); }
+    // print_if<GRAPH_DEBUG>("Creating ALG outedge with target bin %d from vertex: ", bin) ;
+    // if (GRAPH_DEBUG) { from->print(stderr); }
 
     return new alg_outedge(from, to, bin, edge_counter++);
 }
@@ -104,10 +104,6 @@ alg_outedge* dag::add_alg_outedge(algorithm_vertex *from, adversary_vertex *to, 
 void dag::del_alg_outedge(alg_outedge *gonner)
 {
     delete gonner;
-}
-
-algorithm_vertex::~algorithm_vertex()
-{
 }
 
 void dag::del_alg_vertex(algorithm_vertex *gonner)
@@ -124,12 +120,6 @@ void dag::del_alg_vertex(algorithm_vertex *gonner)
     
     delete gonner;
 }
-
-adversary_vertex::~adversary_vertex()
-{
-    delete heur_strategy;
-}
-
 
 void dag::del_adv_vertex(adversary_vertex *gonner)
 {
@@ -182,9 +172,12 @@ void remove_task(uint64_t hash);
 
 template <mm_state MODE> void dag::remove_inedge(adv_outedge *e)
 {
+    print_if<GRAPH_DEBUG>("Removing inedge of edge-id %" PRIu64 ", connecting %" PRIu64 " -> %" PRIu64 ".\n",
+			  e->id, e->from->id, e->to->id);
+
     e->to->in.erase(e->pos_child);
 
-    /* The vertex is no longer reachable, delete it. */
+    // The vertex is no longer reachable, delete it.
     if (e->to->in.empty())
     {
 	remove_outedges<MODE>(e->to);
@@ -194,6 +187,9 @@ template <mm_state MODE> void dag::remove_inedge(adv_outedge *e)
 
 template <mm_state MODE> void dag::remove_inedge(alg_outedge *e)
 {
+    print_if<GRAPH_DEBUG>("Removing inedge of edge-id %" PRIu64 ", connecting %" PRIu64 " -> %" PRIu64 ".\n",
+			  e->id, e->from->id, e->to->id);
+
     e->to->in.erase(e->pos_child);
     if (e->to->in.empty())
     {
@@ -213,6 +209,7 @@ template <mm_state MODE> void dag::remove_inedge(alg_outedge *e)
    In order to preserve incoming edges, leaves the vertex be. */
 template <mm_state MODE> void dag::remove_outedges(algorithm_vertex *v)
 {
+    print_if<GRAPH_DEBUG>("Removing all %zu outedges of vertex %" PRIu64 ".\n", v->out.size(), v->id);
     for (auto& e: v->out)
     {
 	remove_inedge<MODE>(e);
@@ -224,6 +221,8 @@ template <mm_state MODE> void dag::remove_outedges(algorithm_vertex *v)
 
 template <mm_state MODE> void dag::remove_outedges(adversary_vertex *v)
 {
+    print_if<GRAPH_DEBUG>("Removing all %zu outedges of vertex %" PRIu64 ".\n", v->out.size(), v->id);
+
     for (auto& e: v->out)
     {
 	remove_inedge<MODE>(e);

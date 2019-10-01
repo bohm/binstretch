@@ -5,6 +5,7 @@
 #include <sstream>
 #include <string>
 #include <iostream>
+#include <sstream>
 
 // a cut version of binconf which only uses the loads.
 class loadconf {
@@ -738,6 +739,52 @@ public:
 	    }
 	    fprintf(stream, ")");
 	}
+
+    // print full configuration to a string
+    std::string to_string()
+	{
+
+	    std::ostringstream os;
+	    bool firstbin = true;
+	    bool firstitem = true;
+
+	    os << "(";
+	    for (int bin = 1; bin <= BINS; bin++)
+	    {
+		if(firstbin)
+		{
+		    firstbin = false;
+		} else
+		{
+		    os << ", ";
+		}
+
+		os << "{";
+		firstitem = true;
+		for (int size = S; size >= 1; size--)
+		{
+		    int count = loadset[bin][size];
+		    while (count > 0)
+		    {
+			if(firstitem)
+			{
+			    firstitem = false;
+			} else
+			{
+			    os << ",";
+			}
+
+			os << size;
+			count--;
+		    }
+		}
+		os << "}";
+	    }
+	    os << ")";
+
+	    return os.str();
+	}
+
 };
 
 

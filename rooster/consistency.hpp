@@ -39,7 +39,7 @@ void check_consistency(rooster_dag *rd)
 
     std::set<uint64_t> mapped_adv_verts;
     std::set<uint64_t> mapped_alg_verts;
-   
+
     for (auto & [id, pntr] : rd->adv_by_id)
     {
 	auto inpair = mapped_adv_verts.insert(id);
@@ -61,17 +61,30 @@ void check_consistency(rooster_dag *rd)
 
     std::set<uint64_t> alg_outedges_going_out;
     std::set<uint64_t> alg_outedges_going_in;
-   
+
+
+    // We also check:
+    // * that there are no two edges going to the same child,
+    // * that all edges going out of vertex "id" have "from" set correctly,
+    // * and symmetrically for incoming edges and "to".
+  
     for (auto & [id, pntr] : rd->adv_by_id)
     {
+	std::set<uint64_t> children;
+	
 	for (adv_outedge* e: pntr->out)
 	{
+	    assert(e->from->id == id);
 	    auto inpair = adv_outedges_going_out.insert(e->id);
 	    assert(inpair.second == true);
+	    auto childpair = children.insert(e->to->id);
+	    assert(childpair.second == true);
 	}
 
 	for (alg_outedge* e: pntr->in)
 	{
+	    assert(e->to->id == id);
+
 	    auto inpair = alg_outedges_going_in.insert(e->id);
 	    assert(inpair.second == true);
 	}
@@ -79,14 +92,22 @@ void check_consistency(rooster_dag *rd)
 
     for (auto & [id, pntr] : rd->alg_by_id)
     {
+	std::set<uint64_t> children;
+
 	for (alg_outedge* e: pntr->out)
 	{
+	    assert(e->from->id == id);
+
 	    auto inpair = alg_outedges_going_out.insert(e->id);
 	    assert(inpair.second == true);
+	    auto childpair = children.insert(e->to->id);
+	    assert(childpair.second == true);
 	}
 
 	for (adv_outedge* e: pntr->in)
 	{
+	    assert(e->to->id == id);
+
 	    auto inpair = adv_outedges_going_in.insert(e->id);
 	    assert(inpair.second == true);
 	}
