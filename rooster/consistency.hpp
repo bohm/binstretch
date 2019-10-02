@@ -75,6 +75,10 @@ void check_consistency(rooster_dag *rd)
 	for (adv_outedge* e: pntr->out)
 	{
 	    assert(e->from->id == id);
+	    assert((*(e->pos))->id == e->id); // Check that the iterator "pos" is indeed pointing at the object itself.
+	    
+	    assert((*(e->pos_child))->id == e->id); // Ditto for "pos_child".
+	    
 	    auto inpair = adv_outedges_going_out.insert(e->id);
 	    assert(inpair.second == true);
 	    auto childpair = children.insert(e->to->id);
@@ -97,6 +101,8 @@ void check_consistency(rooster_dag *rd)
 	for (alg_outedge* e: pntr->out)
 	{
 	    assert(e->from->id == id);
+	    assert((*(e->pos))->id == e->id);
+	    assert((*(e->pos_child))->id == e->id);
 
 	    auto inpair = alg_outedges_going_out.insert(e->id);
 	    assert(inpair.second == true);

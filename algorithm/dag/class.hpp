@@ -221,6 +221,8 @@ public:
     {
 	pos = from->out.insert(from->out.begin(), this);
 	pos_child = to->in.insert(to->in.begin(), this);
+	// assert((*pos)->id == id); // Assertion currently working, commented out.
+	// assert((*pos_child)->id == id);
 	//print<DEBUG>("Edge %" PRIu64 " created.\n", this->id);
     }
 
@@ -247,6 +249,9 @@ public:
     {
 	pos = from->out.insert(from->out.begin(), this);
 	pos_child = to->in.insert(to->in.begin(), this);
+	// assert((*pos)->id == id);
+	// assert((*pos_child)->id == id);
+
 	//print<DEBUG>("Edge %" PRIu64 " created.\n", this->id);
     }
 

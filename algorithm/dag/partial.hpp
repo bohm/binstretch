@@ -240,9 +240,9 @@ void partial_dag::populate_next_items_alg(uint64_t name)
 
     assert(current_vert.next_item == -1);
     // Sanity checks for algorithm vertices.
-    if (current_vert.in.size() != 1)
+    if (current_vert.in.size() == 0)
     {
-	print_if<GRAPH_DEBUG>("Vertex with name %" PRIu64 " has an unexpected number of incoming edges (%d).\n", name, current_vert.in.size());
+	print_if<GRAPH_DEBUG>("Loading: Alg. vertex with name %" PRIu64 " has no incoming edges.\n", name);
 	assert(current_vert.in.size() >= 1);
     }
 

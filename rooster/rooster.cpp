@@ -302,7 +302,8 @@ void merge_two(dag *d, adversary_vertex *remaining, adversary_vertex *removal)
     for (auto& e : removal->in)
     {
 	e->to = remaining;
-	remaining->in.push_back(e);
+	e->pos_child = remaining->in.insert(remaining->in.begin(), e);
+	// remaining->in.push_back(e);
     }
 
     removal->in.clear();
@@ -337,11 +338,10 @@ std::list<adversary_vertex *> generate_next_layer(dag *d, std::list<adversary_ve
     d->clear_visited();
     for (auto &previous : old_layer)
     {
-	if (previous->out.size() != 1)
+	// Vertex of degree zero does not produce any subsequent layers.
+	if (previous->out.empty())
 	{
-	    fprintf(stderr, "Adv. vertex has either 0 or at least 2 children, which is wrong:");
-	    previous->print(stderr, true);
-	    assert(previous->out.size() == 1);
+	    continue;
 	}
 
 	adv_outedge *right_edge = *(previous->out.begin());
@@ -502,6 +502,9 @@ void cut_large_item(rooster_dag *rd)
     {
 	fprintf(stderr, "Removing outedges of a vertex with %d items.\n", d.vertex->bc.itemcount());
 	canvas->remove_outedges<mm_state::generating>(d.vertex);
+	// Hack: try to soft-delete the edges (just remove them from the list).
+	// TODO: Fix this properly.
+	// d.vertex->out.clear();
     }
 }
 
@@ -722,6 +725,17 @@ int main(int argc, char **argv)
 
     check_consistency(canvas); // Deep consistency check.
 
+    if (shorten_heuristics)
+    {
+	canvas->clear_five_nine();
+	cut_large_item(canvas);
+    } else
+    {
+	canvas->clear_all_heur();
+    }	
+
+    check_consistency(canvas); // Deep consistency check.
+
     fprintf(stderr, "The graph has %" PRIu64 " adv. vertices before merge.\n",
 	    number_of_adversary_vertices(canvas));
     // Merge vertices which have the same loaditemhash.
@@ -731,15 +745,7 @@ int main(int argc, char **argv)
 
     check_consistency(canvas); // Deep consistency check.
     
-    if (shorten_heuristics)
-    {
-	canvas->clear_five_nine();
-	cut_large_item(canvas);
-    } else
-    {
-	canvas->clear_all_heur();
-    }	
-    
+   
     if (record)
     {
 	roost_record_file(outfile, canvas);

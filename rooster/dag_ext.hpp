@@ -22,6 +22,7 @@ void clear_fn(adversary_vertex *v)
     {
 	v->heur_vertex = false;
 	delete v->heur_strategy;
+	v->heur_strategy = NULL;
     }
 }
 
