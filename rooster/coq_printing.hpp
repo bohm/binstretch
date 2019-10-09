@@ -71,36 +71,32 @@ void print_coq_tree_adv(FILE *stream, rooster_dag *rd, adversary_vertex *v); // 
 
 void print_children(FILE *stream, rooster_dag *rd, std::list<alg_outedge*>& right_edge_out)
 {
-    fprintf(stream, "\n(");
+    fprintf(stream, "[[ ");
     int open = 1;
     bool first = true;
 
     for (auto &next: right_edge_out)
     {
-	if (!first)
-	{
-	    fprintf(stream, "\n(");
-	    open++;
-	} else {
-	    first = false;
-	}
-	
 	if (rd->is_reference(next->to))
 	{
-	    fprintf(stream, "conspointerN ");
+	    // In the current format, we just do not print the referenced node.
+	    // fprintf(stream, "conspointerN ");
+	    continue;
 	} else {
-	    fprintf(stream, "consN ");
+	    if (!first)
+	    {
+		fprintf(stream, ";");
+	    }
+	    if (first)
+	    {
+		first = false;
+	    }
+	    
+	    print_coq_tree_adv(stream, rd, next->to);
 	}
-
-	print_coq_tree_adv(stream, rd, next->to);
     }
     
-    fprintf(stream, "\nleafN");
-    while (open > 0)
-    {
-	fprintf(stream, ") ");
-	open--;
-    }
+    fprintf(stream, " ]]");
 }
 
 // Print a heuristical leaf node. 
@@ -119,17 +115,14 @@ void print_coq_tree_heur(FILE *stream, rooster_dag *rd, adversary_vertex *v)
 
     int right_item = heur[0];
     
-    fprintf(stream, "\n( nodeN "); // one extra bracket pair
+    fprintf(stream, "\n( lf "); // one extra bracket pair
 
     print_bin_loads(stream, rd, v);
 
-    fprintf(stream, " %d ", right_item); // Print the next item.
-
-    // Print the heuristic sequence.
+    // Print the heuristical sequence of items.
     fprintf(stream, "[");
     bool first = true;
-    // We start at 1, because the first item is put as the "right item".
-    for (unsigned long int i = 1; i < heur.size(); i++)
+    for (unsigned long int i = 0; i < heur.size(); i++)
     {
 	if(first)
 	{
@@ -147,7 +140,6 @@ void print_coq_tree_heur(FILE *stream, rooster_dag *rd, adversary_vertex *v)
     assert(rd->optimal_solution_map.find(v->id) != rd->optimal_solution_map.end());
     std::string optimal = rd->optimal_solution_map[v->id];
     print_packing_in_coq_format(stream, optimal);
-    fprintf(stream, " leafN ");
 
     fprintf(stream, ")"); // one extra bracket pair
 }
@@ -166,47 +158,22 @@ void print_coq_tree_leaf(FILE *stream, rooster_dag *rd, adversary_vertex *v)
     int right_item = right_edge->item;
     assert(right_edge->to->out.size() == 0); // Check that the vertex is indeed a regular leaf. 
 
-    fprintf(stream, "\n( nodeN "); // one extra bracket pair
+    fprintf(stream, "\n( lf "); // one extra bracket pair
 
     print_bin_loads(stream, rd, v);
 
-    fprintf(stream, " %d ", right_item); // Print the next item.
+    fprintf(stream, " [%d] ", right_item); // Print the next item.
 
-    // It is a standard adversarial leaf, so print that no heuristics are used:
-    fprintf(stream, " [] ");
-    // And then the optimal packing below.
+    // Print the optimal packings if right_item is packed.
     print_packing_in_coq_format(stream, right_edge->to->optimal);
-    fprintf(stream, " leafN ");
 
     fprintf(stream, ")"); // one extra bracket pair
 }
 
-// Print reference node.
+// In the current Coq format, reference nodes are implicit and are not in the output except
+// for the record file.
 void print_coq_tree_reference(FILE *stream, rooster_dag *rd, adversary_vertex *v)
 {
-    assert(rd->is_reference(v));
-
-    // If a vertex is a reference, it does not start with the "node" keyword.
-    // We just print a pointer to the record list and terminate.
-    fprintf(stream, "[");
-
-    bool first = true;
-    for (int i=1; i<=BINS; i++)
-    {
-	if (v->bc.loads[i] > 0)
-	{
-	    if(first)
-	    {
-		first = false;
-	    }
-	    else {
-		fprintf(stream, ";");
-	    }
-		
-		fprintf(stream, "%d", v->bc.loads[i]);
-	    }
-    }
-    fprintf(stream, "] ");
 }
 
 // Print an internal node.
@@ -220,16 +187,12 @@ void print_coq_tree_internal(FILE *stream, rooster_dag *rd, adversary_vertex *v)
     int right_item = right_edge->item;
     assert(right_edge->to->out.size() != 0); // Check that the vertex is not internal.
 
-    fprintf(stream, "\n( nodeN "); // one extra bracket pair
+    fprintf(stream, "\n( nd "); // one extra bracket pair
 
     print_bin_loads(stream, rd, v);
 
     fprintf(stream, " %d ", right_item); // Print the next item.
 
-    // Normal vertex, first print that no heuristic is used:
-    fprintf(stream, " [] ");
-    // Then, print empty packing for a non-leaf.
-    fprintf(stream, " [] ");
     // Finally, recursively print children -- will call print_coq_tree_adv again.
     print_children(stream, rd,  right_edge->to->out);
 

@@ -22,7 +22,7 @@ const bool ROOSTER_DEBUG = true;
 FILE* outf = NULL;
 rooster_dag *canvas = NULL;
 
-bool shorten_heuristics = false;
+bool shorten_heuristics = true;
 
 // A queue lacks the clear() method, so we supply our own.
 void clear( std::queue<adversary_vertex*> &q )
@@ -652,18 +652,18 @@ void roost_single_tree(std::string outfile, rooster_dag *rd)
     outf = NULL;
 }
 
-bool parse_parameter_record(int argc, char **argv, int pos)
+bool parse_parameter_tree(int argc, char **argv, int pos)
 {
-    if (strcmp(argv[pos], "--record") == 0)
+    if (strcmp(argv[pos], "--tree") == 0)
     {
 	return true;
     }
     return false;
 }
 
-bool parse_parameter_shortheur(int argc, char **argv, int pos)
+bool parse_parameter_fullheur(int argc, char **argv, int pos)
 {
-    if (strcmp(argv[pos], "--shortheur") == 0)
+    if (strcmp(argv[pos], "--fullheur") == 0)
     {
 	return true;
     }
@@ -672,12 +672,16 @@ bool parse_parameter_shortheur(int argc, char **argv, int pos)
 
 void usage()
 {
-    fprintf(stderr, "Usage: ./rooster [--record] [--shortheur] infile.dag outfile.v\n");
+    fprintf(stderr, "Usage: ./rooster [--tree] [--fullheur] infile.gen outfile.v\n");
+    fprintf(stderr, "[--tree]: Create a full tree instead of a dag with records.\n");
+    fprintf(stderr, "[--fullheur]: Print heuristics in full instead of compressing some of them.\n");
 }
 
 int main(int argc, char **argv)
 {
-    bool record = false;
+    // bool shorten_heuristics defined globally.
+    bool tree = false;
+    
     if(argc < 3)
     {
 	usage();
@@ -687,15 +691,15 @@ int main(int argc, char **argv)
     // Parse all parameters except for the last two, which must be infile and outfile.
     for (int i = 0; i < argc-2; i++)
     {
-	if (parse_parameter_record(argc, argv, i))
+	if (parse_parameter_tree(argc, argv, i))
 	{
-	    record = true;
+	    tree = true;
 	    continue;
 	}
 
-	if (parse_parameter_shortheur(argc, argv, i))
+	if (parse_parameter_fullheur(argc, argv, i))
 	{
-	    shorten_heuristics = true;
+	    shorten_heuristics = false;
 	    continue;
 	}
     }
@@ -745,12 +749,13 @@ int main(int argc, char **argv)
     check_consistency(canvas); // Deep consistency check.
     
    
-    if (record)
-    {
-	roost_record_file(outfile, canvas);
-    } else
+    if (tree)
     {
 	roost_single_tree(outfile, canvas);
+    }
+    else
+    { 
+	roost_record_file(outfile, canvas);
     }
 
     return 0;
