@@ -7,7 +7,7 @@
 #include "common.hpp"
 #include "dag/dag.hpp"
 // #include "tree_print.hpp"
-#include "queen.hpp"
+// #include "queen.hpp"
 
 // DFS only on vertices.
 void dfs_adv(dag *d, adversary_vertex *v,
@@ -72,10 +72,10 @@ void do_nothing(algorithm_vertex *v)
 {
 }
 
-void purge_new_alg(algorithm_vertex *v);
-void purge_new_adv(adversary_vertex *v);
+void purge_new_alg(dag *d, algorithm_vertex *v);
+void purge_new_adv(dag *d, adversary_vertex *v);
 
-void purge_new_adv(adversary_vertex *v)
+void purge_new_adv(dag *d, adversary_vertex *v)
 {
     if (v->visited)
     {
@@ -89,17 +89,17 @@ void purge_new_adv(adversary_vertex *v)
 	algorithm_vertex *down = (*it)->to;
 	if (down->state == vert_state::fresh) // algorithm vertex can never be a task
 	{
-	    purge_new_alg(down);
-	    qdag->remove_inedge<mm_state::generating>(*it);
+	    purge_new_alg(d, down);
+	    d->remove_inedge<mm_state::generating>(*it);
 	    it = v->out.erase(it); // serves as it++
 	} else {
-	    purge_new_alg(down);
+	    purge_new_alg(d, down);
 	    it++;
 	}
     }
 }
 
-void purge_new_alg(algorithm_vertex *v)
+void purge_new_alg(dag *d, algorithm_vertex *v)
 {
     if (v->visited)
     {
@@ -113,20 +113,20 @@ void purge_new_alg(algorithm_vertex *v)
 	adversary_vertex *down = (*it)->to;
 	if (down->state == vert_state::fresh || down->task)
 	{
-	    purge_new_adv(down);
-	    qdag->remove_inedge<mm_state::generating>(*it);
+	    purge_new_adv(d, down);
+	    d->remove_inedge<mm_state::generating>(*it);
 	    it = v->out.erase(it); // serves as it++
 	} else {
-	    purge_new_adv(down);
+	    purge_new_adv(d, down);
 	    it++;
 	}
     }
 }
 
-void purge_new(adversary_vertex *r)
+void purge_new(dag *d, adversary_vertex *r)
 {
-    qdag->clear_visited();
-    purge_new_adv(r);
+    d->clear_visited();
+    purge_new_adv(d, r);
 }
 
 
@@ -198,9 +198,9 @@ void relabel_and_fix_alg(algorithm_vertex *v, thread_attr *tat)
     }
 }
 
-void relabel_and_fix(adversary_vertex *r, thread_attr *tat)
+void relabel_and_fix(dag *d, adversary_vertex *r, thread_attr *tat)
 {
-    qdag->clear_visited();
+    d->clear_visited();
     tat->meas.relabeled_vertices = 0;
     tat->meas.visit_counter = 0;
 
@@ -285,9 +285,9 @@ bool finish_branches_rec(algorithm_vertex *v)
     return children_finished;
 }
 
-bool finish_branches(adversary_vertex *r)
+bool finish_branches(dag *d, adversary_vertex *r)
 {
-    qdag->clear_visited();
+    d->clear_visited();
     return finish_branches_rec(r);
 }
 
@@ -331,9 +331,9 @@ void finish_sapling_alg(algorithm_vertex *v)
 }
 
 
-void finish_sapling(adversary_vertex *r)
+void finish_sapling(dag *d, adversary_vertex *r)
 {
-    qdag->clear_visited();
+    d->clear_visited();
     finish_sapling_adv(r);
 }
 
@@ -386,9 +386,9 @@ void reset_values_alg(algorithm_vertex *v)
     }
 }
 
-void reset_values(adversary_vertex *r)
+void reset_values(dag *d, adversary_vertex *r)
 {
-    qdag->clear_visited();
+    d->clear_visited();
     reset_values_adv(r);
 }
 

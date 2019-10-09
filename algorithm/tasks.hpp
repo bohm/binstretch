@@ -13,6 +13,7 @@ queue update code. */
 #include "common.hpp"
 #include "dag/dag.hpp"
 #include "dfs.hpp"
+#include "queen.hpp"
 
 // task but in a flat form; used for MPI
 struct flat_task

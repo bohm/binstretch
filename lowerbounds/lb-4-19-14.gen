@@ -1,0 +1,1008 @@
+strict digraph binstretch_lower_bound {
+overlap = none;
+BINS = 4;
+R = 19;
+S = 14;
+0 [loads="0 0 0 0",player=adv];
+0 -> 8583 [next=3]
+8583 [loads="0 0 0 0",next_item=3,player=alg];
+8583 -> 8584 [bin=1]
+8584 [loads="3 0 0 0",player=adv];
+8584 -> 8655 [next=3]
+8655 [loads="3 0 0 0",next_item=3,player=alg];
+8655 -> 8712 [bin=2]
+8655 -> 8656 [bin=1]
+8712 [loads="3 3 0 0",player=adv];
+8712 -> 8742 [next=3]
+8656 [loads="6 0 0 0",player=adv];
+8656 -> 8697 [next=5]
+8742 [loads="3 3 0 0",next_item=3,player=alg];
+8742 -> 8744 [bin=3]
+8742 -> 8743 [bin=1]
+8697 [loads="6 0 0 0",next_item=5,player=alg];
+8697 -> 8706 [bin=2]
+8697 -> 8698 [bin=1]
+8744 [loads="3 3 3 0",player=adv];
+8744 -> 16141 [next=2]
+8743 [loads="6 3 0 0",player=adv];
+8743 -> 17820 [next=5]
+8706 [loads="6 5 0 0",player=adv,heur="14,14,14"];
+8706 -> 8707 [next=14]
+8698 [loads="11 0 0 0",player=adv,heur="10,10,10,9"];
+8698 -> 8699 [next=10]
+16141 [loads="3 3 3 0",next_item=2,player=alg];
+16141 -> 16988 [bin=4]
+16141 -> 16142 [bin=1]
+17820 [loads="6 3 0 0",next_item=5,player=alg];
+17820 -> 17839 [bin=3]
+17820 -> 17833 [bin=2]
+17820 -> 17821 [bin=1]
+8707 [loads="6 5 0 0",next_item=14,player=alg];
+8707 -> 8708 [bin=3]
+8699 [loads="11 0 0 0",next_item=10,player=alg];
+8699 -> 8700 [bin=2]
+16988 [loads="3 3 3 2",player=adv];
+16988 -> 17019 [next=2]
+16142 [loads="5 3 3 0",player=adv];
+16142 -> 16175 [next=3]
+17839 [loads="6 5 3 0",player=adv,heur="14,14,14"];
+17839 -> 17840 [next=14]
+17833 [loads="8 6 0 0",player=adv,heur="14,14,14"];
+17833 -> 17834 [next=14]
+17821 [loads="11 3 0 0",player=adv,heur="10,10,10,9"];
+17821 -> 17822 [next=10]
+8708 [loads="14 6 5 0",player=adv];
+8708 -> 8709 [next=14]
+8700 [loads="11 10 0 0",player=adv];
+8700 -> 8701 [next=10]
+17019 [loads="3 3 3 2",next_item=2,player=alg];
+17019 -> 17020 [bin=4]
+17019 -> 16240 [bin=1]
+16175 [loads="5 3 3 0",next_item=3,player=alg];
+16175 -> 16106 [bin=4]
+16175 -> 15935 [bin=2]
+16175 -> 15934 [bin=1]
+17840 [loads="6 5 3 0",next_item=14,player=alg];
+17840 -> 17845 [bin=4]
+17840 -> 17841 [bin=3]
+17834 [loads="8 6 0 0",next_item=14,player=alg];
+17834 -> 17835 [bin=3]
+17822 [loads="11 3 0 0",next_item=10,player=alg];
+17822 -> 17829 [bin=3]
+17822 -> 17823 [bin=2]
+8709 [loads="14 6 5 0",next_item=14,player=alg];
+8709 -> 8710 [bin=4]
+8701 [loads="11 10 0 0",next_item=10,player=alg];
+8701 -> 8702 [bin=3]
+17020 [loads="4 3 3 3",player=adv];
+17020 -> 17047 [next=3]
+16240 [loads="5 3 3 2",player=adv];
+16240 -> 16298 [next=2]
+16106 [loads="5 3 3 3",player=adv];
+16106 -> 18919 [next=4]
+15935 [loads="6 5 3 0",player=adv,heur="14,14,14"];
+15935 -> 15936 [next=14]
+15934 [loads="8 3 3 0",player=adv];
+15934 -> 21461 [next=2]
+17845 [loads="14 6 5 3",player=adv];
+17845 -> 17846 [next=14]
+17841 [loads="17 6 5 0",player=adv];
+17841 -> 17842 [next=14]
+17835 [loads="14 8 6 0",player=adv];
+17835 -> 17836 [next=14]
+17829 [loads="11 10 3 0",player=adv];
+17829 -> 17830 [next=10]
+17823 [loads="13 11 0 0",player=adv];
+17823 -> 17824 [next=10]
+8710 [loads="14 14 6 5",player=adv];
+8710 -> 8711 [next=14]
+8702 [loads="11 10 10 0",player=adv];
+8702 -> 8703 [next=10]
+17047 [loads="4 3 3 3",next_item=3,player=alg];
+17047 -> 17048 [bin=2]
+17047 -> 16223 [bin=1]
+16298 [loads="5 3 3 2",next_item=2,player=alg];
+16298 -> 16325 [bin=4]
+16298 -> 16299 [bin=2]
+16298 -> 16227 [bin=1]
+18919 [loads="5 3 3 3",next_item=4,player=alg];
+18919 -> 18947 [bin=2]
+18919 -> 18920 [bin=1]
+15936 [loads="6 5 3 0",next_item=14,player=alg];
+15936 -> 15941 [bin=4]
+15936 -> 15937 [bin=3]
+21461 [loads="8 3 3 0",next_item=2,player=alg];
+21461 -> 23970 [bin=4]
+21461 -> 22605 [bin=2]
+21461 -> 21462 [bin=1]
+17846 [loads="14 6 5 3",next_item=14,player=alg];
+17846 -> 17843 [bin=4]
+17842 [loads="17 6 5 0",next_item=14,player=alg];
+17842 -> 17843 [bin=4]
+17836 [loads="14 8 6 0",next_item=14,player=alg];
+17836 -> 17837 [bin=4]
+17830 [loads="11 10 3 0",next_item=10,player=alg];
+17830 -> 17831 [bin=4]
+17830 -> 17825 [bin=3]
+17824 [loads="13 11 0 0",next_item=10,player=alg];
+17824 -> 17825 [bin=3]
+8711 [loads="14 14 6 5",next_item=14,player=alg,optimal="({14}, {14}, {14}, {5,3,3})"];
+8703 [loads="11 10 10 0",next_item=10,player=alg];
+8703 -> 8704 [bin=4]
+17048 [loads="6 4 3 3",player=adv];
+17048 -> 18120 [next=2]
+16223 [loads="7 3 3 3",player=adv];
+16223 -> 18441 [next=2]
+16325 [loads="5 4 3 3",player=adv];
+16325 -> 18745 [next=3]
+16299 [loads="5 5 3 2",player=adv,heur="FN(1)"];
+16299 -> 16300 [next=5]
+16227 [loads="7 3 3 2",player=adv];
+16227 -> 18777 [next=5]
+18947 [loads="7 5 3 3",player=adv];
+18947 -> 18968 [next=6]
+18920 [loads="9 3 3 3",player=adv];
+18920 -> 18932 [next=6]
+15941 [loads="14 6 5 3",player=adv];
+15941 -> 15942 [next=14]
+15937 [loads="17 6 5 0",player=adv];
+15937 -> 15938 [next=14]
+23970 [loads="8 3 3 2",player=adv];
+23970 -> 24041 [next=2]
+22605 [loads="8 5 3 0",player=adv];
+22605 -> 22666 [next=3]
+21462 [loads="10 3 3 0",player=adv];
+21462 -> 21554 [next=2]
+17843 [loads="17 14 6 5",player=adv];
+17843 -> 17844 [next=14]
+17837 [loads="14 14 8 6",player=adv];
+17837 -> 17838 [next=14]
+17831 [loads="11 10 10 3",player=adv];
+17831 -> 17832 [next=10]
+17825 [loads="13 11 10 0",player=adv];
+17825 -> 17826 [next=10]
+8704 [loads="11 10 10 10",player=adv];
+8704 -> 8705 [next=9]
+18120 [loads="6 4 3 3",next_item=2,player=alg];
+18120 -> 18215 [bin=3]
+18120 -> 18174 [bin=2]
+18120 -> 18121 [bin=1]
+18441 [loads="7 3 3 3",next_item=2,player=alg];
+18441 -> 18469 [bin=2]
+18441 -> 18442 [bin=1]
+18745 [loads="5 4 3 3",next_item=3,player=alg];
+18745 -> 18215 [bin=3]
+18745 -> 18469 [bin=2]
+18745 -> 18121 [bin=1]
+16300 [loads="5 5 3 2",next_item=5,player=alg];
+16300 -> 16321 [bin=4]
+16300 -> 16317 [bin=3]
+16300 -> 16301 [bin=1]
+18777 [loads="7 3 3 2",next_item=5,player=alg];
+18777 -> 18798 [bin=4]
+18777 -> 18790 [bin=2]
+18777 -> 18778 [bin=1]
+18968 [loads="7 5 3 3",next_item=6,player=alg];
+18968 -> 18987 [bin=3]
+18968 -> 18981 [bin=2]
+18968 -> 18969 [bin=1]
+18932 [loads="9 3 3 3",next_item=6,player=alg];
+18932 -> 18941 [bin=2]
+18932 -> 18933 [bin=1]
+15942 [loads="14 6 5 3",next_item=14,player=alg];
+15942 -> 15939 [bin=4]
+15938 [loads="17 6 5 0",next_item=14,player=alg];
+15938 -> 15939 [bin=4]
+24041 [loads="8 3 3 2",next_item=2,player=alg];
+24041 -> 18121 [bin=4]
+24041 -> 22723 [bin=2]
+24041 -> 22123 [bin=1]
+22666 [loads="8 5 3 0",next_item=3,player=alg];
+22666 -> 22667 [bin=4]
+22666 -> 20282 [bin=3]
+22666 -> 20274 [bin=2]
+22666 -> 19416 [bin=1]
+21554 [loads="10 3 3 0",next_item=2,player=alg];
+21554 -> 22123 [bin=4]
+21554 -> 21787 [bin=2]
+21554 -> 21555 [bin=1]
+17844 [loads="17 14 6 5",next_item=14,player=alg,optimal="({14}, {14}, {14}, {5,3,3,3})"];
+17838 [loads="14 14 8 6",next_item=14,player=alg,optimal="({14}, {14}, {14}, {5,3,3,3})"];
+17832 [loads="11 10 10 3",next_item=10,player=alg];
+17832 -> 17827 [bin=4]
+17826 [loads="13 11 10 0",next_item=10,player=alg];
+17826 -> 17827 [bin=4]
+8705 [loads="11 10 10 10",next_item=9,player=alg,optimal="({9,5}, {10,3}, {10,3}, {10})"];
+18215 [loads="6 5 4 3",player=adv];
+18215 -> 18244 [next=6]
+18174 [loads="6 6 3 3",player=adv];
+18174 -> 18198 [next=6]
+18121 [loads="8 4 3 3",player=adv];
+18121 -> 18147 [next=5]
+18469 [loads="7 5 3 3",player=adv];
+18469 -> 18490 [next=6]
+18442 [loads="9 3 3 3",player=adv];
+18442 -> 18454 [next=6]
+16321 [loads="7 5 5 3",player=adv];
+16321 -> 16322 [next=14]
+16317 [loads="8 5 5 2",player=adv];
+16317 -> 16318 [next=14]
+16301 [loads="10 5 3 2",player=adv];
+16301 -> 16302 [next=9]
+18798 [loads="7 7 3 3",player=adv,heur="12,12,12"];
+18798 -> 18799 [next=12]
+18790 [loads="8 7 3 2",player=adv,heur="12,12,12"];
+18790 -> 18791 [next=12]
+18778 [loads="12 3 3 2",player=adv,heur="9,9,9,8"];
+18778 -> 18779 [next=9]
+18987 [loads="9 7 5 3",player=adv,heur="14,14"];
+18987 -> 18988 [next=14]
+18981 [loads="11 7 3 3",player=adv,heur="8,8,8,8"];
+18981 -> 18982 [next=8]
+18969 [loads="13 5 3 3",player=adv,heur="8,8,8,8"];
+18969 -> 18970 [next=8]
+18941 [loads="9 9 3 3",player=adv,heur="10,10,10"];
+18941 -> 18942 [next=10]
+18933 [loads="15 3 3 3",player=adv,heur="8,8,8,8"];
+18933 -> 18934 [next=8]
+15939 [loads="17 14 6 5",player=adv];
+15939 -> 15940 [next=14]
+22723 [loads="8 5 3 2",player=adv];
+22723 -> 22789 [next=3]
+22123 [loads="10 3 3 2",player=adv,heur="9,9,9,9"];
+22123 -> 22124 [next=9]
+22667 [loads="8 5 3 3",player=adv];
+22667 -> 22695 [next=4]
+20282 [loads="8 6 5 0",player=adv,heur="14,14"];
+20282 -> 20283 [next=14]
+20274 [loads="8 8 3 0",player=adv,heur="11,11,11"];
+20274 -> 20275 [next=11]
+19416 [loads="11 5 3 0",player=adv];
+19416 -> 19437 [next=8]
+21787 [loads="10 5 3 0",player=adv];
+21787 -> 21851 [next=2]
+21555 [loads="12 3 3 0",player=adv];
+21555 -> 21588 [next=7]
+17827 [loads="13 11 10 10",player=adv];
+17827 -> 17828 [next=9]
+18244 [loads="6 5 4 3",next_item=6,player=alg];
+18244 -> 18273 [bin=4]
+18244 -> 18269 [bin=3]
+18244 -> 18261 [bin=2]
+18244 -> 18245 [bin=1]
+18198 [loads="6 6 3 3",next_item=6,player=alg];
+18198 -> 18211 [bin=3]
+18198 -> 18199 [bin=1]
+18147 [loads="8 4 3 3",next_item=5,player=alg];
+18147 -> 18166 [bin=3]
+18147 -> 18160 [bin=2]
+18147 -> 18148 [bin=1]
+18490 [loads="7 5 3 3",next_item=6,player=alg];
+18490 -> 18509 [bin=3]
+18490 -> 18503 [bin=2]
+18490 -> 18491 [bin=1]
+18454 [loads="9 3 3 3",next_item=6,player=alg];
+18454 -> 18463 [bin=2]
+18454 -> 18455 [bin=1]
+16322 [loads="7 5 5 3",next_item=14,player=alg];
+16322 -> 16323 [bin=4]
+16318 [loads="8 5 5 2",next_item=14,player=alg];
+16318 -> 16319 [bin=4]
+16302 [loads="10 5 3 2",next_item=9,player=alg];
+16302 -> 16315 [bin=4]
+16302 -> 16311 [bin=3]
+16302 -> 16303 [bin=2]
+18799 [loads="7 7 3 3",next_item=12,player=alg];
+18799 -> 18800 [bin=3]
+18791 [loads="8 7 3 2",next_item=12,player=alg];
+18791 -> 18796 [bin=4]
+18791 -> 18792 [bin=3]
+18779 [loads="12 3 3 2",next_item=9,player=alg];
+18779 -> 18788 [bin=4]
+18779 -> 18780 [bin=2]
+18988 [loads="9 7 5 3",next_item=14,player=alg];
+18988 -> 18989 [bin=4]
+18982 [loads="11 7 3 3",next_item=8,player=alg];
+18982 -> 18983 [bin=3]
+18982 -> 18935 [bin=2]
+18970 [loads="13 5 3 3",next_item=8,player=alg];
+18970 -> 18977 [bin=3]
+18970 -> 18971 [bin=2]
+18942 [loads="9 9 3 3",next_item=10,player=alg];
+18942 -> 18943 [bin=3]
+18934 [loads="15 3 3 3",next_item=8,player=alg];
+18934 -> 18935 [bin=2]
+15940 [loads="17 14 6 5",next_item=14,player=alg,optimal="({14}, {14}, {14}, {3,3,3,3,2})"];
+22789 [loads="8 5 3 2",next_item=3,player=alg];
+22789 -> 22790 [bin=4]
+22789 -> 20374 [bin=3]
+22789 -> 20366 [bin=2]
+22789 -> 19511 [bin=1]
+22124 [loads="10 3 3 2",next_item=9,player=alg];
+22124 -> 22133 [bin=4]
+22124 -> 22125 [bin=2]
+22695 [loads="8 5 3 3",next_item=4,player=alg];
+22695 -> 22706 [bin=3]
+22695 -> 22700 [bin=2]
+22695 -> 22696 [bin=1]
+20283 [loads="8 6 5 0",next_item=14,player=alg];
+20283 -> 20284 [bin=4]
+20275 [loads="8 8 3 0",next_item=11,player=alg];
+20275 -> 20280 [bin=4]
+20275 -> 20276 [bin=3]
+19437 [loads="11 5 3 0",next_item=8,player=alg];
+19437 -> 19442 [bin=4]
+19437 -> 19438 [bin=3]
+19437 -> 19386 [bin=2]
+21851 [loads="10 5 3 0",next_item=2,player=alg];
+21851 -> 21864 [bin=4]
+21851 -> 21860 [bin=3]
+21851 -> 21852 [bin=2]
+21851 -> 21604 [bin=1]
+21588 [loads="12 3 3 0",next_item=7,player=alg];
+21588 -> 21597 [bin=4]
+21588 -> 21589 [bin=2]
+17828 [loads="13 11 10 10",next_item=9,player=alg,optimal="({9,5}, {10,3}, {10,3}, {10,3})"];
+18273 [loads="9 6 5 4",player=adv,heur="14,14"];
+18273 -> 18274 [next=14]
+18269 [loads="10 6 5 3",player=adv,heur="14,14"];
+18269 -> 18270 [next=14]
+18261 [loads="11 6 4 3",player=adv,heur="8,8,8,8"];
+18261 -> 18262 [next=8]
+18245 [loads="12 5 4 3",player=adv,heur="8,8,8,8"];
+18245 -> 18246 [next=8]
+18211 [loads="9 6 6 3",player=adv,heur="13,13"];
+18211 -> 18212 [next=13]
+18199 [loads="12 6 3 3",player=adv,heur="8,8,8,8"];
+18199 -> 18200 [next=8]
+18166 [loads="8 8 4 3",player=adv,heur="11,11,11"];
+18166 -> 18167 [next=11]
+18160 [loads="9 8 3 3",player=adv,heur="11,11,11"];
+18160 -> 18161 [next=11]
+18148 [loads="13 4 3 3",player=adv,heur="8,8,8,8"];
+18148 -> 18149 [next=8]
+18509 [loads="9 7 5 3",player=adv,heur="14,14"];
+18509 -> 18510 [next=14]
+18503 [loads="11 7 3 3",player=adv,heur="8,8,8,8"];
+18503 -> 18504 [next=8]
+18491 [loads="13 5 3 3",player=adv,heur="8,8,8,8"];
+18491 -> 18492 [next=8]
+18463 [loads="9 9 3 3",player=adv,heur="10,10,10"];
+18463 -> 18464 [next=10]
+18455 [loads="15 3 3 3",player=adv,heur="8,8,8,8"];
+18455 -> 18456 [next=8]
+16323 [loads="17 7 5 5",player=adv];
+16323 -> 16324 [next=14]
+16319 [loads="16 8 5 5",player=adv];
+16319 -> 16320 [next=14]
+16315 [loads="11 10 5 3",player=adv];
+16315 -> 16316 [next=9]
+16311 [loads="12 10 5 2",player=adv];
+16311 -> 16312 [next=9]
+16303 [loads="14 10 3 2",player=adv];
+16303 -> 16304 [next=9]
+18800 [loads="15 7 7 3",player=adv];
+18800 -> 18801 [next=12]
+18796 [loads="14 8 7 3",player=adv];
+18796 -> 18797 [next=12]
+18792 [loads="15 8 7 2",player=adv];
+18792 -> 18793 [next=12]
+18788 [loads="12 11 3 3",player=adv];
+18788 -> 18789 [next=9]
+18780 [loads="12 12 3 2",player=adv];
+18780 -> 18781 [next=9]
+18989 [loads="17 9 7 5",player=adv];
+18989 -> 18990 [next=14]
+18983 [loads="11 11 7 3",player=adv];
+18983 -> 18984 [next=8]
+18935 [loads="15 11 3 3",player=adv];
+18935 -> 18936 [next=8]
+18977 [loads="13 11 5 3",player=adv];
+18977 -> 18978 [next=8]
+18971 [loads="13 13 3 3",player=adv];
+18971 -> 18972 [next=8]
+18943 [loads="13 9 9 3",player=adv];
+18943 -> 18944 [next=10]
+22790 [loads="8 5 5 3",player=adv,heur="14,14"];
+22790 -> 22791 [next=14]
+20374 [loads="8 6 5 2",player=adv,heur="14,14"];
+20374 -> 20375 [next=14]
+20366 [loads="8 8 3 2",player=adv,heur="11,11,11"];
+20366 -> 20367 [next=11]
+19511 [loads="11 5 3 2",player=adv,heur="9,9,9,8"];
+19511 -> 19512 [next=9]
+22133 [loads="11 10 3 3",player=adv];
+22133 -> 22134 [next=9]
+22125 [loads="12 10 3 2",player=adv];
+22125 -> 22126 [next=9]
+22706 [loads="8 7 5 3",player=adv,heur="14,14"];
+22706 -> 22707 [next=14]
+22700 [loads="9 8 3 3",player=adv,heur="11,11,11"];
+22700 -> 22701 [next=11]
+22696 [loads="12 5 3 3",player=adv,heur="8,8,8,8"];
+22696 -> 22697 [next=8]
+20284 [loads="14 8 6 5",player=adv];
+20284 -> 20285 [next=14]
+20280 [loads="11 8 8 3",player=adv];
+20280 -> 20281 [next=11]
+20276 [loads="14 8 8 0",player=adv];
+20276 -> 20277 [next=11]
+19442 [loads="11 8 5 3",player=adv,heur="14,14"];
+19442 -> 19443 [next=14]
+19438 [loads="11 11 5 0",player=adv,heur="14,14"];
+19438 -> 19439 [next=14]
+19386 [loads="13 11 3 0",player=adv];
+19386 -> 27674 [next=10]
+21864 [loads="10 5 3 2",player=adv,heur="9,9,9,9"];
+21864 -> 21865 [next=9]
+21860 [loads="10 5 5 0",player=adv,heur="14,14"];
+21860 -> 21861 [next=14]
+21852 [loads="10 7 3 0",player=adv,heur="12,12,12"];
+21852 -> 21853 [next=12]
+21604 [loads="12 5 3 0",player=adv];
+21604 -> 26338 [next=7]
+21597 [loads="12 7 3 3",player=adv];
+21597 -> 27659 [next=7]
+21589 [loads="12 10 3 0",player=adv,heur="10,10,9"];
+21589 -> 21590 [next=10]
+18274 [loads="9 6 5 4",next_item=14,player=alg];
+18274 -> 18275 [bin=4]
+18270 [loads="10 6 5 3",next_item=14,player=alg];
+18270 -> 18271 [bin=4]
+18262 [loads="11 6 4 3",next_item=8,player=alg];
+18262 -> 18267 [bin=4]
+18262 -> 18207 [bin=3]
+18262 -> 18263 [bin=2]
+18246 [loads="12 5 4 3",next_item=8,player=alg];
+18246 -> 18259 [bin=4]
+18246 -> 18255 [bin=3]
+18246 -> 18247 [bin=2]
+18212 [loads="9 6 6 3",next_item=13,player=alg];
+18212 -> 18213 [bin=4]
+18200 [loads="12 6 3 3",next_item=8,player=alg];
+18200 -> 18207 [bin=3]
+18200 -> 18201 [bin=2]
+18167 [loads="8 8 4 3",next_item=11,player=alg];
+18167 -> 18172 [bin=4]
+18167 -> 18168 [bin=3]
+18161 [loads="9 8 3 3",next_item=11,player=alg];
+18161 -> 18162 [bin=3]
+18149 [loads="13 4 3 3",next_item=8,player=alg];
+18149 -> 18156 [bin=3]
+18149 -> 18150 [bin=2]
+18510 [loads="9 7 5 3",next_item=14,player=alg];
+18510 -> 18511 [bin=4]
+18504 [loads="11 7 3 3",next_item=8,player=alg];
+18504 -> 18505 [bin=3]
+18504 -> 18457 [bin=2]
+18492 [loads="13 5 3 3",next_item=8,player=alg];
+18492 -> 18499 [bin=3]
+18492 -> 18493 [bin=2]
+18464 [loads="9 9 3 3",next_item=10,player=alg];
+18464 -> 18465 [bin=3]
+18456 [loads="15 3 3 3",next_item=8,player=alg];
+18456 -> 18457 [bin=2]
+16324 [loads="17 7 5 5",next_item=14,player=alg,optimal="({14}, {14}, {3,3,2,2}, {5,3,2})"];
+16320 [loads="16 8 5 5",next_item=14,player=alg,optimal="({14}, {14}, {3,3,2,2}, {5,3,2})"];
+16316 [loads="11 10 5 3",next_item=9,player=alg];
+16316 -> 16313 [bin=4]
+16316 -> 16309 [bin=3]
+16312 [loads="12 10 5 2",next_item=9,player=alg];
+16312 -> 16313 [bin=4]
+16312 -> 16305 [bin=3]
+16304 [loads="14 10 3 2",next_item=9,player=alg];
+16304 -> 16309 [bin=4]
+16304 -> 16305 [bin=3]
+18801 [loads="15 7 7 3",next_item=12,player=alg];
+18801 -> 18802 [bin=4]
+18797 [loads="14 8 7 3",next_item=12,player=alg];
+18797 -> 18794 [bin=4]
+18793 [loads="15 8 7 2",next_item=12,player=alg];
+18793 -> 18794 [bin=4]
+18789 [loads="12 11 3 3",next_item=9,player=alg];
+18789 -> 18786 [bin=3]
+18781 [loads="12 12 3 2",next_item=9,player=alg];
+18781 -> 18786 [bin=4]
+18781 -> 18782 [bin=3]
+18990 [loads="17 9 7 5",next_item=14,player=alg,optimal="({14}, {14}, {6,3,3}, {4,3,3,2})"];
+18984 [loads="11 11 7 3",next_item=8,player=alg];
+18984 -> 18985 [bin=4]
+18984 -> 18937 [bin=3]
+18936 [loads="15 11 3 3",next_item=8,player=alg];
+18936 -> 18937 [bin=3]
+18978 [loads="13 11 5 3",next_item=8,player=alg];
+18978 -> 18979 [bin=4]
+18978 -> 18973 [bin=3]
+18972 [loads="13 13 3 3",next_item=8,player=alg];
+18972 -> 18973 [bin=3]
+18944 [loads="13 9 9 3",next_item=10,player=alg];
+18944 -> 18945 [bin=4]
+22791 [loads="8 5 5 3",next_item=14,player=alg];
+22791 -> 22792 [bin=4]
+20375 [loads="8 6 5 2",next_item=14,player=alg];
+20375 -> 20376 [bin=4]
+20367 [loads="8 8 3 2",next_item=11,player=alg];
+20367 -> 20372 [bin=4]
+20367 -> 20368 [bin=3]
+19512 [loads="11 5 3 2",next_item=9,player=alg];
+19512 -> 19525 [bin=4]
+19512 -> 19521 [bin=3]
+19512 -> 19513 [bin=2]
+22134 [loads="11 10 3 3",next_item=9,player=alg];
+22134 -> 22131 [bin=3]
+22126 [loads="12 10 3 2",next_item=9,player=alg];
+22126 -> 22131 [bin=4]
+22126 -> 22127 [bin=3]
+22707 [loads="8 7 5 3",next_item=14,player=alg];
+22707 -> 22708 [bin=4]
+22701 [loads="9 8 3 3",next_item=11,player=alg];
+22701 -> 22702 [bin=3]
+22697 [loads="12 5 3 3",next_item=8,player=alg];
+22697 -> 19473 [bin=3]
+22697 -> 22698 [bin=2]
+20285 [loads="14 8 6 5",next_item=14,player=alg,optimal="({14}, {14}, {3,3,2,2}, {3,3,3})"];
+20281 [loads="11 8 8 3",next_item=11,player=alg];
+20281 -> 20278 [bin=4]
+20277 [loads="14 8 8 0",next_item=11,player=alg];
+20277 -> 20278 [bin=4]
+19443 [loads="11 8 5 3",next_item=14,player=alg];
+19443 -> 19444 [bin=4]
+19439 [loads="11 11 5 0",next_item=14,player=alg];
+19439 -> 19440 [bin=4]
+27674 [loads="13 11 3 0",next_item=10,player=alg];
+27674 -> 27676 [bin=4]
+27674 -> 27675 [bin=3]
+21865 [loads="10 5 3 2",next_item=9,player=alg];
+21865 -> 21878 [bin=4]
+21865 -> 21874 [bin=3]
+21865 -> 21866 [bin=2]
+21861 [loads="10 5 5 0",next_item=14,player=alg];
+21861 -> 21862 [bin=4]
+21853 [loads="10 7 3 0",next_item=12,player=alg];
+21853 -> 21858 [bin=4]
+21853 -> 21854 [bin=3]
+26338 [loads="12 5 3 0",next_item=7,player=alg];
+26338 -> 26344 [bin=4]
+26338 -> 26340 [bin=3]
+26338 -> 26339 [bin=2]
+27659 [loads="12 7 3 3",next_item=7,player=alg];
+27659 -> 27666 [bin=3]
+27659 -> 27660 [bin=2]
+21590 [loads="12 10 3 0",next_item=10,player=alg];
+21590 -> 21595 [bin=4]
+21590 -> 21591 [bin=3]
+18275 [loads="18 9 6 5",player=adv];
+18275 -> 18276 [next=14]
+18271 [loads="17 10 6 5",player=adv];
+18271 -> 18272 [next=14]
+18267 [loads="11 11 6 4",player=adv];
+18267 -> 18268 [next=8]
+18207 [loads="12 11 6 3",player=adv];
+18207 -> 18208 [next=8]
+18263 [loads="14 11 4 3",player=adv];
+18263 -> 18264 [next=8]
+18259 [loads="12 11 5 4",player=adv];
+18259 -> 18260 [next=8]
+18255 [loads="12 12 5 3",player=adv];
+18255 -> 18256 [next=8]
+18247 [loads="13 12 4 3",player=adv];
+18247 -> 18248 [next=8]
+18213 [loads="16 9 6 6",player=adv];
+18213 -> 18214 [next=13]
+18201 [loads="14 12 3 3",player=adv];
+18201 -> 18202 [next=8]
+18172 [loads="14 8 8 4",player=adv];
+18172 -> 18173 [next=11]
+18168 [loads="15 8 8 3",player=adv];
+18168 -> 18169 [next=11]
+18162 [loads="14 9 8 3",player=adv];
+18162 -> 18163 [next=11]
+18156 [loads="13 11 4 3",player=adv];
+18156 -> 18157 [next=8]
+18150 [loads="13 12 3 3",player=adv];
+18150 -> 18151 [next=8]
+18511 [loads="17 9 7 5",player=adv];
+18511 -> 18512 [next=14]
+18505 [loads="11 11 7 3",player=adv];
+18505 -> 18506 [next=8]
+18457 [loads="15 11 3 3",player=adv];
+18457 -> 18458 [next=8]
+18499 [loads="13 11 5 3",player=adv];
+18499 -> 18500 [next=8]
+18493 [loads="13 13 3 3",player=adv];
+18493 -> 18494 [next=8]
+18465 [loads="13 9 9 3",player=adv];
+18465 -> 18466 [next=10]
+16313 [loads="12 11 10 5",player=adv];
+16313 -> 16314 [next=14]
+16309 [loads="14 11 10 3",player=adv];
+16309 -> 16310 [next=9]
+16305 [loads="14 12 10 2",player=adv];
+16305 -> 16306 [next=9]
+18802 [loads="15 15 7 7",player=adv];
+18802 -> 18803 [next=12]
+18794 [loads="15 14 8 7",player=adv];
+18794 -> 18795 [next=12]
+18786 [loads="12 12 11 3",player=adv];
+18786 -> 18787 [next=9]
+18782 [loads="12 12 12 2",player=adv];
+18782 -> 18783 [next=9]
+18985 [loads="11 11 11 7",player=adv];
+18985 -> 18986 [next=8]
+18937 [loads="15 11 11 3",player=adv];
+18937 -> 18938 [next=8]
+18979 [loads="13 11 11 5",player=adv];
+18979 -> 18980 [next=8]
+18973 [loads="13 13 11 3",player=adv];
+18973 -> 18974 [next=8]
+18945 [loads="13 13 9 9",player=adv];
+18945 -> 18946 [next=10]
+22792 [loads="17 8 5 5",player=adv];
+22792 -> 22793 [next=14]
+20376 [loads="16 8 6 5",player=adv];
+20376 -> 20377 [next=14]
+20372 [loads="13 8 8 3",player=adv];
+20372 -> 20373 [next=11]
+20368 [loads="14 8 8 2",player=adv];
+20368 -> 20369 [next=11]
+19525 [loads="11 11 5 3",player=adv];
+19525 -> 19526 [next=9]
+19521 [loads="12 11 5 2",player=adv];
+19521 -> 19522 [next=9]
+19513 [loads="14 11 3 2",player=adv];
+19513 -> 19514 [next=9]
+22131 [loads="12 11 10 3",player=adv];
+22131 -> 22132 [next=9]
+22127 [loads="12 12 10 2",player=adv];
+22127 -> 22128 [next=9]
+22708 [loads="17 8 7 5",player=adv];
+22708 -> 22709 [next=14]
+22702 [loads="14 9 8 3",player=adv];
+22702 -> 22703 [next=11]
+19473 [loads="12 11 5 3",player=adv];
+19473 -> 19474 [next=8]
+22698 [loads="13 12 3 3",player=adv];
+22698 -> 22699 [next=8]
+20278 [loads="14 11 8 8",player=adv];
+20278 -> 20279 [next=11]
+19444 [loads="17 11 8 5",player=adv];
+19444 -> 19445 [next=14]
+19440 [loads="14 11 11 5",player=adv];
+19440 -> 19441 [next=14]
+27676 [loads="13 11 10 3",player=adv,heur="9,9"];
+27676 -> 27677 [next=9]
+27675 [loads="13 13 11 0",player=adv];
+27675 -> 27725 [next=11]
+21878 [loads="11 10 5 3",player=adv];
+21878 -> 21879 [next=9]
+21874 [loads="12 10 5 2",player=adv];
+21874 -> 21875 [next=9]
+21866 [loads="14 10 3 2",player=adv];
+21866 -> 21867 [next=9]
+21862 [loads="14 10 5 5",player=adv];
+21862 -> 21863 [next=14]
+21858 [loads="12 10 7 3",player=adv];
+21858 -> 21859 [next=12]
+21854 [loads="15 10 7 0",player=adv];
+21854 -> 21855 [next=12]
+26344 [loads="12 7 5 3",player=adv,heur="14,14"];
+26344 -> 26345 [next=14]
+26340 [loads="12 10 5 0",player=adv,heur="14,14"];
+26340 -> 26341 [next=14]
+26339 [loads="12 12 3 0",player=adv];
+26339 -> 27697 [next=10]
+27666 [loads="12 10 7 3",player=adv,heur="12,12"];
+27666 -> 27667 [next=12]
+27660 [loads="14 12 3 3",player=adv,heur="8,8,8"];
+27660 -> 27661 [next=8]
+21595 [loads="12 10 10 3",player=adv];
+21595 -> 21596 [next=10]
+21591 [loads="13 12 10 0",player=adv];
+21591 -> 21592 [next=10]
+18276 [loads="18 9 6 5",next_item=14,player=alg,optimal="({14}, {14}, {3,3,3,2,2}, {6,3,2})"];
+18272 [loads="17 10 6 5",next_item=14,player=alg,optimal="({14}, {14}, {3,3,3,2,2}, {6,3,2})"];
+18268 [loads="11 11 6 4",next_item=8,player=alg];
+18268 -> 18209 [bin=4]
+18268 -> 18265 [bin=3]
+18208 [loads="12 11 6 3",next_item=8,player=alg];
+18208 -> 18209 [bin=4]
+18208 -> 18203 [bin=3]
+18264 [loads="14 11 4 3",next_item=8,player=alg];
+18264 -> 18265 [bin=4]
+18264 -> 18203 [bin=3]
+18260 [loads="12 11 5 4",next_item=8,player=alg];
+18260 -> 18257 [bin=4]
+18260 -> 18253 [bin=3]
+18256 [loads="12 12 5 3",next_item=8,player=alg];
+18256 -> 18257 [bin=4]
+18256 -> 18249 [bin=3]
+18248 [loads="13 12 4 3",next_item=8,player=alg];
+18248 -> 18253 [bin=4]
+18248 -> 18249 [bin=3]
+18214 [loads="16 9 6 6",next_item=13,player=alg,optimal="({13}, {13}, {3,3,3,2,2}, {6,3,2})"];
+18202 [loads="14 12 3 3",next_item=8,player=alg];
+18202 -> 18203 [bin=3]
+18173 [loads="14 8 8 4",next_item=11,player=alg];
+18173 -> 18170 [bin=4]
+18169 [loads="15 8 8 3",next_item=11,player=alg];
+18169 -> 18170 [bin=4]
+18163 [loads="14 9 8 3",next_item=11,player=alg];
+18163 -> 18164 [bin=4]
+18157 [loads="13 11 4 3",next_item=8,player=alg];
+18157 -> 18158 [bin=4]
+18157 -> 18152 [bin=3]
+18151 [loads="13 12 3 3",next_item=8,player=alg];
+18151 -> 18152 [bin=3]
+18512 [loads="17 9 7 5",next_item=14,player=alg,optimal="({14}, {14}, {3,3,3,2,2}, {6,3,2})"];
+18506 [loads="11 11 7 3",next_item=8,player=alg];
+18506 -> 18507 [bin=4]
+18506 -> 18459 [bin=3]
+18458 [loads="15 11 3 3",next_item=8,player=alg];
+18458 -> 18459 [bin=3]
+18500 [loads="13 11 5 3",next_item=8,player=alg];
+18500 -> 18501 [bin=4]
+18500 -> 18495 [bin=3]
+18494 [loads="13 13 3 3",next_item=8,player=alg];
+18494 -> 18495 [bin=3]
+18466 [loads="13 9 9 3",next_item=10,player=alg];
+18466 -> 18467 [bin=4]
+16314 [loads="12 11 10 5",next_item=14,player=alg,optimal="({14}, {9,2,2}, {5,3,3,2}, {9,3})"];
+16310 [loads="14 11 10 3",next_item=9,player=alg];
+16310 -> 16307 [bin=4]
+16306 [loads="14 12 10 2",next_item=9,player=alg];
+16306 -> 16307 [bin=4]
+18803 [loads="15 15 7 7",next_item=12,player=alg,optimal="({5,3,3,3}, {12,2}, {12,2}, {12,2})"];
+18795 [loads="15 14 8 7",next_item=12,player=alg,optimal="({5,3,3,3}, {12,2}, {12,2}, {12,2})"];
+18787 [loads="12 12 11 3",next_item=9,player=alg];
+18787 -> 18784 [bin=4]
+18783 [loads="12 12 12 2",next_item=9,player=alg];
+18783 -> 18784 [bin=4]
+18986 [loads="11 11 11 7",next_item=8,player=alg];
+18986 -> 18939 [bin=4]
+18938 [loads="15 11 11 3",next_item=8,player=alg];
+18938 -> 18939 [bin=4]
+18980 [loads="13 11 11 5",next_item=8,player=alg];
+18980 -> 18975 [bin=4]
+18974 [loads="13 13 11 3",next_item=8,player=alg];
+18974 -> 18975 [bin=4]
+18946 [loads="13 13 9 9",next_item=10,player=alg,optimal="({10,4}, {6,3,3,2}, {10,3}, {10,3})"];
+22793 [loads="17 8 5 5",next_item=14,player=alg,optimal="({14}, {14}, {3,3,3,2}, {3,3,2,2})"];
+20377 [loads="16 8 6 5",next_item=14,player=alg,optimal="({14}, {14}, {3,3,3,2}, {3,3,2,2})"];
+20373 [loads="13 8 8 3",next_item=11,player=alg];
+20373 -> 20370 [bin=4]
+20369 [loads="14 8 8 2",next_item=11,player=alg];
+20369 -> 20370 [bin=4]
+19526 [loads="11 11 5 3",next_item=9,player=alg];
+19526 -> 19523 [bin=4]
+19526 -> 19519 [bin=3]
+19522 [loads="12 11 5 2",next_item=9,player=alg];
+19522 -> 19523 [bin=4]
+19522 -> 19515 [bin=3]
+19514 [loads="14 11 3 2",next_item=9,player=alg];
+19514 -> 19519 [bin=4]
+19514 -> 19515 [bin=3]
+22132 [loads="12 11 10 3",next_item=9,player=alg];
+22132 -> 22129 [bin=4]
+22128 [loads="12 12 10 2",next_item=9,player=alg];
+22128 -> 22129 [bin=4]
+22709 [loads="17 8 7 5",next_item=14,player=alg,optimal="({14}, {14}, {4,3,3,2}, {3,3,3,2})"];
+22703 [loads="14 9 8 3",next_item=11,player=alg];
+22703 -> 22704 [bin=4]
+19474 [loads="12 11 5 3",next_item=8,player=alg];
+19474 -> 19475 [bin=4]
+19474 -> 19467 [bin=3]
+22699 [loads="13 12 3 3",next_item=8,player=alg];
+22699 -> 19467 [bin=3]
+20279 [loads="14 11 8 8",next_item=11,player=alg,optimal="({11,3}, {11,2}, {11,2}, {3,3,3,3})"];
+19445 [loads="17 11 8 5",next_item=14,player=alg,optimal="({14}, {14}, {3,3,3,3,2}, {8,3,2})"];
+19441 [loads="14 11 11 5",next_item=14,player=alg,optimal="({14}, {14}, {3,3,3,3,2}, {8,3,2})"];
+27677 [loads="13 11 10 3",next_item=9,player=alg];
+27677 -> 27678 [bin=4]
+27725 [loads="13 13 11 0",next_item=11,player=alg];
+27725 -> 27726 [bin=4]
+21879 [loads="11 10 5 3",next_item=9,player=alg];
+21879 -> 21876 [bin=4]
+21879 -> 21872 [bin=3]
+21875 [loads="12 10 5 2",next_item=9,player=alg];
+21875 -> 21876 [bin=4]
+21875 -> 21868 [bin=3]
+21867 [loads="14 10 3 2",next_item=9,player=alg];
+21867 -> 21872 [bin=4]
+21867 -> 21868 [bin=3]
+21863 [loads="14 10 5 5",next_item=14,player=alg,optimal="({14}, {14}, {3,3,2,2}, {3,3,2,2})"];
+21859 [loads="12 10 7 3",next_item=12,player=alg];
+21859 -> 21856 [bin=4]
+21855 [loads="15 10 7 0",next_item=12,player=alg];
+21855 -> 21856 [bin=4]
+26345 [loads="12 7 5 3",next_item=14,player=alg];
+26345 -> 26346 [bin=4]
+26341 [loads="12 10 5 0",next_item=14,player=alg];
+26341 -> 26342 [bin=4]
+27697 [loads="12 12 3 0",next_item=10,player=alg];
+27697 -> 27699 [bin=4]
+27697 -> 27698 [bin=3]
+27667 [loads="12 10 7 3",next_item=12,player=alg];
+27667 -> 27668 [bin=4]
+27661 [loads="14 12 3 3",next_item=8,player=alg];
+27661 -> 27662 [bin=3]
+21596 [loads="12 10 10 3",next_item=10,player=alg];
+21596 -> 21593 [bin=4]
+21592 [loads="13 12 10 0",next_item=10,player=alg];
+21592 -> 21593 [bin=4]
+18209 [loads="12 11 11 6",player=adv];
+18209 -> 18210 [next=8]
+18265 [loads="14 11 11 4",player=adv];
+18265 -> 18266 [next=8]
+18203 [loads="14 12 11 3",player=adv];
+18203 -> 18204 [next=8]
+18257 [loads="12 12 11 5",player=adv];
+18257 -> 18258 [next=8]
+18253 [loads="13 12 11 4",player=adv];
+18253 -> 18254 [next=8]
+18249 [loads="13 12 12 3",player=adv];
+18249 -> 18250 [next=8]
+18170 [loads="15 14 8 8",player=adv];
+18170 -> 18171 [next=11]
+18164 [loads="14 14 9 8",player=adv];
+18164 -> 18165 [next=11]
+18158 [loads="13 11 11 4",player=adv];
+18158 -> 18159 [next=8]
+18152 [loads="13 12 11 3",player=adv];
+18152 -> 18153 [next=8]
+18507 [loads="11 11 11 7",player=adv];
+18507 -> 18508 [next=8]
+18459 [loads="15 11 11 3",player=adv];
+18459 -> 18460 [next=8]
+18501 [loads="13 11 11 5",player=adv];
+18501 -> 18502 [next=8]
+18495 [loads="13 13 11 3",player=adv];
+18495 -> 18496 [next=8]
+18467 [loads="13 13 9 9",player=adv];
+18467 -> 18468 [next=10]
+16307 [loads="14 12 11 10",player=adv];
+16307 -> 16308 [next=9]
+18784 [loads="12 12 12 11",player=adv];
+18784 -> 18785 [next=8]
+18939 [loads="15 11 11 11",player=adv];
+18939 -> 18940 [next=8]
+18975 [loads="13 13 11 11",player=adv];
+18975 -> 18976 [next=8]
+20370 [loads="14 13 8 8",player=adv];
+20370 -> 20371 [next=11]
+19523 [loads="12 11 11 5",player=adv];
+19523 -> 19524 [next=9]
+19519 [loads="14 11 11 3",player=adv];
+19519 -> 19520 [next=9]
+19515 [loads="14 12 11 2",player=adv];
+19515 -> 19516 [next=9]
+22129 [loads="12 12 11 10",player=adv];
+22129 -> 22130 [next=9]
+22704 [loads="14 14 9 8",player=adv];
+22704 -> 22705 [next=11]
+19475 [loads="12 11 11 5",player=adv];
+19475 -> 19476 [next=8]
+19467 [loads="13 12 11 3",player=adv];
+19467 -> 19468 [next=8]
+27678 [loads="13 12 11 10",player=adv];
+27678 -> 27679 [next=9]
+27726 [loads="13 13 11 11",player=adv,heur="8"];
+27726 -> 27727 [next=8]
+21876 [loads="12 11 10 5",player=adv];
+21876 -> 21877 [next=9]
+21872 [loads="14 11 10 3",player=adv];
+21872 -> 21873 [next=9]
+21868 [loads="14 12 10 2",player=adv];
+21868 -> 21869 [next=9]
+21856 [loads="15 12 10 7",player=adv];
+21856 -> 21857 [next=12]
+26346 [loads="17 12 7 5",player=adv];
+26346 -> 26347 [next=14]
+26342 [loads="14 12 10 5",player=adv];
+26342 -> 26343 [next=14]
+27699 [loads="12 12 10 3",player=adv,heur="9,9"];
+27699 -> 27700 [next=9]
+27698 [loads="13 12 12 0",player=adv];
+27698 -> 27730 [next=12]
+27668 [loads="15 12 10 7",player=adv];
+27668 -> 27669 [next=12]
+27662 [loads="14 12 11 3",player=adv];
+27662 -> 27663 [next=8]
+21593 [loads="13 12 10 10",player=adv];
+21593 -> 21594 [next=9]
+18210 [loads="12 11 11 6",next_item=8,player=alg];
+18210 -> 18205 [bin=4]
+18266 [loads="14 11 11 4",next_item=8,player=alg];
+18266 -> 18205 [bin=4]
+18204 [loads="14 12 11 3",next_item=8,player=alg];
+18204 -> 18205 [bin=4]
+18258 [loads="12 12 11 5",next_item=8,player=alg];
+18258 -> 18251 [bin=4]
+18254 [loads="13 12 11 4",next_item=8,player=alg];
+18254 -> 18251 [bin=4]
+18250 [loads="13 12 12 3",next_item=8,player=alg];
+18250 -> 18251 [bin=4]
+18171 [loads="15 14 8 8",next_item=11,player=alg,optimal="({11,3}, {11,3}, {11,3}, {5,3,2,2,2})"];
+18165 [loads="14 14 9 8",next_item=11,player=alg,optimal="({11,3}, {11,3}, {11,3}, {5,3,2,2,2})"];
+18159 [loads="13 11 11 4",next_item=8,player=alg];
+18159 -> 18154 [bin=4]
+18153 [loads="13 12 11 3",next_item=8,player=alg];
+18153 -> 18154 [bin=4]
+18508 [loads="11 11 11 7",next_item=8,player=alg];
+18508 -> 18461 [bin=4]
+18460 [loads="15 11 11 3",next_item=8,player=alg];
+18460 -> 18461 [bin=4]
+18502 [loads="13 11 11 5",next_item=8,player=alg];
+18502 -> 18497 [bin=4]
+18496 [loads="13 13 11 3",next_item=8,player=alg];
+18496 -> 18497 [bin=4]
+18468 [loads="13 13 9 9",next_item=10,player=alg,optimal="({10,2,2}, {6,3,3,2}, {10,3}, {10,3})"];
+16308 [loads="14 12 11 10",next_item=9,player=alg,optimal="({9,5}, {9,3,2}, {9,3,2}, {9,3,2})"];
+18785 [loads="12 12 12 11",next_item=8,player=alg,optimal="({9,3,2}, {9,3,2}, {9,3,2}, {8,5})"];
+18940 [loads="15 11 11 11",next_item=8,player=alg,optimal="({8,6}, {8,3,3}, {8,3,3}, {8,4,2})"];
+18976 [loads="13 13 11 11",next_item=8,player=alg,optimal="({8,6}, {8,3,3}, {8,3,3}, {8,4,2})"];
+20371 [loads="14 13 8 8",next_item=11,player=alg,optimal="({11,3}, {3,3,3,3,2}, {11,2}, {11,2})"];
+19524 [loads="12 11 11 5",next_item=9,player=alg];
+19524 -> 19517 [bin=4]
+19520 [loads="14 11 11 3",next_item=9,player=alg];
+19520 -> 19517 [bin=4]
+19516 [loads="14 12 11 2",next_item=9,player=alg];
+19516 -> 19517 [bin=4]
+22130 [loads="12 12 11 10",next_item=9,player=alg,optimal="({9,3,2}, {9,3,2}, {9,3,2}, {9,3})"];
+22705 [loads="14 14 9 8",next_item=11,player=alg,optimal="({11,3}, {11,3}, {11,3}, {4,3,3,2,2})"];
+19476 [loads="12 11 11 5",next_item=8,player=alg];
+19476 -> 19469 [bin=4]
+19468 [loads="13 12 11 3",next_item=8,player=alg];
+19468 -> 19469 [bin=4]
+27679 [loads="13 12 11 10",next_item=9,player=alg,optimal="({8,3,3}, {9,3,2}, {9,3,2}, {10,3})"];
+27727 [loads="13 13 11 11",next_item=8,player=alg,optimal="({8,3,3}, {8,3,3}, {11,3}, {10,2,2})"];
+21877 [loads="12 11 10 5",next_item=9,player=alg];
+21877 -> 21870 [bin=4]
+21873 [loads="14 11 10 3",next_item=9,player=alg];
+21873 -> 21870 [bin=4]
+21869 [loads="14 12 10 2",next_item=9,player=alg];
+21869 -> 21870 [bin=4]
+21857 [loads="15 12 10 7",next_item=12,player=alg,optimal="({3,3,3,3,2}, {12,2}, {12,2}, {12,2})"];
+26347 [loads="17 12 7 5",next_item=14,player=alg,optimal="({14}, {14}, {7,3,2,2}, {3,3,3,2,2})"];
+26343 [loads="14 12 10 5",next_item=14,player=alg,optimal="({14}, {14}, {7,3,2,2}, {3,3,3,2,2})"];
+27700 [loads="12 12 10 3",next_item=9,player=alg];
+27700 -> 27701 [bin=4]
+27730 [loads="13 12 12 0",next_item=12,player=alg];
+27730 -> 27731 [bin=4]
+27669 [loads="15 12 10 7",next_item=12,player=alg,optimal="({7,7}, {3,3,3,3,2}, {12,2}, {12,2})"];
+27663 [loads="14 12 11 3",next_item=8,player=alg];
+27663 -> 27664 [bin=4]
+21594 [loads="13 12 10 10",next_item=9,player=alg,optimal="({10,2,2}, {9,3,2}, {7,3,3}, {10,3})"];
+18205 [loads="14 12 11 11",player=adv];
+18205 -> 18206 [next=8]
+18251 [loads="13 12 12 11",player=adv];
+18251 -> 18252 [next=8]
+18154 [loads="13 12 11 11",player=adv];
+18154 -> 18155 [next=8]
+18461 [loads="15 11 11 11",player=adv];
+18461 -> 18462 [next=8]
+18497 [loads="13 13 11 11",player=adv];
+18497 -> 18498 [next=8]
+19517 [loads="14 12 11 11",player=adv];
+19517 -> 19518 [next=8]
+19469 [loads="13 12 11 11",player=adv];
+19469 -> 19470 [next=8]
+21870 [loads="14 12 11 10",player=adv];
+21870 -> 21871 [next=9]
+27701 [loads="12 12 12 10",player=adv];
+27701 -> 27702 [next=9]
+27731 [loads="13 12 12 12",player=adv,heur="7"];
+27731 -> 27732 [next=7]
+27664 [loads="14 12 11 11",player=adv];
+27664 -> 27665 [next=8]
+18206 [loads="14 12 11 11",next_item=8,player=alg,optimal="({8,6}, {8,3,3}, {8,3,3}, {8,2,2,2})"];
+18252 [loads="13 12 12 11",next_item=8,player=alg,optimal="({8,6}, {8,3,3}, {8,3,3}, {8,2,2,2})"];
+18155 [loads="13 12 11 11",next_item=8,player=alg,optimal="({8,3,3}, {8,3,3}, {8,2,2,2}, {8,5})"];
+18462 [loads="15 11 11 11",next_item=8,player=alg,optimal="({8,6}, {8,3,3}, {8,3,3}, {8,2,2,2})"];
+18498 [loads="13 13 11 11",next_item=8,player=alg,optimal="({8,6}, {8,3,3}, {8,3,3}, {8,2,2,2})"];
+19518 [loads="14 12 11 11",next_item=8,player=alg,optimal="({8,3,3}, {9,3,2}, {9,3,2}, {9,3,2})"];
+19470 [loads="13 12 11 11",next_item=8,player=alg,optimal="({8,3,3}, {8,3,3}, {8,4,2}, {8,3,2})"];
+21871 [loads="14 12 11 10",next_item=9,player=alg,optimal="({9,3,2}, {9,3,2}, {9,3,2}, {9,3,2})"];
+27702 [loads="12 12 12 10",next_item=9,player=alg,optimal="({10,2,2}, {9,3,2}, {9,3,2}, {7,3,3})"];
+27732 [loads="13 12 12 12",next_item=7,player=alg,optimal="({7,7}, {10,2,2}, {3,3,3,3,2}, {12,2})"];
+27665 [loads="14 12 11 11",next_item=8,player=alg,optimal="({7,7}, {8,3,3}, {8,3,3}, {8,2,2,2})"];
+}

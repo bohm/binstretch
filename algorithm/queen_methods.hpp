@@ -209,8 +209,8 @@ int queen_class::start()
 		clear_tasks();
 
                 // Purge all new vertices, so that only vert_state::fixed and vert_state::expand remain.
-		purge_new(computation_root);
-		reset_values(computation_root);
+		purge_new(qdag, computation_root);
+		reset_values(qdag, computation_root);
 		reset_running_lows();
 		qdag->clear_visited();
 		removed_task_count = 0;
@@ -233,7 +233,7 @@ int queen_class::start()
 			if (ONEPASS)
 			{
 			    losing_saplings++;
-			    purge_new(computation_root);
+			    purge_new(qdag, computation_root);
 			    break;
 			} else
 			{
@@ -300,14 +300,14 @@ int queen_class::start()
 			winning_saplings++;
 		    }
 
-		    finish_branches(computation_root);
+		    finish_branches(qdag, computation_root);
 		    break;
 		}
 
 		if (ONEPASS)
 		{
 		    losing_saplings++;
-		    purge_new(computation_root);
+		    purge_new(qdag, computation_root);
 		    break;
 		}
 	    }
@@ -317,7 +317,7 @@ int queen_class::start()
 	    if ((!REGROW && (updater_result == victory::adv)) ||
 		(REGROW && updater_result == victory::adv && lower_bound_complete))
 	    {
-		finish_sapling(computation_root);
+		finish_sapling(qdag, computation_root);
 		break;
 	    }
 
@@ -333,7 +333,7 @@ int queen_class::start()
 		assert(updater_result == victory::adv);
 		// Transform tasks into vert_state::expand and
 		// vert_state::fresh vertices into vert_state::fixed.
-		relabel_and_fix(computation_root, &tat);
+		relabel_and_fix(qdag, computation_root, &tat);
 	    }
 	}
 
