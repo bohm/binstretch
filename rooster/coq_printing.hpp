@@ -72,7 +72,6 @@ void print_coq_tree_adv(FILE *stream, rooster_dag *rd, adversary_vertex *v); // 
 void print_children(FILE *stream, rooster_dag *rd, std::list<alg_outedge*>& right_edge_out)
 {
     fprintf(stream, "[[ ");
-    int open = 1;
     bool first = true;
 
     for (auto &next: right_edge_out)
@@ -113,8 +112,6 @@ void print_coq_tree_heur(FILE *stream, rooster_dag *rd, adversary_vertex *v)
     std::vector<int> heur = v->heur_strategy->contents();
     assert(heur.size() >= 1);
 
-    int right_item = heur[0];
-    
     fprintf(stream, "\n( lf "); // one extra bracket pair
 
     print_bin_loads(stream, rd, v);

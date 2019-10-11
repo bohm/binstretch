@@ -218,7 +218,7 @@ partial_dag* loadfile(const char* filename)
 	    pd->add_alg_outedge(name_from, name_to, bin);
 	    break;
 	default:
-	    print_if<true>("Skipping auxiliary line %s.\n", line);
+	    print_if<PARSING_DEBUG>("Skipping auxiliary line %s.\n", line);
 	    break;
 	} 
     }

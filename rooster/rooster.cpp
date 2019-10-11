@@ -16,7 +16,8 @@
 #include "coq_printing.hpp"
 #include "consistency.hpp"
 
-const bool ROOSTER_DEBUG = true;
+const bool ROOSTER_DEBUG = false;
+#define ROOSTER_DEBUG_ONLY(x) if (ROOSTER_DEBUG) {x;}
 
 // Output file as a global parameter (too lazy for currying).
 FILE* outf = NULL;
@@ -499,11 +500,9 @@ void cut_large_item(rooster_dag *rd)
     std::sort(dels.begin(), dels.end(), compare_deletables);
     for (deletable &d : dels)
     {
-	fprintf(stderr, "Removing outedges of a vertex with %d items.\n", d.vertex->bc.itemcount());
+	print_if<ROOSTER_DEBUG>("Removing outedges of a vertex with %d items.\n", d.vertex->bc.itemcount() );
+
 	canvas->remove_outedges<mm_state::generating>(d.vertex);
-	// Hack: try to soft-delete the edges (just remove them from the list).
-	// TODO: Fix this properly.
-	// d.vertex->out.clear();
     }
 }
 
@@ -553,10 +552,7 @@ void generate_coq_records(FILE *stream, rooster_dag *rd, std::list<adversary_ver
 	    if (!first)
 	    {
 		fprintf(outf, ";");
-		if(!nocomment)
-		{
-		    fprintf(outf, " (* End of record entry. *)");
-		}
+		// fprintf(outf, " (* End of record entry. *)");
 		fprintf(outf, "\n");
 	    } else {
 		first = false;
@@ -627,7 +623,7 @@ void roost_record_file(std::string outfile, rooster_dag *rd, bool nocomment = fa
     generate_coq_records(outf, rd, full_list, nocomment);
     
     // print_splits<ROOSTER_DEBUG>(splits);
-    fprintf(stderr, "The graph has %" PRIu64 " adv. vertices after generating.\n",
+    print_if<ROOSTER_DEBUG>("The graph has %" PRIu64 " adv. vertices after generating.\n",
 	    number_of_adversary_vertices(rd));
 
     coq_afterword(outf);
@@ -644,7 +640,13 @@ void roost_single_tree(std::string outfile, rooster_dag *rd)
 
     print_if<ROOSTER_DEBUG>("Transforming the dag into a tree.\n");
     rooster_dag *tree = rd->subtree(rd->root);
-    roost_main_tree(outf, tree, "lowerbound");
+    tree->init_references(); // is_reference() needs initialization, even though it always returns false.
+
+    roost_main_tree(outf, tree, "lb_T");
+
+    fprintf(outf, "Definition lb_R : RecordN := ([])%%N.\n"); // Print an empty record list.
+
+    // Create
     delete tree;
 
     coq_afterword(outf);
@@ -714,7 +716,19 @@ int main(int argc, char **argv)
 	return -1;
     }
 
-    fprintf(stderr, "Converting %s into a Coq form.\n", infile.c_str());
+    if (tree)
+    {
+	fprintf(stderr, "Converting into a single tree; heuristics are expanded in this mode.\n");
+	shorten_heuristics = false;
+    }
+    else
+    {
+	fprintf(stderr, "Converting into a directed acyclic graph with records.\n");
+	if (!shorten_heuristics)
+	{
+	    fprintf(stderr, "Printing heuristics in full.\n");
+	}
+    }
 
     print_if<ROOSTER_DEBUG>("Loading the dag from the file representation.\n");
     zobrist_init();
@@ -726,7 +740,7 @@ int main(int argc, char **argv)
     // assign the dag into the global pointer
     canvas = new rooster_dag(d->finalize());
 
-    check_consistency(canvas); // Deep consistency check.
+    ROOSTER_DEBUG_ONLY(check_consistency(canvas)); // Deep consistency check.
 
     if (shorten_heuristics)
     {
@@ -737,18 +751,19 @@ int main(int argc, char **argv)
 	canvas->clear_all_heur();
     }	
 
-    check_consistency(canvas); // Deep consistency check.
+    ROOSTER_DEBUG_ONLY(check_consistency(canvas));
 
-    fprintf(stderr, "The graph has %" PRIu64 " adv. vertices before merge.\n",
-	    number_of_adversary_vertices(canvas));
+    print_if<ROOSTER_DEBUG>("The graph has %" PRIu64 " adv. vertices before merge.\n",
+		number_of_adversary_vertices(canvas));
+
     // Merge vertices which have the same loaditemhash.
     merge_ignoring_last_item(canvas);
-    fprintf(stderr, "The graph has %" PRIu64 " adv. vertices after merge.\n",
-	    number_of_adversary_vertices(canvas));
 
-    check_consistency(canvas); // Deep consistency check.
+    print_if<ROOSTER_DEBUG>( "The graph has %" PRIu64 " adv. vertices after merge.\n",
+		number_of_adversary_vertices(canvas));
+
+    ROOSTER_DEBUG_ONLY(check_consistency(canvas));
     
-   
     if (tree)
     {
 	roost_single_tree(outfile, canvas);
