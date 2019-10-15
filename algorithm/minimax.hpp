@@ -123,13 +123,6 @@ template<mm_state MODE> victory adversary(binconf *b, int depth, thread_attr *ta
 	}
     }
     
-    // Everything can be packed into one bin, return 1.
-    if ((b->loads[BINS] + (BINS*S - b->totalload())) < R)
-    {
-	if (MODE == mm_state::generating) { adv_to_evaluate->win = victory::alg; }
-	return victory::alg;
-    }
-
     // Turn off adversary heuristics if convenient (e.g. for machine verification).
     if (ADVERSARY_HEURISTICS && !tat->heuristic_regime)
     {
@@ -148,7 +141,10 @@ template<mm_state MODE> victory adversary(binconf *b, int depth, thread_attr *ta
 		tat->current_strategy = adv_to_evaluate->heur_strategy;
 		switch_to_heuristic = true;
 	    }
-	}
+	} else if (vic == victory::alg)
+	{
+	    return victory::alg;
+	} // The victory still uncertain, we continue.
     }
 
     if (MODE == mm_state::generating)
@@ -269,8 +265,6 @@ template<mm_state MODE> victory adversary(binconf *b, int depth, thread_attr *ta
     int maximum_feasible = dp; // possibly also INFEASIBLE == -1
     print_if<DEBUG>("Trying player zero choices, with maxload starting at %d\n", maximum_feasible);
 
-    // for (int item_size = maximum_feasible; item_size>=lower_bound; item_size--)
-
     std::vector<int> candidate_moves;
     compute_next_moves(b, maximum_feasible, lower_bound, tat->current_strategy,
 		       depth - tat->heuristic_starting_depth,
@@ -374,7 +368,7 @@ template<mm_state MODE> victory algorithm(binconf *b, int k, int depth, thread_a
     victory below = victory::adv; // Who wins below.
     victory win = victory::adv; // Who wins this configuration.
 
-    if(MODE == mm_state::generating)
+    if (MODE == mm_state::generating)
     {
 	print_if<DEBUG>("GEN: ");
     } else {
@@ -412,20 +406,18 @@ template<mm_state MODE> victory algorithm(binconf *b, int k, int depth, thread_a
 		victory recommendation = check_messages(tat);
 		if (recommendation == victory::irrelevant)
 		{
-		    //fprintf(stderr, "We got advice to terminate.\n");
 		    return recommendation;
 		}
 	    }
 	}
     }
- 
-    if (gsheuristic(b,k, tat) == 1)
+
+    victory alg_heuristic = check_alg_heuristics(b, k, ins, tat);
+    if (alg_heuristic == victory::alg)
     {
 	if (MODE == mm_state::generating)
 	{
 	    alg_to_evaluate->win = victory::alg;
-	    // alg_to_evaluate->heuristic = true;
-	    // alg_to_evaluate->heuristic_type = GS;
 	}
 	return victory::alg;
     }
@@ -473,87 +465,80 @@ template<mm_state MODE> victory algorithm(binconf *b, int k, int depth, thread_a
 
     win = victory::adv;
     below = victory::adv;
-    
-    bin_int i = 1;
-    while(i <= BINS)
+
+    std::vector<int> candidate_bins;
+    compute_next_bins(b, k, ins, tat, candidate_bins);
+
+    for (int i : candidate_bins)
     {
-	// simply skip a step where two bins have the same load
-	// any such bins are sequential if we assume loads are sorted (and they should be)
-	if (i > 1 && b->loads[i] == b->loads[i-1])
+	// Note: currently we do not check that
+	// b->loads[i] + next_item >= R, but we might want to remember that.
+	
+	// editing binconf in place -- undoing changes later
+	int previously_last_item = b->last_item;
+	int from = b->assign_and_rehash(k,i);
+	int ol_from = onlineloads_assign(tat->ol, k);
+	// initialize the adversary's next vertex in the tree (corresponding to d)
+	if (MODE == mm_state::generating)
 	{
-	    i++; continue;
+	    // Check vertex cache if this adversarial vertex is already present.
+	    // std::map<llu, adversary_vertex*>::iterator it;
+	    auto it = qdag->adv_by_hash.find(b->confhash());
+	    if (it == qdag->adv_by_hash.end())
+	    {
+		upcoming_adv = qdag->add_adv_vertex(*b);
+		// Note: "i" is the position in the previous binconf, not the new one.
+		qdag->add_alg_outedge(alg_to_evaluate, upcoming_adv, i);
+	    } else {
+		upcoming_adv = it->second;
+		qdag->add_alg_outedge(alg_to_evaluate, upcoming_adv, i);
+		// below = it->second->win;
+	    }
 	}
 
-	if ((b->loads[i] + k < R))
-	{
-	    // editing binconf in place -- undoing changes later
+	below = adversary<MODE>(b, depth, tat, upcoming_adv, alg_to_evaluate);
+	print_if<DEBUG>("Alg packs into bin %d, the new configuration is:", i);
+	print_binconf<DEBUG>(b);
+	print_if<DEBUG>("Resulting in: ");
+	print_if<DEBUG>("%d", static_cast<int>(below));
+	print_if<DEBUG>(".\n");
 
-	    int previously_last_item = b->last_item;
-	    int from = b->assign_and_rehash(k,i);
-	    int ol_from = onlineloads_assign(tat->ol, k);
-	    // initialize the adversary's next vertex in the tree (corresponding to d)
+	// send signal that we should terminate immediately upwards
+	if (below == victory::irrelevant)
+	{
+	    return below;
+	}
+
+	// return b to original form
+	b->unassign_and_rehash(k,from, previously_last_item);
+	onlineloads_unassign(tat->ol, k, ol_from);
+	if (below == victory::alg)
+	{
 	    if (MODE == mm_state::generating)
 	    {
-		// Check vertex cache if this adversarial vertex is already present.
-		// std::map<llu, adversary_vertex*>::iterator it;
-		auto it = qdag->adv_by_hash.find(b->confhash());
-		if (it == qdag->adv_by_hash.end())
-		{
-		    upcoming_adv = qdag->add_adv_vertex(*b);
-		    // Note: "i" is the position in the previous binconf, not the new one.
-		    qdag->add_alg_outedge(alg_to_evaluate, upcoming_adv, i);
-		} else {
-		    upcoming_adv = it->second;
-		    qdag->add_alg_outedge(alg_to_evaluate, upcoming_adv, i);
-		    // below = it->second->win;
-		}
-	    }
-	    
-	    below = adversary<MODE>(b, depth, tat, upcoming_adv, alg_to_evaluate);
-	    print_if<DEBUG>("Alg packs into bin %d, the new configuration is:", i);
-	    print_binconf<DEBUG>(b);
-	    print_if<DEBUG>("Resulting in: ");
-	    print_if<DEBUG>("%d", static_cast<int>(below));
-	    print_if<DEBUG>(".\n");
-	    
-	    // send signal that we should terminate immediately upwards
-	    if (below == victory::irrelevant)
-	    {
-		return below;
-	    }
-		
-	    // return b to original form
-	    b->unassign_and_rehash(k,from, previously_last_item);
-	    onlineloads_unassign(tat->ol, k, ol_from);
-	    if (below == victory::alg)
-	    {
-		if (MODE == mm_state::generating)
-		{
-		    // Delete all edges from the current algorithmic vertex
-		    // which should also delete the deeper adversary vertex.
-		    
-		    // Does not delete the algorithm vertex itself,
-		    // because we created it on a higher level of recursion.
-		    qdag->remove_outedges<mm_state::generating>(alg_to_evaluate);
-		    // assert(current_algorithm == NULL); // sanity check
+		// Delete all edges from the current algorithmic vertex
+		// which should also delete the deeper adversary vertex.
 
-		    alg_to_evaluate->win = victory::alg;
-		}
-		return victory::alg;
-	    } else if (below == victory::adv)
-	    {
-		// nothing needs to be currently done, the edge is already created
-	    } else if (below == victory::uncertain)
-	    {
- 		assert(MODE == mm_state::generating); // should not happen during anything else but mm_state::generating
-		// insert analyzed_vertex into algorithm's "next" list
-		if (win == victory::adv)
-		{
-		    win = victory::uncertain;
-		}
+		// Does not delete the algorithm vertex itself,
+		// because we created it on a higher level of recursion.
+		qdag->remove_outedges<mm_state::generating>(alg_to_evaluate);
+		// assert(current_algorithm == NULL); // sanity check
+
+		alg_to_evaluate->win = victory::alg;
 	    }
-	} // else b->loads[i] + k >= R, so a good situation for the adversary
-	i++;
+	    return victory::alg;
+	} else if (below == victory::adv)
+	{
+	    // nothing needs to be currently done, the edge is already created
+	} else if (below == victory::uncertain)
+	{
+	    assert(MODE == mm_state::generating); // should not happen during anything else but mm_state::generating
+	    // insert analyzed_vertex into algorithm's "next" list
+	    if (win == victory::adv)
+	    {
+		win = victory::uncertain;
+	    }
+	}
     }
 
     // r is now 0 or POSTPONED, depending on the circumstances

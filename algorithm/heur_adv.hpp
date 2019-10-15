@@ -232,7 +232,14 @@ std::pair<bool, bin_int> five_nine_heuristic(binconf *b, thread_attr *tat)
 
 template<mm_state MODE> victory adversary_heuristics(binconf *b, thread_attr *tat, adversary_vertex *adv_to_evaluate)
 {
-    //A much weaker variant of large item heuristic, but takes O(1) time.
+    // Trivial check: If everything can be packed into one bin, algorithm wins.
+    if ((b->loads[BINS] + (BINS*S - b->totalload())) < R)
+    {
+	if (MODE == mm_state::generating) { adv_to_evaluate->win = victory::alg; }
+	return victory::alg;
+    }
+
+    // Second trivial check: if you can send BINS-1 items of size S, adversary wins.
     heuristic_strategy *str = NULL;
     if (b->totalload() <= S && b->loads[2] >= R-S)
     {
