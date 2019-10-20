@@ -8,11 +8,52 @@
 #include "../algorithm/dfs.hpp"
 #include "../algorithm/loadfile.hpp"
 #include "../algorithm/savefile.hpp"
+#include "../algorithm/layers.hpp"
 
 // Global parameters (so we do not have to pass them via recursive functions).
 FILE* outf = NULL;
 dag *canvas = NULL;
 bool color = true;
+
+
+void item_histogram(int reldepth, adv_list& curlist)
+{
+    std::array<int, S+1> histogram = {0};
+    
+    for (adversary_vertex* v : curlist)
+    {
+	// Ignore items on heuristic vertices.
+	if (v->heur_vertex)
+	{
+	    continue;
+	}
+	
+	assert(v->out.size() == 1);
+	adv_outedge *right_move = *(v->out.begin());
+	histogram[right_move->item]++;
+    }
+
+    fprintf(stderr, "Layer %2d:", reldepth);
+    for (int i = 1; i <= S; i++)
+    {
+	if (histogram[i] != 0)
+	{
+	    fprintf(stderr, " [%2d]: %4d", i, histogram[i]);
+	} else
+	{
+	    // Print a blank segment of the same size, so that it is easier to read for humans.
+	    fprintf(stderr, "           ");
+	}
+    }
+    fprintf(stderr, "\n");
+    
+    
+}
+
+void histogram(dag *d)
+{
+    layer_traversal(d, item_histogram, do_nothing);
+}
 
 std::string build_label(adversary_vertex *v)
 {
@@ -181,14 +222,9 @@ void cut_heuristics_adv(adversary_vertex *v)
     }
 }
 
-// Does nothing, as all algorithm vertices in the LB are not heuristical.
-void cut_heuristics_alg(algorithm_vertex *v)
-{
-}
-
 void cut_heuristics(dag *d)
 {
-    dfs(d, cut_heuristics_adv, cut_heuristics_alg);
+    dfs(d, cut_heuristics_adv, do_nothing);
 }
 
 void usage()
@@ -333,6 +369,8 @@ int main(int argc, char **argv)
 	cut_heuristics(canvas);
     }
 
+    histogram(canvas);
+    
     if (cut)
     {
 	dfs(canvas, cutdepth_adv, cutdepth_alg);
