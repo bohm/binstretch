@@ -185,7 +185,7 @@ public:
 	    }
 	}
 
-    void clear_cache_of_ones(int threads)
+    void clear_cache_of_infeasible(int threads)
 	{
 	    uint64_t segment = htsize / threads;
 	    uint64_t start = 0;
@@ -298,7 +298,7 @@ state_cache *stc = NULL;
 void stcache_encache(const binconf *d, uint64_t posvalue, thread_attr *tat)
 {
     MEASURE_ONLY(tat->meas.bc_insertions++);
-    uint64_t bchash = d->confhash();
+    uint64_t bchash = d->statehash();
     assert(posvalue >= 0 && posvalue <= 1);
     conf_el new_item;
     new_item.set(bchash, posvalue);

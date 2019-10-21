@@ -64,7 +64,7 @@ victory update(adversary_vertex *v, update_attr &uat)
     
     if (v->task)
     {
-	uint64_t hash = v->bc.confhash();
+	uint64_t hash = v->bc.hash_with_last();
 	result = completion_check(hash);
 	if (result == victory::uncertain)
 	{

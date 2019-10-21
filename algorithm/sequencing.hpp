@@ -188,7 +188,7 @@ victory sequencing_algorithm(binconf *b, int k, unsigned int depth, thread_attr 
 
 	    /* Check vertex cache if this adversarial vertex is already present */
 	    bool already_generated = false;
-	    auto it = qdag->adv_by_hash.find(b->confhash());
+	    auto it = qdag->adv_by_hash.find(b->hash_with_last());
 	    if (it == qdag->adv_by_hash.end())
 	    {
 		upcoming_adv = qdag->add_adv_vertex(*b);

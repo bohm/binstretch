@@ -10,6 +10,9 @@
 #include "../algorithm/savefile.hpp"
 #include "../algorithm/layers.hpp"
 
+// need for debug
+#include "../algorithm/heur_adv.hpp"
+
 // Global parameters (so we do not have to pass them via recursive functions).
 FILE* outf = NULL;
 dag *canvas = NULL;
@@ -310,6 +313,32 @@ std::pair<bool,int> parse_parameter_cutdepth(int argc, char **argv, int pos)
     return std::make_pair(false, 0);
 }
 
+
+// some debugging
+
+void next_item_fourteen_test(adversary_vertex *v)
+{
+    if (v->heur_vertex)
+    {
+	return;
+    }
+
+    assert(v->out.size() == 1);
+    adv_outedge *right_move = *(v->out.begin());
+    int right_item = right_move->item;
+
+    if (right_item == 14)
+    {
+	fprintf(stderr, "Next item is non-heur 14 for");
+	v->bc.print(stderr);
+	thread_attr temp_thread;
+	std::pair<bool, loadconf> lih_ret = large_item_heuristic(v->bc, &temp_thread);
+	fprintf(stderr, "LIH result [%d] ", lih_ret.first);
+	lih_ret.second.print(stderr);
+	fprintf(stderr, "\n");
+    }
+}
+
 int main(int argc, char **argv)
 {
 
@@ -368,6 +397,9 @@ int main(int argc, char **argv)
     {
 	cut_heuristics(canvas);
     }
+
+    // debug
+    dfs(canvas, next_item_fourteen_test, do_nothing);
 
     histogram(canvas);
     

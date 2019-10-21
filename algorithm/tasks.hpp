@@ -287,7 +287,7 @@ void rebuild_tmap()
     tmap.clear();
     for (int i = 0; i < tcount; i++)
     {
-	tmap.insert(std::make_pair(tarray[i].bc.confhash(), i));
+	tmap.insert(std::make_pair(tarray[i].bc.hash_with_last(), i));
     }
    
 }
@@ -297,9 +297,9 @@ int tstatus_id(const adversary_vertex *v)
 {
     if (v == NULL) { return -1; }
 
-    if (tmap.find(v->bc.confhash()) != tmap.end())
+    if (tmap.find(v->bc.hash_with_last()) != tmap.end())
     {
-	return tmap[v->bc.confhash()];
+	return tmap[v->bc.hash_with_last()];
     }
 	
     return -1;
@@ -417,7 +417,7 @@ void collect_tasks_adv(adversary_vertex *v, thread_attr *tat)
 	}
 
 	task newtask(v->bc);
-	tmap.insert(std::make_pair(newtask.bc.confhash(), tarray_temporary.size()));
+	tmap.insert(std::make_pair(newtask.bc.hash_with_last(), tarray_temporary.size()));
 	tarray_temporary.push_back(newtask);
 	tstatus_temporary.push_back(task_status::available);
 	tcount++;

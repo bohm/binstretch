@@ -108,8 +108,8 @@ const std::vector<bin_int> INITIAL_ITEMS = {};
 // const std::vector<bin_int> INITIAL_SEQUENCE = {};
 const std::vector<bin_int> INITIAL_SEQUENCE = II_S;
 
-// const int FIRST_PASS = 0; // enough to get a lb of 19/14 on 6,7 bins.
-const int FIRST_PASS = 1; // enough for 19/14 on 8 bins.
+const int FIRST_PASS = 0; // enough to get a lb of 19/14 on 6,7 bins.
+// const int FIRST_PASS = 1; // enough for 19/14 on 8 bins.
 // const int FIRST_PASS = 6; // enough for 86/63 on 3 bins.
 // const int FIRST_PASS = 8; // enough for 112/82 on 3 bins.
 // const int FIRST_PASS = 10;
@@ -207,6 +207,7 @@ bool generating_tasks;
 uint64_t *Zi; // Zobrist table for items
 uint64_t *Zl; // Zobrist table for loads
 uint64_t *Zlow; // Zobrist for the lowest sendable item (monotonicity)
+uint64_t *Zlast;
 uint64_t *Zalg;
 
 // thread rank idea:

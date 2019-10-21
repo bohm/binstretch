@@ -93,7 +93,7 @@ public:
     // Cloning subroutines.
     dag* subdag(adversary_vertex *newroot);
     dag* subtree(adversary_vertex *newroot);
-
+    
 private:
     void clone_subdag(dag *processing,
 		       adversary_vertex *vertex_to_process, adversary_vertex *original);

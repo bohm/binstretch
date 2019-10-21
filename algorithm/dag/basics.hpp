@@ -48,7 +48,7 @@ adversary_vertex* dag::add_adv_vertex(const binconf &b, std::string heurstring =
 	// Do not use adv_by_hash if duplicates are allowed.
 	if (!allow_duplicates)
 	{
-	    auto it = adv_by_hash.find(b.confhash());
+	    auto it = adv_by_hash.find(b.hash_with_last());
 	    if (it != adv_by_hash.end())
 	    {
 		fprintf(stderr, "Adversary vertex to be created: ");
@@ -57,7 +57,7 @@ adversary_vertex* dag::add_adv_vertex(const binconf &b, std::string heurstring =
 		it->second->print(stderr, true);
 		assert(it == adv_by_hash.end());
 	    }
-	    adv_by_hash[b.confhash()] = ptr;
+	    adv_by_hash[b.hash_with_last()] = ptr;
 	}
 
 	// ID should always be unique.
@@ -126,13 +126,18 @@ void dag::del_adv_vertex(adversary_vertex *gonner)
     assert(gonner != NULL);
 
     // Remove from adv_by_hash.
-    auto it = adv_by_hash.find(gonner->bc.confhash());
-    assert(it != adv_by_hash.end());
-    adv_by_hash.erase(gonner->bc.confhash());
-
-    // Remove from adv_by_id.
+    auto it = adv_by_hash.find(gonner->bc.hash_with_last());
     auto it2 = adv_by_id.find(gonner->id);
+
+    assert(it != adv_by_hash.end());
     assert(it2 != adv_by_id.end());
+
+    // Assert that the vertex you are removing from adv_by_hash is actually
+    // the very same one you are removing from adv_by_id.
+    assert(it->second->id == gonner->id);
+
+    adv_by_hash.erase(gonner->bc.hash_with_last());
+    // Remove from adv_by_id.
     adv_by_id.erase(gonner->id);
 
     delete gonner;
@@ -197,7 +202,7 @@ template <mm_state MODE> void dag::remove_inedge(alg_outedge *e)
 	// when updating the tree, if e->to is task, remove it from the queue
 	if (MODE == mm_state::updating && e->to->task && e->to->win == victory::uncertain)
 	{
-	    remove_task(e->to->bc.confhash());
+	    remove_task(e->to->bc.hash_with_last());
 	}
 	
 	del_adv_vertex(e->to);

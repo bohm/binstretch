@@ -67,6 +67,8 @@ void zobrist_init()
     Zl = new uint64_t[(BINS+1)*(R+1)];
     // Zalg generates "next item" hashes for the output graph.
     Zalg = new uint64_t[S+1];
+    // Zlast represents "last item" hashes for monotonicity purposes.
+    Zlast = new uint64_t[S+1];
     // Zlow represents "lowest item sendable" hashes for monotonicity caching.
     Zlow = new uint64_t[S+1];
 
@@ -90,6 +92,7 @@ void zobrist_init()
     {
 	Zalg[i] = rand_64bit();
 	Zlow[i] = rand_64bit();
+	Zlast[i] = rand_64bit();
     }
 }
 
@@ -123,6 +126,7 @@ void hashtable_cleanup()
     delete[] Zi;
     delete[] Zalg;
     delete[] Zlow;
+    delete[] Zlast;
 }
 
 void printBits32(unsigned int num)

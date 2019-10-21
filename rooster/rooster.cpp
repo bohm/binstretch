@@ -295,7 +295,7 @@ std::list<adversary_vertex*> cloneless_reduce_indegrees(rooster_dag *d)
 void merge_two(dag *d, adversary_vertex *remaining, adversary_vertex *removal)
 {
     // Basic sanity checks.
-    assert(remaining->bc.confhash() != removal->bc.confhash());
+    assert(remaining->bc.hash_with_last() != removal->bc.hash_with_last());
     assert(remaining->bc.loaditemhash() == removal->bc.loaditemhash());
 
     // Reroute edges correctly.

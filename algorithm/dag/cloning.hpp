@@ -128,7 +128,7 @@ void dag::clone_subdag(dag *processing, algorithm_vertex *vertex_to_process,
 	if (e->to->visited)
 	{
 	    // Vertex exists, just add edge and do not recurse.
-	    adversary_vertex *to = processing->adv_by_hash.at(e->to->bc.confhash());
+	    adversary_vertex *to = processing->adv_by_hash.at(e->to->bc.hash_with_last());
 	    processing->add_alg_outedge(vertex_to_process, to, e->target_bin);
 	} else
 	{

@@ -363,19 +363,29 @@ public:
 	    itemhash ^= Zi[dynitem*(MAX_ITEMS+1) + items[dynitem]];
 	}
     
-    // Returns (main cache) binconf hash, assuming hash is consistent,
-    // which it should be, if we are assigning properly.
-    // Parameter lowest -- lowest item that can be sent.
+    /*
     uint64_t confhash() const
 	{
 	    return (loadhash ^ itemhash ^ Zlow[lowest_sendable(last_item)]);
 	}
+    */
 
+    uint64_t hash_with_last() const
+	{
+	    return (loadhash ^ itemhash ^ Zlast[last_item]);
+	}
+    
     // A hash that ignores next item. This is used by some post-processing functions
     // but should be avoided in the main lower bound search.
     uint64_t loaditemhash() const
 	{
 	    return loadhash ^ itemhash;
+	}
+
+    // Returns (winning/losing state) hash.
+    uint64_t statehash() const
+	{
+	    return loaditemhash();
 	}
     
     // Returns a hash that also encodes the next upcoming item. This allows

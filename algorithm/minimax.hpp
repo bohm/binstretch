@@ -238,7 +238,7 @@ template<mm_state MODE> victory adversary(binconf *b, int depth, thread_attr *ta
     if (MODE == mm_state::exploring && !DISABLE_CACHE)
     {
 
-	auto [found, value] = stc->lookup(b->confhash(), tat);
+	auto [found, value] = stc->lookup(b->statehash(), tat);
 	
 	if (found)
 	{
@@ -494,9 +494,7 @@ template<mm_state MODE> victory algorithm(binconf *b, int k, int depth, thread_a
 	    // initialize the adversary's next vertex in the tree (corresponding to d)
 	    if (MODE == mm_state::generating)
 	    {
-		// Check vertex cache if this adversarial vertex is already present.
-		// std::map<llu, adversary_vertex*>::iterator it;
-		auto it = qdag->adv_by_hash.find(b->confhash());
+		auto it = qdag->adv_by_hash.find(b->hash_with_last());
 		if (it == qdag->adv_by_hash.end())
 		{
 		    upcoming_adv = qdag->add_adv_vertex(*b);
@@ -577,7 +575,7 @@ victory explore(binconf *b, thread_attr *tat)
     //tat->previous_pass = &first_pass;
     tat->eval_start = std::chrono::system_clock::now();
     tat->current_overdue = false;
-    tat->explore_roothash = b->confhash();
+    tat->explore_roothash = b->hash_with_last();
     tat->explore_root = &root_copy;
     victory ret = adversary<mm_state::exploring>(b, 0, tat, NULL, NULL);
     assert(ret != victory::uncertain);
