@@ -363,12 +363,12 @@ public:
 	    itemhash ^= Zi[dynitem*(MAX_ITEMS+1) + items[dynitem]];
 	}
     
-    /*
-    uint64_t confhash() const
+    
+    uint64_t hash_with_low() const
 	{
 	    return (loadhash ^ itemhash ^ Zlow[lowest_sendable(last_item)]);
 	}
-    */
+   
 
     uint64_t hash_with_last() const
 	{
@@ -385,7 +385,7 @@ public:
     // Returns (winning/losing state) hash.
     uint64_t statehash() const
 	{
-	    return loaditemhash();
+	    return hash_with_low();
 	}
     
     // Returns a hash that also encodes the next upcoming item. This allows
