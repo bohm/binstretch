@@ -47,34 +47,7 @@ victory check_messages(thread_attr *tat)
 }
 
 
-// Computes moves that adversary wishes to make. There may be a strategy
-// involved or we may be in a heuristic situation, where we know what to do.
 
-void compute_next_moves(const binconf *b, int maximum_feasible, int lower_bound, heuristic_strategy* strat,
-			int relative_depth, std::vector<int> &cands, thread_attr *tat)
-{
-    if(strat != NULL)
-    {
-	print_if<DEBUG>("Next move computed by active heuristic.\n");
-	cands.push_back(strat->next_item(b, relative_depth));
-    }
-    else
-    {
-	print_if<DEBUG>("Building next moves based on the default strategy.\n");
-
-	int stepcounter = 0;
-	for (int item_size = strategy_start(maximum_feasible, b->last_item);
-	     !strategy_end(maximum_feasible, lower_bound, stepcounter, item_size);
-	     strategy_step(maximum_feasible, lower_bound, stepcounter, item_size))
-	{
-	    if (!strategy_skip(maximum_feasible, lower_bound, stepcounter, item_size))
-	    {
-		cands.push_back(item_size);
-	    }
-	}
-    }
-}
-	
 /* return values: 0: player 1 cannot pack the sequence starting with binconf b
  * 1: player 1 can pack all possible sequences starting with b.
  * POSTPONED: a task has been generated for the parallel environment.
@@ -108,6 +81,29 @@ template<mm_state MODE> victory adversary(binconf *b, int depth, thread_attr *ta
     print_if<DEBUG>("Adversary evaluating the position with bin configuration: ");
     print_binconf<DEBUG>(b);
 
+    if (MODE == mm_state::generating && b->loads[1] == 9 && b->loads[2] == 7 && b->loads[3] == 5 &&
+	b->loads[4] == 4 && b->loads[5] == 2 && b->loads[6] == 1)
+    {
+	fprintf(stderr, "Generating/visiting troublesome vertex:");
+	thread_attr temp_thread;
+	std::pair<bool, loadconf> lih_ret = large_item_heuristic(*b, &temp_thread);
+	fprintf(stderr, "LIH result [%d] ", lih_ret.first);
+	lih_ret.second.print(stderr);
+	fprintf(stderr, "\n");
+
+	fprintf(stderr, "Vertex already visited: %d.\n", adv_to_evaluate->visited);
+	fprintf(stderr, "Heuristic regime: %d.\n", tat->heuristic_regime);
+	if (tat->current_strategy == nullptr)
+	{
+	    fprintf(stderr, "No current heuristic strategy.\n");
+	}
+	else
+	{
+	    fprintf(stderr, "Stored heuristic strategy: %s ", tat->current_strategy->print().c_str());
+	    
+	}
+    }
+
     if (MODE == mm_state::generating)
     {
 	if (adv_to_evaluate->visited)
@@ -134,6 +130,21 @@ template<mm_state MODE> victory adversary(binconf *b, int depth, thread_attr *ta
     if (ADVERSARY_HEURISTICS && !tat->heuristic_regime)
     {
 	victory vic = adversary_heuristics<MODE>(b, tat, adv_to_evaluate);
+
+	// debug, remove later
+	if (b->loads[1] == 9 && b->loads[2] == 7 && b->loads[3] == 5 &&
+	    b->loads[4] == 4 && b->loads[5] == 2 && b->loads[6] == 1)
+	{
+	    fprintf(stderr, "Troublesome vertex; adversary heuristics says");
+	    print(stderr, vic);
+	    thread_attr temp_thread;
+	    std::pair<bool, loadconf> lih_ret = large_item_heuristic(*b, &temp_thread);
+	    fprintf(stderr, "LIH result [%d] ", lih_ret.first);
+	    lih_ret.second.print(stderr);
+	    fprintf(stderr, "\n");
+	}
+	// end debug
+	
 	if (vic == victory::adv)
 	{
 	    print_if<DEBUG>("GEN: Adversary heuristic ");

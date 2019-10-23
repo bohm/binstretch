@@ -68,7 +68,10 @@ victory sequencing_adversary(binconf *b, unsigned int depth, thread_attr *tat,
 	if (vic == victory::adv)
 	{
 	    print_if<DEBUG>("Sequencing: Adversary heuristic ");
-	    print(stderr, adv_to_evaluate->heur_strategy->type);
+	    if(DEBUG)
+	    {
+		print(stderr, adv_to_evaluate->heur_strategy->type);
+	    }
 	    print_if<DEBUG>(" is successful.\n");
 
 	    if (!EXPAND_HEURISTICS)
@@ -76,6 +79,7 @@ victory sequencing_adversary(binconf *b, unsigned int depth, thread_attr *tat,
 		return victory::adv;
 	    } else {
 		tat->heuristic_regime = true;
+		tat->heuristic_starting_depth = depth;
 		tat->current_strategy = adv_to_evaluate->heur_strategy;
 		switch_to_heuristic = true;
 	    }
@@ -83,7 +87,7 @@ victory sequencing_adversary(binconf *b, unsigned int depth, thread_attr *tat,
 
     }
 
-    if (depth == seq.size())
+    if (!tat->heuristic_regime && depth == seq.size())
     {
 	add_sapling(adv_to_evaluate);
 	adv_to_evaluate->sapling = true;
@@ -91,10 +95,17 @@ victory sequencing_adversary(binconf *b, unsigned int depth, thread_attr *tat,
 	return victory::uncertain;
     }
 
-    // send items based on the array and depth
-    int item_size = seq[depth];
     victory below = victory::alg;
     victory r = victory::alg;
+    int item_size;
+    // send items based on the array and depth
+    if (tat->heuristic_regime)
+    {
+	item_size = tat->current_strategy->next_item(b, depth - tat->heuristic_starting_depth);
+    } else
+    {
+	item_size = seq[depth];
+    }
     print_if<DEBUG>("Trying player zero choices, with maxload starting at %d\n", maximum_feasible);
     print_if<DEBUG>("Sending item %d to algorithm.\n", item_size);
     // algorithm's vertex for the next step
@@ -206,7 +217,10 @@ victory sequencing_algorithm(binconf *b, int k, unsigned int depth, thread_attr 
 		print_if<DEBUG>("SEQ: Alg packs into bin %d, the new configuration is:", i);
 		print_binconf<DEBUG>(b);
 		print_if<DEBUG>("Resulting in: ");
-		print(stderr, below);
+		if (DEBUG)
+		{
+		    print(stderr, below);
+		}
 		print_if<DEBUG>(".\n");
 	    }
 	    

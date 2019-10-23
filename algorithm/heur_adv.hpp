@@ -8,12 +8,44 @@
 #include <iostream>
 
 #include "common.hpp"
+#include "binconf.hpp"
 #include "heur_classes.hpp"
+#include "strategy.hpp"
 #include "dynprog/algo.hpp"
 #include "dynprog/wrappers.hpp"
 
 // Adversarial heuristics: algorithms for recognition.
 
+
+
+// Computes moves that adversary wishes to make. There may be a strategy
+// involved or we may be in a heuristic situation, where we know what to do.
+
+void compute_next_moves(const binconf *b, int maximum_feasible, int lower_bound, heuristic_strategy* strat,
+			int relative_depth, std::vector<int> &cands, thread_attr *tat)
+{
+    if(strat != NULL)
+    {
+	print_if<DEBUG>("Next move computed by active heuristic.\n");
+	cands.push_back(strat->next_item(b, relative_depth));
+    }
+    else
+    {
+	print_if<DEBUG>("Building next moves based on the default strategy.\n");
+
+	int stepcounter = 0;
+	for (int item_size = strategy_start(maximum_feasible, b->last_item);
+	     !strategy_end(maximum_feasible, lower_bound, stepcounter, item_size);
+	     strategy_step(maximum_feasible, lower_bound, stepcounter, item_size))
+	{
+	    if (!strategy_skip(maximum_feasible, lower_bound, stepcounter, item_size))
+	    {
+		cands.push_back(item_size);
+	    }
+	}
+    }
+}
+	
 // Check if a loadconf a is compatible with the large item loadconf b. (Requirement: no two things from lb fit together.)
 bool compatible(const loadconf& a, const loadconf& lb)
 {
