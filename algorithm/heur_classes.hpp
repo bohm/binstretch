@@ -231,7 +231,7 @@ public:
 	    } else
 	    {
 		bool first = true;
-		while (multiplicity >= 0)
+		while (multiplicity > 0)
 		{
 		    if(first)
 		    {

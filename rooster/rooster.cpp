@@ -455,7 +455,13 @@ void cut_large_item(rooster_dag *rd, adversary_vertex *v, std::vector<deletable>
 	}
 	
 	auto [feasible, packing] = dynprog_feasible_with_output(with_large_items);
-	assert(feasible);
+
+	if(!feasible)
+	{
+	    fprintf(stderr, "The following heuristical vertex is infeasible: ");
+	    v->print(stderr, true);
+	    assert(feasible);
+	}
 	std::string optimum = packing.to_string();
 	rd->optimal_solution_map[v->id] = optimum;
 

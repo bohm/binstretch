@@ -17,7 +17,7 @@
 FILE* outf = NULL;
 dag *canvas = NULL;
 bool color = true;
-
+bool shortheur = false;
 
 void item_histogram(int reldepth, adv_list& curlist)
 {
@@ -26,7 +26,7 @@ void item_histogram(int reldepth, adv_list& curlist)
     for (adversary_vertex* v : curlist)
     {
 	// Ignore items on heuristic vertices.
-	if (v->heur_vertex)
+	if (shortheur && v->heur_vertex)
 	{
 	    continue;
 	}
@@ -36,7 +36,7 @@ void item_histogram(int reldepth, adv_list& curlist)
 	histogram[right_move->item]++;
     }
 
-    fprintf(stderr, "Layer %2d:", reldepth);
+    fprintf(stderr, "Item %2d:", (reldepth/2+1));
     for (int i = 1; i <= S; i++)
     {
 	if (histogram[i] != 0)
@@ -268,7 +268,7 @@ bool parameter_present(int argc, char **argv, const char* parameter)
 }
 
 // Given a position "pos", checks if the parameter "noheur" is present.
-bool parse_parameter_noheur(int argc, char **argv, int pos)
+bool parse_parameter_shortheur(int argc, char **argv, int pos)
 {
     if (strcmp(argv[pos], "--shortheur") == 0)
     {
@@ -351,7 +351,6 @@ int main(int argc, char **argv)
     
     std::string infile(argv[argc-2]);
     std::string outfile(argv[argc-1]);
-    bool noheur = false;
     bool cut = false;
     cut_at_depth = 0; // global variable, again for currying
  
@@ -365,9 +364,9 @@ int main(int argc, char **argv)
     // Parse all parameters except for the last two, which must be infile and outfile.
     for (int i = 0; i < argc-2; i++)
     {
-	if (parse_parameter_noheur(argc, argv, i))
+	if (parse_parameter_shortheur(argc, argv, i))
 	{
-	    noheur = true;
+	    shortheur = true;
 	} else if (parse_parameter_nocolor(argc, argv, i))
 	{
 	    color = false;
@@ -393,7 +392,7 @@ int main(int argc, char **argv)
     canvas = d->finalize();
 
     // Paint and cut vertices.
-    if (noheur)
+    if (shortheur)
     {
 	cut_heuristics(canvas);
     }

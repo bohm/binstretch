@@ -167,7 +167,8 @@ void overseer::start()
 	    if(monotonicity > monotonicity_last_round)
 	    {
 		print_if<COMM_DEBUG>("Overseer %d received increased monotonicity: %d.\n", world_rank, monotonicity);
-		stc->clear_cache_of_infeasible(worker_count);
+		// stc->clear_cache_of_infeasible(worker_count);
+		stc->clear_cache(worker_count);
 
 	    } else if (monotonicity < monotonicity_last_round)
 	    {

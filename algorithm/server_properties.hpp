@@ -52,7 +52,7 @@ std::tuple<unsigned int, unsigned int, unsigned int> server_properties(const cha
 	// has *many* more cores but they are occupied right now
 	// return std::make_tuple(31, 31, 63);
 	// return std::make_tuple(28, 28, 32);
-	return std::make_tuple(28, 28, 48);
+	return std::make_tuple(31, 31, 48);
 
     } else if (strcmp(server_name, "kamenozrout") == 0)
     {
