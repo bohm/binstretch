@@ -129,7 +129,7 @@ std::pair<int, int> fn_should_send(const binconf *current_conf)
     // Find first bin with load at least five.
     int above_five = first_with_load(c, 5);
     // If you can send BINS - above_five + 1 items of size 14, do so.
-    if (pack_query_compute(c, 14, BINS - above_five + 1))
+    if (pack_compute(c, 14, BINS - above_five + 1))
     {
 	return std::pair(14, BINS - above_five + 1);
     }
@@ -198,7 +198,11 @@ public:
 	    }
 	    fives = f;
 	}
-    
+
+// We ignore the unused variable _ warning because it is perfectly fine.
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-variable"
+
     int next_item(const binconf *current_conf)
 	{
 	    auto [item, _] = fn_should_send(current_conf);
@@ -210,6 +214,7 @@ public:
 	    
 	    return item;
 	}
+#pragma GCC diagnostic pop
 
     std::string print(const binconf *current_conf)
 	{

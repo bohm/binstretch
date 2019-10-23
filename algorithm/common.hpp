@@ -61,7 +61,7 @@ const bool ONEPASS = false;
 const bool TASKLOG = false;
 const long double TASKLOG_THRESHOLD = 60.0; // in seconds
 
-#define STRATEGY STRATEGY_BASIC // choices: STRATEGY_BASIC, STRATEGY_NINETEEN_FREQ, STRATEGY_BOUNDED
+#define STRATEGY STRATEGY_BASIC_LIMIT // choices: STRATEGY_BASIC, STRATEGY_NINETEEN_FREQ, STRATEGY_BOUNDED
 
 #define DYNPROG_MAX dynprog_max_direct // choices: dynprog_max_direct, dynprog_max_with_lih
 
@@ -108,7 +108,7 @@ const std::vector<bin_int> INITIAL_ITEMS = {};
 // const std::vector<bin_int> INITIAL_SEQUENCE = {};
 const std::vector<bin_int> INITIAL_SEQUENCE = II_S;
 
-const int FIRST_PASS = 0; // enough to get a lb of 19/14 on 6,7 bins.
+const int FIRST_PASS = 1; // enough to get a lb of 19/14 on 6,7 bins.
 // const int FIRST_PASS = 1; // enough for 19/14 on 8 bins.
 // const int FIRST_PASS = 6; // enough for 86/63 on 3 bins.
 // const int FIRST_PASS = 8; // enough for 112/82 on 3 bins.

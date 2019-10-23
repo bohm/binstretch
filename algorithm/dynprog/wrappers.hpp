@@ -59,7 +59,7 @@ std::pair <bool, bool> pack_and_query(binconf &h, const bin_int item, const bin_
     return retpair;
 }
 
-bool pack_query_compute(binconf &h, const bin_int item, const bin_int multiplicity = 1, thread_attr *tat = NULL)
+bool pack_query_compute(binconf &h, const bin_int item, const bin_int multiplicity = 1, thread_attr *tat = nullptr)
 {
     add_item_inplace(h,item, multiplicity);
     auto [located, feasible] = dpc->lookup(h);
@@ -75,7 +75,15 @@ bool pack_query_compute(binconf &h, const bin_int item, const bin_int multiplici
     return ret;
 }
 
+// Just pack and compute feasibility, do not use the cache.
+bool pack_compute(binconf &h, const bin_int item, const bin_int multiplicity = 1)
+{
+    add_item_inplace(h,item, multiplicity);
+    bool ret = compute_feasibility(h);
+    remove_item_inplace(h,item, multiplicity);
+    return ret;
 
+}
 
 void dp_cache_print(binconf &h, thread_attr *tat)
 {

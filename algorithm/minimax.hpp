@@ -250,9 +250,12 @@ template<mm_state MODE> victory adversary(binconf *b, int depth, thread_attr *ta
     if (tat->heuristic_regime)
     {
 	compute_next_moves_heur(candidate_moves, b, tat->current_strategy);
+    } else if (GENERATING)
+    {
+	maximum_feasible = compute_next_moves_genstrat(candidate_moves, b, depth, tat);
     } else
     {
-	maximum_feasible = compute_next_moves_strat(candidate_moves, b, depth, tat);
+	maximum_feasible = compute_next_moves_expstrat(candidate_moves, b, depth, tat);
     }
 
     // If we do "en passant" check for large item heuristic, we recurse back with true.

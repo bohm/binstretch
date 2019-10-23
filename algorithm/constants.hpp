@@ -108,7 +108,7 @@ const int PERMANENT = 1;
 const int QUEEN = 0;
 
 // bitsize of queen's dpcache
-const unsigned int QUEEN_DPLOG = 23;
+const unsigned int QUEEN_DPLOG = 26;
 
 // worker's get_task() constants
 const int NO_MORE_TASKS = -1;
@@ -119,7 +119,7 @@ const int TASK_RECEIVED = 1;
 #define STRATEGY_BASIC 0
 #define STRATEGY_NINETEEN_FREQ 1
 #define STRATEGY_BOUNDED 2
-
+#define STRATEGY_BASIC_LIMIT 3
 
 // Sanity check for definition of the variables that should be passed
 // by the build script.
