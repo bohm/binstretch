@@ -138,7 +138,7 @@ const bool PRINT_HEURISTICS_IN_FULL = true;
 
 // Heuristic constants:
 const bool ADVERSARY_HEURISTICS = true;
-const bool EXPAND_HEURISTICS = true;
+// const bool EXPAND_HEURISTICS = true; // We now always expand heuristics.
 const bool LARGE_ITEM_ACTIVE = true;
 const bool LARGE_ITEM_ACTIVE_EVERYWHERE = false;
 const bool FIVE_NINE_ACTIVE = true;
@@ -231,12 +231,31 @@ class heuristic_strategy
 {
 public:
     heuristic type;
+    int relative_depth = 0;
+
     virtual void init(const std::vector<int>& list) = 0;
-    virtual void fromString(const std::string & heurstring) = 0;
-    virtual int next_item(const binconf *b, int relative_depth) = 0;
-    virtual std::string print() = 0;
+    virtual void init_from_string(const std::string & heurstring) = 0;
+    virtual heuristic_strategy* clone() = 0;
+    virtual int next_item(const binconf *current_conf) = 0;
+    virtual std::string print(const binconf *b) = 0;
     virtual std::vector<int> contents() = 0;
     virtual ~heuristic_strategy() = 0;
+
+    void increase_depth()
+	{
+	    relative_depth++;
+	}
+
+    void decrease_depth()
+	{
+	    relative_depth--;
+	}
+
+    // Manually set depth; we use it for cloning purposes.
+    void set_depth(int depth)
+	{
+	    relative_depth = depth;
+	}
 
     // Recognizes a type of heuristic from the heurstring (e.g. when reading an already produced tree).
     // Currently very trivial rules, as we only have two kinds of heuristics.

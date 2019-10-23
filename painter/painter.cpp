@@ -75,7 +75,7 @@ std::string build_label(adversary_vertex *v)
     if (v->heur_vertex)
     {
 	ss << " h:";
-	ss << v->heur_strategy->print();
+	ss << v->heur_strategy->print(&(v->bc));
     }
     return ss.str();
 }

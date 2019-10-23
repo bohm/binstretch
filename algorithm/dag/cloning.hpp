@@ -67,7 +67,7 @@ void dag::clone_subtree(dag *processing, algorithm_vertex *vertex_to_process,
 	std::string heurstring;
 	if (e->to->heur_vertex)
 	{
-	    heurstring = e->to->heur_strategy->print();
+	    heurstring = e->to->heur_strategy->print(&(e->to->bc));
 	}
 	adversary_vertex *to = processing->add_adv_vertex(e->to->bc, heurstring, true);
 	processing->add_alg_outedge(vertex_to_process, to, e->target_bin);
@@ -137,7 +137,7 @@ void dag::clone_subdag(dag *processing, algorithm_vertex *vertex_to_process,
 	    std::string heurstring;
 	    if (e->to->heur_vertex)
 	    {
-		heurstring = e->to->heur_strategy->print();
+		heurstring = e->to->heur_strategy->print(&(e->to->bc));
 	    }
 	    adversary_vertex *to = processing->add_adv_vertex(e->to->bc, heurstring, false);
 	    processing->add_alg_outedge(vertex_to_process, to, e->target_bin);

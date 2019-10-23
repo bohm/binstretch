@@ -159,7 +159,7 @@ public:
     victory win = victory::uncertain;
 
     bool heur_vertex = false; // Whether the vertex is solvable with a heuristic strategy.
-    heuristic_strategy *heur_strategy = NULL;
+    heuristic_strategy *heur_strategy = nullptr;
 
     int expansion_depth = 0;
     bool task = false; // task is a separate boolean because an vert_state::expand vertex can be a task itself.
@@ -185,13 +185,13 @@ public:
 	    {
 		heur_strategy = new heuristic_strategy_list;
 		heur_strategy->type = heuristic::large_item;
-		heur_strategy->fromString(heurstring);
+		heur_strategy->init_from_string(heurstring);
 	    } else
 	    {
 		assert(type == heuristic::five_nine);
 		heur_strategy = new heuristic_strategy_fn;
 		heur_strategy->type = heuristic::five_nine;
-		heur_strategy->fromString(heurstring);
+		heur_strategy->init_from_string(heurstring);
 	    }
 	    // heurstring = heur;
 	}
@@ -200,6 +200,12 @@ public:
     ~adversary_vertex()
 	{
 	    delete heur_strategy;
+	}
+
+    void mark_as_heuristical(heuristic_strategy *h)
+	{
+	    heur_vertex = true;
+	    heur_strategy = h->clone();
 	}
     
     void print(FILE* stream, bool debug = false);

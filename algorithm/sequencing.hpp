@@ -63,7 +63,7 @@ victory sequencing_adversary(binconf *b, unsigned int depth, thread_attr *tat,
     if (ADVERSARY_HEURISTICS)
     {
 	// The procedure may generate the vertex in question.
-	auto vic = adversary_heuristics<mm_state::generating>(b, tat, adv_to_evaluate);
+	auto [vic, strategy] = adversary_heuristics<mm_state::generating>(b, tat, adv_to_evaluate);
 
 	if (vic == victory::adv)
 	{
@@ -74,18 +74,22 @@ victory sequencing_adversary(binconf *b, unsigned int depth, thread_attr *tat,
 	    }
 	    print_if<DEBUG>(" is successful.\n");
 
-	    if (!EXPAND_HEURISTICS)
-	    {
-		return victory::adv;
-	    } else {
-		tat->heuristic_regime = true;
-		tat->heuristic_starting_depth = depth;
-		tat->current_strategy = adv_to_evaluate->heur_strategy;
-		switch_to_heuristic = true;
-	    }
+	    tat->heuristic_regime = true;
+	    tat->heuristic_starting_depth = depth;
+	    tat->current_strategy = strategy;
+	    switch_to_heuristic = true;
 	}
 
     }
+
+    if (tat->heuristic_regime)
+    {
+	adv_to_evaluate->mark_as_heuristical(tat->current_strategy);
+	// We can already mark the vertex as "won", but the question is
+	// whether not to do it later.
+	adv_to_evaluate->win = victory::adv;
+    }
+
 
     if (!tat->heuristic_regime && depth == seq.size())
     {
@@ -101,7 +105,7 @@ victory sequencing_adversary(binconf *b, unsigned int depth, thread_attr *tat,
     // send items based on the array and depth
     if (tat->heuristic_regime)
     {
-	item_size = tat->current_strategy->next_item(b, depth - tat->heuristic_starting_depth);
+	item_size = tat->current_strategy->next_item(b);
     } else
     {
 	item_size = seq[depth];
@@ -128,14 +132,27 @@ victory sequencing_adversary(binconf *b, unsigned int depth, thread_attr *tat,
 
     if (!already_generated)
     {
+	// descend
+	if (tat->current_strategy != nullptr)
+	{
+	    tat->current_strategy->increase_depth();
+	}
+
 	below = sequencing_algorithm(b, item_size, depth+1, tat, upcoming_alg, adv_to_evaluate, seq);
+
+	// ascend
+	if (tat->current_strategy != nullptr)
+	{
+	    tat->current_strategy->decrease_depth();
+	}
+
     }
 
     // If we were in heuristics mode, switch back to normal.
     if (switch_to_heuristic)
     {
 	tat->heuristic_regime = false;
-	tat->current_strategy = NULL;
+	tat->current_strategy = nullptr;
     }
 
 

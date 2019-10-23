@@ -18,34 +18,7 @@
 
 
 
-// Computes moves that adversary wishes to make. There may be a strategy
-// involved or we may be in a heuristic situation, where we know what to do.
 
-void compute_next_moves(const binconf *b, int maximum_feasible, int lower_bound, heuristic_strategy* strat,
-			int relative_depth, std::vector<int> &cands, thread_attr *tat)
-{
-    if(strat != NULL)
-    {
-	print_if<DEBUG>("Next move computed by active heuristic.\n");
-	cands.push_back(strat->next_item(b, relative_depth));
-    }
-    else
-    {
-	print_if<DEBUG>("Building next moves based on the default strategy.\n");
-
-	int stepcounter = 0;
-	for (int item_size = strategy_start(maximum_feasible, b->last_item);
-	     !strategy_end(maximum_feasible, lower_bound, stepcounter, item_size);
-	     strategy_step(maximum_feasible, lower_bound, stepcounter, item_size))
-	{
-	    if (!strategy_skip(maximum_feasible, lower_bound, stepcounter, item_size))
-	    {
-		cands.push_back(item_size);
-	    }
-	}
-    }
-}
-	
 // Check if a loadconf a is compatible with the large item loadconf b. (Requirement: no two things from lb fit together.)
 bool compatible(const loadconf& a, const loadconf& lb)
 {
@@ -262,10 +235,10 @@ std::pair<bool, bin_int> five_nine_heuristic(binconf *b, thread_attr *tat)
     return std::pair(false, -1);
 }
 
-template<mm_state MODE> victory adversary_heuristics(binconf *b, thread_attr *tat, adversary_vertex *adv_to_evaluate)
+template<mm_state MODE> std::pair<victory, heuristic_strategy*> adversary_heuristics(binconf *b, thread_attr *tat, adversary_vertex *adv_to_evaluate)
 {
     //A much weaker variant of large item heuristic, but takes O(1) time.
-    heuristic_strategy *str = NULL;
+    heuristic_strategy *str = nullptr;
     if (b->totalload() <= S && b->loads[2] >= R-S)
     {
 	if(MODE == mm_state::generating)
@@ -279,12 +252,8 @@ template<mm_state MODE> victory adversary_heuristics(binconf *b, thread_attr *ta
 	    }
 	    str->init(itemlist);
 	    str->type = heuristic::large_item;
-
-	    adv_to_evaluate->win = victory::adv;
-	    adv_to_evaluate->heur_vertex = true;
-	    adv_to_evaluate->heur_strategy = str;
 	}
-	return victory::adv;
+	return std::pair(victory::adv, str);
     }
 
     if (LARGE_ITEM_ACTIVE && (MODE == mm_state::generating || LARGE_ITEM_ACTIVE_EVERYWHERE))
@@ -315,11 +284,8 @@ template<mm_state MODE> victory adversary_heuristics(binconf *b, thread_attr *ta
 		str->init(itemlist);
 		str->type = heuristic::large_item;
 
-		adv_to_evaluate->win = victory::adv;
-		adv_to_evaluate->heur_vertex = true;
-		adv_to_evaluate->heur_strategy = str;
 	    }
-	    return victory::adv;
+	    return std::pair(victory::adv, str);
 	}
     }
 
@@ -341,16 +307,12 @@ template<mm_state MODE> victory adversary_heuristics(binconf *b, thread_attr *ta
 		str = new heuristic_strategy_fn;
 		str->init(fvs);
 		str->type = heuristic::five_nine;
-	
-		adv_to_evaluate->win = victory::adv;
-		adv_to_evaluate->heur_vertex = true;
-		adv_to_evaluate->heur_strategy = str;
 	    }
-	    return victory::adv;
+	    return std::pair(victory::adv, str);
 	}
     }
 
-    return victory::uncertain;
+    return std::pair(victory::uncertain, nullptr);
 }
 
 

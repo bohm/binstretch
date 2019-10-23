@@ -54,7 +54,7 @@ void adversary_vertex::print(FILE *stream, bool debug)
     } else if (heur_vertex)
     {
 	assert(heur_strategy != NULL);
-	fprintf(stream, ",heur=\"%s\"", heur_strategy->print().c_str() );
+	fprintf(stream, ",heur=\"%s\"", heur_strategy->print(&bc).c_str() );
     }
 
     fprintf(stream, "];\n");
