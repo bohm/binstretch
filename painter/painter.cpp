@@ -232,7 +232,7 @@ void cut_heuristics(dag *d)
 
 void usage()
 {
-    fprintf(stderr, "Usage: ./painter [--nocolor] [--shortheur] [-d NUM] infile.dag outfile.dot\n");
+    fprintf(stderr, "Usage: ./painter [--nocolor] [--shortheur] [-d NUM] [-r ROOT_ID] infile.dag outfile.dot\n");
 }
 
 int cut_at_depth;
@@ -293,9 +293,9 @@ std::pair<bool,int> parse_parameter_cutdepth(int argc, char **argv, int pos)
 
     if (strcmp(argv[pos], "-d") == 0)
     {
-	if (pos == argc-1)
+	if (pos == argc-3)
 	{
-	    fprintf(stderr, "-d cannot be the last parameter given.\n");
+	    fprintf(stderr, "Error: parameter -d must be followed by a number.\n");
 	    usage();
 	    exit(-1);
 	}
@@ -313,6 +313,31 @@ std::pair<bool,int> parse_parameter_cutdepth(int argc, char **argv, int pos)
     return std::make_pair(false, 0);
 }
 
+std::pair<bool, int> parse_parameter_root(int argc, char **argv, int pos)
+{
+    int root_id = -1;
+    if (strcmp(argv[pos], "-r") == 0)
+    {
+	if (pos == argc-3)
+	{
+	    fprintf(stderr, "Error: parameter -r must be followed by a number.\n");
+	    usage();
+	    exit(-1);
+	}
+	    
+	sscanf(argv[pos+1], "%d", &root_id);
+	
+	if (root_id < 0)
+	{
+	    fprintf(stderr, "The id of the root vertex could not be parsed.\n");
+	    usage();
+	    exit(-1);
+	}
+	return std::pair(true, root_id);
+    }
+    
+    return std::pair(false, -1);
+}
 
 // some debugging
 
@@ -352,6 +377,10 @@ int main(int argc, char **argv)
     std::string infile(argv[argc-2]);
     std::string outfile(argv[argc-1]);
     bool cut = false;
+
+    bool specific_root = false;
+    int root_id = -1;
+    
     cut_at_depth = 0; // global variable, again for currying
  
     if (infile == outfile)
@@ -367,9 +396,11 @@ int main(int argc, char **argv)
 	if (parse_parameter_shortheur(argc, argv, i))
 	{
 	    shortheur = true;
+	    continue;
 	} else if (parse_parameter_nocolor(argc, argv, i))
 	{
 	    color = false;
+	    continue;
 	}
 
 	auto [parsed_cut, parsed_depth] = parse_parameter_cutdepth(argc, argv, i);
@@ -378,6 +409,14 @@ int main(int argc, char **argv)
 	{
 	    cut = true;
 	    cut_at_depth = parsed_depth;
+	}
+
+	auto [parsed_root, parsed_rootid] = parse_parameter_root(argc, argv, i);
+
+	if (parsed_root)
+	{
+	    specific_root = true;
+	    root_id = parsed_rootid;
 	}
     }
 
@@ -391,6 +430,44 @@ int main(int argc, char **argv)
     // assign the dag into the global pointer
     canvas = d->finalize();
 
+    // If a specific root is selected, we create a subgraph rooted at this vertex
+    // and only then apply histogram et al.
+
+    // This is quite inefficient, because we need linear time to find the old id
+    // and then linear time to build the subgraph.
+
+    if (specific_root)
+    {
+	adversary_vertex *newroot = nullptr;
+	dag *subcanvas = nullptr;
+	bool found = false;
+	for (const auto& [id, vert] : canvas->adv_by_id)
+	{
+	    if (vert->old_name == root_id)
+	    {
+		found = true;
+		fprintf(stderr, "Printing subgraph rooted at the vertex:\n");
+		vert->print(stderr, true);
+		newroot = vert;
+		subcanvas = canvas->subdag(newroot);
+		break;
+	    } 
+	}
+
+	if (!found)
+	{
+	    fprintf(stderr, "Adversarial vertex with id %d not found.\n", root_id);
+	    return -1;
+	}
+
+	// TODO: Fully delete canvas first.
+	if (subcanvas != nullptr)
+	{
+	    delete canvas;
+	    canvas = subcanvas;
+	}
+    }
+    
     // Paint and cut vertices.
     if (shortheur)
     {
@@ -398,7 +475,7 @@ int main(int argc, char **argv)
     }
 
     // debug
-    dfs(canvas, next_item_fourteen_test, do_nothing);
+    // dfs(canvas, next_item_fourteen_test, do_nothing);
 
     histogram(canvas);
     
