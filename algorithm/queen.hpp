@@ -18,6 +18,7 @@ class queen_class
 {
 public:
     char treetop_file[256];
+    bool load_treetop = false;
     queen_class(int argc, char **argv);
     void updater(adversary_vertex *sapling);
     int start();

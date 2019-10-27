@@ -27,12 +27,6 @@ const bool PROGRESS = true; // Whether to print progress info to stderr.
 const bool MEASURE = true; // Whether to collect and print measurements to stderr.
 
 const bool OUTPUT = true; // Whether to produce output.
-
-// const output_type OUTPUT_TYPE = output_type::dag; // No longer used; we always print a DAG.
-
-// Whether to load the initial tree from a file or try a full search from scratch.
-const bool LOAD_TREETOP = false;
-
 const bool REGROW = true; // Whether to regrow or just terminate after first iteration.
 
 // When producing output, how many times should a tree be regrown.

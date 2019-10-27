@@ -58,6 +58,43 @@ void histogram(dag *d)
     layer_traversal(d, item_histogram, do_nothing);
 }
 
+const int MONOTONICITY_LIMIT = 0;
+bool skip_found = false;
+// Check if any of the vertices below are monotonicity skips from the one we are currently in.
+void monotonicity_skips(adversary_vertex *v)
+{
+    for (adv_outedge* e : v->out)
+    {
+	int first_item = e->item;
+	for (alg_outedge* f : e->to->out)
+	{
+	    // We do not mark anything, but iterate again
+	    for (adv_outedge* g : f->to->out)
+	    {
+		int second_item = g->item;
+		if (second_item < first_item - MONOTONICITY_LIMIT)
+		{
+		    skip_found = true;
+		    fprintf(stderr, "Monotonicity skip detected, parent sending item %d\n:",
+			    first_item);
+		    v->print(stderr, true);
+		    fprintf(stderr, "Direct descendant sending item %d:\n", second_item);
+		    g->from->print(stderr, true);
+		}
+	    }
+	}
+    }
+}
+
+void monotonicity_skips(dag *d)
+{
+    dfs(d, monotonicity_skips, do_nothing);
+    if (!skip_found)
+    {
+	fprintf(stderr, "Entire lower bound is within monotonicity %d.\n", MONOTONICITY_LIMIT);
+    }
+}
+
 std::string build_label(adversary_vertex *v)
 {
     std::stringstream ss;
@@ -478,6 +515,7 @@ int main(int argc, char **argv)
     // dfs(canvas, next_item_fourteen_test, do_nothing);
 
     histogram(canvas);
+    monotonicity_skips(canvas);
     
     if (cut)
     {

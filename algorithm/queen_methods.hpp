@@ -24,9 +24,10 @@ Message sequence:
 // Parse input parameters to the program (overseers ignore them).
 queen_class::queen_class(int argc, char** argv)
 {
-    if (LOAD_TREETOP)
+    if (argc > 1)
     {
         assert(argc == 2);
+	load_treetop = true;
 	assert(strlen(argv[1]) <= 255);
 	strcpy(treetop_file, argv[1]);
     }
@@ -134,7 +135,7 @@ int queen_class::start()
 
     sync_up(); // Sync before any rounds start.
 
-    if (LOAD_TREETOP)
+    if (load_treetop)
     {
 	partial_dag *d = loadfile(treetop_file);
 	d->populate_edgesets();
