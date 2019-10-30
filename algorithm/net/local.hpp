@@ -1,8 +1,10 @@
 #ifndef NET_LOCAL_HPP
 #define NET_LOCAL_HPP
 
-// Networking methods that utilize std::thread -- best work only on
-// a single machine.
+// In the "local" networking mode, there is only one overseer (the local one)
+// and it communicates with the queen via std::thread.
+
+// We store all of the locks needed for communication in the communicator class.
 
 #include <cstdio>
 #include <cstdlib>
@@ -50,18 +52,47 @@ const int ROOT_UNSOLVED_SIGNAL = -3;
 
 class communicator
 {
+private:
+    int waiting_to_sync;
+    std::mutex sync_mutex;
+    std::condition_variable cv;
 public:
     void init();
     void finalize();
     void sync_up();
+
+    int  blocking_receive_int(std::mutex& mut, std::condition_variable& cv);
+    void blocking_send_int(int message, std::mutex& mut, std::condition_variable& cv);
+
+    bool blocking_receive_bool(std::mutex& mut, std::condition_variable& cv);
+    void blocking_send_bool(bool message, std::mutex& mut, std::condition_variable& cv);
+   
     std::string overseer_name();
     void broadcast_zobrist();
+    
 };
 
-// just an alias for MPI_Barrier
+// Wait until all threads (in our case, 2) are at the same stage.
 void communicator::sync_up()
 {
-    MPI_Barrier(MPI_COMM_WORLD);
+    bool someone_waiting = false;
+    std::unique_lock<std::mutex> lk(sync_mutex);
+    waiting_to_sync++;
+    if (waiting_to_sync == 2)
+    {
+	someone_waiting = true;
+	waiting_to_sync = 0;
+    }
+    if (someone_waiting)
+    {
+	lk.unlock();
+	cv.notify_all();
+    }
+    else
+    {
+	cv.wait(sync_mutex);
+	lk.unlock();
+    }
 }
 
 void communicator::init()
@@ -80,33 +111,13 @@ void communicator::finalize()
 
 std::string communicator::overseer_name()
 {
-    int name_len = 0;
-    char processor_name[MPI_MAX_PROCESSOR_NAME];
-    MPI_Get_processor_name(processor_name, &name_len);
-    return std::string(processor_name);
+    return std::string("local");
 }
 
-void broadcast_zobrist()
+// The zobrist values are globally shared in the local mode and since they
+// are never edited after initialization, they can be shared freely.
+void communicator::broadcast_zobrist()
 {
-    if (BEING_QUEEN)
-    {
-	assert(Zi != NULL && Zl != NULL && Zlow != NULL);
-    } else
-    {
-	assert(Zi == NULL && Zl == NULL && Zlow == NULL);
-	Zi = new uint64_t[(S+1)*(MAX_ITEMS+1)];
-	Zl = new uint64_t[(BINS+1)*(R+1)];
-	Zlow = new uint64_t[S+1];
-	Zlast = new uint64_t[S+1];
-    }
-
-    // bcast blocks, no need to synchronize
-    MPI_Bcast(Zi, (MAX_ITEMS+1)*(S+1), MPI_UNSIGNED_LONG, QUEEN, MPI_COMM_WORLD);
-    MPI_Bcast(Zl, (BINS+1)*(R+1), MPI_UNSIGNED_LONG, QUEEN, MPI_COMM_WORLD);
-    MPI_Bcast(Zlow, S+1, MPI_UNSIGNED_LONG, QUEEN, MPI_COMM_WORLD);
-    MPI_Bcast(Zlast, S+1, MPI_UNSIGNED_LONG, QUEEN, MPI_COMM_WORLD);
-
-    // fprintf(stderr, "Process %d Zi[1]: %" PRIu64 "\n", world_rank, Zi[1]);
 }
 
 /* Communication states:
@@ -119,7 +130,7 @@ void broadcast_zobrist()
 */
 
 // function that waits for round start (called by overseers)
-bool round_start_and_finality()
+bool communicator::round_start_and_finality()
 {
     int final_flag_int;
     MPI_Bcast(&final_flag_int, 1, MPI_INT, QUEEN, MPI_COMM_WORLD);
@@ -127,15 +138,15 @@ bool round_start_and_finality()
 }
 
 // function that starts the round (called by queen, finality set to true when round is final)
-void round_start_and_finality(bool finality)
+void communicator::round_start_and_finality(bool finality)
 {
     int final_flag_int = finality;
     MPI_Bcast(&final_flag_int, 1, MPI_INT, QUEEN, MPI_COMM_WORLD);
 }
 
-void round_end()
+void communicator::round_end()
 {
-    MPI_Barrier(MPI_COMM_WORLD);
+    sync_up();
 }
 
 void transmit_measurements(measure_attr& meas)
@@ -156,22 +167,6 @@ void receive_measurements()
 }
 
 
-/* MPI_Request irrel_req;
-void send_terminations()
-{
-    for (int i = 1; i < world_size; i++)
-    {
-	MPI_Isend(&TERMINATION_SIGNAL, 1, MPI_INT, i, net::TERMINATE, MPI_COMM_WORLD, &irrel_req);
-    }
-
-        for (int i = 1; i < world_size; i++)
-    {
-	MPI_Isend(&TERMINATION_SIGNAL, 1, MPI_INT, i, CHANGE_MONOTONICITY, MPI_COMM_WORLD, &irrel_req);
-    }
-
-}
-*/
-
 void send_root_solved()
 {
     for (int i = 1; i < world_size; i++)
@@ -180,15 +175,6 @@ void send_root_solved()
 	MPI_Send(&ROOT_SOLVED_SIGNAL, 1, MPI_INT, i, net::ROOT_SOLVED, MPI_COMM_WORLD);
     }
 }
-
-void send_root_unsolved()
-{
-    for (int i = 1; i < world_size; i++)
-    {
-	MPI_Send(&ROOT_UNSOLVED_SIGNAL, 1, MPI_INT, i, net::ROOT_SOLVED, MPI_COMM_WORLD);
-    }
-}
-
 
 int* workers_per_overseer; // number of worker threads for each worker
 int* overseer_map = NULL; // a quick map from workers to overseer
@@ -239,54 +225,6 @@ void compute_thread_ranks()
 
     }
 }
-
-/*
-// queen transmits an irrelevant task to the right worker
-void transmit_irrelevant_task(int taskno)
-{
-    // MPI_Request blankreq;
-    int target_overseer = overseer_map[taskno/chunk];
-    // print_if<DEBUG>("Transmitting task %d as irrelevant.\n", taskno);
-    MPI_Send(&taskno, 1, MPI_INT, target_overseer, net::SENDING_IRRELEVANT, MPI_COMM_WORLD);
-}
-
-void transmit_all_irrelevant()
-{
-    int p = irrel_taskq.pop_if_able();
-    while (p != -1)
-    {
-	transmit_irrelevant_task(p);
-	irrel_transmitted_count++;
-	p = irrel_taskq.pop_if_able();
-    }
-}
-
-void fetch_irrelevant_tasks(const int& overseer_lb, const int& overseer_ub)
-{
-    MPI_Status stat;
-    int irrel_task_incoming = 0;
-    int ir_task = 0;
-
-    MPI_Iprobe(QUEEN, net::SENDING_IRRELEVANT, MPI_COMM_WORLD, &irrel_task_incoming, &stat);
-
-    while (irrel_task_incoming)
-    {
-	irrel_task_incoming = 0;
-	MPI_Recv(&ir_task, 1, MPI_INT, QUEEN, net::SENDING_IRRELEVANT, MPI_COMM_WORLD, &stat);
-	if (!(ir_task >= overseer_lb && ir_task < overseer_ub))
-	{
-	    print_if<true>("Overseer %d fetched task %d which is out of bounds [%d,%d).\n",
-			world_rank, ir_task, overseer_lb, overseer_ub);
-	    print_if<true>("Chunk size: %d.\n", chunk);
-	    assert(ir_task >= overseer_lb && ir_task < overseer_ub);
-	}
-	// mark task as irrelevant
-	tstatus[ir_task].store(TASK_PRUNED);
-        print_if<DEBUG>("Worker %d: marking %d as irrelevant.\n", world_rank, ir_task);
-	MPI_Iprobe(QUEEN, net::SENDING_IRRELEVANT, MPI_COMM_WORLD, &irrel_task_incoming, &stat);
-    }
-}
-*/
 
 // Workers fetch and ignore additional signals about root solved (since it may arrive in two places).
 void ignore_additional_signals()
@@ -365,18 +303,6 @@ void check_root_solved()
 	{
 	    root_solved.store(true);
 	}
-    }
-}
-
-void blocking_check_root_solved()
-{
-    MPI_Status stat;
-    int r_s = -1;
-    MPI_Recv(&r_s, 1, MPI_INT, QUEEN, net::ROOT_SOLVED, MPI_COMM_WORLD, &stat);
-    // set global root solved flag
-    if (r_s == ROOT_SOLVED_SIGNAL)
-    {
-	root_solved.store(true);
     }
 }
 

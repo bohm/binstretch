@@ -126,7 +126,7 @@ void round_start_and_finality(bool finality)
 
 void round_end()
 {
-    MPI_Barrier(MPI_COMM_WORLD);
+    sync_up();
 }
 
 void transmit_measurements(measure_attr& meas)

@@ -1,5 +1,5 @@
-#ifndef _OVERSEER_METHODS_HPP
-#define _OVERSEER_METHODS_HPP 1
+#ifndef OVERSEER_METHODS_HPP
+#define OVERSEER_METHODS_HPP 
 
 #include "worker.hpp"
 #include "overseer.hpp"
@@ -7,7 +7,6 @@
 // Normally, this would be overseer.cpp, but with the One Definition Rule, it
 // would be a mess to rewrite everything to make sure globals are not defined
 // in multiple places.
-
 
 void overseer::cleanup()
     {
@@ -294,4 +293,4 @@ void overseer::start()
 	}
     }
 }
-#endif
+#endif // OVERSEER_METHODS
