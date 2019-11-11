@@ -117,7 +117,7 @@ template<mm_state MODE> victory adversary(binconf *b, int depth, thread_attr *ta
 	if (vic == victory::adv)
 	{
 	    print_if<DEBUG>("GEN: Adversary heuristic ");
-	    print_if<DEBUG>("%d", static_cast<int>(adv_to_evaluate->heur_strategy->type));
+	    print_if<DEBUG>("%d", static_cast<int>(strategy->type));
 	    print_if<DEBUG>(" is successful.\n");
 
 	    if (EXPLORING)

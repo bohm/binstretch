@@ -30,7 +30,7 @@ OPTFLAG="-O3"
 shift 3
 while (( "$#" )); do
     case "$1" in
-	"{*")
+	\{*)
 	    I_S=$1
 	    shift
 	    ;;
