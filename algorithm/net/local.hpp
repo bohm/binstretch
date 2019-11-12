@@ -19,54 +19,128 @@
 #include "../hash.hpp"
 #include "../tasks.hpp"
 
-namespace net
-{
-    // Communication constants. We keep them as const int (as opposed to enum class) to avoid static cast everywhere.
-    const int REQUEST = 1;
-    const int SENDING_TASK = 2;
-    const int SENDING_IRRELEVANT = 3;
-    const int TERMINATE = 4;
-    const int SOLUTION = 5;
-    const int STARTING_SIGNAL = 6;
-    const int ZOBRIST_ITEMS = 8;
-    const int ZOBRIST_LOADS = 9;
-    const int MEASUREMENTS = 10;
-    const int ROOT_SOLVED = 11;
-    const int THREAD_COUNT = 12;
-    const int THREAD_RANK = 13;
-    const int SENDING_BATCH = 14;
-    const int RUNNING_LOW = 15;
-}
-
 // ----
 const int SYNCHRO_SLEEP = 20;
 
+// A blocking message pass between two threads.
+template<class DATA> class message
+{
+    std::mutex transfer_mutex;
+    std::condition_variable cv;
+    bool filled = false;
+    DATA d;
 
-// Starting signal: either "change monotonicity" or "terminate".
-const int TERMINATION_SIGNAL = -1;
+    void send(const DATA& msg)
+	{
+	    // In the case we are trying to fill and it is already filled,
+	    // we block until it is empty
+	    std::unique_lock<std::mutex> lk(transfer_mutex);
+	    if (filled)
+	    {
+		cv.wait(transfer_mutex);
+	    }
 
-// Ending signal: always "root solved", does not terminate.
-// The only case we send "root unsolved" is after generation, if there are tasks to be sent out.
-const int ROOT_SOLVED_SIGNAL = -2;
-const int ROOT_UNSOLVED_SIGNAL = -3;
+	    d = msg;
+	    filled = true;
+	    lk.unlock();
+	    cv.notify_all();
+	}
+    
+    DATA receive()
+	{
+	    std::unique_lock<std::mutex> lk(transfer_mutex);
+	    if (!filled)
+	    {
+		cv.wait(transfer_mutex);
+	    }
+	    
+	    DATA msg(d);
+	    filled = false;
+	    // send() might be waiting for us to retrieve the data, so we
+	    // notify it if it is waiting.
+	    lk.unlock();
+	    cv.notify_all();
+	    return msg;
+	}
+};
+
+// Message queue allows for non-blocking (but locking) message passing and checking
+template <class DATA> class message_queue
+{
+private:
+    std::mutex access_mutex;
+    std::queue<DATA> msgs;
+
+    std::pair<bool, DATA> try_pop()
+	{
+	    DATA head; // start with an empty data field.
+	    std::unique_lock<std::mutex> lk(access_mutex);
+	    if (msgs.empty())
+	    {
+		return std::pair(false, head); 
+	    } else {
+		head = msgs.front();
+		msgs.pop();
+		return std::pair(true, head);
+	    }
+	} // Unlock by destruction of lk.
+    
+    void push(const DATA& element)
+	{
+	    std::unique_lock<std::mutex> lk(access_mutex);
+	    msgs.push(element);
+	} // Unlock by destruction.
+
+    // For clearing the queue after the round ends.
+    void clear()
+	{
+	    std::unique_lock<std::mutex> lk(access_mutex);
+	    msgs.clear();
+	}
+};
 
 class communicator
 {
 private:
+
+
+    // barrier variables
     int waiting_to_sync;
     std::mutex sync_mutex;
     std::condition_variable cv;
+
+    // Basic blocking messages.
+    message<bool> round_start;
+    message<int> monotonicity_msg;
+    message<int> number_of_threads;
+    message<measure_attr> measurements_msg;
+
+    // Three messages about thread ranks.
+    // In the local setting, the ranks are always [0,overseer_threads],
+    // but we replicate the parallel setting.
+    message<int> overseer_threads;
+    message<int> thread_rank;
+    message<int> total_thread_count;
+    
+    // Broadcasting initial task information.
+    message<std::vector<task> > tarray_msg;
+    message<std::vector<task_status> > tstatus_msg;
+
+    // Message queue for completed tasks.
+    message_queue<std::pair<int,int> > sol_msgs;
+
+    // Running low -- a non-blocking signal (from the single overseer to the queen).
+    std::atomic<bool> running_low;
+    
+    // Root solved -- a non-blocking signal.
+    std::atomic<bool> root_solved_signal;
+    
+   
 public:
     void init();
     void finalize();
     void sync_up();
 
-    int  blocking_receive_int(std::mutex& mut, std::condition_variable& cv);
-    void blocking_send_int(int message, std::mutex& mut, std::condition_variable& cv);
-
-    bool blocking_receive_bool(std::mutex& mut, std::condition_variable& cv);
-    void blocking_send_bool(bool message, std::mutex& mut, std::condition_variable& cv);
-   
     std::string overseer_name();
     void broadcast_zobrist();
     
@@ -132,16 +206,13 @@ void communicator::broadcast_zobrist()
 // function that waits for round start (called by overseers)
 bool communicator::round_start_and_finality()
 {
-    int final_flag_int;
-    MPI_Bcast(&final_flag_int, 1, MPI_INT, QUEEN, MPI_COMM_WORLD);
-    return (bool) final_flag_int;
+    return round_start.receive();
 }
 
 // function that starts the round (called by queen, finality set to true when round is final)
 void communicator::round_start_and_finality(bool finality)
 {
-    int final_flag_int = finality;
-    MPI_Bcast(&final_flag_int, 1, MPI_INT, QUEEN, MPI_COMM_WORLD);
+    round_start.send(finality);
 }
 
 void communicator::round_end()
@@ -151,29 +222,21 @@ void communicator::round_end()
 
 void transmit_measurements(measure_attr& meas)
 {
-    MPI_Send(meas.serialize(),sizeof(measure_attr), MPI_CHAR, QUEEN, net::MEASUREMENTS, MPI_COMM_WORLD);
+    measurements_msg.send(meas);
 }
 
 void receive_measurements()
 {
-    MPI_Status stat;
-    measure_attr recv;
-    
-    for(int sender = 1; sender < world_size; sender++)
-    {
-	MPI_Recv(&recv, sizeof(measure_attr), MPI_CHAR, sender, net::MEASUREMENTS, MPI_COMM_WORLD, &stat);
-	g_meas.add(recv);
-    }
+    measure_attr recv = measurements_msg.receive();
+
+    // only one sender, since we are in local mode.
+    g_meas.add(recv);
 }
 
 
 void send_root_solved()
 {
-    for (int i = 1; i < world_size; i++)
-    {
-	print_if<COMM_DEBUG>("Queen: Sending root solved to overseer %d.\n", i);
-	MPI_Send(&ROOT_SOLVED_SIGNAL, 1, MPI_INT, i, net::ROOT_SOLVED, MPI_COMM_WORLD);
-    }
+    root_solved_signal.store(true);
 }
 
 int* workers_per_overseer; // number of worker threads for each worker
@@ -226,37 +289,10 @@ void compute_thread_ranks()
     }
 }
 
-// Workers fetch and ignore additional signals about root solved (since it may arrive in two places).
+// In the global net model, overseers would discard their local queues;
+// we do not need this, because the queen empties all the queues.
 void ignore_additional_signals()
 {
-    MPI_Status stat;
-    int signal_present = 0;
-    int irrel = 0 ;
-    MPI_Iprobe(QUEEN, net::SENDING_TASK, MPI_COMM_WORLD, &signal_present, &stat);
-    while (signal_present)
-    {
-	signal_present = 0;
-	MPI_Recv(&irrel, 1, MPI_INT, QUEEN, net::SENDING_TASK, MPI_COMM_WORLD, &stat);
-	MPI_Iprobe(QUEEN, net::SENDING_TASK, MPI_COMM_WORLD, &signal_present, &stat);
-    }
-
-    MPI_Iprobe(QUEEN, net::SENDING_IRRELEVANT, MPI_COMM_WORLD, &signal_present, &stat);
-    while (signal_present)
-    {
-	signal_present = 0;
-	MPI_Recv(&irrel, 1, MPI_INT, QUEEN, net::SENDING_IRRELEVANT, MPI_COMM_WORLD, &stat);
-	MPI_Iprobe(QUEEN, net::SENDING_IRRELEVANT, MPI_COMM_WORLD, &signal_present, &stat);
-    }
-
-    // ignore any incoming batches
-    MPI_Iprobe(QUEEN, net::SENDING_BATCH, MPI_COMM_WORLD, &signal_present, &stat);
-    while (signal_present)
-    {
-	int irrel_batch[BATCH_SIZE];
-	MPI_Recv(irrel_batch, BATCH_SIZE, MPI_INT, QUEEN, net::SENDING_BATCH, MPI_COMM_WORLD, &stat);
-	MPI_Iprobe(QUEEN, net::SENDING_BATCH, MPI_COMM_WORLD, &signal_present, &stat);
-    }
- 
 }
 
 // Queen fetches and ignores the remaining tasks from the previous iteration.
@@ -289,21 +325,10 @@ void ignore_additional_solutions()
 }
 
 
-void check_root_solved()
+bool check_root_solved()
 {
-    MPI_Status stat;
-    int root_solved_flag = 0;
-    MPI_Iprobe(QUEEN, net::ROOT_SOLVED, MPI_COMM_WORLD, &root_solved_flag, &stat);
-    if (root_solved_flag)
-    {
-	int r_s = ROOT_UNSOLVED_SIGNAL;
-	MPI_Recv(&r_s, 1, MPI_INT, QUEEN, net::ROOT_SOLVED, MPI_COMM_WORLD, &stat);
-	// set global root solved flag
-	if (r_s == ROOT_SOLVED_SIGNAL)
-	{
-	    root_solved.store(true);
-	}
-    }
+    return root_solved_signal;
+    // possible addition: .load()?
 }
 
 void broadcast_monotonicity(int m)
@@ -455,38 +480,29 @@ void send_out_tasks()
     }
 }
 
-void send_solution_pair(int ftask_id, int solution)
+void communicator::send_solution_pair(int ftask_id, int solution)
 {
-    int solution_pair[2];
-    solution_pair[0] = ftask_id; solution_pair[1] = solution;
-    MPI_Send(&solution_pair, 2, MPI_INT, QUEEN, net::SOLUTION, MPI_COMM_WORLD);
+    std::pair<int, int> sp(ftask_id, solution);
+    sol_msgs.push(sp);
 }
-
-// batching model
-bool *running_low;
 
 void init_running_lows()
 {
-    running_low = new bool[world_size];
+    running_low.store(false);
 }
 
 void reset_running_lows()
 {
-    for (int i = 0; i < world_size; i++)
-    {
-	running_low[i] = false;
-    }
+    running_low.store(false);
 }
 
 void delete_running_lows()
 {
-    delete[] running_low;
 }
 
 void request_new_batch()
 {
-    int irrel = 0;
-    MPI_Send(&irrel, 1, MPI_INT, QUEEN, net::RUNNING_LOW, MPI_COMM_WORLD);
+    running_low.store(true);
 }
 
 void collect_running_lows()
