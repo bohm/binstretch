@@ -80,24 +80,34 @@ public:
 	    }
 	}
     
-    state_cache(uint64_t size, int ls, int threads) : htsize(size), logsize(ls)
+    state_cache(uint64_t logbytes, int threads)
 	{
-	    assert(logsize >= 0 && logsize <= 64);
+	    assert(logbytes >= 0 && logbytes <= 64);
+
+	    uint64_t bytes = two_to(logbytes);
+	    const uint64_t megabyte = 1024 * 1024;
+
+	    htsize = power_of_two_below(bytes / sizeof(conf_el));
+	    logsize = quicklog(htsize);
+	    print_if<PROGRESS>("Given %llu logbytes (%llu MBs) and el. size %zu, set state cache (64-bit hashes) to %llu els (logsize %llu).\n",
+			    logbytes, bytes/megabyte, sizeof(conf_el), htsize, logsize);
+
+
 	    ht = new std::atomic<conf_el>[htsize];
 	    assert(ht != NULL);
  
-	    uint64_t segment = size / threads;
+	    uint64_t segment = htsize / threads;
 	    uint64_t start = 0;
-	    uint64_t end = std::min(size, segment);
+	    uint64_t end = std::min(htsize, segment);
 
 	    std::vector<std::thread> th;
 	    for (int w = 0; w < threads; w++)
 	    {
-		th.push_back(std::thread(&state_cache::parallel_init_segment, this, start, end, size));
+		th.push_back(std::thread(&state_cache::parallel_init_segment, this, start, end, htsize));
 		start += segment;
 		end += segment;
-		start = std::min(start, size);
-		end = std::min(end, size);
+		start = std::min(start, htsize);
+		end = std::min(end, htsize);
 	    }
 
 	    for (int w = 0; w < threads; w++)
