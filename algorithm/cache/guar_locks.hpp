@@ -142,10 +142,12 @@ public:
 	    assert(logbytes >= 0 && logbytes <= 64);
 
 	    uint64_t bytes = two_to(logbytes);
+	    const uint64_t megabyte = 1024 * 1024;
+	    
 	    htsize = power_of_two_below(bytes / sizeof(guar_el_full));
 	    logsize = quicklog(htsize);
-	    print_if<PROGRESS>("Given %llu logbytes (%llu bytes) and el. size %zu, set guar. cache (locks) to %llu els (logsize %llu).\n",
-			    logbytes, bytes, sizeof(guar_el_full), htsize, logsize);
+	    print_if<PROGRESS>("Given %llu logbytes (%llu MBs) and el. size %zu, set guar. cache (locks) to %llu els (logsize %llu).\n",
+			    logbytes, bytes/megabyte, sizeof(guar_el_full), htsize, logsize);
 
 	    ht = new guar_el_full[htsize];
 	    assert(ht != NULL);
