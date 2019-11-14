@@ -92,6 +92,9 @@ std::tuple<unsigned int, unsigned int, unsigned int> server_properties(const cha
     {
 	// return std::make_tuple(29, 29, 24);
 	return std::make_tuple(28, 28, 4);
+    } else if ( (strcmp(server_name, "cslog-server1") == 0) )
+    {
+	return std::make_tuple(33, 29, 4);
     } else {
 	return std::make_tuple(28, 28, 4);
     }
