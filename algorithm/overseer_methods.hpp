@@ -110,6 +110,11 @@ void overseer::start()
     std::string machine_name = mpi_name();
     printf("Overseer reporting for duty: %s, rank %d out of %d instances\n",
 	   machine_name.c_str(), world_rank, world_size);
+
+    // DEBUG
+    fprintf(stderr, "Overseer sleeping for 15 seconds so gdb can be attached.\n");
+    std::this_thread::sleep_for(std::chrono::seconds(15));
+    // END DEBUG
     
     // lower and upper limit of the interval for this particular overseer
     // set global constants used for allocating caches and worker count
