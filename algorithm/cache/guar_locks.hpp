@@ -158,20 +158,37 @@ public:
 	    uint64_t segment = GUAR_BLOCK_SIZE;
 	    uint64_t start = 0;
 	    uint64_t end = std::min(htsize, segment);
-	    
-	    std::vector<std::thread> th;
-	    for (int w = 0; w < blocks; w++)
-	    {
-		th.push_back(std::thread(&guar_cache_locks::init_block, this, w, start, end));
-		start += segment;
-		end += segment;
-		start = std::min(start, htsize);
-		end = std::min(end, htsize);
-	    }
 
-	    for (int w = 0; w < blocks; w++)
+	    // Fix a limit of 32 threads for parallel memory allocation.
+	    const int MEMTHREADS = 32;
+	    std::array<std::thread, MEMTHREADS> th;
+	    //std::vector<std::thread> th;
+	    int w = 0;
+	    while (w < blocks)
 	    {
-		th[w].join();
+		for (int i = 0; i < MEMTHREADS; i++)
+		{
+		    // fprintf(stderr, "Processing block %d.\n", w);
+		    if (w == blocks)
+		    {
+			break;
+		    }
+		    
+		    th[i] = std::thread(&guar_cache_locks::init_block, this, w, start, end);
+		    start += segment;
+		    end += segment;
+		    start = std::min(start, htsize);
+		    end = std::min(end, htsize);
+		    w++;
+		}
+
+		for (int i = 0; i < MEMTHREADS; i++)
+		{
+		    if (th[i].joinable())
+		    {
+			th[i].join();
+		    }
+		}
 	    }
 	}
 
