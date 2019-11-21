@@ -7,8 +7,14 @@
 
 std::tuple<unsigned int, unsigned int, unsigned int> server_properties(const char *server_name)
 {
+    // Siegen computer cluster -- "cn001 to cn134"
+    if ( (strlen(server_name) >= 5) && server_name[0] == 'c' &&
+	 server_name[1] == 'n' && (server_name[2] == '0' || server_name[2] == '1') )
+	{
+	    return std::make_tuple(30, 30, 12);
+	}
     // workstations:
-    if (strcmp(server_name,"scam") == 0)
+    else if (strcmp(server_name,"scam") == 0)
     {
 	return std::make_tuple(29, 28, 6);
     } else if (strcmp(server_name, "kamber") == 0 || strcmp(server_name, "smekam") == 0
