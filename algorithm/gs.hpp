@@ -32,6 +32,90 @@ int gs1(const binconf *b, thread_attr *tat)
 
 }
 
+int gs2(const binconf *b, thread_attr *tat)
+{
+    for(int i=1; i<=BINS; i++)
+    {
+	if((b->loads[i] >= (1*S - 2*ALPHA)) && (b->loads[i] <= ALPHA) )
+	{
+	    MEASURE_ONLY(tat->meas.gshit[GS2]++);
+	    return 1;
+	}
+    }
+
+    MEASURE_ONLY(tat->meas.gsmiss[GS2]++);
+    return -1;
+}
+
+int gs3(const binconf *b, thread_attr *tat)
+{
+    int alowerbound = (int) ceil(1.5 * (double) (1*S-ALPHA));
+    if ( (b->loads[1] >= alowerbound) && ((b->loads[BINS] <= ALPHA) || (b->loads[2] + b->loads[3] >= 1*S+ALPHA)) )
+    {
+	MEASURE_ONLY(tat->meas.gshit[GS3]++);
+	return 1;
+    }
+    
+    MEASURE_ONLY(tat->meas.gsmiss[GS3]++);
+    return -1;
+}
+
+int gs4(const binconf *b, thread_attr *tat)
+{
+   int chalf = (int) ceil(((double) b->loads[3])/ (double) 2);
+   int ablowerbound = (int) ceil(1.5 * (double) (1*S-ALPHA)) + chalf;
+   // b->loads[3] <= ALPHA is implicit
+   if ( (b->loads[1] + b->loads[2] >= ablowerbound) && (b->loads[2] <= ALPHA))
+   {
+       MEASURE_ONLY(tat->meas.gshit[GS4]++);
+       return 1;
+   }
+
+   MEASURE_ONLY(tat->meas.gsmiss[GS4]++);
+   return -1;
+}
+
+int gs5(const binconf *b, thread_attr *tat)
+{
+    // Quickly dismiss any situation where even the most loaded bin is below ALPHA.
+    if (b->loads[1] <= ALPHA)
+    {
+	return -1;
+    }
+    
+    int blowerbound = (int) ceil( (double) (3*S - 7*ALPHA) / (double) 2);
+    if(b->loads[2] >= blowerbound && b->loads[2] <= ALPHA && b->loads[3] == 0)
+    {
+	for(int j=(ALPHA+1); j<=S; j++)
+	{
+	    if(b->items[j] > 0)
+	    {
+		MEASURE_ONLY(tat->meas.gshit[GS5]++);
+		return 1;
+	    }
+	}
+    }
+
+    MEASURE_ONLY(tat->meas.gsmiss[GS5]++);
+    return -1;
+}
+
+/* newly added good situation. Check validity of general formula soon. */
+int gs6(const binconf *b, thread_attr *tat)
+{
+    if(b->loads[3] <= ALPHA && b->loads[2] >= ALPHA && (
+	   (b->loads[1] >= b->loads[2] + 1*S - 2*ALPHA - b->loads[3]) ||
+	   (b->loads[2] >= b->loads[1] + 1*S - 2*ALPHA - b->loads[3]) ) )
+    {
+
+	MEASURE_ONLY(tat->meas.gshit[GS6]++);
+	return 1;
+    }
+
+    MEASURE_ONLY(tat->meas.gsmiss[GS6]++);
+    return -1;
+    
+}
 
 // Experimental: A strange variant of GS1 where you add up sequential pairs of bins below 1 to have
 // load (S + ALPHA + 1 + load of the bigger one - load of the smaller one)
@@ -143,21 +227,6 @@ int gs1mod(const binconf *b, thread_attr *tat)
     }
 
     MEASURE_ONLY(tat->meas.gsmiss[GS1MOD]++);
-    return -1;
-}
-
-int gs2(const binconf *b, thread_attr *tat)
-{
-    for(int i=1; i<=BINS; i++)
-    {
-	if((b->loads[i] >= (1*S - 2*ALPHA)) && (b->loads[i] <= ALPHA) )
-	{
-	    MEASURE_ONLY(tat->meas.gshit[GS2]++);
-	    return 1;
-	}
-    }
-
-    MEASURE_ONLY(tat->meas.gsmiss[GS2]++);
     return -1;
 }
 
@@ -284,71 +353,9 @@ int gs4variant(const binconf *b, thread_attr *tat)
     return 1;
 }
 
-int gs3(const binconf *b, thread_attr *tat)
+int testgs(const binconf *b, thread_attr *tat)
 {
-    int alowerbound = (int) ceil(1.5 * (double) (1*S-ALPHA));
-    if ( (b->loads[1] >= alowerbound) && ((b->loads[BINS] <= ALPHA) || (b->loads[2] + b->loads[3] >= 1*S+ALPHA)) )
-    {
-	MEASURE_ONLY(tat->meas.gshit[GS3]++);
-	return 1;
-    }
-    
-    MEASURE_ONLY(tat->meas.gsmiss[GS3]++);
-    return -1;
-}
-
-int gs4(const binconf *b, thread_attr *tat)
-{
-   int chalf = (int) ceil(((double) b->loads[3])/ (double) 2);
-   int ablowerbound = (int) ceil(1.5 * (double) (1*S-ALPHA)) + chalf;
-   // b->loads[3] <= ALPHA is implicit
-   if ( (b->loads[1] + b->loads[2] >= ablowerbound) && (b->loads[2] <= ALPHA))
-   {
-       MEASURE_ONLY(tat->meas.gshit[GS4]++);
-       return 1;
-   }
-
-   MEASURE_ONLY(tat->meas.gsmiss[GS4]++);
-   return -1;
-}
-
-int gs5(const binconf *b, thread_attr *tat)
-{
-    int blowerbound = (int) ceil( (double) (3*S - 7*ALPHA) / (double) 2);
-    if(b->loads[2] >= blowerbound && b->loads[2] <= ALPHA && b->loads[3] == 0)
-    {
-	for(int j=(ALPHA+1); j<=S; j++)
-	{
-	    if(b->items[j] > 0)
-	    {
-		MEASURE_ONLY(tat->meas.gshit[GS5]++);
-		return 1;
-	    }
-	}
-    }
-
-    MEASURE_ONLY(tat->meas.gsmiss[GS5]++);
-    return -1;
-}
-
-/* newly added good situation. Check validity of general formula soon. */
-int gs6(const binconf *b, thread_attr *tat)
-{
-    if(b->loads[3] <= ALPHA && b->loads[2] >= ALPHA && (
-	   (b->loads[1] >= b->loads[2] + 1*S - 2*ALPHA - b->loads[3]) ||
-	   (b->loads[2] >= b->loads[1] + 1*S - 2*ALPHA - b->loads[3]) ) )
-    {
-
-	MEASURE_ONLY(tat->meas.gshit[GS6]++);
-	return 1;
-    }
-
-    MEASURE_ONLY(tat->meas.gsmiss[GS6]++);
-    return -1;
-    
-}
-
-int testgs(const binconf *b, thread_attr *tat) {
+    // Always test GS1, it is applicable even when we aim at a ratio below 4/3.
     if(gs1(b, tat) == 1)
     {
 
@@ -356,53 +363,24 @@ int testgs(const binconf *b, thread_attr *tat) {
 	print_binconf<DEBUG>(b);
 	return 1;
     }
-    
-    if( gs2variant(b, tat) == 1)
-    {
-	print_if<DEBUG>("The following binconf hits GS2variant:\n");
-	print_binconf<DEBUG>(b);
-	return 1;
-    }
 
-    // temporarily disabling
-    
-    if (gs1mod(b, tat) == 1)
-    {
-	return 1;
-    }
-
-    if( gs3variant(b, tat) == 1)
-    {
-	return 1;
-    }
-
-    // temporarily disabling again
-
-    /*
-    if( gs4variant(b, tat) == 1)
-    {
-	return 1;
-    }
-    */
-    
-// Apply the rest of the heuristics only with 3 bins and ALPHA >= 1/3
+    // The following ones come directly from the bin stretching paper for 3 bins.
     if ((BINS == 3) && ((3*ALPHA) >= S))
     {
-
 	// GS2, GS3 and GS5 are never hit for BINS == 3 now, it seems.
-	/*if(gs2(b, tat) == 1)
+	if (gs2(b, tat) == 1)
 	{
-	    print_if<DEBUG>(stderr, "The following binconf hits GS2:\n");
+	    print_if<DEBUG>("The following binconf hits GS2:\n");
 	    print_binconf<DEBUG>(b);
 	    return 1;
-	}*/
+	}
 
-	/*if(gs3(b, tat) == 1)
+	if (gs3(b, tat) == 1)
 	{
 	    print_if<DEBUG>("The following binconf hits GS3:\n");
 	    print_binconf<DEBUG>(b);
 	    return 1;
-	}*/
+	}
 	
 	if (gs4(b, tat) == 1)
 	{
@@ -418,14 +396,47 @@ int testgs(const binconf *b, thread_attr *tat) {
 	    return 1;
 	}
 	
-	if(gs6(b, tat) == 1)
+	if (gs6(b, tat) == 1)
+	{
+	    return 1;
+	}
+    }
+
+    // The following ones are variants of the old good situations
+    // that might also prove useful for more than 3 bins.
+
+    // A possible todo: check again that they do not require ALPHA to be at least 1/3.
+
+    if (BINS > 3)
+    {
+	if( gs2variant(b, tat) == 1)
+	{
+	    print_if<DEBUG>("The following binconf hits GS2variant:\n");
+	    print_binconf<DEBUG>(b);
+	    return 1;
+	}
+
+	if (gs1mod(b, tat) == 1)
 	{
 	    return 1;
 	}
 
+	if( gs3variant(b, tat) == 1)
+	{
+	    return 1;
+	}
+
+
+	// temporarily disabling again
+	/*
+	  if( gs4variant(b, tat) == 1)
+	  {
+	  return 1;
+	  }
+	*/
     }
-    
-    return -1;
+   
+    return -1; // All heuristics failed.
 }
 
 // tries all the choices

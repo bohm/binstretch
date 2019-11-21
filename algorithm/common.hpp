@@ -26,8 +26,8 @@
 const bool PROGRESS = true; // Whether to print progress info to stderr.
 const bool MEASURE = true; // Whether to collect and print measurements to stderr.
 
-const bool OUTPUT = true; // Whether to produce output.
-const bool REGROW = true; // Whether to regrow or just terminate after first iteration.
+const bool OUTPUT = false; // Whether to produce output.
+const bool REGROW = false; // Whether to regrow or just terminate after first iteration.
 
 // When producing output, how many times should a tree be regrown.
 // Note that REGROW_LIMIT = 0 still means a full tree will be generated.
@@ -55,7 +55,7 @@ const bool ONEPASS = false;
 const bool TASKLOG = false;
 const long double TASKLOG_THRESHOLD = 60.0; // in seconds
 
-#define STRATEGY STRATEGY_BASIC_LIMIT // choices: STRATEGY_BASIC, STRATEGY_NINETEEN_FREQ, STRATEGY_BOUNDED
+#define STRATEGY STRATEGY_BASIC // choices: STRATEGY_BASIC, STRATEGY_NINETEEN_FREQ, STRATEGY_BOUNDED
 
 #define DYNPROG_MAX dynprog_max_direct // choices: dynprog_max_direct, dynprog_max_with_lih
 
@@ -74,8 +74,10 @@ const bin_int BINS = IBINS;
 //const std::vector<bin_int> INITIAL_LOADS = {8,0,0};
 //const std::vector<bin_int> INITIAL_LOADS = {3,2,0};
 //const std::vector<bin_int> INITIAL_ITEMS = {1,2,0,0};
-//const std::vector<bin_int> INITIAL_LOADS = {8,1,1,1,1,};
-//const std::vector<bin_int> INITIAL_ITEMS = {7,0,0,0,1};
+
+// const std::vector<bin_int> INITIAL_LOADS = {2};
+// const std::vector<bin_int> INITIAL_ITEMS = {2};
+
 const std::vector<bin_int> INITIAL_LOADS = {};
 const std::vector<bin_int> INITIAL_ITEMS = {};
 
@@ -102,12 +104,12 @@ const std::vector<bin_int> INITIAL_ITEMS = {};
 // const std::vector<bin_int> INITIAL_SEQUENCE = {};
 const std::vector<bin_int> INITIAL_SEQUENCE = II_S;
 
-const int FIRST_PASS = 0; // enough to get a lb of 19/14 on 6,7 bins.
+// const int FIRST_PASS = 0; // enough to get a lb of 19/14 on 6,7 bins.
 // const int FIRST_PASS = 1; // enough for 19/14 on 8 bins.
 // const int FIRST_PASS = 6; // enough for 86/63 on 3 bins.
 // const int FIRST_PASS = 8; // enough for 112/82 on 3 bins.
 // const int FIRST_PASS = 10;
-// const int FIRST_PASS = S-1; // Full monotonicity.
+const int FIRST_PASS = S-1; // Full monotonicity.
 
 // constants used for good situations
 const int RMOD = (R-1);
