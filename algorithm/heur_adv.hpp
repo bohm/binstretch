@@ -235,7 +235,7 @@ std::pair<bool, bin_int> five_nine_heuristic(binconf *b, thread_attr *tat)
     return std::pair(false, -1);
 }
 
-template<mm_state MODE> std::pair<victory, heuristic_strategy*> adversary_heuristics(binconf *b, thread_attr *tat, adversary_vertex *adv_to_evaluate)
+template<mm_state MODE> std::pair<victory, heuristic_strategy*> adversary_heuristics(binconf *b, thread_attr *tat)
 {
     //A much weaker variant of large item heuristic, but takes O(1) time.
     heuristic_strategy *str = nullptr;

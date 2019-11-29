@@ -4,6 +4,7 @@
 #include "common.hpp"
 #include "binconf.hpp"
 #include "optconf.hpp"
+#include "strategies/insight.hpp"
 
 // global variables that collect items from thread_attr.
 
@@ -202,12 +203,15 @@ public:
     uint64_t explore_roothash = 0;
     
     std::chrono::time_point<std::chrono::system_clock> eval_start;
-    
+
     bool overdue_printed = false;
     bool current_overdue = false;
-    bool heuristic_regime = false;
-    int heuristic_starting_depth = 0;
-    heuristic_strategy *current_strategy = NULL;
+
+    // Adversary_strategy replaces all data about the strategy.
+    adversary_strategy_basic adv_strategy;
+    // bool heuristic_regime = false;
+    // int heuristic_starting_depth = 0;
+    // heuristic_strategy *current_strategy = NULL;
     uint64_t overdue_tasks = 0;
     int regrow_level = 0;
 

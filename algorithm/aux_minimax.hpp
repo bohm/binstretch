@@ -141,6 +141,7 @@ struct adversary_notes
     int old_max_feasible = 0;
 };
 
+/*
 void adversary_descend(thread_attr *tat, adversary_notes &notes, int next_item, int maximum_feasible)
 {
     notes.old_largest = tat->largest_since_computation_root;
@@ -165,6 +166,7 @@ void adversary_ascend(thread_attr *tat, const adversary_notes &notes)
 	tat->current_strategy->decrease_depth();
     }
 }
+*/
 
 struct algorithm_notes
 {

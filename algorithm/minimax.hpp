@@ -25,6 +25,8 @@
 #include "strategy.hpp"
 #include "queen.hpp"
 #include "aux_minimax.hpp"
+#include "strategies/insight.hpp"
+#include "strategies/insight_methods.hpp"
 
 template<mm_state MODE> victory adversary(binconf *b, int depth, thread_attr *tat, adversary_vertex *adv_to_evaluate, algorithm_vertex* parent_alg);
 template<mm_state MODE> victory algorithm(binconf *b, int k, int depth, thread_attr *tat, algorithm_vertex *alg_to_evaluate, adversary_vertex *parent_adv);
@@ -110,16 +112,12 @@ template<mm_state MODE> victory adversary(binconf *b, int depth, thread_attr *ta
     // We also do not need to compute heuristics further if we are already following
     // a heuristic.
     
-    if (ADVERSARY_HEURISTICS && !tat->heuristic_regime)
+    if (ADVERSARY_HEURISTICS && !tat->adv_strategy.heuristic_regime() )
     {
-	auto [vic, strategy] = adversary_heuristics<MODE>(b, tat, adv_to_evaluate);
+	victory vic = tat->adv_strategy.heuristics(b, tat);
 	
 	if (vic == victory::adv)
 	{
-	    print_if<DEBUG>("GEN: Adversary heuristic ");
-	    print_if<DEBUG>("%d", static_cast<int>(strategy->type));
-	    print_if<DEBUG>(" is successful.\n");
-
 	    if (EXPLORING)
 	    {
 		return victory::adv;
@@ -134,7 +132,7 @@ template<mm_state MODE> victory adversary(binconf *b, int depth, thread_attr *ta
 
     // If we have entered or we are inside a heuristic regime,
     // mark the vertex as heuristical with the current strategy.
-    if (GENERATING && tat->heuristic_regime)
+    if (GENERATING && tat->adv_strategy.heuristic_regime() )
     {
 	adv_to_evaluate->mark_as_heuristical(tat->current_strategy);
 	// We can already mark the vertex as "won", but the question is
@@ -241,13 +239,18 @@ template<mm_state MODE> victory adversary(binconf *b, int depth, thread_attr *ta
 	}
     }
 
-   
+
+    // Computation phase: do the necessary computations needed for generating the
+    // list of next items.
+    tat->adv_strategy.computation(b, tat);
+    
     win = victory::alg;
     below = victory::alg;
-
     std::vector<int> candidate_moves;
 
-    if (tat->heuristic_regime)
+    candidate_moves = tat->adv_strategy.moveset(b);
+    
+    /*if (tat->heuristic_regime)
     {
 	compute_next_moves_heur(candidate_moves, b, tat->current_strategy);
     } else if (GENERATING)
@@ -256,7 +259,8 @@ template<mm_state MODE> victory adversary(binconf *b, int depth, thread_attr *ta
     } else
     {
 	maximum_feasible = compute_next_moves_expstrat(candidate_moves, b, depth, tat);
-    }
+	}
+    */
 
     // If we do "en passant" check for large item heuristic, we recurse back with true.
     // TODO: mark strategy here, too.
@@ -277,9 +281,11 @@ template<mm_state MODE> victory adversary(binconf *b, int depth, thread_attr *ta
 	    std::tie(upcoming_alg, new_edge) = attach_matching_vertex(qdag, adv_to_evaluate, item_size);
 	}
 
-	adversary_descend(tat, notes, item_size, maximum_feasible);
+	// adversary_descend(tat, notes, item_size, maximum_feasible);
+	tat->adv_strategy.adv_move(b, item_size);
 	below = algorithm<MODE>(b, item_size, depth+1, tat, upcoming_alg, adv_to_evaluate);
-	adversary_ascend(tat, notes);
+	tat->adv_strategy.undo_adv_move();
+	// adversary_ascend(tat, notes);
 	
 	// send signal that we should terminate immediately upwards
 	if (below == victory::irrelevant)
@@ -308,6 +314,9 @@ template<mm_state MODE> victory adversary(binconf *b, int depth, thread_attr *ta
 	}
     }
 
+    // Undo computations.
+    tat->adv_strategy.undo_computation();
+    
 
     if (EXPLORING && !DISABLE_CACHE)
     {
@@ -525,7 +534,6 @@ victory generate(sapling start_sapling, thread_attr *tat)
     duplicate(&inplace_bc, &start_sapling.root->bc);
     inplace_bc.hashinit();
     onlineloads_init(tat->ol, &inplace_bc);
-
     victory ret = adversary<mm_state::generating>(&inplace_bc, 0, tat, start_sapling.root, NULL);
     return ret;
 }
