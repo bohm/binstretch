@@ -130,17 +130,17 @@ void purge_new(dag *d, adversary_vertex *r)
 }
 
 
-void relabel_and_fix_adv(adversary_vertex *v, thread_attr *tat); 
-void relabel_and_fix_alg(algorithm_vertex *v, thread_attr *tat);
+void relabel_and_fix_adv(adversary_vertex *v, measure_attr *meas); 
+void relabel_and_fix_alg(algorithm_vertex *v, measure_attr *meas);
 
-void relabel_and_fix_adv(adversary_vertex *v, thread_attr *tat)
+void relabel_and_fix_adv(adversary_vertex *v, measure_attr *meas)
 {
     if (v->visited || v->state == vert_state::finished)
     {
 	return;
     }
 
-    tat->meas.visit_counter++;
+    meas->visit_counter++;
     v->visited = true;
 
     if (v->task)
@@ -155,7 +155,7 @@ void relabel_and_fix_adv(adversary_vertex *v, thread_attr *tat)
 	    assert(v->out.size() == 0 && v->win == victory::adv);
 	}
 
-	tat->meas.relabeled_vertices++;
+	meas->relabeled_vertices++;
 	v->task = false;
 	v->state = vert_state::expand;
 
@@ -174,7 +174,7 @@ void relabel_and_fix_adv(adversary_vertex *v, thread_attr *tat)
 
 }
 
-void relabel_and_fix_alg(algorithm_vertex *v, thread_attr *tat)
+void relabel_and_fix_alg(algorithm_vertex *v, measure_attr *meas)
 {
     if (v->visited || v->state == vert_state::finished)
     {
@@ -182,7 +182,7 @@ void relabel_and_fix_alg(algorithm_vertex *v, thread_attr *tat)
     }
     
     v->visited = true;
-    tat->meas.visit_counter++;
+    meas->visit_counter++;
 
     // algorithm vertices should never be tasks
     assert(v->win == victory::adv);
@@ -194,18 +194,18 @@ void relabel_and_fix_alg(algorithm_vertex *v, thread_attr *tat)
 
     for (auto& e: v->out)
     {
-	relabel_and_fix_adv(e->to, tat);
+	relabel_and_fix_adv(e->to, meas);
     }
 }
 
-void relabel_and_fix(dag *d, adversary_vertex *r, thread_attr *tat)
+void relabel_and_fix(dag *d, adversary_vertex *r, measure_attr *meas)
 {
     d->clear_visited();
-    tat->meas.relabeled_vertices = 0;
-    tat->meas.visit_counter = 0;
+    meas->relabeled_vertices = 0;
+    meas->visit_counter = 0;
 
     relabel_and_fix_adv(r, tat);
-    print_if<true>("Visited %d verts, marked %d vertices to expand.\n", tat->meas.visit_counter, tat->meas.relabeled_vertices);
+    print_if<true>("Visited %d verts, marked %d vertices to expand.\n", meas->visit_counter, meas->relabeled_vertices);
 }
 
 // Marks all branches without tasks in them as vert_state::finished.

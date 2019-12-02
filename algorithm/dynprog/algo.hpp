@@ -6,56 +6,41 @@
 #include <array>
 #include <cstring>
 
-#include "../common.hpp"
-#include "../binconf.hpp"
-#include "../optconf.hpp"
-#include "../thread_attr.hpp"
-#include "../fits.hpp"
-#include "../hash.hpp"
-#include "../cache/loadconf.hpp"
-#include "../cache/guarantee.hpp"
+#include "common.hpp"
+#include "binconf.hpp"
+#include "optconf.hpp"
+#include "fits.hpp"
+#include "hash.hpp"
+#include "cache/loadconf.hpp"
+#include "cache/guarantee.hpp"
+#include "dynprog/data.hpp"
 
 // We select the right algorithm for computing the maximum feasible option.
 // Currently, selecting dynprog_max_via_vector adds about 40 seconds to the computation time
 // of a lower bound for 86/63.
 
 // A forward declaration (full one in heur_adv.hpp).
-bin_int dynprog_max_with_lih(const binconf& conf, thread_attr *tat = NULL);
+// bin_int dynprog_max_with_lih(const binconf& conf, thread_attr *tat = NULL);
 
 
-//
-
-#define STANDALONE_CLEANUP()			\
-    if (STANDALONE)				\
-    {						\
-	delete poldq;				\
-	delete pnewq;				\
-	delete[] loadht;			\
-    }						
+#define STANDALONE_CLEANUP() if (STANDALONE) { delete dp_data; }
 	
-template<bool STANDALONE> bin_int dynprog_max_direct(const binconf &conf, thread_attr *tat = nullptr)
+template<bool STANDALONE> bin_int dynprog_max_direct(const binconf &conf, dynprog_data *dp_data = nullptr)
 {
     std::vector<loadconf> *poldq = nullptr;
     std::vector<loadconf> *pnewq = nullptr;
-    uint64_t *loadht = nullptr;
+    //uint64_t *loadht = nullptr;
 
     if (STANDALONE)
     {
-	poldq = new std::vector<loadconf>();
-	poldq->reserve(LOADSIZE);
-	pnewq = new std::vector<loadconf>();
-	pnewq->reserve(LOADSIZE);
-	loadht = new uint64_t[LOADSIZE];
-    } else
-    {
-	poldq = tat->oldloadqueue;
-	pnewq = tat->newloadqueue;
-	loadht = tat->loadht;
-	tat->newloadqueue->clear();
-	tat->oldloadqueue->clear();
+	dp_data = new dynprog_data;
     }
-    
-    memset(loadht, 0, LOADSIZE*8);
+
+    poldq = dp_data->oldloadqueue;
+    pnewq = dp_data->newloadqueue;
+    poldq->clear();
+    pnewq->clear();
+    memset(dp_data->loadht, 0, LOADSIZE*8);
 
     uint64_t salt = rand_64bit();
     bool initial_phase = true;
@@ -150,7 +135,7 @@ template<bool STANDALONE> bin_int dynprog_max_direct(const binconf &conf, thread
 			uint64_t debug_loadhash = tuple.loadhash;
 			int newpos = tuple.assign_and_rehash(size, i);
 	
-			if(! loadconf_hashfind(tuple.loadhash ^ salt, loadht))
+			if(! loadconf_hashfind(tuple.loadhash ^ salt, dp_data->loadht))
 			{
 			    if(size == smallest_item && k == 1)
 			    {
@@ -159,7 +144,7 @@ template<bool STANDALONE> bin_int dynprog_max_direct(const binconf &conf, thread
 			    }
 
 			    pnewq->push_back(tuple);
-			    loadconf_hashpush(tuple.loadhash ^ salt, loadht);
+			    loadconf_hashpush(tuple.loadhash ^ salt, dp_data->loadht);
 			}
 
 		        tuple.unassign_and_rehash(size, newpos);
@@ -174,8 +159,9 @@ template<bool STANDALONE> bin_int dynprog_max_direct(const binconf &conf, thread
 		{
 		    if (!STANDALONE)
 		    {
-			MEASURE_ONLY(tat->meas.largest_queue_observed =
-				     std::max<uint64_t>(tat->meas.largest_queue_observed, pnewq->size()));
+			MEASURE_ONLY(dp_data->largest_queue_observed =
+				     std::max<uint64_t>(dp_data->largest_queue_observed,
+							pnewq->size() ));
 		    }
 		}
 	    }
@@ -218,16 +204,16 @@ template<bool STANDALONE> bin_int dynprog_max_direct(const binconf &conf, thread
 
 // Compute all feasible configurations and return them.
 // This algorithm is currently used in heuristics only.
-std::vector<loadconf> dynprog(const binconf &conf, thread_attr *tat)
+std::vector<loadconf> dynprog(const binconf &conf, dynprog_data *dp_data)
 {
-    tat->newloadqueue->clear();
-    tat->oldloadqueue->clear();
-    std::vector<loadconf> *poldq = tat->oldloadqueue;
-    std::vector<loadconf> *pnewq = tat->newloadqueue;
+    dp_data->newloadqueue->clear();
+    dp_data->oldloadqueue->clear();
+    std::vector<loadconf> *poldq = dp_data->oldloadqueue;
+    std::vector<loadconf> *pnewq = dp_data->newloadqueue;
     std::vector<loadconf> ret;
     uint64_t salt = rand_64bit();
     bool initial_phase = true;
-    memset(tat->loadht, 0, LOADSIZE*8);
+    memset(dp_data->loadht, 0, LOADSIZE*8);
 
     // We currently avoid the heuristics of handling separate sizes.
     for (bin_int size=S; size>=1; size--)
@@ -264,10 +250,10 @@ std::vector<loadconf> dynprog(const binconf &conf, thread_attr *tat)
 			uint64_t debug_loadhash = tuple.loadhash;
 			int newpos = tuple.assign_and_rehash(size, i);
 	
-			if(! loadconf_hashfind(tuple.loadhash ^ salt, tat->loadht))
+			if(! loadconf_hashfind(tuple.loadhash ^ salt, dp_data->loadht))
 			{
 			    pnewq->push_back(tuple);
-			    loadconf_hashpush(tuple.loadhash ^ salt, tat->loadht);
+			    loadconf_hashpush(tuple.loadhash ^ salt, dp_data->loadht);
 			}
 
 		        tuple.unassign_and_rehash(size, newpos);

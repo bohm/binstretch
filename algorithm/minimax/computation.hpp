@@ -5,6 +5,7 @@
 #include "binconf.hpp"
 #include "optconf.hpp"
 #include "strategies/insight.hpp"
+#include "dynprog/data.hpp"
 #include "measurements.hpp"
    
 /* dynprog global variables and other attributes separate for each thread */
@@ -23,12 +24,7 @@ public:
     
     
     // dynamic programming
-    std::unordered_set<std::array<bin_int, BINS> >* oldset;
-    std::unordered_set<std::array<bin_int, BINS> >* newset;
-    std::vector<loadconf> *oldloadqueue;
-    std::vector<loadconf> *newloadqueue;
-    uint64_t *loadht;
-
+    dynprog_data dp_data;
     
     optconf oc;
     loadconf ol;

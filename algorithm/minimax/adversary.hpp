@@ -196,7 +196,7 @@ template<minimax MODE> victory computation<MODE>::adversary(adversary_vertex *ad
 
     // Computation phase: do the necessary computations needed for generating the
     // list of next items.
-    adv_strategy.computation(b, tat);
+    adv_strategy.computation(b);
     
     win = victory::alg;
     below = victory::alg;
