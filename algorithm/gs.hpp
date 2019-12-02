@@ -1,6 +1,6 @@
 #include <cstdio>
-
 #include "common.hpp"
+#include "measurements.hpp"
 
 // Pruning the search tree using Good Situations; those
 // are configurations which always lead to a win for Player 1.
@@ -17,65 +17,65 @@
    
 const int GS1BOUND = (BINS-1)*S -ALPHA;
 
-int gs1(const binconf *b, thread_attr *tat)
+int gs1(const binconf *b, measure_attr *meas)
 {
     // sum of all but the last bin
     int sum = b->totalload() - b->loads[BINS];
     if (sum >= GS1BOUND)
     {
-	MEASURE_ONLY(tat->meas.gshit[GS1]++);
+	MEASURE_ONLY(meas->gshit[GS1]++);
 	return 1;
     }
 
-    MEASURE_ONLY(tat->meas.gsmiss[GS1]++);
+    MEASURE_ONLY(meas->gsmiss[GS1]++);
     return -1;
 
 }
 
-int gs2(const binconf *b, thread_attr *tat)
+int gs2(const binconf *b, measure_attr *meas)
 {
     for(int i=1; i<=BINS; i++)
     {
 	if((b->loads[i] >= (1*S - 2*ALPHA)) && (b->loads[i] <= ALPHA) )
 	{
-	    MEASURE_ONLY(tat->meas.gshit[GS2]++);
+	    MEASURE_ONLY(meas->gshit[GS2]++);
 	    return 1;
 	}
     }
 
-    MEASURE_ONLY(tat->meas.gsmiss[GS2]++);
+    MEASURE_ONLY(meas->gsmiss[GS2]++);
     return -1;
 }
 
-int gs3(const binconf *b, thread_attr *tat)
+int gs3(const binconf *b, measure_attr *meas)
 {
     int alowerbound = (int) ceil(1.5 * (double) (1*S-ALPHA));
     if ( (b->loads[1] >= alowerbound) && ((b->loads[BINS] <= ALPHA) || (b->loads[2] + b->loads[3] >= 1*S+ALPHA)) )
     {
-	MEASURE_ONLY(tat->meas.gshit[GS3]++);
+	MEASURE_ONLY(meas->gshit[GS3]++);
 	return 1;
     }
     
-    MEASURE_ONLY(tat->meas.gsmiss[GS3]++);
+    MEASURE_ONLY(meas->gsmiss[GS3]++);
     return -1;
 }
 
-int gs4(const binconf *b, thread_attr *tat)
+int gs4(const binconf *b, measure_attr *meas)
 {
    int chalf = (int) ceil(((double) b->loads[3])/ (double) 2);
    int ablowerbound = (int) ceil(1.5 * (double) (1*S-ALPHA)) + chalf;
    // b->loads[3] <= ALPHA is implicit
    if ( (b->loads[1] + b->loads[2] >= ablowerbound) && (b->loads[2] <= ALPHA))
    {
-       MEASURE_ONLY(tat->meas.gshit[GS4]++);
+       MEASURE_ONLY(meas->gshit[GS4]++);
        return 1;
    }
 
-   MEASURE_ONLY(tat->meas.gsmiss[GS4]++);
+   MEASURE_ONLY(meas->gsmiss[GS4]++);
    return -1;
 }
 
-int gs5(const binconf *b, thread_attr *tat)
+int gs5(const binconf *b, measure_attr *meas)
 {
     // Quickly dismiss any situation where even the most loaded bin is below ALPHA.
     if (b->loads[1] <= ALPHA)
@@ -90,36 +90,36 @@ int gs5(const binconf *b, thread_attr *tat)
 	{
 	    if(b->items[j] > 0)
 	    {
-		MEASURE_ONLY(tat->meas.gshit[GS5]++);
+		MEASURE_ONLY(meas->gshit[GS5]++);
 		return 1;
 	    }
 	}
     }
 
-    MEASURE_ONLY(tat->meas.gsmiss[GS5]++);
+    MEASURE_ONLY(meas->gsmiss[GS5]++);
     return -1;
 }
 
 /* newly added good situation. Check validity of general formula soon. */
-int gs6(const binconf *b, thread_attr *tat)
+int gs6(const binconf *b, measure_attr *meas)
 {
     if(b->loads[3] <= ALPHA && b->loads[2] >= ALPHA && (
 	   (b->loads[1] >= b->loads[2] + 1*S - 2*ALPHA - b->loads[3]) ||
 	   (b->loads[2] >= b->loads[1] + 1*S - 2*ALPHA - b->loads[3]) ) )
     {
 
-	MEASURE_ONLY(tat->meas.gshit[GS6]++);
+	MEASURE_ONLY(meas->gshit[GS6]++);
 	return 1;
     }
 
-    MEASURE_ONLY(tat->meas.gsmiss[GS6]++);
+    MEASURE_ONLY(meas->gsmiss[GS6]++);
     return -1;
     
 }
 
 // Experimental: A strange variant of GS1 where you add up sequential pairs of bins below 1 to have
 // load (S + ALPHA + 1 + load of the bigger one - load of the smaller one)
-int gs1mod(const binconf *b, thread_attr *tat)
+int gs1mod(const binconf *b, measure_attr *meas)
 {
     int summand = 0;
     bool previous_below_alpha = false;
@@ -179,7 +179,7 @@ int gs1mod(const binconf *b, thread_attr *tat)
 
     if (sum_without_smallest_above_alpha >= GS1BOUND)
     {
-	MEASURE_ONLY(tat->meas.gshit[GS1MOD]++);
+	MEASURE_ONLY(meas->gshit[GS1MOD]++);
 	return 1;
     }
 
@@ -221,16 +221,16 @@ int gs1mod(const binconf *b, thread_attr *tat)
     if (sum_without_last >= GS1BOUND)
     {
 
-	MEASURE_ONLY(tat->meas.gshit[GS1MOD]++);
+	MEASURE_ONLY(meas->gshit[GS1MOD]++);
 	return 1;
 
     }
 
-    MEASURE_ONLY(tat->meas.gsmiss[GS1MOD]++);
+    MEASURE_ONLY(meas->gsmiss[GS1MOD]++);
     return -1;
 }
 
-int gs2variant(const binconf *b, thread_attr *tat)
+int gs2variant(const binconf *b, measure_attr *meas)
 {
     /* Sum of all bins except the last two. */
     int sum_but_two = b->totalload() - b->loads[BINS] - b->loads[BINS-1];
@@ -250,23 +250,23 @@ int gs2variant(const binconf *b, thread_attr *tat)
 	// would be (BINS-2)*S - 2*ALPHA
 	if (b->loads[i] <= ALPHA && current_sbt >= ( (BINS-2)*S - 2*ALPHA -1 ) )
 	{
-	    MEASURE_ONLY(tat->meas.gshit[GS2VARIANT]++);
+	    MEASURE_ONLY(meas->gshit[GS2VARIANT]++);
 	    return 1;
 	}
     }
-    MEASURE_ONLY(tat->meas.gsmiss[GS2VARIANT]++);
+    MEASURE_ONLY(meas->gsmiss[GS2VARIANT]++);
     return -1;
 }
 
 // This should be a generalization of GS3.
-int gs3variant(const binconf *b, thread_attr *tat)
+int gs3variant(const binconf *b, measure_attr *meas)
 {
      int sum_but_two = b->totalload() - b->loads[BINS] - b->loads[BINS-1];
 
      int last_bin_load_req = GS1BOUND - sum_but_two;
      if (last_bin_load_req > S+ALPHA)
      {
-	 MEASURE_ONLY(tat->meas.gsmiss[GS3VARIANT]++);
+	 MEASURE_ONLY(meas->gsmiss[GS3VARIANT]++);
 	 return -1;
      }
 
@@ -274,19 +274,19 @@ int gs3variant(const binconf *b, thread_attr *tat)
      int overflow = S + ALPHA - last_bin_load_req + 1;
      if (b->loads[BINS-1] <= ALPHA && sum_but_two + overflow + b->loads[BINS-1] >= GS1BOUND)
      {
-	 MEASURE_ONLY(tat->meas.gshit[GS3VARIANT]++);
+	 MEASURE_ONLY(meas->gshit[GS3VARIANT]++);
 	 return 1;
      }
      // this might look worse (after all, b->loads[BINS] < b->loads[BINS-1]), but it can trigger
      // when the second to last bin is over ALPHA.
      else if (b->loads[BINS] <= ALPHA && sum_but_two + overflow + b->loads[BINS] >= GS1BOUND)
      {
-	 MEASURE_ONLY(tat->meas.gshit[GS3VARIANT]++);
+	 MEASURE_ONLY(meas->gshit[GS3VARIANT]++);
 	 return 1;
      }
      else
      {
-	 MEASURE_ONLY(tat->meas.gsmiss[GS3VARIANT]++);
+	 MEASURE_ONLY(meas->gsmiss[GS3VARIANT]++);
 	 return -1;
      }
 }
@@ -294,7 +294,7 @@ int gs3variant(const binconf *b, thread_attr *tat)
 // A generalization of GS4 which works for general amount of bins.
 // It works slightly differently -- instead of fixed numbers, it tries to guess
 // the "virtual load" on BINS-2 and deduce the total gain from that.
-int gs4variant(const binconf *b, thread_attr *tat)
+int gs4variant(const binconf *b, measure_attr *meas)
 {
     if (b->loads[BINS-1] > ALPHA)
     {
@@ -306,11 +306,11 @@ int gs4variant(const binconf *b, thread_attr *tat)
 
     if (critical <= 0)
     {
-	MEASURE_ONLY(tat->meas.gshit[GS4VARIANT]++);
+	MEASURE_ONLY(meas->gshit[GS4VARIANT]++);
 	return 1;
     } else if (critical > S)
     {
-	MEASURE_ONLY(tat->meas.gsmiss[GS4VARIANT]++);
+	MEASURE_ONLY(meas->gsmiss[GS4VARIANT]++);
 	return -1;
     }
 
@@ -342,18 +342,18 @@ int gs4variant(const binconf *b, thread_attr *tat)
 	    total_virtual += virtual_load_on_last;
 	    if (total_virtual < GS1BOUND)
 	    {
-		MEASURE_ONLY(tat->meas.gsmiss[GS4VARIANT]++);
+		MEASURE_ONLY(meas->gsmiss[GS4VARIANT]++);
 		return -1;
 	    }
 	}
     }
 
     // passed all cases, is a good situation
-    MEASURE_ONLY(tat->meas.gshit[GS4VARIANT]++);
+    MEASURE_ONLY(meas->gshit[GS4VARIANT]++);
     return 1;
 }
 
-int testgs(const binconf *b, thread_attr *tat)
+int testgs(const binconf *b, measure_attr *meas)
 {
     // Always test GS1, it is applicable even when we aim at a ratio below 4/3.
     if(gs1(b, tat) == 1)
@@ -442,7 +442,7 @@ int testgs(const binconf *b, thread_attr *tat)
 // tries all the choices
 // caution: in-place -- edits b, makes sure to return
 // it as it was; does not touch hashes
-int gsheuristic(binconf *b, int k, thread_attr *tat)
+int gsheuristic(binconf *b, int k, measure_attr *meas)
 {
     int moved_load; 
     for (int i=1; i<=BINS; i++)
@@ -455,16 +455,16 @@ int gsheuristic(binconf *b, int k, thread_attr *tat)
 	    b->unassign_item(k,moved_load, previously_last_item);
 	    if (value == 1)
 	    {
-		MEASURE_ONLY(tat->meas.gsheurhit++);
+		MEASURE_ONLY(meas->gsheurhit++);
 		return 1;
 	    } else {
 		// to reduce the number of calls to testgs, we only test the "best fit" packing
-		// MEASURE_ONLY(tat->meas.gsheurmiss++);
+		// MEASURE_ONLY(meas->gsheurmiss++);
 		//return -1;
 	    }
          }
     }
-    MEASURE_ONLY(tat->meas.gsheurmiss++);
+    MEASURE_ONLY(meas->gsheurmiss++);
     return -1;
 }
 

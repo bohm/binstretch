@@ -3,7 +3,7 @@
 
 #include "common.hpp"
 #include "updater.hpp"
-#include "sequencing.hpp"
+// #include "sequencing.hpp"
 #include "tasks.hpp"
 #include "server_properties.hpp"
 #include "loadfile.hpp"
@@ -148,7 +148,8 @@ int queen_class::start()
 	qdag = new dag;
 	binconf root = {INITIAL_LOADS, INITIAL_ITEMS};
 	qdag->add_root(root);
-	sequencing(INITIAL_SEQUENCE, root, qdag->root);
+	fprintf(stderr, "Sequencing temporarily disabled, only using initial loads and items.\n");
+	// sequencing(INITIAL_SEQUENCE, root, qdag->root);
     }
 
     if (PROGRESS) { scheduler_start = std::chrono::system_clock::now(); }
@@ -195,7 +196,7 @@ int queen_class::start()
 	    print_if<PROGRESS>("Queen: sapling queue size: %zu, current sapling of regrow level %d:\n", sapling_stack.size(), regrow_level);
 	    print_binconf<PROGRESS>(computation_root->bc);
 
-	    thread_attr tat;
+	    thread_attr<mm_state::generating> tat;
 	    tat.regrow_level = regrow_level;
 	    
 	    // do not change monotonicity when regrowing (regrow_level >= 1)

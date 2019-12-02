@@ -143,8 +143,8 @@ public:
 
     void analysis();
     
-    std::pair<bool, bool> lookup(uint64_t h, thread_attr *tat);
-    void insert(conf_el e, uint64_t h, thread_attr *tat);
+    std::pair<bool, bool> lookup(uint64_t h);
+    void insert(conf_el e, uint64_t h);
 
 
     // Functions for clearing part of entirety of the cache.
@@ -218,7 +218,7 @@ public:
 	}
 };
 
-std::pair<bool, bool> state_cache::lookup(uint64_t h, thread_attr *tat)
+std::pair<bool, bool> state_cache::lookup(uint64_t h)
 {
     conf_el candidate;
     uint64_t pos = trim(h);
@@ -251,7 +251,7 @@ std::pair<bool, bool> state_cache::lookup(uint64_t h, thread_attr *tat)
     return std::make_pair(false, false);
 }
 
-void state_cache::insert(conf_el e, uint64_t h, thread_attr *tat)
+void state_cache::insert(conf_el e, uint64_t h)
 {
     conf_el candidate;
     uint64_t pos = trim(h);
@@ -305,14 +305,14 @@ state_cache *stc = NULL;
 
 // One wrapper for transition purposes.
 
-void stcache_encache(const binconf *d, uint64_t posvalue, thread_attr *tat)
+template<mm_state MODE> void stcache_encache(const binconf *d, uint64_t posvalue)
 {
-    MEASURE_ONLY(tat->meas.bc_insertions++);
+    MEASURE_ONLY(meas.bc_insertions++);
     uint64_t bchash = d->statehash();
     assert(posvalue >= 0 && posvalue <= 1);
     conf_el new_item;
     new_item.set(bchash, posvalue);
-    stc->insert(new_item, bchash, tat);
+    stc->insert(new_item, bchash);
 }
 
 #endif // _CACHE_STATE_HPP

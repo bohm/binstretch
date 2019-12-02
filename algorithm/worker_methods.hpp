@@ -63,7 +63,7 @@ victory worker::solve(const task *t, const int& task_id)
 {
     victory ret = victory::uncertain;
 
-    thread_attr tat;
+    thread_attr<mm_state::exploring> tat;
     //tat.last_item = t->last_item;
     tat.task_id = task_id;
     computation_root = NULL; // we do not run GENERATE or EXPAND on the workers currently

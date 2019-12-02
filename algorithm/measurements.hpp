@@ -1,10 +1,5 @@
-#ifndef _THREAD_ATTR_HPP
-#define _THREAD_ATTR_HPP 1
-
-#include "common.hpp"
-#include "binconf.hpp"
-#include "optconf.hpp"
-#include "strategies/insight.hpp"
+#ifndef MEASUREMENTS_HPP
+#define MEASUREMENTS_HPP
 
 // global variables that collect items from thread_attr.
 
@@ -171,76 +166,4 @@ struct measure_attr
 // global measurement data (actually not global, but one per process with MPI)
 measure_attr g_meas;
 
-    
-/* dynprog global variables and other attributes separate for each thread */
-class thread_attr
-{
-public:
-    // --- persistent thread attributes ---
-    int monotonicity = 0;
-
-    // --- minimax computation attributes ---
-
-    // dynamic programming
-    std::unordered_set<std::array<bin_int, BINS> >* oldset;
-    std::unordered_set<std::array<bin_int, BINS> >* newset;
-    std::vector<loadconf> *oldloadqueue;
-    std::vector<loadconf> *newloadqueue;
-    uint64_t *loadht;
-
-    optconf oc;
-    loadconf ol;
-    int task_id;
-    // int last_item = 1;
-    // largest item since computation root (excluding sequencing and such)
-    int largest_since_computation_root = 0;
-    // previous maxmimum_feasible
-    bin_int prev_max_feasible = S;
-    uint64_t iterations = 0;
-    int expansion_depth = 0;
-    // root of the current minimax evaluation
-    binconf* explore_root = NULL;
-    uint64_t explore_roothash = 0;
-    
-    std::chrono::time_point<std::chrono::system_clock> eval_start;
-
-    bool overdue_printed = false;
-    bool current_overdue = false;
-
-    // Adversary_strategy replaces all data about the strategy.
-    adversary_strategy_basic adv_strategy;
-    // bool heuristic_regime = false;
-    // int heuristic_starting_depth = 0;
-    // heuristic_strategy *current_strategy = NULL;
-    uint64_t overdue_tasks = 0;
-    int regrow_level = 0;
-
-    // --- measure attributes ---
-    measure_attr meas; // measurements for one computation
-    measure_attr g_meas; // persistent measurements per process
-
-    // A slightly hacky addition: we underhandedly pass large item heuristic
-    // when computing dynprog_max_via_vector.
-    bool lih_hit = false;
-    loadconf lih_match;
-
-    // --- debug ---
-    int maxfeas_return_point = -1;
-    thread_attr()
-	{
-	    oldloadqueue = new std::vector<loadconf>();
-	    oldloadqueue->reserve(LOADSIZE);
-	    newloadqueue = new std::vector<loadconf>();
-	    newloadqueue->reserve(LOADSIZE);
-	    loadht = new uint64_t[LOADSIZE];
-	}
-
-    ~thread_attr()
-	{
-	    delete oldloadqueue;
-	    delete newloadqueue;
-	    delete[] loadht;
-	}
-};
-
-#endif
+#endif // MEASUREMENTS_HPP

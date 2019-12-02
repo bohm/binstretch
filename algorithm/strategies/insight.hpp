@@ -1,7 +1,7 @@
 #ifndef STRATEGIES_INSIGHT_HPP
 #define STRATEGIES_INSIGHT_HPP
 
-class thread_attr; // forward declaration.
+template <mm_state MODE> class thread_attr; // forward declaration.
 
 // A very simple stack that should be faster than std::stack.
 template <class T> class revertible
@@ -83,7 +83,7 @@ public:
 
 
 
-class algorithmic_strategy_basic
+template <mm_state MODE> class algorithmic_strategy_basic
 {
 public:
     bool following_algorithm = false;

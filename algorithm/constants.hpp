@@ -65,8 +65,11 @@ template <bool PARAM> void print(FILE *stream, const heuristic& type)
 
 
 
-// Minimax states.
-enum class mm_state {generating, exploring, expanding, updating, sequencing, cleanup};
+// Minimax modes. The main distinction is whether the whole dag is being generated
+// or whether we want to just explore states in-place (saving memory).
+
+// enum class mm_state {generating, exploring, expanding, updating, sequencing, cleanup};
+enum class minimax {generating, exploring, sequencing};
 
 // States of a task.
 enum class task_status {available, batched, pruned, alg_win, adv_win, irrelevant};
