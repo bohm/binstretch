@@ -70,16 +70,16 @@ public:
     
     /* remove_inedge removes the edge from the list of the incoming edges,
     but does not touch the outgoing edge list. */
-    template <mm_state MODE> void remove_inedge(alg_outedge *e);
-    template <mm_state MODE> void remove_inedge(adv_outedge *e);
+    template <minimax MODE> void remove_inedge(alg_outedge *e);
+    template <minimax MODE> void remove_inedge(adv_outedge *e);
     
-    template <mm_state MODE> void remove_outedges(algorithm_vertex *v);
-    template <mm_state MODE> void remove_outedges(adversary_vertex *v);
+    template <minimax MODE> void remove_outedges(algorithm_vertex *v);
+    template <minimax MODE> void remove_outedges(adversary_vertex *v);
 
-    template <mm_state MODE> void remove_edge(alg_outedge *e);
-    template <mm_state MODE> void remove_edge(adv_outedge *e);
+    template <minimax MODE> void remove_edge(alg_outedge *e);
+    template <minimax MODE> void remove_edge(adv_outedge *e);
 
-    template <mm_state MODE> void remove_outedges_except(adversary_vertex *v, int right_item);
+    template <minimax MODE> void remove_outedges_except(adversary_vertex *v, int right_item);
 
     // Printing subroutines.
     void print_lowerbound_dfs(adversary_vertex *v, FILE* stream, bool debug = false);

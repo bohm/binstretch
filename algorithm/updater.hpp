@@ -93,7 +93,7 @@ victory update(adversary_vertex *v, update_attr &uat)
 		if(v->state != vert_state::fixed)
 		{
 		    adv_outedge *removed_edge = (*it);
-		    qdag->remove_inedge<mm_state::updating>(*it);
+		    qdag->remove_inedge<minimax::updating>(*it);
 		    it = v->out.erase(it); // serves as it++
 		    delete removed_edge;
 		} else {
@@ -110,7 +110,7 @@ victory update(adversary_vertex *v, update_attr &uat)
 	// remove outedges only for a non-task
 	if (result == victory::adv)
 	{
-	    qdag->remove_outedges_except<mm_state::updating>(v, right_move);
+	    qdag->remove_outedges_except<minimax::updating>(v, right_move);
 	}
 
 
@@ -180,7 +180,7 @@ victory update(algorithm_vertex *v, update_attr &uat)
     
     if (result == victory::alg && v->state != vert_state::fixed)
     {
-	qdag->remove_outedges<mm_state::updating>(v);
+	qdag->remove_outedges<minimax::updating>(v);
 	assert( v->out.empty() );
 
     }

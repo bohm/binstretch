@@ -26,8 +26,8 @@
 #include "queen.hpp"
 #include "aux_minimax.hpp"
 
-template<mm_state MODE> victory adversary(binconf *b, int depth, thread_attr *tat, adversary_vertex *adv_to_evaluate, algorithm_vertex* parent_alg);
-template<mm_state MODE> victory algorithm(binconf *b, int k, int depth, thread_attr *tat, algorithm_vertex *alg_to_evaluate, adversary_vertex *parent_adv);
+template<minimax MODE> victory adversary(binconf *b, int depth, thread_attr *tat, adversary_vertex *adv_to_evaluate, algorithm_vertex* parent_alg);
+template<minimax MODE> victory algorithm(binconf *b, int k, int depth, thread_attr *tat, algorithm_vertex *alg_to_evaluate, adversary_vertex *parent_adv);
 
 victory check_messages(thread_attr *tat)
 {
@@ -66,13 +66,13 @@ victory check_messages(thread_attr *tat)
 
 // Some helper macros:
 
-#define GENERATING (MODE == mm_state::generating)
-#define EXPLORING (MODE == mm_state::exploring)
+#define GENERATING (MODE == minimax::generating)
+#define EXPLORING (MODE == minimax::exploring)
 
-#define GEN_ONLY(x) if (MODE == mm_state::generating) {x;}
-#define EXP_ONLY(x) if (MODE == mm_state::exploring) {x;}
+#define GEN_ONLY(x) if (MODE == minimax::generating) {x;}
+#define EXP_ONLY(x) if (MODE == minimax::exploring) {x;}
 
-template<mm_state MODE> victory adversary(binconf *b, int depth, thread_attr *tat, adversary_vertex *adv_to_evaluate, algorithm_vertex *parent_alg)
+template<minimax MODE> victory adversary(binconf *b, int depth, thread_attr *tat, adversary_vertex *adv_to_evaluate, algorithm_vertex *parent_alg)
 {
     algorithm_vertex *upcoming_alg = NULL;
     adv_outedge *new_edge = NULL;
@@ -291,13 +291,13 @@ template<mm_state MODE> victory adversary(binconf *b, int depth, thread_attr *ta
 	{
 	    win = victory::adv;
 	    // remove all outedges except the right one
-	    GEN_ONLY(qdag->remove_outedges_except<mm_state::generating>(adv_to_evaluate, item_size));
+	    GEN_ONLY(qdag->remove_outedges_except<minimax::generating>(adv_to_evaluate, item_size));
 	    break;
 	    
 	} else if (below == victory::alg)
 	{
 	    // no decreasing, but remove this branch of the game tree
-	    GEN_ONLY(qdag->remove_edge<mm_state::generating>(new_edge));
+	    GEN_ONLY(qdag->remove_edge<minimax::generating>(new_edge));
 	} else if (below == victory::uncertain)
 	{
 	    assert(GENERATING);
@@ -340,7 +340,7 @@ template<mm_state MODE> victory adversary(binconf *b, int depth, thread_attr *ta
     return win;
 }
 
-template<mm_state MODE> victory algorithm(binconf *b, int k, int depth, thread_attr *tat, algorithm_vertex *alg_to_evaluate, adversary_vertex *parent_adv)
+template<minimax MODE> victory algorithm(binconf *b, int k, int depth, thread_attr *tat, algorithm_vertex *alg_to_evaluate, adversary_vertex *parent_adv)
 {
     adversary_vertex *upcoming_adv = nullptr;
     alg_outedge *connecting_outedge = nullptr;
@@ -468,7 +468,7 @@ template<mm_state MODE> victory algorithm(binconf *b, int k, int depth, thread_a
 		    
 		    // Does not delete the algorithm vertex itself,
 		    // because we created it on a higher level of recursion.
-		    qdag->remove_outedges<mm_state::generating>(alg_to_evaluate);
+		    qdag->remove_outedges<minimax::generating>(alg_to_evaluate);
 		    // assert(current_algorithm == NULL); // sanity check
 
 		    alg_to_evaluate->win = victory::alg;
@@ -479,7 +479,7 @@ template<mm_state MODE> victory algorithm(binconf *b, int k, int depth, thread_a
 		// nothing needs to be currently done, the edge is already created
 	    } else if (below == victory::uncertain)
 	    {
- 		assert(GENERATING); // should not happen during anything else but mm_state::generating
+ 		assert(GENERATING); // should not happen during anything else but minimax::generating
 		// insert analyzed_vertex into algorithm's "next" list
 		if (win == victory::adv)
 		{
@@ -491,7 +491,7 @@ template<mm_state MODE> victory algorithm(binconf *b, int k, int depth, thread_a
     }
 
     // r is now 0 or POSTPONED, depending on the circumstances
-    if (MODE == mm_state::generating) { alg_to_evaluate->win = win; }
+    if (MODE == minimax::generating) { alg_to_evaluate->win = win; }
     return win;
 }
 
@@ -513,7 +513,7 @@ victory explore(binconf *b, thread_attr *tat)
     tat->current_overdue = false;
     tat->explore_roothash = b->hash_with_last();
     tat->explore_root = &root_copy;
-    victory ret = adversary<mm_state::exploring>(b, 0, tat, NULL, NULL);
+    victory ret = adversary<minimax::exploring>(b, 0, tat, NULL, NULL);
     assert(ret != victory::uncertain);
     return ret;
 }
@@ -526,7 +526,7 @@ victory generate(sapling start_sapling, thread_attr *tat)
     inplace_bc.hashinit();
     onlineloads_init(tat->ol, &inplace_bc);
 
-    victory ret = adversary<mm_state::generating>(&inplace_bc, 0, tat, start_sapling.root, NULL);
+    victory ret = adversary<minimax::generating>(&inplace_bc, 0, tat, start_sapling.root, NULL);
     return ret;
 }
 

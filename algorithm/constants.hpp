@@ -66,8 +66,7 @@ template <bool PARAM> void print(FILE *stream, const heuristic& type)
 
 
 // Minimax states.
-enum class mm_state {generating, exploring, expanding, updating, sequencing, cleanup};
-
+enum class minimax {generating, exploring, updating};
 // States of a task.
 enum class task_status {available, batched, pruned, alg_win, adv_win, irrelevant};
 

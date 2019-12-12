@@ -257,8 +257,8 @@ void cut_heuristics_adv(adversary_vertex *v)
 {
     if(v->heur_vertex)
     {
-	// Set mm_state so that no tasks are affected.
-	canvas->remove_outedges<mm_state::generating>(v);
+	// Set minimax so that no tasks are affected.
+	canvas->remove_outedges<minimax::generating>(v);
     }
 }
 
@@ -280,7 +280,7 @@ void cutdepth_adv(adversary_vertex *v)
 
     if (itemcount >= cut_at_depth)
     {
-	canvas->remove_outedges<mm_state::generating>(v);
+	canvas->remove_outedges<minimax::generating>(v);
     }
 }
 

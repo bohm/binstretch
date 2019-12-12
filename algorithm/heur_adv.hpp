@@ -235,13 +235,13 @@ std::pair<bool, bin_int> five_nine_heuristic(binconf *b, thread_attr *tat)
     return std::pair(false, -1);
 }
 
-template<mm_state MODE> std::pair<victory, heuristic_strategy*> adversary_heuristics(binconf *b, thread_attr *tat, adversary_vertex *adv_to_evaluate)
+template<minimax MODE> std::pair<victory, heuristic_strategy*> adversary_heuristics(binconf *b, thread_attr *tat, adversary_vertex *adv_to_evaluate)
 {
     //A much weaker variant of large item heuristic, but takes O(1) time.
     heuristic_strategy *str = nullptr;
     if (b->totalload() <= S && b->loads[2] >= R-S)
     {
-	if(MODE == mm_state::generating)
+	if(MODE == minimax::generating)
 	{
 	    // Build strategy.
 	    str = new heuristic_strategy_list;
@@ -256,7 +256,7 @@ template<mm_state MODE> std::pair<victory, heuristic_strategy*> adversary_heuris
 	return std::pair(victory::adv, str);
     }
 
-    if (LARGE_ITEM_ACTIVE && (MODE == mm_state::generating || LARGE_ITEM_ACTIVE_EVERYWHERE))
+    if (LARGE_ITEM_ACTIVE && (MODE == minimax::generating || LARGE_ITEM_ACTIVE_EVERYWHERE))
     {
 	
 	tat->meas.large_item_calls++;
@@ -266,7 +266,7 @@ template<mm_state MODE> std::pair<victory, heuristic_strategy*> adversary_heuris
 	{
 	    tat->meas.large_item_hits++;
 
-	    if (MODE == mm_state::generating)
+	    if (MODE == minimax::generating)
 	    {
 		// Build strategy.
 		str = new heuristic_strategy_list;
@@ -290,7 +290,7 @@ template<mm_state MODE> std::pair<victory, heuristic_strategy*> adversary_heuris
     }
 
     // one heuristic specific for 19/14
-    if (S == 14 && R == 19 && FIVE_NINE_ACTIVE && (MODE == mm_state::generating || FIVE_NINE_ACTIVE_EVERYWHERE))
+    if (S == 14 && R == 19 && FIVE_NINE_ACTIVE && (MODE == minimax::generating || FIVE_NINE_ACTIVE_EVERYWHERE))
     {
 
 	auto [fnh, fives_to_send] = five_nine_heuristic(b,tat);
@@ -298,7 +298,7 @@ template<mm_state MODE> std::pair<victory, heuristic_strategy*> adversary_heuris
 	if (fnh)
 	{
 	    tat->meas.five_nine_hits++;
-	    if(MODE == mm_state::generating)
+	    if(MODE == minimax::generating)
 	    {
 		// Build strategy.
 		std::vector<int> fvs;

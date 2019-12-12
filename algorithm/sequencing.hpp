@@ -63,7 +63,7 @@ victory sequencing_adversary(binconf *b, unsigned int depth, thread_attr *tat,
     if (ADVERSARY_HEURISTICS)
     {
 	// The procedure may generate the vertex in question.
-	auto [vic, strategy] = adversary_heuristics<mm_state::generating>(b, tat, adv_to_evaluate);
+	auto [vic, strategy] = adversary_heuristics<minimax::generating>(b, tat, adv_to_evaluate);
 
 	if (vic == victory::adv)
 	{
@@ -159,10 +159,10 @@ victory sequencing_adversary(binconf *b, unsigned int depth, thread_attr *tat,
     if (below == victory::adv)
     {
 	r = victory::adv;
-	qdag->remove_outedges_except<mm_state::sequencing>(adv_to_evaluate, item_size);
+	qdag->remove_outedges_except<minimax::generating>(adv_to_evaluate, item_size);
     } else if (below == victory::alg)
     {
-	qdag->remove_edge<mm_state::sequencing>(new_edge);
+	qdag->remove_edge<minimax::generating>(new_edge);
     } else if (below == victory::uncertain)
     {
 	if (r == victory::alg)
@@ -249,7 +249,7 @@ victory sequencing_algorithm(binconf *b, int k, unsigned int depth, thread_attr 
 	    if (below == victory::alg)
 	    {
 		r = below;
-		qdag->remove_outedges<mm_state::sequencing>(alg_to_evaluate);
+		qdag->remove_outedges<minimax::generating>(alg_to_evaluate);
 		alg_to_evaluate->win = r;
 		return r;
 	    } else if (below == victory::adv)

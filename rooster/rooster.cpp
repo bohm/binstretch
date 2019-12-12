@@ -315,7 +315,7 @@ void merge_two(dag *d, adversary_vertex *remaining, adversary_vertex *removal)
     }*/
 
     // Remove outedges recursively.
-    d->remove_outedges<mm_state::generating>(removal);
+    d->remove_outedges<minimax::generating>(removal);
     
     d->del_adv_vertex(removal); // Then, remove the vertex itself.
 }
@@ -466,12 +466,12 @@ void cut_large_item(rooster_dag *rd, adversary_vertex *v, std::vector<deletable>
 	rd->optimal_solution_map[v->id] = optimum;
 
 	// Remove all outgoing edges.
-	// Set mm_state so that no tasks are affected.
+	// Set minimax so that no tasks are affected.
 	deletable d;
 	d.vertex = v;
 	d.depth = v->bc.itemcount();
 	dels.push_back(d);
-	// canvas->remove_outedges<mm_state::generating>(v);
+	// canvas->remove_outedges<minimax::generating>(v);
     } else
     {
 	for (adv_outedge *e : v->out)
@@ -508,7 +508,7 @@ void cut_large_item(rooster_dag *rd)
     {
 	print_if<ROOSTER_DEBUG>("Removing outedges of a vertex with %d items.\n", d.vertex->bc.itemcount() );
 
-	canvas->remove_outedges<mm_state::generating>(d.vertex);
+	canvas->remove_outedges<minimax::generating>(d.vertex);
     }
 }
 

@@ -90,7 +90,7 @@ void purge_new_adv(dag *d, adversary_vertex *v)
 	if (down->state == vert_state::fresh) // algorithm vertex can never be a task
 	{
 	    purge_new_alg(d, down);
-	    d->remove_inedge<mm_state::generating>(*it);
+	    d->remove_inedge<minimax::generating>(*it);
 	    it = v->out.erase(it); // serves as it++
 	} else {
 	    purge_new_alg(d, down);
@@ -114,7 +114,7 @@ void purge_new_alg(dag *d, algorithm_vertex *v)
 	if (down->state == vert_state::fresh || down->task)
 	{
 	    purge_new_adv(d, down);
-	    d->remove_inedge<mm_state::generating>(*it);
+	    d->remove_inedge<minimax::generating>(*it);
 	    it = v->out.erase(it); // serves as it++
 	} else {
 	    purge_new_adv(d, down);

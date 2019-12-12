@@ -175,7 +175,7 @@ void dag::clear_visited()
 /* Forward declaration of remove_task for inclusion purposes. */
 void remove_task(uint64_t hash);
 
-template <mm_state MODE> void dag::remove_inedge(adv_outedge *e)
+template <minimax MODE> void dag::remove_inedge(adv_outedge *e)
 {
     print_if<GRAPH_DEBUG>("Removing inedge of edge-id %" PRIu64 ", connecting %" PRIu64 " -> %" PRIu64 ".\n",
 			  e->id, e->from->id, e->to->id);
@@ -190,7 +190,7 @@ template <mm_state MODE> void dag::remove_inedge(adv_outedge *e)
     }
 }
 
-template <mm_state MODE> void dag::remove_inedge(alg_outedge *e)
+template <minimax MODE> void dag::remove_inedge(alg_outedge *e)
 {
     print_if<GRAPH_DEBUG>("Removing inedge of edge-id %" PRIu64 ", connecting %" PRIu64 " -> %" PRIu64 ".\n",
 			  e->id, e->from->id, e->to->id);
@@ -200,7 +200,7 @@ template <mm_state MODE> void dag::remove_inedge(alg_outedge *e)
     {
 	remove_outedges<MODE>(e->to);
 	// when updating the tree, if e->to is task, remove it from the queue
-	if (MODE == mm_state::updating && e->to->task && e->to->win == victory::uncertain)
+	if (MODE == minimax::updating && e->to->task && e->to->win == victory::uncertain)
 	{
 	    remove_task(e->to->bc.hash_with_last());
 	}
@@ -212,7 +212,7 @@ template <mm_state MODE> void dag::remove_inedge(alg_outedge *e)
 
 /* Removes all outgoing edges (including from the inedge lists).
    In order to preserve incoming edges, leaves the vertex be. */
-template <mm_state MODE> void dag::remove_outedges(algorithm_vertex *v)
+template <minimax MODE> void dag::remove_outedges(algorithm_vertex *v)
 {
     print_if<GRAPH_DEBUG>("Removing all %zu outedges of vertex %" PRIu64 ".\n", v->out.size(), v->id);
     for (auto& e: v->out)
@@ -224,7 +224,7 @@ template <mm_state MODE> void dag::remove_outedges(algorithm_vertex *v)
     v->out.clear();
 }
 
-template <mm_state MODE> void dag::remove_outedges(adversary_vertex *v)
+template <minimax MODE> void dag::remove_outedges(adversary_vertex *v)
 {
     print_if<GRAPH_DEBUG>("Removing all %zu outedges of vertex %" PRIu64 ".\n", v->out.size(), v->id);
 
@@ -238,7 +238,7 @@ template <mm_state MODE> void dag::remove_outedges(adversary_vertex *v)
 }
 
 // removes both the outedge and the inedge
-template <mm_state MODE> void dag::remove_edge(alg_outedge *e)
+template <minimax MODE> void dag::remove_edge(alg_outedge *e)
 {
     print_if<GRAPH_DEBUG>("Removing algorithm's edge with target bin %d from vertex:", e->target_bin) ;
     if (GRAPH_DEBUG) { e->from->print(stderr); }
@@ -248,7 +248,7 @@ template <mm_state MODE> void dag::remove_edge(alg_outedge *e)
     del_alg_outedge(e);
 }
 
-template <mm_state MODE> void dag::remove_edge(adv_outedge *e)
+template <minimax MODE> void dag::remove_edge(adv_outedge *e)
 {
     print_if<GRAPH_DEBUG>("Removing adversary outedge with item %d from vertex:", e->item);
     if (GRAPH_DEBUG) { e->from->print(stderr); }
@@ -259,7 +259,7 @@ template <mm_state MODE> void dag::remove_edge(adv_outedge *e)
 }
 
 // Remove all outedges except the right path.
-template <mm_state MODE> void dag::remove_outedges_except(adversary_vertex *v, int right_item)
+template <minimax MODE> void dag::remove_outedges_except(adversary_vertex *v, int right_item)
 {
     print_if<GRAPH_DEBUG>("Removing all of %zu edges -- except %d -- of vertex ", v->out.size(), right_item);
     if (GRAPH_DEBUG) { v->print(stderr); }
