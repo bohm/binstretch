@@ -35,6 +35,8 @@ template<minimax MODE> victory computation<MODE>::adversary(adversary_vertex *ad
     victory below = victory::alg;
     victory win = victory::alg;
     bool switch_to_heuristic = false;
+    adversarial_strategy* old_strategy = nullptr;
+    
     adversary_notes notes;
     // maximum_feasible is either overwritten or used as a guaranteed upper bound
     // in later computations. Therefore, we initialize it to S. It should not be
@@ -66,9 +68,9 @@ template<minimax MODE> victory computation<MODE>::adversary(adversary_vertex *ad
     // We also do not need to compute heuristics further if we are already following
     // a heuristic.
     
-    if (ADVERSARY_HEURISTICS && !adv_strategy.heuristic_regime() )
+    if (ADVERSARY_HEURISTICS && (adv_strategy.type == heuristic::none))
     {
-	victory vic = adv_strategy.heuristics(b, tat);
+	auto [vic, newstrat] = adv_strategy.heuristics(b, this);
 	
 	if (vic == victory::adv)
 	{
@@ -77,22 +79,20 @@ template<minimax MODE> victory computation<MODE>::adversary(adversary_vertex *ad
 		return victory::adv;
 	    } else {
 		switch_to_heuristic = true;
-		heuristic_regime = true;
-		heuristic_starting_depth = depth;
-		current_strategy = strategy;
+		old_strategy = adv_strategy;
+		adv_strategy = newstrat;
 	    }
 	}
     }
 
     // If we have entered or we are inside a heuristic regime,
     // mark the vertex as heuristical with the current strategy.
-    if (GENERATING && adv_strategy.heuristic_regime() )
+    if (GENERATING && adv_strategy.type != heuristic::none )
     {
-	adv_to_evaluate->mark_as_heuristical(current_strategy);
+	adv_to_evaluate->mark_as_heuristical(adv_strategy);
 	// We can already mark the vertex as "won", but the question is
 	// whether not to do it later.
 	adv_to_evaluate->win = victory::adv;
-
     }
 
     if (GENERATING)
@@ -204,27 +204,8 @@ template<minimax MODE> victory computation<MODE>::adversary(adversary_vertex *ad
 
     candidate_moves = adv_strategy.moveset(b);
     
-    /*if (heuristic_regime)
-    {
-	compute_next_moves_heur(candidate_moves, b, current_strategy);
-    } else if (GENERATING)
-    {
-	maximum_feasible = compute_next_moves_genstrat(candidate_moves, b, depth, tat);
-    } else
-    {
-	maximum_feasible = compute_next_moves_expstrat(candidate_moves, b, depth, tat);
-	}
-    */
+   */
 
-    // If we do "en passant" check for large item heuristic, we recurse back with true.
-    // TODO: mark strategy here, too.
-    if (lih_hit)
-    {
-	lih_hit = false;
-	return victory::adv;
-    }
-
-    // print_if<DEBUG>("Trying player zero choices, with maxload starting at %d\n", maximum_feasible);
     for (int item_size : candidate_moves)
     {
 
@@ -292,9 +273,8 @@ template<minimax MODE> victory computation<MODE>::adversary(adversary_vertex *ad
     // If we were in heuristics mode, switch back to normal.
     if (switch_to_heuristic)
     {
-	heuristic_regime = false;
-	delete current_strategy;
-	current_strategy = nullptr;
+	delete adv_strategy;
+	adv_strategy = old_strategy;
     }
 
     // Sanity check.
@@ -465,34 +445,26 @@ template<minimax MODE> victory computation<MODE>::algorithm(int item, algorithm_
 // wrapper for exploration
 // Returns value of the current position.
 
-victory explore(binconf *b)
+victory explore(const binconf& b, measure_attr &measurements)
 {
-    b->hashinit();
-    binconf root_copy = *b;
+    computation<minimax::exploring> comp(b, measurements);
     
     onlineloads_init(ol, b);
-    //assert(ol.loadsum() == b->totalload());
-
-    //std::vector<uint64_t> first_pass;
-    //dynprog_one_pass_init(b, &first_pass);
-    //previous_pass = &first_pass;
     eval_start = std::chrono::system_clock::now();
     current_overdue = false;
-    explore_roothash = b->hash_with_last();
-    explore_root = &root_copy;
-    victory ret = adversary<minimax::exploring>(b, 0, tat, NULL, NULL);
+
+    victory ret = comp.adversary(nullptr, nullptr);
+    
     assert(ret != victory::uncertain);
     return ret;
 }
 
 // wrapper for generation
-victory generate(sapling start_sapling)
+victory generate(sapling start_sapling, measure_attr &measurements)
 {
-    binconf inplace_bc;
-    duplicate(&inplace_bc, &start_sapling.root->bc);
-    inplace_bc.hashinit();
+    computation<minimax::generating> comp(&start_sapling.root->bc, measurements);
     onlineloads_init(ol, &inplace_bc);
-    victory ret = adversary<minimax::generating>(&inplace_bc, 0, tat, start_sapling.root, NULL);
+    victory ret = adversary<minimax::generating>(start_sapling.root, nullptr);
     return ret;
 }
 

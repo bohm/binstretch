@@ -10,7 +10,6 @@
 
 #include "common.hpp"
 #include "binconf.hpp"
-#include "thread_attr.hpp"
 
 /* As an experiment to save space, we will make the caching table
 values only 64-bit long, where the first 63 bits correspond to the 

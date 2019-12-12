@@ -6,6 +6,6 @@
 #include "minimax/computation.hpp"
 #include "minimax/basics.hpp"
 #include "minimax/adversary.hpp"
-#include "minimax/algorithm.hpp"
+// #include "minimax/algorithm.hpp"
 
 #endif // MINIMAX_MINIMAX_HPP

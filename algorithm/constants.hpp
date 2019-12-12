@@ -40,7 +40,7 @@ template <bool PARAM> void print(FILE *stream, const victory& win)
 
 // Types of adversarial heuristics.
 // enum class heuristic {simple, large_item, five_nine };
-enum class heuristic {large_item, five_nine };
+enum class heuristic {large_item, five_nine, none};
 
 void print(FILE *stream, const heuristic& type)
 {

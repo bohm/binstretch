@@ -63,7 +63,6 @@ victory worker::solve(const task *t, const int& task_id)
 {
     victory ret = victory::uncertain;
 
-    thread_attr<mm_state::exploring> tat;
     //tat.last_item = t->last_item;
     tat.task_id = task_id;
     computation_root = NULL; // we do not run GENERATE or EXPAND on the workers currently
@@ -77,8 +76,8 @@ victory worker::solve(const task *t, const int& task_id)
 
     // worker depth is now set to be permanently zero
     tat.prev_max_feasible = S;
-    ret = explore(&task_copy, &tat);
-    measurements.add(tat.meas);
+    ret = explore(&task_copy, &measurements);
+    // measurements.add(tat.meas);
     assert(ret != victory::uncertain); // Might be victory for alg, adv or irrelevant.
     return ret;
 }

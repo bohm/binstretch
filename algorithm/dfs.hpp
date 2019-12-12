@@ -130,17 +130,17 @@ void purge_new(dag *d, adversary_vertex *r)
 }
 
 
-void relabel_and_fix_adv(adversary_vertex *v, measure_attr *meas); 
-void relabel_and_fix_alg(algorithm_vertex *v, measure_attr *meas);
+void relabel_and_fix_adv(adversary_vertex *v, measure_attr& meas); 
+void relabel_and_fix_alg(algorithm_vertex *v, measure_attr& meas);
 
-void relabel_and_fix_adv(adversary_vertex *v, measure_attr *meas)
+void relabel_and_fix_adv(adversary_vertex *v, measure_attr& meas)
 {
     if (v->visited || v->state == vert_state::finished)
     {
 	return;
     }
 
-    meas->visit_counter++;
+    meas.visit_counter++;
     v->visited = true;
 
     if (v->task)
@@ -155,7 +155,7 @@ void relabel_and_fix_adv(adversary_vertex *v, measure_attr *meas)
 	    assert(v->out.size() == 0 && v->win == victory::adv);
 	}
 
-	meas->relabeled_vertices++;
+	meas.relabeled_vertices++;
 	v->task = false;
 	v->state = vert_state::expand;
 
@@ -174,7 +174,7 @@ void relabel_and_fix_adv(adversary_vertex *v, measure_attr *meas)
 
 }
 
-void relabel_and_fix_alg(algorithm_vertex *v, measure_attr *meas)
+void relabel_and_fix_alg(algorithm_vertex *v, measure_attr &meas)
 {
     if (v->visited || v->state == vert_state::finished)
     {
@@ -182,7 +182,7 @@ void relabel_and_fix_alg(algorithm_vertex *v, measure_attr *meas)
     }
     
     v->visited = true;
-    meas->visit_counter++;
+    meas.visit_counter++;
 
     // algorithm vertices should never be tasks
     assert(v->win == victory::adv);
@@ -198,14 +198,14 @@ void relabel_and_fix_alg(algorithm_vertex *v, measure_attr *meas)
     }
 }
 
-void relabel_and_fix(dag *d, adversary_vertex *r, measure_attr *meas)
+void relabel_and_fix(dag *d, adversary_vertex *r, measure_attr& meas)
 {
     d->clear_visited();
-    meas->relabeled_vertices = 0;
-    meas->visit_counter = 0;
+    meas.relabeled_vertices = 0;
+    meas.visit_counter = 0;
 
-    relabel_and_fix_adv(r, tat);
-    print_if<true>("Visited %d verts, marked %d vertices to expand.\n", meas->visit_counter, meas->relabeled_vertices);
+    relabel_and_fix_adv(r, meas);
+    print_if<true>("Visited %d verts, marked %d vertices to expand.\n", meas.visit_counter, meas.relabeled_vertices);
 }
 
 // Marks all branches without tasks in them as vert_state::finished.

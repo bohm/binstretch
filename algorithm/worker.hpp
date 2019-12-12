@@ -5,9 +5,8 @@
 #include "server_properties.hpp"
 #include "binconf.hpp"
 #include "dag/dag.hpp"
-#include "thread_attr.hpp"
 #include "tasks.hpp"
-#include "minimax.hpp"
+#include "minimax/minimax.hpp"
 
 std::mutex worker_needed;
 std::condition_variable worker_needed_cv;

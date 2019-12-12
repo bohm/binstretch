@@ -250,7 +250,7 @@ int queen_class::start()
 		    // queen sends the current monotonicity to the workers
 		    broadcast_monotonicity(monotonicity);
 
-		    collect_tasks(computation_root, &tat);
+		    collect_tasks(computation_root);
 		    init_tstatus(tstatus_temporary); tstatus_temporary.clear();
 		    init_tarray(tarray_temporary); tarray_temporary.clear();
 		    permute_tarray_tstatus(); // randomly shuffles the tasks 

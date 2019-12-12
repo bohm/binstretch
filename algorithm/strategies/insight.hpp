@@ -83,7 +83,7 @@ public:
 
 
 
-template <mm_state MODE> class algorithmic_strategy_basic
+template <minimax MODE> class algorithmic_strategy_basic
 {
 public:
     bool following_algorithm = false;
@@ -92,43 +92,6 @@ public:
 
     void undo_alg_move();
     void undo_adv_move();
-};
-
-// Any "insight" that the strategy needs to proceed.
-// Updated iteratively after every move of either player.
-class adversary_strategy_basic
-{
-public:
-    // Almost all strategies monitor depth.
-    int itemdepth = 0;
-
-    // The basic strategy also stores these numbers for the computations.
-    revertible<int> lowest_sendable;
-    revertible<int> maximum_feasible;
-    revertible<int> lower_bound;
-    heuristic_strategy* strat = nullptr;
-
-    victory heuristics(const binconf *b, thread_attr *tat);
-
-    bool heuristic_regime() const
-	{
-	    return (strat != nullptr);
-	}
-
-    // undo_heuristics() should be called only when heuristics() returned true.
-    void undo_heuristics()
-	{
-	    strat = nullptr;
-	}
-
-    void computation(const binconf *b, thread_attr *tat);
-    void undo_computation();
-    std::vector<int> moveset(const binconf *b);
-    void adv_move(const binconf *b, int item);
-    void undo_adv_move();
-    // void alg_move(const binconf *b, int item, int bin);
-    // void undo_alg_move();
-
 };
 
 #endif // STRATEGIES_INSIGHT_HPP

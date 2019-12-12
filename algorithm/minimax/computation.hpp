@@ -21,7 +21,7 @@ public:
     int movedepth = 0; // Number of moves since the root of the dag.
     
     binconf b; // the bin configuration on which in-place exploration is taking place.
-    
+    binconf root; // The root description (does not change).
     
     // dynamic programming
     dynprog_data dp_data;
@@ -54,7 +54,8 @@ public:
     int regrow_level = 0;
 
     // --- measure attributes ---
-    measure_attr meas; // measurements for one computation
+    measure_attr& meas; // measurements for one computation. We actually
+    // write the measurements for exploration to another location.
     measure_attr g_meas; // persistent measurements per process
 
     // A slightly hacky addition: we underhandedly pass large item heuristic
@@ -64,20 +65,14 @@ public:
 
     // --- debug ---
     int maxfeas_return_point = -1;
-    computation()
+    computation(const binconf &bc, measure_attr &measurements)
+	: b(bc), meas(measurements), root(bc)
 	{
-	    oldloadqueue = new std::vector<loadconf>();
-	    oldloadqueue->reserve(LOADSIZE);
-	    newloadqueue = new std::vector<loadconf>();
-	    newloadqueue->reserve(LOADSIZE);
-	    loadht = new uint64_t[LOADSIZE];
+	    b.hashinit(); root.hashinit();
 	}
 
     ~computation()
 	{
-	    delete oldloadqueue;
-	    delete newloadqueue;
-	    delete[] loadht;
 	}
 
     victory check_messages();

@@ -19,10 +19,6 @@
 // Currently, selecting dynprog_max_via_vector adds about 40 seconds to the computation time
 // of a lower bound for 86/63.
 
-// A forward declaration (full one in heur_adv.hpp).
-// bin_int dynprog_max_with_lih(const binconf& conf, thread_attr *tat = NULL);
-
-
 #define STANDALONE_CLEANUP() if (STANDALONE) { delete dp_data; }
 	
 template<bool STANDALONE> bin_int dynprog_max_direct(const binconf &conf, dynprog_data *dp_data = nullptr)

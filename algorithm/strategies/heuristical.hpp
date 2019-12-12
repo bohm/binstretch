@@ -1,70 +1,35 @@
-#ifndef HEUR_CLASSES_HPP
-#define HEUR_CLASSES_HPP 1
+#ifndef STRATEGIES_HEURISTICAL_HPP
+#define STRATEGIES_HEURISTICAL_HPP
 
-#include <string>
-#include <sstream>
-
-#include "common.hpp"
-#include "binconf.hpp"
-#include "dynprog/algo.hpp"
-#include "dynprog/wrappers.hpp"
-
-// Adversarial heuristics: basic classes.
-
-// A heuristic strategy corresponding to the "large item" heuristic.
-
-class heuristic_strategy_list : public heuristic_strategy
+template <minimax MODE> class heuristic_strategy_list : public adversarial_strategy
 {
-private:
     std::vector<int> itemlist;
-public:
-    void init(const std::vector<int>& list)
+    unsigned int position = 0;
+    
+    void init(const binconf *b, const std::vector<int>& list)
 	{
+	    type = heuristic::large_item;
 	    itemlist = list;
-	}
-
-    heuristic_strategy* clone()
-	{
-	    heuristic_strategy_list *copy = new heuristic_strategy_list();
-	    copy->init(itemlist);
-	    copy->set_depth(relative_depth);
-	    return copy;
 	}
     
     // Parse the string and get the itemlist from it.
     // We currently use the "slow" stringstreams, but this is never used
     // in the main search code and thus should be fine.
-    void init_from_string(const std::string& heurstring)
+    void init_from_string(const binconf *b, const std::string& description)
 	{
+	    type = heuristic::large_item;
+	    std::vector<int> numerical_list;
 	    std::string _;
-	    std::istringstream hsstream(heurstring);
-	    itemlist.clear();
-	    relative_depth = 0;
+	    std::istringstream hsstream(description);
 	    while (!hsstream.eof())
 	    {
 		int next = 0;
 		hsstream >> next;
-		itemlist.push_back(next);
+		numerical_list.push_back(next);
 		getline(hsstream, _, ',');
 	    }
-	}
-    
-    int next_item(const binconf *current_conf)
-	{
-	    if ( (int) itemlist.size() <= relative_depth)
-	    {
-		fprintf(stderr, "Itemlist is shorter %lu than the item we ask for %d:\n",
-			itemlist.size(), relative_depth);
-		for( int item : itemlist)
-		{
-		    fprintf(stderr, "%d,", item);
-		}
-		fprintf(stderr, "\n");
-		print_binconf<true>(current_conf);
-		assert( (int) itemlist.size() > relative_depth);
-	    }
 
-	    return itemlist[relative_depth];
+	    init(b, numerical_list);
 	}
 
     // Create a printable form of the strategy based on the current configuration.
@@ -73,8 +38,7 @@ public:
 	    std::ostringstream os;
 	    bool first = true;
 
-	    assert( relative_depth < (int) itemlist.size());
-	    for (int i = relative_depth; i < (int) itemlist.size(); i++)
+	    for (unsigned int i = position; i < itemlist.size(); i++)
 	    {
 		if(first)
 		{
@@ -87,15 +51,48 @@ public:
 	    return os.str();
 	}
 
-    // A helper function which exposes the data in a unified way -- as a list of integers.
-    // Similar to print() and used for a similar thing.
-    
+
     std::vector<int> contents()
 	{
-	    return itemlist;
+	    std::vector<int> ret;
+	    for (unsigned int i = position; i < itemlist.size(); i++)
+	    {
+		ret.push_back(itemlist[i]);
+	    }
+	    return ret;
 	}
-};
 
+    // Does not change the strategy.
+    std::pair<victory, adversarial_strategy<MODE> * > heuristics(const binconf *b, computation<MODE> *comp)
+	{
+	    return std::pair<victory, adversarial_strategy<MODE> * >(victory::adv, nullptr);
+	}
+    
+    // No calculation needed.
+    void calcs(const binconf *b, computation<MODE> *comp) {}
+    void undo_calcs() {}
+    // The only valid move is the single item in the list.
+    std::vector<int> moveset(const binconf *b)
+	{
+	    std::vector<int> ret;
+	    ret.push_back(itemlist[position]);
+	    return ret;
+	}
+    void adv_move(const binconf *b, int item)
+	{
+	    position++; 
+	}
+
+    void undo_adv_move()
+	{
+	    position--;
+	}
+}
+
+// We actually disable the Five-Nine heuristics for now until
+// we get the rest of the code working.
+
+/*
 int first_with_load(const binconf& b, int threshold)
 {
     for (int i = BINS; i >= 1; i--)
@@ -154,10 +151,11 @@ std::pair<int, int> fn_should_send(const binconf *current_conf)
     return std::pair(5,1);
 }
 
-class heuristic_strategy_fn : public heuristic_strategy
+class heuristic_strategy_fn : public adversarial_strategy
 {
 private:
     int fives = 0;
+    int item_to_send = 0;
 public:    
     void init(const std::vector<int>& list)
 	{
@@ -203,6 +201,12 @@ public:
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-variable"
 
+    void calcs(const binconf *b, computation<MODE> *comp)
+	{
+	    auto [item, _] = fn_should_send(current_conf);
+	    
+
+	}
     int next_item(const binconf *current_conf)
 	{
 	    auto [item, _] = fn_should_send(current_conf);
@@ -254,5 +258,6 @@ public:
 	    return ret;
 	}
 };
- 
+*/
+
 #endif
