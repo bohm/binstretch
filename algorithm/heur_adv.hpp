@@ -56,9 +56,9 @@ int check_loadconf_vectors(const std::vector<loadconf> &va, const std::vector<lo
     return -1;
 }
 
-int dynprog_and_check_vectors(const binconf &b, const std::vector<loadconf> &v, thread_attr *tat)
+int dynprog_and_check_vectors(const binconf &b, const std::vector<loadconf> &v, dynprog_data *dpdata)
 {
-    return check_loadconf_vectors( dynprog(b, tat), v);
+    return check_loadconf_vectors( dynprog(b, dpdata), v);
 }
 
 // Build load configurations (essentially sequences of items) which work for the LI heuristic.
@@ -114,11 +114,11 @@ std::vector<loadconf> build_lih_choices(const binconf &b)
     return large_choices;
 }
 
-std::pair<bool, loadconf> large_item_heuristic(const binconf& b, thread_attr *tat)
+std::pair<bool, loadconf> large_item_heuristic(const binconf& b, dynprog_data *dpdata)
 {
     loadconf ret;
     std::vector<loadconf> large_choices = build_lih_choices(b);
-    int success = dynprog_and_check_vectors(b, large_choices, tat);
+    int success = dynprog_and_check_vectors(b, large_choices, dpdata);
 
     if (success == -1)
     {
@@ -144,22 +144,6 @@ std::pair<bool, loadconf> large_item_heuristic(const binconf& b, const std::vect
     }
 }
 
-bin_int dynprog_max_with_lih(const binconf& conf, thread_attr *tat)
-{
-    tat->lih_hit = false;
-    std::vector<loadconf> feasible_packings = dynprog(conf, tat);
-
-    std::tie(tat->lih_hit, tat->lih_match) = large_item_heuristic(conf, feasible_packings);
-
-    bin_int max_overall = MAX_INFEASIBLE;
-    for (const loadconf& tuple : feasible_packings)
-    {
-	max_overall = std::max((bin_int) (S - tuple.loads[BINS]), max_overall);
-    }
-
-    return max_overall;
-}
-
 
 // --- Five/nine heuristic, specific for 19/14. ---
 
@@ -173,7 +157,7 @@ bin_int dynprog_max_with_lih(const binconf& conf, thread_attr *tat)
 
 // Idea of the heuristic: send items of size 5 until either
 // * one bin accepts two or * all bins have load > 5.
-std::pair<bool, bin_int> five_nine_heuristic(binconf *b, thread_attr *tat)
+std::pair<bool, bin_int> five_nine_heuristic(binconf *b, dynprog_data *dpdata, measure_attr *meas)
 {
     // print_if<true>("Computing FN for: "); print_binconf<true>(b);
 
@@ -191,7 +175,7 @@ std::pair<bool, bin_int> five_nine_heuristic(binconf *b, thread_attr *tat)
     // uint64_t loadhash_start = b->loadhash;
     // uint64_t itemhash_start = b->itemhash;
 
-    bool bins_times_nine_threat = pack_query_compute(*b,9, BINS, tat);
+    bool bins_times_nine_threat = pack_query_compute(*b,9, BINS, dpdata, meas);
     bool fourteen_feasible = false;
     if (bins_times_nine_threat)
     {
@@ -210,7 +194,7 @@ std::pair<bool, bin_int> five_nine_heuristic(binconf *b, thread_attr *tat)
 	int fourteen_sequence = BINS - last_bin_above_five + 1;
 	while (bins_times_nine_threat && fourteen_sequence >= 1 && last_bin_above_five <= BINS)
 	{
-	    fourteen_feasible = pack_query_compute(*b,14, fourteen_sequence, tat);
+	    fourteen_feasible = pack_query_compute(*b,14, fourteen_sequence, dpdata, meas);
 	    //print_if<true>("Itemhash after pack 14: %" PRIu64 ".\n", b->itemhash);
 
 	    if (fourteen_feasible)
@@ -225,7 +209,7 @@ std::pair<bool, bin_int> five_nine_heuristic(binconf *b, thread_attr *tat)
 	    add_item_inplace(*b,5);
 	    fives++;
 
-	    bins_times_nine_threat = pack_query_compute(*b,9, BINS, tat);
+	    bins_times_nine_threat = pack_query_compute(*b,9, BINS, dpdata, meas);
 	}
 
 	// return b to normal
@@ -235,7 +219,7 @@ std::pair<bool, bin_int> five_nine_heuristic(binconf *b, thread_attr *tat)
     return std::pair(false, -1);
 }
 
-template<minimax MODE> std::pair<victory, heuristic_strategy*> adversary_heuristics(binconf *b, thread_attr *tat, adversary_vertex *adv_to_evaluate)
+template<minimax MODE> std::pair<victory, heuristic_strategy*> adversary_heuristics(binconf *b, dynprog_data *dpdata, measure_attr *meas, adversary_vertex *adv_to_evaluate)
 {
     //A much weaker variant of large item heuristic, but takes O(1) time.
     heuristic_strategy *str = nullptr;
@@ -259,12 +243,12 @@ template<minimax MODE> std::pair<victory, heuristic_strategy*> adversary_heurist
     if (LARGE_ITEM_ACTIVE && (MODE == minimax::generating || LARGE_ITEM_ACTIVE_EVERYWHERE))
     {
 	
-	tat->meas.large_item_calls++;
+	meas->large_item_calls++;
 
-	auto [success, heurloadconf] = large_item_heuristic(*b, tat);
+	auto [success, heurloadconf] = large_item_heuristic(*b, dpdata);
 	if (success)
 	{
-	    tat->meas.large_item_hits++;
+	    meas->large_item_hits++;
 
 	    if (MODE == minimax::generating)
 	    {
@@ -293,11 +277,11 @@ template<minimax MODE> std::pair<victory, heuristic_strategy*> adversary_heurist
     if (S == 14 && R == 19 && FIVE_NINE_ACTIVE && (MODE == minimax::generating || FIVE_NINE_ACTIVE_EVERYWHERE))
     {
 
-	auto [fnh, fives_to_send] = five_nine_heuristic(b,tat);
-	tat->meas.five_nine_calls++;
+	auto [fnh, fives_to_send] = five_nine_heuristic(b, dpdata, meas);
+	meas->five_nine_calls++;
 	if (fnh)
 	{
-	    tat->meas.five_nine_hits++;
+	    meas->five_nine_hits++;
 	    if(MODE == minimax::generating)
 	    {
 		// Build strategy.

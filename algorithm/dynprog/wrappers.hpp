@@ -4,9 +4,9 @@
 #include "../dynprog/algo.hpp"
 
 // A wrapper function that just checks all feasible packings and reports the maximum feasible item that can be sent.
-bin_int dynprog_max_via_vector(const binconf& conf, thread_attr *tat)
+bin_int dynprog_max_via_vector(const binconf& conf, dynprog_data *dpdata)
 {
-    std::vector<loadconf> feasible_packings = dynprog(conf, tat);
+    std::vector<loadconf> feasible_packings = dynprog(conf, dpdata);
 
     bin_int max_overall = MAX_INFEASIBLE;
     for (const loadconf& tuple : feasible_packings)
@@ -35,13 +35,13 @@ void remove_item_inplace(binconf& h, const bin_int item, const bin_int multiplic
 	h.i_changehash(item, h.items[item]+multiplicity, h.items[item]);
 }
 
-bool compute_feasibility(const binconf &h, thread_attr *tat = nullptr)
+bool compute_feasibility(const binconf &h, dynprog_data *dpdata = nullptr, measure_attr *meas = nullptr)
 {
-    if (tat != nullptr)
+    if (dpdata != nullptr && meas != nullptr)
     {
-	return (DYNPROG_MAX<false>(h,tat) != MAX_INFEASIBLE);
+	return (DYNPROG_MAX<false>(h,dpdata, meas) != MAX_INFEASIBLE);
     }
-    return (DYNPROG_MAX<true>(h,tat) != MAX_INFEASIBLE);
+    return (DYNPROG_MAX<true>(h) != MAX_INFEASIBLE);
 }
 
 void pack_and_encache(binconf &h, const bin_int item, const bool feasibility, const bin_int multiplicity = 1)
@@ -59,14 +59,14 @@ std::pair <bool, bool> pack_and_query(binconf &h, const bin_int item, const bin_
     return retpair;
 }
 
-bool pack_query_compute(binconf &h, const bin_int item, const bin_int multiplicity = 1, thread_attr *tat = nullptr)
+bool pack_query_compute(binconf &h, const bin_int item, const bin_int multiplicity = 1, dynprog_data *dpdata = nullptr, measure_attr *meas = nullptr)
 {
     add_item_inplace(h,item, multiplicity);
     auto [located, feasible] = dpc->lookup(h);
     bool ret;
     if (!located)
     {
-	ret = compute_feasibility(h,tat);
+	ret = compute_feasibility(h, dpdata, meas);
 	dpc->insert(h,ret);
     } else { // Found in cache.
         ret = feasible;
@@ -85,7 +85,7 @@ bool pack_compute(binconf &h, const bin_int item, const bin_int multiplicity = 1
 
 }
 
-void dp_cache_print(binconf &h, thread_attr *tat)
+void dp_cache_print(binconf &h)
 {
     auto [located, feasible] = dpc->lookup(h);
     fprintf(stderr, "Cache print without item: (%d, %d), with items [0,S]: ", located, feasible);

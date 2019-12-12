@@ -22,15 +22,15 @@ void compute_next_moves_fixed(std::vector<int> &cands, adversary_vertex *fixed_v
 }
 
 // We also return maximum feasible value that was computed.
-int compute_next_moves_genstrat(std::vector<int> &cands, binconf *b,
-			      int depth, thread_attr *tat)
+template <minimax MODE> int compute_next_moves_genstrat(std::vector<int> &cands, binconf *b,
+							int depth, computation<MODE> *comp)
 {
 
     // Idea: start with monotonicity 0 (non-decreasing), and move towards S (full generality).
     int lower_bound = lowest_sendable(b->last_item);
 
     // finds the maximum feasible item that can be added using dyn. prog.
-    int maxfeas = MAXIMUM_FEASIBLE(b, depth, lower_bound, tat->prev_max_feasible, tat);
+    int maxfeas = maximum_feasible<MODE>(b, depth, lower_bound, comp->prev_max_feasible, comp);
  
     int stepcounter = 0;
     for (int item_size = gen_strategy_start(maxfeas, (int) b->last_item);
@@ -48,14 +48,14 @@ int compute_next_moves_genstrat(std::vector<int> &cands, binconf *b,
 
 // A slight hack: we have two separate strategies for exploration (where heuristics are turned
 // off) and generation (where heuristics are turned on)
-int compute_next_moves_expstrat(std::vector<int> &cands, binconf *b,
-				int depth, thread_attr *tat)
+template <minimax MODE> int compute_next_moves_expstrat(std::vector<int> &cands, binconf *b,
+							int depth, computation<MODE> *comp)
 {
     // Idea: start with monotonicity 0 (non-decreasing), and move towards S (full generality).
     int lower_bound = lowest_sendable(b->last_item);
 
     // finds the maximum feasible item that can be added using dyn. prog.
-    int maxfeas = MAXIMUM_FEASIBLE(b, depth, lower_bound, tat->prev_max_feasible, tat);
+    int maxfeas = maximum_feasible<MODE>(b, depth, lower_bound, comp->prev_max_feasible, comp);
  
     int stepcounter = 0;
     for (int item_size = exp_strategy_start(maxfeas, (int) b->last_item);
@@ -133,36 +133,36 @@ std::pair<adversary_vertex *, alg_outedge *> attach_matching_vertex(dag *d,
     return std::pair(upcoming_adv, connecting_outedge);
 }
 								    
-// Two functions which perform revertable edits on the thread_attr -- essentially
-// on the computation data. We call them immediately before and after calling algorithm();
+// Two functions which perform revertable edits on the computation data. We call them
+// immediately before and after calling algorithm() and adversary().
 struct adversary_notes
 {
     int old_largest = 0 ;
     int old_max_feasible = 0;
 };
 
-void adversary_descend(thread_attr *tat, adversary_notes &notes, int next_item, int maximum_feasible)
+template<minimax MODE> void adversary_descend(computation<MODE> *comp, adversary_notes &notes, int next_item, int maximum_feasible)
 {
-    notes.old_largest = tat->largest_since_computation_root;
-    notes.old_max_feasible = tat->prev_max_feasible;
+    notes.old_largest = comp->largest_since_computation_root;
+    notes.old_max_feasible = comp->prev_max_feasible;
     
-    tat->largest_since_computation_root = std::max(next_item, tat->largest_since_computation_root);
-    tat->prev_max_feasible = maximum_feasible;
-    if (tat->current_strategy != nullptr)
+    comp->largest_since_computation_root = std::max(next_item, comp->largest_since_computation_root);
+    comp->prev_max_feasible = maximum_feasible;
+    if (comp->current_strategy != nullptr)
     {
-	tat->current_strategy->increase_depth();
+	comp->current_strategy->increase_depth();
     }
     
 }
 
-void adversary_ascend(thread_attr *tat, const adversary_notes &notes)
+template <minimax MODE> void adversary_ascend(computation<MODE> *comp, const adversary_notes &notes)
 {
-    tat->largest_since_computation_root = notes.old_largest;
-    tat->prev_max_feasible = notes.old_max_feasible;
+    comp->largest_since_computation_root = notes.old_largest;
+    comp->prev_max_feasible = notes.old_max_feasible;
 
-    if (tat->current_strategy != nullptr)
+    if (comp->current_strategy != nullptr)
     {
-	tat->current_strategy->decrease_depth();
+	comp->current_strategy->decrease_depth();
     }
 }
 
@@ -173,21 +173,21 @@ struct algorithm_notes
     int ol_new_load_position = 0;
 };
 
-void algorithm_descend(thread_attr *tat, algorithm_notes &notes,
+template <minimax MODE> void algorithm_descend(computation<MODE> *comp, algorithm_notes &notes,
 		       binconf *b, int item, int target_bin)
 {
     notes.previously_last_item = b->last_item;
     notes.bc_new_load_position = b->assign_and_rehash(item, target_bin);
-    notes.ol_new_load_position = onlineloads_assign(tat->ol, item);
+    notes.ol_new_load_position = onlineloads_assign(comp->ol, item);
 }
 
-void algorithm_ascend(thread_attr *tat, const algorithm_notes &notes, binconf *b, int item)
+template <minimax MODE> void algorithm_ascend(computation<MODE> *comp, const algorithm_notes &notes, binconf *b, int item)
 {
     b->unassign_and_rehash(item, notes.bc_new_load_position, notes.previously_last_item);
     // b->last_item = notes.previously_last_item; -- not necessary, unassign and rehash takes
     // care of that.
 
-    onlineloads_unassign(tat->ol, item, notes.ol_new_load_position);
+    onlineloads_unassign(comp->ol, item, notes.ol_new_load_position);
 }
 
 #endif // AUX_MINIMAX_HPP

@@ -195,8 +195,8 @@ int queen_class::start()
 	    print_if<PROGRESS>("Queen: sapling queue size: %zu, current sapling of regrow level %d:\n", sapling_stack.size(), regrow_level);
 	    print_binconf<PROGRESS>(computation_root->bc);
 
-	    thread_attr tat;
-	    tat.regrow_level = regrow_level;
+	    computation<minimax::generating> comp;
+	    comp.regrow_level = regrow_level;
 	    
 	    // do not change monotonicity when regrowing (regrow_level >= 1)
 	    for (; monotonicity <= S-1; monotonicity++)
@@ -215,7 +215,7 @@ int queen_class::start()
 		reset_running_lows();
 		qdag->clear_visited();
 		removed_task_count = 0;
-		updater_result = generate(currently_growing, &tat);
+		updater_result = generate<minimax::generating>(currently_growing, &comp);
 		
 		computation_root->win = updater_result.load(std::memory_order_acquire);
 		if (computation_root->win != victory::uncertain)
@@ -249,7 +249,7 @@ int queen_class::start()
 		    // queen sends the current monotonicity to the workers
 		    broadcast_monotonicity(monotonicity);
 
-		    collect_tasks(computation_root, &tat);
+		    collect_tasks(computation_root);
 		    init_tstatus(tstatus_temporary); tstatus_temporary.clear();
 		    init_tarray(tarray_temporary); tarray_temporary.clear();
 		    permute_tarray_tstatus(); // randomly shuffles the tasks 
@@ -334,7 +334,7 @@ int queen_class::start()
 		assert(updater_result == victory::adv);
 		// Transform tasks into vert_state::expand and
 		// vert_state::fresh vertices into vert_state::fixed.
-		relabel_and_fix(qdag, computation_root, &tat);
+		relabel_and_fix(qdag, computation_root, &(comp.meas));
 	    }
 	}
 

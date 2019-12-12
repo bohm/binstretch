@@ -15,45 +15,18 @@
 #include "../cache/loadconf.hpp"
 #include "../cache/guarantee.hpp"
 
-// We select the right algorithm for computing the maximum feasible option.
-// Currently, selecting dynprog_max_via_vector adds about 40 seconds to the computation time
-// of a lower bound for 86/63.
-
-// A forward declaration (full one in heur_adv.hpp).
-bin_int dynprog_max_with_lih(const binconf& conf, thread_attr *tat = NULL);
-
-
-//
-
-#define STANDALONE_CLEANUP()			\
-    if (STANDALONE)				\
-    {						\
-	delete poldq;				\
-	delete pnewq;				\
-	delete[] loadht;			\
-    }						
-	
-template<bool STANDALONE> bin_int dynprog_max_direct(const binconf &conf, thread_attr *tat = nullptr)
+#define STANDALONE_CLEANUP() if (STANDALONE) { delete dpdata; }
+template<bool STANDALONE> bin_int dynprog_max_direct(const binconf &conf, dynprog_data *dpdata = nullptr, measure_attr *meas = nullptr)
 {
-    std::vector<loadconf> *poldq = nullptr;
-    std::vector<loadconf> *pnewq = nullptr;
-    uint64_t *loadht = nullptr;
-
     if (STANDALONE)
     {
-	poldq = new std::vector<loadconf>();
-	poldq->reserve(LOADSIZE);
-	pnewq = new std::vector<loadconf>();
-	pnewq->reserve(LOADSIZE);
-	loadht = new uint64_t[LOADSIZE];
-    } else
-    {
-	poldq = tat->oldloadqueue;
-	pnewq = tat->newloadqueue;
-	loadht = tat->loadht;
-	tat->newloadqueue->clear();
-	tat->oldloadqueue->clear();
+	dpdata = new dynprog_data;
     }
+    std::vector<loadconf> *poldq = dpdata->oldloadqueue;
+    std::vector<loadconf> *pnewq = dpdata->newloadqueue;
+    uint64_t *loadht = dpdata->loadht;
+    dpdata->newloadqueue->clear();
+    dpdata->oldloadqueue->clear();
     
     memset(loadht, 0, LOADSIZE*8);
 
@@ -81,7 +54,7 @@ template<bool STANDALONE> bin_int dynprog_max_direct(const binconf &conf, thread
 
 	if (smallest_item == S)
 	{
-	    
+
 	    STANDALONE_CLEANUP();
 	    if (conf.items[S] == BINS)
 	    {
@@ -130,6 +103,7 @@ template<bool STANDALONE> bin_int dynprog_max_direct(const binconf &conf, thread
 
 		if(size == smallest_item && k == 1)
 		{
+		    STANDALONE_CLEANUP();
 		    return S;
 		}
 	    } else {
@@ -172,10 +146,10 @@ template<bool STANDALONE> bin_int dynprog_max_direct(const binconf &conf, thread
 		    return MAX_INFEASIBLE;
 		} else
 		{
-		    if (!STANDALONE)
+		    if (meas != nullptr)
 		    {
-			MEASURE_ONLY(tat->meas.largest_queue_observed =
-				     std::max<uint64_t>(tat->meas.largest_queue_observed, pnewq->size()));
+			MEASURE_ONLY(meas->largest_queue_observed =
+				     std::max<uint64_t>(meas->largest_queue_observed, pnewq->size()));
 		    }
 		}
 	    }
@@ -218,16 +192,16 @@ template<bool STANDALONE> bin_int dynprog_max_direct(const binconf &conf, thread
 
 // Compute all feasible configurations and return them.
 // This algorithm is currently used in heuristics only.
-std::vector<loadconf> dynprog(const binconf &conf, thread_attr *tat)
+std::vector<loadconf> dynprog(const binconf &conf, dynprog_data *dpdata)
 {
-    tat->newloadqueue->clear();
-    tat->oldloadqueue->clear();
-    std::vector<loadconf> *poldq = tat->oldloadqueue;
-    std::vector<loadconf> *pnewq = tat->newloadqueue;
+    dpdata->newloadqueue->clear();
+    dpdata->oldloadqueue->clear();
+    std::vector<loadconf> *poldq = dpdata->oldloadqueue;
+    std::vector<loadconf> *pnewq = dpdata->newloadqueue;
     std::vector<loadconf> ret;
     uint64_t salt = rand_64bit();
     bool initial_phase = true;
-    memset(tat->loadht, 0, LOADSIZE*8);
+    memset(dpdata->loadht, 0, LOADSIZE*8);
 
     // We currently avoid the heuristics of handling separate sizes.
     for (bin_int size=S; size>=1; size--)
@@ -264,10 +238,10 @@ std::vector<loadconf> dynprog(const binconf &conf, thread_attr *tat)
 			uint64_t debug_loadhash = tuple.loadhash;
 			int newpos = tuple.assign_and_rehash(size, i);
 	
-			if(! loadconf_hashfind(tuple.loadhash ^ salt, tat->loadht))
+			if(! loadconf_hashfind(tuple.loadhash ^ salt, dpdata->loadht))
 			{
 			    pnewq->push_back(tuple);
-			    loadconf_hashpush(tuple.loadhash ^ salt, tat->loadht);
+			    loadconf_hashpush(tuple.loadhash ^ salt, dpdata->loadht);
 			}
 
 		        tuple.unassign_and_rehash(size, newpos);

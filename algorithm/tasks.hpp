@@ -395,10 +395,10 @@ bool possible_task_mixed(adversary_vertex *v, int largest_item, int current_dept
 // Collects tasks from a generated tree.
 // To be called after generation, before the game starts.
 
-void collect_tasks_alg(algorithm_vertex *v, thread_attr *tat);
-void collect_tasks_adv(adversary_vertex *v, thread_attr *tat);
+void collect_tasks_alg(algorithm_vertex *v);
+void collect_tasks_adv(adversary_vertex *v);
 
-void collect_tasks_adv(adversary_vertex *v, thread_attr *tat)
+void collect_tasks_adv(adversary_vertex *v)
 {
     if (v->visited || v->state == vert_state::finished)
     {
@@ -412,7 +412,6 @@ void collect_tasks_adv(adversary_vertex *v, thread_attr *tat)
 	{
 	    print_if<true>("Trouble with task vertex %" PRIu64 ": it has winning value not UNCERTAIN, but %d.\n",
 			v->id, v->win);
-	    // print_debug_dag(computation_root, tat->regrow_level, 99);
 	    assert(v->win == victory::uncertain && ((v->state == vert_state::fresh) || (v->state == vert_state::expand)) );
 	}
 
@@ -426,12 +425,12 @@ void collect_tasks_adv(adversary_vertex *v, thread_attr *tat)
     {
 	for(auto& outedge: v->out)
 	{
-	    collect_tasks_alg(outedge->to, tat);
+	    collect_tasks_alg(outedge->to);
 	}
     }
 }
 
-void collect_tasks_alg(algorithm_vertex *v, thread_attr *tat)
+void collect_tasks_alg(algorithm_vertex *v)
 {
     if (v->visited || v->state == vert_state::finished)
     {
@@ -441,16 +440,16 @@ void collect_tasks_alg(algorithm_vertex *v, thread_attr *tat)
 
     for(auto& outedge: v->out)
     {
-	collect_tasks_adv(outedge->to, tat);
+	collect_tasks_adv(outedge->to);
     }
 }
 
 
-void collect_tasks(adversary_vertex *r, thread_attr *tat)
+void collect_tasks(adversary_vertex *r)
 {
     qdag->clear_visited();
     tcount = 0;
-    collect_tasks_adv(r,tat);
+    collect_tasks_adv(r);
 }
 
 void clear_tasks()

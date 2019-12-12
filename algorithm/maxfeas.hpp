@@ -10,7 +10,7 @@
 #define MAXIMUM_FEASIBLE maximum_feasible
 
 // improves lb and ub via querying the cache
-std::tuple<bin_int, bin_int, bool> improve_bounds(binconf *b, bin_int lb, bin_int ub, thread_attr *tat, bool lb_certainly_feasible)
+std::tuple<bin_int, bin_int, bool> improve_bounds(binconf *b, bin_int lb, bin_int ub, bool lb_certainly_feasible)
 {
     if (DISABLE_DP_CACHE)
     {
@@ -38,7 +38,7 @@ std::tuple<bin_int, bin_int, bool> improve_bounds(binconf *b, bin_int lb, bin_in
 }
 
 // improves lb and ub via querying the cache
-std::tuple<bin_int, bin_int, bool> improve_bounds_binary(binconf *b, bin_int lb, bin_int ub, thread_attr *tat, bool lb_certainly_feasible)
+std::tuple<bin_int, bin_int, bool> improve_bounds_binary(binconf *b, bin_int lb, bin_int ub, bool lb_certainly_feasible)
 {
 
     if (DISABLE_DP_CACHE)
@@ -82,16 +82,16 @@ std::tuple<bin_int, bin_int, bool> improve_bounds_binary(binconf *b, bin_int lb,
 // cannot_send_less -- a "lower" bound on what can be sent
 // (even though smaller items fit, the alg possibly must avoid them due to monotonicity)
 
-bin_int maximum_feasible(binconf *b, const int depth, const bin_int cannot_send_less, bin_int initial_ub, thread_attr *tat)
+template <minimax MODE> bin_int maximum_feasible(binconf *b, const int depth, const bin_int cannot_send_less, bin_int initial_ub, computation<MODE> *comp)
 {
-    MEASURE_ONLY(tat->meas.maximum_feasible_counter++);
+    MEASURE_ONLY(comp->meas.maximum_feasible_counter++);
     print_if<DEBUG>("Starting dynprog maximization of configuration:\n");
     print_binconf<DEBUG>(b);
     print_if<DEBUG>("\n"); 
 
-    tat->maxfeas_return_point = -1;
+    comp->maxfeas_return_point = -1;
 
-    bin_int lb = onlineloads_bestfit(tat->ol); // definitely can pack at least lb
+    bin_int lb = onlineloads_bestfit(comp->ol); // definitely can pack at least lb
     bin_int ub = std::min((bin_int) ((S*BINS) - b->totalload()), initial_ub); // definitely cannot send more than ub
 
     // consistency check
@@ -104,7 +104,7 @@ bin_int maximum_feasible(binconf *b, const int depth, const bin_int cannot_send_
  
     if(cannot_send_less > ub)
     {
-	tat->maxfeas_return_point = 0;
+	comp->maxfeas_return_point = 0;
 	return MAX_INFEASIBLE;
     }
 
@@ -128,7 +128,7 @@ bin_int maximum_feasible(binconf *b, const int depth, const bin_int cannot_send_
 		    lb_certainly_feasible = true;
 		} else
 		{
-		    tat->maxfeas_return_point = 1;
+		    comp->maxfeas_return_point = 1;
 
 		    return MAX_INFEASIBLE;
 		}
@@ -138,8 +138,8 @@ bin_int maximum_feasible(binconf *b, const int depth, const bin_int cannot_send_
 	
     if (lb == ub && lb_certainly_feasible)
     {
-	MEASURE_ONLY(tat->meas.onlinefit_sufficient++);
-	tat->maxfeas_return_point = 2;
+	MEASURE_ONLY(comp->meas.onlinefit_sufficient++);
+	comp->maxfeas_return_point = 2;
 	return lb;
     }
 
@@ -147,20 +147,20 @@ bin_int maximum_feasible(binconf *b, const int depth, const bin_int cannot_send_
     bin_int cache_lb, cache_ub;
     std::tie(cache_lb,cache_ub,lb_certainly_feasible) =
 // 	improve_bounds_binary(b,lb,ub,tat, lb_certainly_feasible);
-	improve_bounds(b,lb,ub,tat,lb_certainly_feasible);
+	improve_bounds(b,lb,ub,lb_certainly_feasible);
 
     // lb may change further but we store the cache results so that we push into
     // the cache the new results we have learned
     lb = cache_lb; ub = cache_ub; 
     if (lb > ub)
     {
-	tat->maxfeas_return_point = 3;
+	comp->maxfeas_return_point = 3;
 	return MAX_INFEASIBLE;
     }
 
     if (lb == ub && lb_certainly_feasible)
     {
-	tat->maxfeas_return_point = 8;
+	comp->maxfeas_return_point = 8;
 	return lb;
     }
 
@@ -168,13 +168,13 @@ bin_int maximum_feasible(binconf *b, const int depth, const bin_int cannot_send_
    
     bin_int bestfit;
     bestfit = bestfitalg(b);
-    MEASURE_ONLY(tat->meas.bestfit_calls++);
+    MEASURE_ONLY(comp->meas.bestfit_calls++);
 
 
     if (bestfit > ub)
     {
 	print_binconf_stream(stderr, b);
-	fprintf(stderr, "lb %" PRIi16 ", ub %" PRIi16 ", bestfit: %" PRIi16 ", maxfeas: %" PRIi16 ", initial_ub %" PRIi16".\n", lb, ub, bestfit, DYNPROG_MAX<false>(*b,tat), initial_ub);
+	fprintf(stderr, "lb %" PRIi16 ", ub %" PRIi16 ", bestfit: %" PRIi16 ", maxfeas: %" PRIi16 ", initial_ub %" PRIi16".\n", lb, ub, bestfit, DYNPROG_MAX<false>(*b, comp->dpdata, &(comp->meas)), initial_ub);
 	fprintf(stderr, "ihash %" PRIu64 ", pack_and_query [%" PRIi16 ", %" PRIi16 "]:", b->ihash(), ub, initial_ub);
 	for (bin_int dbug = ub; dbug <= initial_ub; dbug++)
 	{
@@ -211,26 +211,26 @@ bin_int maximum_feasible(binconf *b, const int depth, const bin_int cannot_send_
     
     if (lb == ub && lb_certainly_feasible)
     {
-	MEASURE_ONLY(tat->meas.bestfit_sufficient++);
-	tat->maxfeas_return_point = 4;
+	MEASURE_ONLY(comp->meas.bestfit_sufficient++);
+	comp->maxfeas_return_point = 4;
 	return lb;
     }
 
     assert(lb <= ub);
 
-    MEASURE_ONLY(tat->meas.dynprog_calls++);
+    MEASURE_ONLY(comp->meas.dynprog_calls++);
     // DISABLED: passing ub so that dynprog_max_dangerous takes care of pushing into the cache
     // DISABLED: maximum_feasible = dynprog_max_dangerous(b,lb,ub,tat);
-    bin_int maximum_feasible = DYNPROG_MAX<false>(*b,tat); // STANDALONE is false
+    bin_int maximum_feasible = DYNPROG_MAX<false>(*b,comp->dpdata, &(comp->meas)); // STANDALONE is false
     // measurements for dynprog_max_with_lih only
     /*
-    if (tat->lih_hit)
+    if (comp->lih_hit)
     {
-	tat->meas.large_item_hits++;
+	comp->meas.large_item_hits++;
 
     } else 
     {
-	tat->meas.large_item_misses++;
+	comp->meas.large_item_misses++;
     }
 
 
@@ -258,11 +258,11 @@ bin_int maximum_feasible(binconf *b, const int depth, const bin_int cannot_send_
 
     if (maximum_feasible < lb)
     {
-	tat->maxfeas_return_point = 6;
+	comp->maxfeas_return_point = 6;
 	return MAX_INFEASIBLE;
     }
  
-    tat->maxfeas_return_point = 7;
+    comp->maxfeas_return_point = 7;
     return maximum_feasible;
 }
 

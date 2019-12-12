@@ -13,6 +13,35 @@ uint64_t removed_task_count = 0; // number of tasks which are removed due to min
 uint64_t decreased_task_count = 0;
 uint64_t irrel_transmitted_count = 0;
 
+// A small class containing the data for dynamic programming -- we have it so we do not pass
+// the entire computation data into dynamic programming routines.
+
+class dynprog_data
+{
+public:
+    std::vector<loadconf> *oldloadqueue = nullptr;
+    std::vector<loadconf> *newloadqueue = nullptr;
+    uint64_t *loadht = nullptr;
+
+    dynprog_data()
+	{
+	    oldloadqueue = new std::vector<loadconf>();
+            oldloadqueue->reserve(LOADSIZE);
+	    newloadqueue = new std::vector<loadconf>();
+	    newloadqueue->reserve(LOADSIZE);
+	    loadht = new uint64_t[LOADSIZE];
+	}
+
+    ~dynprog_data()
+	{
+	    delete oldloadqueue;
+	    delete newloadqueue;
+	    delete[] loadht;
+	}
+};
+
+
+
 // Measurements for the caching structures. Need to be atomic, as they are accessed
 // concurrently.
 struct cache_measurements
@@ -172,7 +201,7 @@ measure_attr g_meas;
 
     
 /* dynprog global variables and other attributes separate for each thread */
-class thread_attr
+template <minimax MODE> class computation
 {
 public:
     // --- persistent thread attributes ---
@@ -181,11 +210,7 @@ public:
     // --- minimax computation attributes ---
 
     // dynamic programming
-    std::unordered_set<std::array<bin_int, BINS> >* oldset;
-    std::unordered_set<std::array<bin_int, BINS> >* newset;
-    std::vector<loadconf> *oldloadqueue;
-    std::vector<loadconf> *newloadqueue;
-    uint64_t *loadht;
+    dynprog_data *dpdata;
 
     optconf oc;
     loadconf ol;
@@ -222,21 +247,16 @@ public:
 
     // --- debug ---
     int maxfeas_return_point = -1;
-    thread_attr()
+    computation()
 	{
-	    oldloadqueue = new std::vector<loadconf>();
-	    oldloadqueue->reserve(LOADSIZE);
-	    newloadqueue = new std::vector<loadconf>();
-	    newloadqueue->reserve(LOADSIZE);
-	    loadht = new uint64_t[LOADSIZE];
+	    dpdata = new dynprog_data;
 	}
 
-    ~thread_attr()
+    ~computation()
 	{
-	    delete oldloadqueue;
-	    delete newloadqueue;
-	    delete[] loadht;
+	    delete dpdata;
 	}
 };
+
 
 #endif
