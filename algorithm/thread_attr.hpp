@@ -215,7 +215,6 @@ public:
     optconf oc;
     loadconf ol;
     int task_id;
-    // int last_item = 1;
     // largest item since computation root (excluding sequencing and such)
     int largest_since_computation_root = 0;
     // previous maxmimum_feasible
