@@ -36,7 +36,7 @@ const int REGROW_LIMIT = 10;
 
 const int TASK_LOAD_INIT = 8; // A bound on total load of a configuration before we split it into a task.
 const int TASK_LOAD_STEP = 6; // The amount by which the load can increase when regrowing the tree.
-const int TASK_DEPTH_INIT = 5; //The maximum depth of a vertex in the tree before it is made into a task.
+const int TASK_DEPTH_INIT = 6; //The maximum depth of a vertex in the tree before it is made into a task.
 const int TASK_DEPTH_STEP = 2; // The amount by which the depth is increased when regrowing.
 
 // const int TASK_LOAD_INIT = 0;
