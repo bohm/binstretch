@@ -393,8 +393,8 @@ void next_item_fourteen_test(adversary_vertex *v)
     {
 	fprintf(stderr, "Next item is non-heur 14 for");
 	v->bc.print(stderr);
-	thread_attr temp_thread;
-	std::pair<bool, loadconf> lih_ret = large_item_heuristic(v->bc, &temp_thread);
+	dynprog_data temp_data;
+	std::pair<bool, loadconf> lih_ret = large_item_heuristic(v->bc, &temp_data);
 	fprintf(stderr, "LIH result [%d] ", lih_ret.first);
 	lih_ret.second.print(stderr);
 	fprintf(stderr, "\n");
