@@ -108,7 +108,7 @@ template<minimax MODE> victory computation<MODE>::adversary(adversary_vertex *ad
     
     // Turn off adversary heuristics if convenient (e.g. for machine verification).
     // We also do not need to compute heuristics further if we are already following
-    // a heuristic.
+    // a heuristic
     
     if (ADVERSARY_HEURISTICS && !this->heuristic_regime)
     {
@@ -332,7 +332,7 @@ template<minimax MODE> victory computation<MODE>::adversary(adversary_vertex *ad
     return win;
 }
 
-template<minimax MODE> victory computation<MODE>::algorithm(int k, algorithm_vertex *alg_to_evaluate,
+template<minimax MODE> victory computation<MODE>::algorithm(int pres_item, algorithm_vertex *alg_to_evaluate,
 							    adversary_vertex *parent_adv)
 {
     adversary_vertex *upcoming_adv = nullptr;
@@ -344,7 +344,7 @@ template<minimax MODE> victory computation<MODE>::algorithm(int k, algorithm_ver
     GEN_ONLY(print_if<DEBUG>("GEN: "));
     EXP_ONLY(print_if<DEBUG>("EXP: "));
 
-    print_if<DEBUG>("Algorithm evaluating the position with new item %d and bin configuration: ", k);
+    print_if<DEBUG>("Algorithm evaluating the position with new item %d and bin configuration: ", pres_item);
     print_binconf<DEBUG>(&bstate);
  
     
@@ -363,7 +363,7 @@ template<minimax MODE> victory computation<MODE>::algorithm(int k, algorithm_ver
 	}
     }
  
-    if (gsheuristic(&bstate,k, &(this->meas)) == 1)
+    if (gsheuristic(&bstate, pres_item, &(this->meas)) == 1)
     {
 	if (GENERATING)
 	{
@@ -384,9 +384,9 @@ template<minimax MODE> victory computation<MODE>::algorithm(int k, algorithm_ver
 		upcoming_adv = (*it)->to;
 		bin_int target_bin = (*it)->target_bin;
 		
-		algorithm_descend<MODE>(this, notes, k, target_bin);
+		algorithm_descend<MODE>(this, notes, pres_item, target_bin);
 		below = adversary(upcoming_adv, alg_to_evaluate);
-		algorithm_ascend<MODE>(this, notes, k);
+		algorithm_ascend<MODE>(this, notes, pres_item);
 
 		if (below == victory::alg)
 		{
@@ -425,10 +425,10 @@ template<minimax MODE> victory computation<MODE>::algorithm(int k, algorithm_ver
 	    i++; continue;
 	}
 
-	if ((bstate.loads[i] + k < R))
+	if ((bstate.loads[i] + pres_item < R))
 	{
 	    // Editing binconf in place -- undoing changes later by calling ascend.
-	    algorithm_descend(this, notes, k, i);
+	    algorithm_descend(this, notes, pres_item, i);
 
 	    // Initialize the adversary's next vertex in the tree.
 	    if (GENERATING)
@@ -438,7 +438,7 @@ template<minimax MODE> victory computation<MODE>::algorithm(int k, algorithm_ver
 	    }
 	    
 	    below = adversary(upcoming_adv, alg_to_evaluate);
-	    algorithm_ascend(this, notes, k);
+	    algorithm_ascend(this, notes, pres_item);
 	    
 	    print_if<DEBUG>("Alg packs into bin %d, the new configuration is:", i);
 	    print_binconf<DEBUG>(&bstate);
@@ -479,7 +479,7 @@ template<minimax MODE> victory computation<MODE>::algorithm(int k, algorithm_ver
 		    win = victory::uncertain;
 		}
 	    }
-	} // else b->loads[i] + k >= R, so a good situation for the adversary
+	} // else b->loads[i] + pres_item >= R, so a good situation for the adversary
 	i++;
     }
 
