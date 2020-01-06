@@ -3,14 +3,14 @@
 #include <string>
 #include <algorithm>
 
-#include "algorithm/common.hpp"
-#include "algorithm/hash.hpp"
-#include "algorithm/binconf.hpp"
-#include "algorithm/dag/dag.hpp"
-#include "algorithm/dfs.hpp"
-#include "algorithm/loadfile.hpp"
-#include "algorithm/savefile.hpp"
-#include "algorithm/dynprog/wrappers.hpp"
+#include "search/common.hpp"
+#include "search/hash.hpp"
+#include "search/binconf.hpp"
+#include "search/dag/dag.hpp"
+#include "search/dfs.hpp"
+#include "search/loadfile.hpp"
+#include "search/savefile.hpp"
+#include "search/dynprog/wrappers.hpp"
 
 #include "dag_ext.hpp"
 #include "coq_printing.hpp"

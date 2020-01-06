@@ -70,7 +70,7 @@ public:
 	}
 
     victory adversary(adversary_vertex *adv_to_evaluate, algorithm_vertex *parent_alg);
-    victory algorithm(int k, algorithm_vertex *alg_to_evaluate, adversary_vertex *parent_adv);
+    victory algorithm(int pres_item, algorithm_vertex *alg_to_evaluate, adversary_vertex *parent_adv);
 
     /*
     victory sequencing_adversary(unsigned int depth, adversary_vertex *adv_to_evaluate,

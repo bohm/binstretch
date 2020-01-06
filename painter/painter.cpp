@@ -1,17 +1,17 @@
 #include <cstdio>
 #include <cstdlib>
 
-#include "../algorithm/common.hpp"
-#include "../algorithm/hash.hpp"
-#include "../algorithm/binconf.hpp"
-#include "../algorithm/dag/dag.hpp"
-#include "../algorithm/dfs.hpp"
-#include "../algorithm/loadfile.hpp"
-#include "../algorithm/savefile.hpp"
-#include "../algorithm/layers.hpp"
+#include "../search/common.hpp"
+#include "../search/hash.hpp"
+#include "../search/binconf.hpp"
+#include "../search/dag/dag.hpp"
+#include "../search/dfs.hpp"
+#include "../search/loadfile.hpp"
+#include "../search/savefile.hpp"
+#include "../search/layers.hpp"
 
 // need for debug
-#include "../algorithm/heur_adv.hpp"
+#include "../search/heur_adv.hpp"
 
 // Global parameters (so we do not have to pass them via recursive functions).
 FILE* outf = NULL;
