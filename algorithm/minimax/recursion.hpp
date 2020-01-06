@@ -384,9 +384,9 @@ template<minimax MODE> victory computation<MODE>::algorithm(int k, algorithm_ver
 		upcoming_adv = (*it)->to;
 		bin_int target_bin = (*it)->target_bin;
 		
-		algorithm_descend<MODE>(this, notes, &bstate, k, target_bin);
+		algorithm_descend<MODE>(this, notes, k, target_bin);
 		below = adversary(upcoming_adv, alg_to_evaluate);
-		algorithm_ascend<MODE>(this, notes, &bstate, k);
+		algorithm_ascend<MODE>(this, notes, k);
 
 		if (below == victory::alg)
 		{
@@ -428,7 +428,7 @@ template<minimax MODE> victory computation<MODE>::algorithm(int k, algorithm_ver
 	if ((bstate.loads[i] + k < R))
 	{
 	    // Editing binconf in place -- undoing changes later by calling ascend.
-	    algorithm_descend(this, notes, &bstate, k, i);
+	    algorithm_descend(this, notes, k, i);
 
 	    // Initialize the adversary's next vertex in the tree.
 	    if (GENERATING)
@@ -438,7 +438,7 @@ template<minimax MODE> victory computation<MODE>::algorithm(int k, algorithm_ver
 	    }
 	    
 	    below = adversary(upcoming_adv, alg_to_evaluate);
-	    algorithm_ascend(this, notes, &bstate, k);
+	    algorithm_ascend(this, notes, k);
 	    
 	    print_if<DEBUG>("Alg packs into bin %d, the new configuration is:", i);
 	    print_binconf<DEBUG>(&bstate);

@@ -176,20 +176,20 @@ struct algorithm_notes
 };
 
 template <minimax MODE> void algorithm_descend(computation<MODE> *comp, algorithm_notes &notes,
-		       binconf *b, int item, int target_bin)
+		       int item, int target_bin)
 {
     comp->calldepth++;
     comp->itemdepth++;
-    notes.previously_last_item = b->last_item;
-    notes.bc_new_load_position = b->assign_and_rehash(item, target_bin);
+    notes.previously_last_item = comp->bstate.last_item;
+    notes.bc_new_load_position = comp->bstate.assign_and_rehash(item, target_bin);
     notes.ol_new_load_position = onlineloads_assign(comp->ol, item);
 }
 
-template <minimax MODE> void algorithm_ascend(computation<MODE> *comp, const algorithm_notes &notes, binconf *b, int item)
+template <minimax MODE> void algorithm_ascend(computation<MODE> *comp, const algorithm_notes &notes, int item)
 {
     comp->calldepth--;
     comp->itemdepth--;
-    b->unassign_and_rehash(item, notes.bc_new_load_position, notes.previously_last_item);
+    comp->bstate.unassign_and_rehash(item, notes.bc_new_load_position, notes.previously_last_item);
     // b->last_item = notes.previously_last_item; -- not necessary, unassign and rehash takes
     // care of that.
 
