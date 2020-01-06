@@ -1,16 +1,18 @@
+#ifndef MINIMAX_RECURSION_HPP
+#define MINIMAX_RECURSION_HPP 1
+
+// Minimax recursive routines.
+
 #include <cstdio>
 #include <cstdlib>
 #include <cassert>
 #include <map>
 
-// Minimax routines.
-#ifndef _MINIMAX_HPP
-#define _MINIMAX_HPP 1
-
 #include "common.hpp"
 #include "binconf.hpp"
 #include "optconf.hpp"
 #include "thread_attr.hpp"
+#include "minimax/computation.hpp"
 #include "dag/dag.hpp"
 #include "tree_print.hpp"
 #include "hash.hpp"
@@ -24,10 +26,7 @@
 #include "tasks.hpp"
 #include "strategy.hpp"
 #include "queen.hpp"
-#include "aux_minimax.hpp"
-
-template<minimax MODE> victory adversary(binconf *b, int depth, computation<MODE> *comp, adversary_vertex *adv_to_evaluate, algorithm_vertex* parent_alg);
-template<minimax MODE> victory algorithm(binconf *b, int k, int depth, computation<MODE> *comp, algorithm_vertex *alg_to_evaluate, adversary_vertex *parent_adv);
+#include "minimax/auxiliary.hpp"
 
 victory check_messages(int task_id)
 {
@@ -72,7 +71,8 @@ victory check_messages(int task_id)
 #define GEN_ONLY(x) if (MODE == minimax::generating) {x;}
 #define EXP_ONLY(x) if (MODE == minimax::exploring) {x;}
 
-template<minimax MODE> victory adversary(binconf *b, int depth, computation<MODE> *comp, adversary_vertex *adv_to_evaluate, algorithm_vertex *parent_alg)
+template<minimax MODE> victory computation<MODE>::adversary(int depth, adversary_vertex *adv_to_evaluate,
+							    algorithm_vertex *parent_alg)
 {
     algorithm_vertex *upcoming_alg = NULL;
     adv_outedge *new_edge = NULL;
@@ -89,7 +89,7 @@ template<minimax MODE> victory adversary(binconf *b, int depth, computation<MODE
     EXP_ONLY(print_if<DEBUG>("EXP: "));
  
     print_if<DEBUG>("Adversary evaluating the position with bin configuration: ");
-    print_binconf<DEBUG>(b);
+    print_binconf<DEBUG>(&bstate);
 
     if (GENERATING)
     {
@@ -110,9 +110,9 @@ template<minimax MODE> victory adversary(binconf *b, int depth, computation<MODE
     // We also do not need to compute heuristics further if we are already following
     // a heuristic.
     
-    if (ADVERSARY_HEURISTICS && !comp->heuristic_regime)
+    if (ADVERSARY_HEURISTICS && !this->heuristic_regime)
     {
-	auto [vic, strategy] = adversary_heuristics<MODE>(b, comp->dpdata, &(comp->meas), adv_to_evaluate);
+	auto [vic, strategy] = adversary_heuristics<MODE>(&bstate, this->dpdata, &(this->meas), adv_to_evaluate);
 	
 	if (vic == victory::adv)
 	{
@@ -125,18 +125,18 @@ template<minimax MODE> victory adversary(binconf *b, int depth, computation<MODE
 		return victory::adv;
 	    } else {
 		switch_to_heuristic = true;
-		comp->heuristic_regime = true;
-		comp->heuristic_starting_depth = depth;
-		comp->current_strategy = strategy;
+		this->heuristic_regime = true;
+		this->heuristic_starting_depth = depth;
+		this->current_strategy = strategy;
 	    }
 	}
     }
 
     // If we have entered or we are inside a heuristic regime,
     // mark the vertex as heuristical with the current strategy.
-    if (GENERATING && comp->heuristic_regime)
+    if (GENERATING && this->heuristic_regime)
     {
-	adv_to_evaluate->mark_as_heuristical(comp->current_strategy);
+	adv_to_evaluate->mark_as_heuristical(this->current_strategy);
 	// We can already mark the vertex as "won", but the question is
 	// whether not to do it later.
 	adv_to_evaluate->win = victory::adv;
@@ -164,9 +164,9 @@ template<minimax MODE> victory adversary(binconf *b, int depth, computation<MODE
 	    upcoming_alg = (*it)->to;
 	    int item_size = (*it)->item;
 
-	    adversary_descend<MODE>(comp, notes, item_size, maximum_feasible);
-	    below = algorithm<MODE>(b, item_size, depth+1, comp, upcoming_alg, adv_to_evaluate);
-	    adversary_ascend(comp, notes);
+	    adversary_descend<MODE>(this, notes, item_size, maximum_feasible);
+	    below = algorithm(item_size, depth+1, upcoming_alg, adv_to_evaluate);
+	    adversary_ascend(this, notes);
 
 	    adv_to_evaluate->win = below;
 	    return below;
@@ -180,11 +180,11 @@ template<minimax MODE> victory adversary(binconf *b, int depth, computation<MODE
 	}
 
 	// we now do creation of tasks only until the REGROW_LIMIT is reached
-	if (!comp->heuristic_regime && comp->regrow_level <= REGROW_LIMIT && POSSIBLE_TASK(adv_to_evaluate, comp->largest_since_computation_root, depth))
+	if (!this->heuristic_regime && this->regrow_level <= REGROW_LIMIT && POSSIBLE_TASK(adv_to_evaluate, this->largest_since_computation_root, depth))
 	{
 	    print_if<DEBUG>("GEN: Current conf is a possible task (depth %d, task_depth %d, load %d, task_load %d, comp. root load: %d.\n ",
-	     		depth, task_depth, b->totalload(), task_load, computation_root->bc.totalload());
-	     print_binconf<DEBUG>(b);
+	     		depth, task_depth, bstate.totalload(), task_load, computation_root->bc.totalload());
+	     print_binconf<DEBUG>(&bstate);
 
 	    // disabled for now:
 	    // In some corner cases a vertex that is to be expanded becomes itself a task (again).
@@ -206,12 +206,12 @@ template<minimax MODE> victory adversary(binconf *b, int depth, computation<MODE
     // if you are exploring, check the global terminate flag every 100th iteration
     if (EXPLORING)
     {
-	comp->iterations++;
-	if (comp->iterations % 100 == 0)
+	this->iterations++;
+	if (this->iterations % 100 == 0)
 	{
 	    if (MEASURE)
 	    {
-		victory recommendation = check_messages(comp->task_id);
+		victory recommendation = check_messages(this->task_id);
 		if (recommendation == victory::irrelevant)
 		{
 		    //fprintf(stderr, "We got advice to terminate.\n");
@@ -227,7 +227,7 @@ template<minimax MODE> victory adversary(binconf *b, int depth, computation<MODE
     if (EXPLORING && !DISABLE_CACHE)
     {
 
-	auto [found, value] = stc->lookup(b->statehash());
+	auto [found, value] = stc->lookup(bstate.statehash());
 	
 	if (found)
 	{
@@ -247,15 +247,15 @@ template<minimax MODE> victory adversary(binconf *b, int depth, computation<MODE
 
     std::vector<int> candidate_moves;
 
-    if (comp->heuristic_regime)
+    if (this->heuristic_regime)
     {
-	compute_next_moves_heur(candidate_moves, b, comp->current_strategy);
+	compute_next_moves_heur(candidate_moves, &bstate, this->current_strategy);
     } else if (GENERATING)
     {
-	maximum_feasible = compute_next_moves_genstrat<MODE>(candidate_moves, b, depth, comp);
+	maximum_feasible = compute_next_moves_genstrat<MODE>(candidate_moves, &bstate, depth, this);
     } else
     {
-	maximum_feasible = compute_next_moves_expstrat<MODE>(candidate_moves, b, depth, comp);
+	maximum_feasible = compute_next_moves_expstrat<MODE>(candidate_moves, &bstate, depth, this);
     }
 
     // print_if<DEBUG>("Trying player zero choices, with maxload starting at %d\n", maximum_feasible);
@@ -269,9 +269,9 @@ template<minimax MODE> victory adversary(binconf *b, int depth, computation<MODE
 	    std::tie(upcoming_alg, new_edge) = attach_matching_vertex(qdag, adv_to_evaluate, item_size);
 	}
 
-	adversary_descend<MODE>(comp, notes, item_size, maximum_feasible);
-	below = algorithm<MODE>(b, item_size, depth+1, comp, upcoming_alg, adv_to_evaluate);
-	adversary_ascend<MODE>(comp, notes);
+	adversary_descend<MODE>(this, notes, item_size, maximum_feasible);
+	below = algorithm(item_size, depth+1, upcoming_alg, adv_to_evaluate);
+	adversary_ascend<MODE>(this, notes);
 	
 	// send signal that we should terminate immediately upwards
 	if (below == victory::irrelevant)
@@ -306,10 +306,10 @@ template<minimax MODE> victory adversary(binconf *b, int depth, computation<MODE
 	// TODO: Make this cleaner.
 	if (win == victory::adv)
 	{
-	    stcache_encache(b, (uint64_t) 0);
+	    stcache_encache(&bstate, (uint64_t) 0);
 	} else if (win == victory::alg)
 	{
-	    stcache_encache(b, (uint64_t) 1);
+	    stcache_encache(&bstate, (uint64_t) 1);
 	}
 	
     }
@@ -317,9 +317,9 @@ template<minimax MODE> victory adversary(binconf *b, int depth, computation<MODE
     // If we were in heuristics mode, switch back to normal.
     if (switch_to_heuristic)
     {
-	comp->heuristic_regime = false;
-	delete comp->current_strategy;
-	comp->current_strategy = nullptr;
+	this->heuristic_regime = false;
+	delete this->current_strategy;
+	this->current_strategy = nullptr;
     }
 
     // Sanity check.
@@ -332,7 +332,8 @@ template<minimax MODE> victory adversary(binconf *b, int depth, computation<MODE
     return win;
 }
 
-template<minimax MODE> victory algorithm(binconf *b, int k, int depth, computation<MODE> *comp, algorithm_vertex *alg_to_evaluate, adversary_vertex *parent_adv)
+template<minimax MODE> victory computation<MODE>::algorithm(int k, int depth, algorithm_vertex *alg_to_evaluate,
+							    adversary_vertex *parent_adv)
 {
     adversary_vertex *upcoming_adv = nullptr;
     alg_outedge *connecting_outedge = nullptr;
@@ -344,7 +345,7 @@ template<minimax MODE> victory algorithm(binconf *b, int k, int depth, computati
     EXP_ONLY(print_if<DEBUG>("EXP: "));
 
     print_if<DEBUG>("Algorithm evaluating the position with new item %d and bin configuration: ", k);
-    print_binconf<DEBUG>(b);
+    print_binconf<DEBUG>(&bstate);
  
     
     if (GENERATING)
@@ -362,7 +363,7 @@ template<minimax MODE> victory algorithm(binconf *b, int k, int depth, computati
 	}
     }
  
-    if (gsheuristic(b,k, &(comp->meas)) == 1)
+    if (gsheuristic(&bstate,k, &(this->meas)) == 1)
     {
 	if (GENERATING)
 	{
@@ -383,9 +384,9 @@ template<minimax MODE> victory algorithm(binconf *b, int k, int depth, computati
 		upcoming_adv = (*it)->to;
 		bin_int target_bin = (*it)->target_bin;
 		
-		algorithm_descend<MODE>(comp, notes, b, k, target_bin);
-		below = adversary<MODE>(b, depth, comp, upcoming_adv, alg_to_evaluate);
-		algorithm_ascend<MODE>(comp, notes, b, k);
+		algorithm_descend<MODE>(this, notes, &bstate, k, target_bin);
+		below = adversary(depth, upcoming_adv, alg_to_evaluate);
+		algorithm_ascend<MODE>(this, notes, &bstate, k);
 
 		if (below == victory::alg)
 		{
@@ -419,28 +420,28 @@ template<minimax MODE> victory algorithm(binconf *b, int k, int depth, computati
     {
 	// simply skip a step where two bins have the same load
 	// any such bins are sequential if we assume loads are sorted (and they should be)
-	if (i > 1 && b->loads[i] == b->loads[i-1])
+	if (i > 1 && bstate.loads[i] == bstate.loads[i-1])
 	{
 	    i++; continue;
 	}
 
-	if ((b->loads[i] + k < R))
+	if ((bstate.loads[i] + k < R))
 	{
 	    // Editing binconf in place -- undoing changes later by calling ascend.
-	    algorithm_descend(comp, notes, b, k, i);
+	    algorithm_descend(this, notes, &bstate, k, i);
 
 	    // Initialize the adversary's next vertex in the tree.
 	    if (GENERATING)
 	    {
 		std::tie(upcoming_adv, connecting_outedge) =
-		    attach_matching_vertex(qdag, alg_to_evaluate, b, i);
+		    attach_matching_vertex(qdag, alg_to_evaluate, &bstate, i);
 	    }
 	    
-	    below = adversary<MODE>(b, depth, comp, upcoming_adv, alg_to_evaluate);
-	    algorithm_ascend(comp, notes, b, k);
+	    below = adversary(depth, upcoming_adv, alg_to_evaluate);
+	    algorithm_ascend(this, notes, &bstate, k);
 	    
 	    print_if<DEBUG>("Alg packs into bin %d, the new configuration is:", i);
-	    print_binconf<DEBUG>(b);
+	    print_binconf<DEBUG>(&bstate);
 	    print_if<DEBUG>("Resulting in: ");
 	    print_if<DEBUG>("%d", static_cast<int>(below));
 	    print_if<DEBUG>(".\n");
@@ -505,7 +506,8 @@ template <minimax MODE> victory explore(binconf *b, computation<MODE> *comp)
     comp->current_overdue = false;
     comp->explore_roothash = b->hash_with_last();
     comp->explore_root = &root_copy;
-    victory ret = adversary<minimax::exploring>(b, 0, comp, NULL, NULL);
+    comp->bstate = *b;
+    victory ret = comp->adversary(0, NULL, NULL);
     assert(ret != victory::uncertain);
     return ret;
 }
@@ -513,12 +515,11 @@ template <minimax MODE> victory explore(binconf *b, computation<MODE> *comp)
 // wrapper for generation
 template <minimax MODE> victory generate(sapling start_sapling, computation<MODE> *comp)
 {
-    binconf inplace_bc;
-    duplicate(&inplace_bc, &start_sapling.root->bc);
-    inplace_bc.hashinit();
-    onlineloads_init(comp->ol, &inplace_bc);
+    duplicate(&(comp->bstate), &start_sapling.root->bc);
+    comp->bstate.hashinit();
+    onlineloads_init(comp->ol, &(comp->bstate));
 
-    victory ret = adversary<minimax::generating>(&inplace_bc, 0, comp, start_sapling.root, NULL);
+    victory ret = comp->adversary(0, start_sapling.root, NULL);
     return ret;
 }
 

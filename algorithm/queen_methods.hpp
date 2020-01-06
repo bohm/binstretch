@@ -3,7 +3,7 @@
 
 #include "common.hpp"
 #include "updater.hpp"
-#include "sequencing.hpp"
+#include "minimax/sequencing.hpp"
 #include "tasks.hpp"
 #include "server_properties.hpp"
 #include "loadfile.hpp"

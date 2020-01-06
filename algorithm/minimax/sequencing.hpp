@@ -1,16 +1,19 @@
+#ifndef MINIMAX_SEQUENCING_HPP
+#define MINIMAX_SEQUENCING_HPP
+
+// Sequencing routines -- generating a fixed tree as the start of the search.
+
 #include <cstdio>
 #include <cstdlib>
 #include <cassert>
 #include <map>
 
-// Minimax routines.
-#ifndef _SEQUENCING_HPP
-#define _SEQUENCING_HPP 1
 
 #include "common.hpp"
 #include "binconf.hpp"
 #include "optconf.hpp"
 #include "thread_attr.hpp"
+#include "minimax/computation.hpp"
 #include "dag/dag.hpp"
 #include "hash.hpp"
 #include "fits.hpp"

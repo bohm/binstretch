@@ -78,8 +78,8 @@ fi
 
 
 if [[ "$BUILDING_SEARCH" = true ]]; then
-	echo "Running: mpic++ -Wall -std=c++17 $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S main.cpp -o $OUTPUT/search-$BINS-$R-$S -pthread"
-	cd algorithm; mpic++ -Wall -std=c++17 $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S main.cpp -o $OUTPUT/search-$BINS-$R-$S -pthread; cd ..
+	echo "Running: mpic++ -I./ -Wall -std=c++17 $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S main.cpp -o $OUTPUT/search-$BINS-$R-$S -pthread"
+	cd algorithm; mpic++ -I./ -Wall -std=c++17 $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S main.cpp -o $OUTPUT/search-$BINS-$R-$S -pthread; cd ..
 fi
 
 if [[ "$BUILDING_PAINTER" = true ]]; then

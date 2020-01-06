@@ -8,7 +8,6 @@
 #include "common.hpp"
 #include "binconf.hpp"
 #include "hash.hpp"
-#include "minimax.hpp"
 #include "queen.hpp"
 #include "overseer.hpp"
 #include "worker.hpp"
