@@ -71,7 +71,7 @@ victory check_messages(int task_id)
 #define GEN_ONLY(x) if (MODE == minimax::generating) {x;}
 #define EXP_ONLY(x) if (MODE == minimax::exploring) {x;}
 
-template<minimax MODE> victory computation<MODE>::adversary(int depth, adversary_vertex *adv_to_evaluate,
+template<minimax MODE> victory computation<MODE>::adversary(adversary_vertex *adv_to_evaluate,
 							    algorithm_vertex *parent_alg)
 {
     algorithm_vertex *upcoming_alg = NULL;
@@ -126,7 +126,7 @@ template<minimax MODE> victory computation<MODE>::adversary(int depth, adversary
 	    } else {
 		switch_to_heuristic = true;
 		this->heuristic_regime = true;
-		this->heuristic_starting_depth = depth;
+		this->heuristic_starting_depth = itemdepth;
 		this->current_strategy = strategy;
 	    }
 	}
@@ -165,7 +165,7 @@ template<minimax MODE> victory computation<MODE>::adversary(int depth, adversary
 	    int item_size = (*it)->item;
 
 	    adversary_descend<MODE>(this, notes, item_size, maximum_feasible);
-	    below = algorithm(item_size, depth+1, upcoming_alg, adv_to_evaluate);
+	    below = algorithm(item_size, upcoming_alg, adv_to_evaluate);
 	    adversary_ascend(this, notes);
 
 	    adv_to_evaluate->win = below;
@@ -180,10 +180,10 @@ template<minimax MODE> victory computation<MODE>::adversary(int depth, adversary
 	}
 
 	// we now do creation of tasks only until the REGROW_LIMIT is reached
-	if (!this->heuristic_regime && this->regrow_level <= REGROW_LIMIT && POSSIBLE_TASK(adv_to_evaluate, this->largest_since_computation_root, depth))
+	if (!this->heuristic_regime && this->regrow_level <= REGROW_LIMIT && POSSIBLE_TASK(adv_to_evaluate, this->largest_since_computation_root, itemdepth))
 	{
-	    print_if<DEBUG>("GEN: Current conf is a possible task (depth %d, task_depth %d, load %d, task_load %d, comp. root load: %d.\n ",
-	     		depth, task_depth, bstate.totalload(), task_load, computation_root->bc.totalload());
+	    print_if<DEBUG>("GEN: Current conf is a possible task (itemdepth %d, task_depth %d, load %d, task_load %d, comp. root load: %d.\n ",
+	     		itemdepth, task_depth, bstate.totalload(), task_load, computation_root->bc.totalload());
 	     print_binconf<DEBUG>(&bstate);
 
 	    // disabled for now:
@@ -252,10 +252,10 @@ template<minimax MODE> victory computation<MODE>::adversary(int depth, adversary
 	compute_next_moves_heur(candidate_moves, &bstate, this->current_strategy);
     } else if (GENERATING)
     {
-	maximum_feasible = compute_next_moves_genstrat<MODE>(candidate_moves, &bstate, depth, this);
+	maximum_feasible = compute_next_moves_genstrat<MODE>(candidate_moves, &bstate, itemdepth, this);
     } else
     {
-	maximum_feasible = compute_next_moves_expstrat<MODE>(candidate_moves, &bstate, depth, this);
+	maximum_feasible = compute_next_moves_expstrat<MODE>(candidate_moves, &bstate, itemdepth, this);
     }
 
     // print_if<DEBUG>("Trying player zero choices, with maxload starting at %d\n", maximum_feasible);
@@ -270,7 +270,7 @@ template<minimax MODE> victory computation<MODE>::adversary(int depth, adversary
 	}
 
 	adversary_descend<MODE>(this, notes, item_size, maximum_feasible);
-	below = algorithm(item_size, depth+1, upcoming_alg, adv_to_evaluate);
+	below = algorithm(item_size, upcoming_alg, adv_to_evaluate);
 	adversary_ascend<MODE>(this, notes);
 	
 	// send signal that we should terminate immediately upwards
@@ -332,7 +332,7 @@ template<minimax MODE> victory computation<MODE>::adversary(int depth, adversary
     return win;
 }
 
-template<minimax MODE> victory computation<MODE>::algorithm(int k, int depth, algorithm_vertex *alg_to_evaluate,
+template<minimax MODE> victory computation<MODE>::algorithm(int k, algorithm_vertex *alg_to_evaluate,
 							    adversary_vertex *parent_adv)
 {
     adversary_vertex *upcoming_adv = nullptr;
@@ -385,7 +385,7 @@ template<minimax MODE> victory computation<MODE>::algorithm(int k, int depth, al
 		bin_int target_bin = (*it)->target_bin;
 		
 		algorithm_descend<MODE>(this, notes, &bstate, k, target_bin);
-		below = adversary(depth, upcoming_adv, alg_to_evaluate);
+		below = adversary(upcoming_adv, alg_to_evaluate);
 		algorithm_ascend<MODE>(this, notes, &bstate, k);
 
 		if (below == victory::alg)
@@ -437,7 +437,7 @@ template<minimax MODE> victory computation<MODE>::algorithm(int k, int depth, al
 		    attach_matching_vertex(qdag, alg_to_evaluate, &bstate, i);
 	    }
 	    
-	    below = adversary(depth, upcoming_adv, alg_to_evaluate);
+	    below = adversary(upcoming_adv, alg_to_evaluate);
 	    algorithm_ascend(this, notes, &bstate, k);
 	    
 	    print_if<DEBUG>("Alg packs into bin %d, the new configuration is:", i);
@@ -507,7 +507,7 @@ template <minimax MODE> victory explore(binconf *b, computation<MODE> *comp)
     comp->explore_roothash = b->hash_with_last();
     comp->explore_root = &root_copy;
     comp->bstate = *b;
-    victory ret = comp->adversary(0, NULL, NULL);
+    victory ret = comp->adversary(NULL, NULL);
     assert(ret != victory::uncertain);
     return ret;
 }
@@ -519,7 +519,7 @@ template <minimax MODE> victory generate(sapling start_sapling, computation<MODE
     comp->bstate.hashinit();
     onlineloads_init(comp->ol, &(comp->bstate));
 
-    victory ret = comp->adversary(0, start_sapling.root, NULL);
+    victory ret = comp->adversary(start_sapling.root, NULL);
     return ret;
 }
 

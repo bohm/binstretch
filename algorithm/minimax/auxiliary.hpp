@@ -143,6 +143,7 @@ struct adversary_notes
 
 template<minimax MODE> void adversary_descend(computation<MODE> *comp, adversary_notes &notes, int next_item, int maximum_feasible)
 {
+    comp->calldepth++;
     notes.old_largest = comp->largest_since_computation_root;
     notes.old_max_feasible = comp->prev_max_feasible;
     
@@ -157,6 +158,7 @@ template<minimax MODE> void adversary_descend(computation<MODE> *comp, adversary
 
 template <minimax MODE> void adversary_ascend(computation<MODE> *comp, const adversary_notes &notes)
 {
+    comp->calldepth--;
     comp->largest_since_computation_root = notes.old_largest;
     comp->prev_max_feasible = notes.old_max_feasible;
 
@@ -176,6 +178,8 @@ struct algorithm_notes
 template <minimax MODE> void algorithm_descend(computation<MODE> *comp, algorithm_notes &notes,
 		       binconf *b, int item, int target_bin)
 {
+    comp->calldepth++;
+    comp->itemdepth++;
     notes.previously_last_item = b->last_item;
     notes.bc_new_load_position = b->assign_and_rehash(item, target_bin);
     notes.ol_new_load_position = onlineloads_assign(comp->ol, item);
@@ -183,6 +187,8 @@ template <minimax MODE> void algorithm_descend(computation<MODE> *comp, algorith
 
 template <minimax MODE> void algorithm_ascend(computation<MODE> *comp, const algorithm_notes &notes, binconf *b, int item)
 {
+    comp->calldepth--;
+    comp->itemdepth--;
     b->unassign_and_rehash(item, notes.bc_new_load_position, notes.previously_last_item);
     // b->last_item = notes.previously_last_item; -- not necessary, unassign and rehash takes
     // care of that.

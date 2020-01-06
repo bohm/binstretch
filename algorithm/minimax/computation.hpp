@@ -13,6 +13,14 @@ public:
     // The bin configuration representing the current state of the game. This
     // will be edited in place.
     binconf bstate;
+
+    // Depth counted in the number of new items packed into the bstate.
+    // Note that this may not be the *number* of items in the bin configuration,
+    // because there can be some items at the start.
+    int itemdepth = 0;
+
+    // Call depth -- number of recursive calls (above the current one).
+    int calldepth = 0;
     
     // dynamic programming data
     dynprog_data *dpdata;
@@ -61,8 +69,8 @@ public:
 	    delete dpdata;
 	}
 
-    victory adversary(int depth, adversary_vertex *adv_to_evaluate, algorithm_vertex *parent_alg);
-    victory algorithm(int k, int depth, algorithm_vertex *alg_to_evaluate, adversary_vertex *parent_adv);
+    victory adversary(adversary_vertex *adv_to_evaluate, algorithm_vertex *parent_alg);
+    victory algorithm(int k, algorithm_vertex *alg_to_evaluate, adversary_vertex *parent_adv);
 
     /*
     victory sequencing_adversary(unsigned int depth, adversary_vertex *adv_to_evaluate,
