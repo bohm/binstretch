@@ -27,6 +27,8 @@
 #include "strategy.hpp"
 #include "queen.hpp"
 #include "minimax/auxiliary.hpp"
+// #include "strategies/abstract.hpp"
+// #include "strategies/heuristical.hpp"
 
 victory check_messages(int task_id)
 {
