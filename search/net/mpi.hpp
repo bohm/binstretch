@@ -48,14 +48,33 @@ const int ROOT_SOLVED_SIGNAL = -2;
 const int ROOT_UNSOLVED_SIGNAL = -3;
 
 
-// just an alias for MPI_Barrier
-void sync_up()
+// The wrapper for queen-overseer communication.
+// In the MPI regime, it is assumed each process has its own communicator
+// and it calls MPI in its methods.
+class communicator
+{
+public:
+    void sync_up();
+    void networking_init();
+    void networking_end();
+    std::string machine_name();
+    bool round_start_and_finality();
+    void round_start_and_finality(bool finality);
+    void round_end();
+
+};
+
+// Currently (MPI is the only option), we store the communicator as a global variable.
+communicator comm;
+
+// Stop until everybody is ready at a barrier. Just an alias for MPI_Barrier.
+void communicator::sync_up()
 {
     MPI_Barrier(MPI_COMM_WORLD);
 
 }
 
-void networking_init()
+void communicator::networking_init()
 {
     int provided = 0;
     MPI_Init_thread(NULL, NULL, MPI_THREAD_FUNNELED, &provided);
@@ -64,12 +83,12 @@ void networking_init()
     MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
 }
 
-void networking_end()
+void communicator::networking_end()
 {
     MPI_Finalize();
 }
 
-std::string mpi_name()
+std::string communicator::machine_name()
 {
     int name_len = 0;
     char processor_name[MPI_MAX_PROCESSOR_NAME];
@@ -110,7 +129,7 @@ void broadcast_zobrist()
 */
 
 // function that waits for round start (called by overseers)
-bool round_start_and_finality()
+bool communicator::round_start_and_finality()
 {
     int final_flag_int;
     MPI_Bcast(&final_flag_int, 1, MPI_INT, QUEEN, MPI_COMM_WORLD);
@@ -118,15 +137,15 @@ bool round_start_and_finality()
 }
 
 // function that starts the round (called by queen, finality set to true when round is final)
-void round_start_and_finality(bool finality)
+void communicator::round_start_and_finality(bool finality)
 {
     int final_flag_int = finality;
     MPI_Bcast(&final_flag_int, 1, MPI_INT, QUEEN, MPI_COMM_WORLD);
 }
 
-void round_end()
+void communicator::round_end()
 {
-    sync_up();
+    comm.sync_up();
 }
 
 void transmit_measurements(measure_attr& meas)
@@ -146,23 +165,6 @@ void receive_measurements()
     }
 }
 
-
-/* MPI_Request irrel_req;
-void send_terminations()
-{
-    for (int i = 1; i < world_size; i++)
-    {
-	MPI_Isend(&TERMINATION_SIGNAL, 1, MPI_INT, i, net::TERMINATE, MPI_COMM_WORLD, &irrel_req);
-    }
-
-        for (int i = 1; i < world_size; i++)
-    {
-	MPI_Isend(&TERMINATION_SIGNAL, 1, MPI_INT, i, CHANGE_MONOTONICITY, MPI_COMM_WORLD, &irrel_req);
-    }
-
-}
-*/
-
 void send_root_solved()
 {
     for (int i = 1; i < world_size; i++)
@@ -171,15 +173,6 @@ void send_root_solved()
 	MPI_Send(&ROOT_SOLVED_SIGNAL, 1, MPI_INT, i, net::ROOT_SOLVED, MPI_COMM_WORLD);
     }
 }
-
-void send_root_unsolved()
-{
-    for (int i = 1; i < world_size; i++)
-    {
-	MPI_Send(&ROOT_UNSOLVED_SIGNAL, 1, MPI_INT, i, net::ROOT_SOLVED, MPI_COMM_WORLD);
-    }
-}
-
 
 int* workers_per_overseer; // number of worker threads for each worker
 int* overseer_map = NULL; // a quick map from workers to overseer

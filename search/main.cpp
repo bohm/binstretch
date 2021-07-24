@@ -35,7 +35,7 @@ int main(int argc, char** argv)
     }
     // create output file name
     sprintf(outfile, "%d_%d_%dbins.dot", R,S,BINS);
-    networking_init();
+    comm.networking_init();
 
     int ret = -1;
     if (QUEEN_ONLY)
@@ -86,6 +86,6 @@ int main(int argc, char** argv)
 	hashtable_cleanup();
     }
 
-    networking_end();
+    comm.networking_end();
     return 0;
 }

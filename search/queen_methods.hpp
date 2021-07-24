@@ -117,7 +117,7 @@ int queen_class::start()
     int ret = 0;
     bool output_useful = false; // Set to true when it is clear output will be printed.
 
-    std::string machine_name = mpi_name();
+    std::string machine_name = comm.machine_name();
     fprintf(stderr, "Queen: reporting for duty: %s, rank %d out of %d instances\n",
 	    machine_name.c_str(), world_rank, world_size);
 
@@ -133,7 +133,7 @@ int queen_class::start()
     // Init queen memory (the queen does not use the main solved cache):
     dpc = new guar_cache(dplog); 
 
-    sync_up(); // Sync before any rounds start.
+    comm.sync_up(); // Sync before any rounds start.
 
     if (load_treetop)
     {
@@ -245,7 +245,7 @@ int queen_class::start()
 		    // queen needs to start the round
 		    print_if<COMM_DEBUG>("Queen: Starting the round.\n");
 		    clear_batches();
-		    round_start_and_finality(false);
+		    comm.round_start_and_finality(false);
 		    // queen sends the current monotonicity to the workers
 		    broadcast_monotonicity(monotonicity);
 
@@ -283,7 +283,7 @@ int queen_class::start()
 		    // collect remaining, unnecessary solutions
 		    destroy_tarray();
 		    destroy_tstatus();
-		    round_end();
+		    comm.round_end();
 		    ignore_additional_solutions();
 		}
 	
@@ -359,9 +359,9 @@ int queen_class::start()
 
     // We are terminating, start final round.
     print_if<COMM_DEBUG>("Queen: starting final round.\n");
-    round_start_and_finality(true);
+    comm.round_start_and_finality(true);
     receive_measurements();
-    round_end();
+    comm.round_end();
 
     if (PROGRESS)
     {

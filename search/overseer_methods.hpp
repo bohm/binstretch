@@ -107,7 +107,7 @@ void overseer::start()
 {
     int monotonicity_last_round;
 
-    std::string machine_name = mpi_name();
+    std::string machine_name = comm.machine_name();
     printf("Overseer reporting for duty: %s, rank %d out of %d instances\n",
 	   machine_name.c_str(), world_rank, world_size);
 
@@ -141,7 +141,7 @@ void overseer::start()
     
     // dpht_el::parallel_init(&dpht, dpht_size, worker_count);
 
-    sync_up(); // Sync before any rounds start.
+    comm.sync_up(); // Sync before any rounds start.
     bool batch_requested = false;
     root_solved.store(false);
     final_round.store(false); 
@@ -161,7 +161,7 @@ void overseer::start()
     {
 	print_if<COMM_DEBUG>("Overseer %d: waiting for round start.\n", world_rank);
 	// Listen for the start of the round.
-	final_round.store(round_start_and_finality());
+	final_round.store(comm.round_start_and_finality());
 
 	if (!final_round)
 	{
@@ -257,7 +257,7 @@ void overseer::start()
 
 	    } // End of one round for an overseer.
 	    cleanup();
-	    round_end(); 
+	    comm.round_end(); 
 	} else { // final_round == true
 	    print_if<COMM_DEBUG>("Overseer %d: received final round, terminating.\n", world_rank);
 	    worker_needed_cv.notify_all();
@@ -293,7 +293,7 @@ void overseer::start()
 	    delete dpc;
 	    delete stc;
 	    delete[] finished_tasks;
-	    round_end();
+	    comm.round_end();
 	    break;
 	}
     }
