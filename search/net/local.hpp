@@ -1,8 +1,9 @@
 #ifndef NET_LOCAL_HPP
 #define NET_LOCAL_HPP
 
-// In the "local" networking mode, there is only one overseer (the local one)
-// and it communicates with the queen via std::thread.
+// In the "local" networking mode, all overseers are on the same computer
+// (a reasonable choice is to have only one) and communication is implemented
+// via std::thread and other standard concurrent programming tools of C++.
 
 // We store all of the locks needed for communication in the communicator class.
 
@@ -14,11 +15,11 @@
 
 #include <mpi.h>
 
+#include "./local_structures.hpp"
 #include "../common.hpp"
 #include "../dag/dag.hpp"
 #include "../hash.hpp"
 #include "../tasks.hpp"
-
 // ----
 const int SYNCHRO_SLEEP = 20;
 
