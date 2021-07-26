@@ -111,6 +111,7 @@ void overseer::start()
     printf("Overseer reporting for duty: %s, rank %d out of %d instances\n",
 	   machine_name.c_str(), world_rank, world_size);
 
+    comm.deferred_construction(world_size);
     // DEBUG
     // fprintf(stderr, "Overseer sleeping for 15 seconds so gdb can be attached.\n");
     // std::this_thread::sleep_for(std::chrono::seconds(15));
@@ -130,7 +131,9 @@ void overseer::start()
 
     print_if<true>("Overseer %d at server %s: conflog %d, dplog %d, worker_count %d\n",
 		world_rank, machine_name.c_str(), conflog, dplog, worker_count);
-    broadcast_zobrist();
+    zobrist_quadruple zq = comm.bcast_recv_and_allocate_zobrist();
+    std::tie(Zi, Zl, Zlow, Zlast) = zq;
+		      
     compute_thread_ranks();
     finished_tasks = new semiatomic_q[worker_count];
     std::thread* threads = new std::thread[worker_count];

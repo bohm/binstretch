@@ -175,7 +175,7 @@ const int MAX_EXPANSION = 1;
 
 const bool VERBOSE = true;
 const bool DEBUG = false;
-const bool COMM_DEBUG = false; // Network debug messages.
+const bool COMM_DEBUG = true; // Network debug messages.
 const bool TASK_DEBUG = false; // Debugging creation of tasks, batching, etc.
 const bool GRAPH_DEBUG = false; // Debugging the DAG creation and adding/removing edges.
 const bool PARSING_DEBUG = false; // Debugging loading and saving a file.
@@ -205,6 +205,8 @@ uint64_t *Zl; // Zobrist table for loads
 uint64_t *Zlow; // Zobrist for the lowest sendable item (monotonicity)
 uint64_t *Zlast;
 uint64_t *Zalg;
+
+typedef std::tuple<uint64_t*, uint64_t*, uint64_t*, uint64_t*> zobrist_quadruple;
 
 // thread rank idea:
 // if worker has thread rank 3 and reported thread count 5, it is assigned worker ranks 3,4,5,6,7.

@@ -6,53 +6,13 @@
 // but the assumption is that they are quite similar from the point of the queen
 // and overseers.
 
-class queen_communicator
-{
-    // batching model
-    int ws;
-    bool *running_low;
-
-public:
-    queen_communicator(int worldsize)
-	{
-	    ws = worldsize;
-	    running_low = new bool[worldsize];
-	}
-
-    ~queen_communicator()
-	{
-	    delete running_low;
-	}
-
-    void reset_runlows()
-	{
-	    for (int i = 0; i < ws; i++)
-	    {
-		running_low[i] = false;
-	    }
-	}
-
-    bool is_running_low(int target_overseer)
-	{
-	    return running_low[target_overseer];
-	}
-    
-    void satisfied_runlow(int target_overseer)
-	{
-	    running_low[target_overseer] = false;
-	}
-    
-    void send_batch(int *batch, int target_overseer);
-    void collect_runlows();
-};
-
-void queen_communicator::send_batch(int *batch, int target_overseer)
+void communicator::send_batch(int *batch, int target_overseer)
 {
     MPI_Send(batch, BATCH_SIZE, MPI_INT, target_overseer, net::SENDING_BATCH, MPI_COMM_WORLD);
 }
 
 
-void queen_communicator::collect_runlows()
+void communicator::collect_runlows()
 {
     int running_low_received = 0;
     MPI_Status stat;

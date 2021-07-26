@@ -76,7 +76,41 @@ void networking_end()
 // and it calls MPI in its methods.
 class communicator
 {
+
+    // batching model
+    int ws;
+    bool *running_low;
+
 public:
+    void deferred_construction(int worldsize)
+	{
+	    ws = worldsize;
+	    running_low = new bool[worldsize];
+	}
+
+    ~communicator()
+	{
+	    delete running_low;
+	}
+
+    void reset_runlows()
+	{
+	    for (int i = 0; i < ws; i++)
+	    {
+		running_low[i] = false;
+	    }
+	}
+
+    bool is_running_low(int target_overseer)
+	{
+	    return running_low[target_overseer];
+	}
+    
+    void satisfied_runlow(int target_overseer)
+	{
+	    running_low[target_overseer] = false;
+	}
+    
     void sync_up();
     std::string machine_name();
     bool round_start_and_finality();
@@ -86,13 +120,17 @@ public:
     void bcast_send_monotonicity(int m);
     int  bcast_recv_monotonicity();
 
+    void bcast_send_zobrist(zobrist_quadruple zq);
+    zobrist_quadruple bcast_recv_and_allocate_zobrist();
+
+    void send_batch(int *batch, int target_overseer);
+    void collect_runlows();
+
 };
 
-// Contains local data and methods used exclusively by the queen.  In
-// principle we can separate all communication this way, but the class
-// is used primarily for (network) data storage that overseers do not
-// need to do.
 // Currently (MPI is the only option), we store the communicator as a global variable.
+// This will be also beneficial in the local mode, where communicator holds the shared data for
+// both threads.
 communicator comm;
 
 // Stop until everybody is ready at a barrier. Just an alias for MPI_Barrier.
@@ -110,27 +148,41 @@ std::string communicator::machine_name()
     return std::string(processor_name);
 }
 
-void broadcast_zobrist()
+// Zobrist arrays are global (because workers need frequent access to them),
+// but when synchronizing them we do so without accessing the global arrays.
+void communicator::bcast_send_zobrist(zobrist_quadruple zq)
 {
-    if (BEING_QUEEN)
-    {
-	assert(Zi != NULL && Zl != NULL && Zlow != NULL);
-    } else
-    {
-	assert(Zi == NULL && Zl == NULL && Zlow == NULL);
-	Zi = new uint64_t[(S+1)*(MAX_ITEMS+1)];
-	Zl = new uint64_t[(BINS+1)*(R+1)];
-	Zlow = new uint64_t[S+1];
-	Zlast = new uint64_t[S+1];
-    }
+    auto& [zi, zl, zlow, zlast] = zq;
+    assert(zi != NULL && zl != NULL && zlow != NULL && zlast != NULL);
+    MPI_Bcast(zi, (MAX_ITEMS+1)*(S+1), MPI_UNSIGNED_LONG, QUEEN, MPI_COMM_WORLD);
+    MPI_Bcast(zl, (BINS+1)*(R+1), MPI_UNSIGNED_LONG, QUEEN, MPI_COMM_WORLD);
+    MPI_Bcast(zlow, S+1, MPI_UNSIGNED_LONG, QUEEN, MPI_COMM_WORLD);
+    MPI_Bcast(zlast, S+1, MPI_UNSIGNED_LONG, QUEEN, MPI_COMM_WORLD);
+
+    print_if<COMM_DEBUG>("Queen Zi[1], Zl[1], Zlow[1], Zlast[1]: %" PRIu64
+			 ", %" PRIu64 ", %" PRIu64 ", %" PRIu64 ".\n",
+			 zi[1], zl[1], zlow[1], zlast[1]);
+
+}
+
+zobrist_quadruple communicator::bcast_recv_and_allocate_zobrist()
+{
+    uint64_t *zi = new uint64_t[(S+1)*(MAX_ITEMS+1)];
+    uint64_t *zl = new uint64_t[(BINS+1)*(R+1)];
+    uint64_t *zlow = new uint64_t[S+1];
+    uint64_t *zlast = new uint64_t[S+1];
 
     // bcast blocks, no need to synchronize
-    MPI_Bcast(Zi, (MAX_ITEMS+1)*(S+1), MPI_UNSIGNED_LONG, QUEEN, MPI_COMM_WORLD);
-    MPI_Bcast(Zl, (BINS+1)*(R+1), MPI_UNSIGNED_LONG, QUEEN, MPI_COMM_WORLD);
-    MPI_Bcast(Zlow, S+1, MPI_UNSIGNED_LONG, QUEEN, MPI_COMM_WORLD);
-    MPI_Bcast(Zlast, S+1, MPI_UNSIGNED_LONG, QUEEN, MPI_COMM_WORLD);
+    MPI_Bcast(zi, (MAX_ITEMS+1)*(S+1), MPI_UNSIGNED_LONG, QUEEN, MPI_COMM_WORLD);
+    MPI_Bcast(zl, (BINS+1)*(R+1), MPI_UNSIGNED_LONG, QUEEN, MPI_COMM_WORLD);
+    MPI_Bcast(zlow, S+1, MPI_UNSIGNED_LONG, QUEEN, MPI_COMM_WORLD);
+    MPI_Bcast(zlast, S+1, MPI_UNSIGNED_LONG, QUEEN, MPI_COMM_WORLD);
 
-    // fprintf(stderr, "Process %d Zi[1]: %" PRIu64 "\n", world_rank, Zi[1]);
+    print_if<COMM_DEBUG>("Process %d Zi[1], Zl[1], Zlow[1], Zlast[1]: %" PRIu64
+			 ", %" PRIu64 ", %" PRIu64 ", %" PRIu64 ".\n",
+			 world_rank, zi[1], zl[1], zlow[1], zlast[1]);
+
+    return zobrist_quadruple(zi, zl, zlow, zlast);
 }
 
 /* Communication states:

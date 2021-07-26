@@ -117,15 +117,16 @@ int queen_class::start()
     int ret = 0;
     bool output_useful = false; // Set to true when it is clear output will be printed.
 
+    comm.deferred_construction(world_size);
     std::string machine_name = comm.machine_name();
     fprintf(stderr, "Queen: reporting for duty: %s, rank %d out of %d instances\n",
 	    machine_name.c_str(), world_rank, world_size);
 
     zobrist_init();
-    broadcast_zobrist();
+    comm.bcast_send_zobrist(zobrist_quadruple(Zi, Zl, Zlow, Zlast));
+
     compute_thread_ranks();
     // init_running_lows();
-    queen_communicator qcomm(world_size);
     init_batches();
     
     // std::tuple<unsigned int, unsigned int, unsigned int> settings = server_properties(processor_name);
@@ -213,7 +214,7 @@ int queen_class::start()
                 // Purge all new vertices, so that only vert_state::fixed and vert_state::expand remain.
 		purge_new(qdag, computation_root);
 		reset_values(qdag, computation_root);
-		qcomm.reset_runlows(); // reset_running_lows();
+		comm.reset_runlows(); // reset_running_lows();
 		qdag->clear_visited();
 		removed_task_count = 0;
 		updater_result = generate<minimax::generating>(currently_growing, &comp);
@@ -269,21 +270,21 @@ int queen_class::start()
 		    while(updater_result == victory::uncertain)
 		    {
 			collect_worker_tasks();
-			qcomm.collect_runlows(); // collect_running_lows();
+			comm.collect_runlows(); // collect_running_lows();
 
 			// We wish to have the loop here, so that net/ is independent on compose_batch().
 			for (int overseer = 1; overseer < world_size; overseer++)
 			{
-			    if (qcomm.is_running_low(overseer))
+			    if (comm.is_running_low(overseer))
 			    {
 				//check_batch_finished(overseer);
 				compose_batch(batches[overseer]);
-				qcomm.send_batch(batches[overseer], overseer);
-				qcomm.satisfied_runlow(overseer);
+				comm.send_batch(batches[overseer], overseer);
+				comm.satisfied_runlow(overseer);
 			    }
 			}
 
-			// qcomm.compose_and_send_batches(); // send_out_batches();
+			// comm.compose_and_send_batches(); // send_out_batches();
 			std::this_thread::sleep_for(std::chrono::milliseconds(TICK_SLEEP));
 		    }
 
@@ -392,7 +393,7 @@ int queen_class::start()
 
     // Print measurements and clean up.
     g_meas.print();
-    // delete_running_lows(); happens upon qcomm destruction.
+    // delete_running_lows(); happens upon comm destruction.
 
     delete dpc;
     delete_batches();
