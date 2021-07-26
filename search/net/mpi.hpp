@@ -88,6 +88,41 @@ public:
 
 };
 
+// Contains local data and methods used exclusively by the queen.  In
+// principle we can separate all communication this way, but the class
+// is used primarily for (network) data storage that overseers do not
+// need to do.
+class queen_communicator
+{
+    // batching model
+    int ws;
+    bool *running_low;
+
+public:
+    queen_communicator(int worldsize)
+	{
+	    ws = worldsize;
+	    running_low = new bool[worldsize];
+	}
+
+    ~queen_communicator()
+	{
+	    delete running_low;
+	}
+
+    void reset_runlows()
+	{
+	    for (int i = 0; i < ws; i++)
+	    {
+		running_low[i] = false;
+	    }
+	}
+
+    void send_batch(int *batch, int target_overseer);
+    void collect_runlows();
+    void compose_and_send_batches();
+};
+
 // Currently (MPI is the only option), we store the communicator as a global variable.
 communicator comm;
 
@@ -480,8 +515,9 @@ void send_solution_pair(int ftask_id, int solution)
 }
 
 // batching model
-bool *running_low;
+// bool *running_low;
 
+/*
 void init_running_lows()
 {
     running_low = new bool[world_size];
@@ -499,6 +535,7 @@ void delete_running_lows()
 {
     delete[] running_low;
 }
+*/
 
 void request_new_batch()
 {
@@ -506,7 +543,7 @@ void request_new_batch()
     MPI_Send(&irrel, 1, MPI_INT, QUEEN, net::RUNNING_LOW, MPI_COMM_WORLD);
 }
 
-void collect_running_lows()
+void queen_communicator::collect_runlows()
 {
     int running_low_received = 0;
     MPI_Status stat;
@@ -522,10 +559,35 @@ void collect_running_lows()
     }
 }
 
+/*
+void collect_running_lows()
+{
+    int running_low_received = 0;
+    MPI_Status stat;
+    int irrel;
+    MPI_Iprobe(MPI_ANY_SOURCE, net::RUNNING_LOW, MPI_COMM_WORLD, &running_low_received, &stat);
+    while(running_low_received)
+    {
+	running_low_received = 0;
+	int sender = stat.MPI_SOURCE;
+	MPI_Recv(&irrel, 1, MPI_INT, sender, net::RUNNING_LOW, MPI_COMM_WORLD, &stat);
+	running_low[sender] = true;
+	MPI_Iprobe(MPI_ANY_SOURCE, net::RUNNING_LOW, MPI_COMM_WORLD, &running_low_received, &stat);
+    }
+}
+*/
+
+void queen_communicator::send_batch(int *batch, int target_overseer)
+{
+    MPI_Send(batch, BATCH_SIZE, MPI_INT, target_overseer, net::SENDING_BATCH, MPI_COMM_WORLD);
+}
+
+/*
 void transmit_batch(int *batch, int overseer)
 {
     MPI_Send(batch, BATCH_SIZE, MPI_INT, overseer, net::SENDING_BATCH, MPI_COMM_WORLD);
 }
+*/
 
 void receive_batch(int *current_batch)
 {
@@ -554,7 +616,22 @@ bool try_receiving_batch(std::array<int, BATCH_SIZE>& upcoming_batch)
     }
 }
 
+// Still problematic -- uses a global array batches[].
+void queen_communicator::compose_and_send_batches()
+{
+    for (int overseer = 1; overseer < ws; overseer++)
+    {
+	if (running_low[overseer])
+	{
+	    //check_batch_finished(overseer);
+	    compose_batch(batches[overseer]);
+	    send_batch(batches[overseer], overseer);
+	    running_low[overseer] = false;
+	}
+    }
+}
 
+/*
 void send_out_batches()
 {
     for (int overseer = 1; overseer < world_size; overseer++)
@@ -568,5 +645,5 @@ void send_out_batches()
 	}
     }
 }
-
+*/
 #endif

@@ -124,7 +124,8 @@ int queen_class::start()
     zobrist_init();
     broadcast_zobrist();
     compute_thread_ranks();
-    init_running_lows();
+    // init_running_lows();
+    queen_communicator qcomm(world_size);
     init_batches();
     
     // std::tuple<unsigned int, unsigned int, unsigned int> settings = server_properties(processor_name);
@@ -212,7 +213,7 @@ int queen_class::start()
                 // Purge all new vertices, so that only vert_state::fixed and vert_state::expand remain.
 		purge_new(qdag, computation_root);
 		reset_values(qdag, computation_root);
-		reset_running_lows();
+		qcomm.reset_runlows(); // reset_running_lows();
 		qdag->clear_visited();
 		removed_task_count = 0;
 		updater_result = generate<minimax::generating>(currently_growing, &comp);
@@ -268,8 +269,8 @@ int queen_class::start()
 		    while(updater_result == victory::uncertain)
 		    {
 			collect_worker_tasks();
-			collect_running_lows();
-			send_out_batches();
+			qcomm.collect_runlows(); // collect_running_lows();
+			qcomm.compose_and_send_batches(); // send_out_batches();
 			std::this_thread::sleep_for(std::chrono::milliseconds(TICK_SLEEP));
 		    }
 
@@ -378,7 +379,7 @@ int queen_class::start()
 
     // Print measurements and clean up.
     g_meas.print();
-    delete_running_lows();
+    // delete_running_lows(); happens upon qcomm destruction.
 
     delete dpc;
     delete_batches();
