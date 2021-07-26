@@ -8,8 +8,6 @@ queue update code. */
 #include <vector>
 #include <algorithm>
 
-#include <mpi.h>
-
 #include "common.hpp"
 #include "dag/dag.hpp"
 #include "dfs.hpp"
@@ -84,12 +82,6 @@ public:
 	    }
 
 	    return ret;
-	}
-    
-    /* returns the struct as a serialized object of size sizeof(task) */
-    char* serialize()
-	{
-	    return static_cast<char*>(static_cast<void*>(this));
 	}
 };
 
@@ -225,10 +217,6 @@ std::map<llu, int> tmap;
 int tcount = 0;
 int thead = 0; // head of the tarray queue which queen uses to send tasks
 int tpruned = 0; // number of tasks which are pruned
-
-// global measure of queen's collected tasks
-std::atomic<unsigned int> collected_cumulative{0};
-std::atomic<unsigned int> collected_now{0};
 
 void init_tarray()
 {

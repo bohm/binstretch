@@ -35,5 +35,15 @@ dag *qdag = NULL;
 adversary_vertex *computation_root;
 adversary_vertex *expansion_root;
 
+// Some shared variables used by the queen which need to be
+// used in various places also.
 
+namespace qmemory
+{
+    // Global measure of queen's collected tasks.
+    std::atomic<unsigned int> collected_cumulative{0};
+    std::atomic<unsigned int> collected_now{0};
+
+
+};
 #endif

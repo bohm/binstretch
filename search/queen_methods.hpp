@@ -37,28 +37,28 @@ void queen_class::updater(adversary_vertex* sapling)
 {
 
     unsigned int last_printed = 0;
-    collected_cumulative = 0;
+    qmemory::collected_cumulative = 0;
     unsigned int cycle_counter = 0;
 
     while (updater_result == victory::uncertain)
     {
 	std::this_thread::sleep_for(std::chrono::milliseconds(TICK_SLEEP));
 	// unsigned int currently_collected = collect_tasks();
-	// collected_cumulative += currently_collected;
+	// qmemory::collected_cumulative += currently_collected;
 	// collected_no += currently_collected;
-	if (collected_cumulative.load(std::memory_order_acquire) / PROGRESS_AFTER > last_printed)
+	if (qmemory::collected_cumulative.load(std::memory_order_acquire) / PROGRESS_AFTER > last_printed)
 	{
-	    last_printed = collected_cumulative / PROGRESS_AFTER;
-	    print_if<PROGRESS>("Queen collects task number %u. \n", collected_cumulative.load(std::memory_order_acquire));
+	    last_printed = qmemory::collected_cumulative / PROGRESS_AFTER;
+	    print_if<PROGRESS>("Queen collects task number %u. \n", qmemory::collected_cumulative.load(std::memory_order_acquire));
 	}
 	
 	// update main tree and task map
-	// bool should_do_update = ((collected_now >= TICK_TASKS) || (tcount - thead <= TICK_TASKS)) && (updater_result == POSTPONED);
+	// bool should_do_update = ((qmemory::collected_now >= TICK_TASKS) || (tcount - thead <= TICK_TASKS)) && (updater_result == POSTPONED);
 	bool should_do_update = true;
 	if (should_do_update)
 	{
 	    cycle_counter++;
-	    collected_now.store(0, std::memory_order_release);
+	    qmemory::collected_now.store(0, std::memory_order_release);
 	    update_attr uat;
 	    qdag->clear_visited();
 	    updater_result.store(update(sapling, uat), std::memory_order_release);

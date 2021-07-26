@@ -81,7 +81,7 @@ void main_thread(int ws, int wr, int argc, char** argv)
 	}
 	
 	fprintf(stderr, "Number of tasks: %d, collected tasks: %u,  pruned tasks %" PRIu64 ".\n,",
-		tcount, collected_cumulative.load(), removed_task_count);
+		tcount, qmemory::collected_cumulative.load(), removed_task_count);
 	fprintf(stderr, "Pruned & transmitted tasks: %" PRIu64 "\n", irrel_transmitted_count);
 
 	if (ONEPASS)
