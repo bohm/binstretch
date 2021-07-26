@@ -118,9 +118,18 @@ public:
 	    }
 	}
 
+    bool is_running_low(int target_overseer)
+	{
+	    return running_low[target_overseer];
+	}
+    
+    void satisfied_runlow(int target_overseer)
+	{
+	    running_low[target_overseer] = false;
+	}
+    
     void send_batch(int *batch, int target_overseer);
     void collect_runlows();
-    void compose_and_send_batches();
 };
 
 // Currently (MPI is the only option), we store the communicator as a global variable.
@@ -464,78 +473,12 @@ void collect_worker_tasks()
     }
 }
 
-
-void send_out_tasks()
-{
-    int request_pending = 0;
-    MPI_Status stat;
-    int irrel = 0;
-    MPI_Iprobe(MPI_ANY_SOURCE, net::REQUEST, MPI_COMM_WORLD, &request_pending, &stat);
-
-    while (request_pending)
-    {
-	request_pending = 0;
-	int sender = stat.MPI_SOURCE;
-	MPI_Recv(&irrel, 1, MPI_INT, sender, net::REQUEST, MPI_COMM_WORLD, &stat);
-	// we need to collect worker tasks now to avoid a synchronization problem
-	// where queen overwrites remote_taskmap information.
-	// collect_worker_task(sender);
-	int outgoing_task = -1;
-
-	// fetches the first available task 
-	while (thead < tcount)
-	{
-	    task_status stat = tstatus[thead].load(std::memory_order_acquire);
-	    if (stat == task_status::available)
-	    {
-		outgoing_task = thead;
-		thead++;
-		break;
-	    }
-	    thead++;
-	}
-	
-	if (outgoing_task != -1)
-	{
-	    // check the synchronization problem does not happen (as above)
-	    MPI_Send(&outgoing_task, 1, MPI_INT, sender, net::SENDING_TASK, MPI_COMM_WORLD);
-	    MPI_Iprobe(MPI_ANY_SOURCE, net::REQUEST, MPI_COMM_WORLD, &request_pending, &stat); // possibly sets flag to true
-	} else {
-	    // no more tasks, but also we cannot quit completely yet (some may still be processing)
-	    break;
-	}
-    }
-}
-
 void send_solution_pair(int ftask_id, int solution)
 {
     int solution_pair[2];
     solution_pair[0] = ftask_id; solution_pair[1] = solution;
     MPI_Send(&solution_pair, 2, MPI_INT, QUEEN, net::SOLUTION, MPI_COMM_WORLD);
 }
-
-// batching model
-// bool *running_low;
-
-/*
-void init_running_lows()
-{
-    running_low = new bool[world_size];
-}
-
-void reset_running_lows()
-{
-    for (int i = 0; i < world_size; i++)
-    {
-	running_low[i] = false;
-    }
-}
-
-void delete_running_lows()
-{
-    delete[] running_low;
-}
-*/
 
 void request_new_batch()
 {
@@ -559,35 +502,12 @@ void queen_communicator::collect_runlows()
     }
 }
 
-/*
-void collect_running_lows()
-{
-    int running_low_received = 0;
-    MPI_Status stat;
-    int irrel;
-    MPI_Iprobe(MPI_ANY_SOURCE, net::RUNNING_LOW, MPI_COMM_WORLD, &running_low_received, &stat);
-    while(running_low_received)
-    {
-	running_low_received = 0;
-	int sender = stat.MPI_SOURCE;
-	MPI_Recv(&irrel, 1, MPI_INT, sender, net::RUNNING_LOW, MPI_COMM_WORLD, &stat);
-	running_low[sender] = true;
-	MPI_Iprobe(MPI_ANY_SOURCE, net::RUNNING_LOW, MPI_COMM_WORLD, &running_low_received, &stat);
-    }
-}
-*/
 
 void queen_communicator::send_batch(int *batch, int target_overseer)
 {
     MPI_Send(batch, BATCH_SIZE, MPI_INT, target_overseer, net::SENDING_BATCH, MPI_COMM_WORLD);
 }
 
-/*
-void transmit_batch(int *batch, int overseer)
-{
-    MPI_Send(batch, BATCH_SIZE, MPI_INT, overseer, net::SENDING_BATCH, MPI_COMM_WORLD);
-}
-*/
 
 void receive_batch(int *current_batch)
 {
@@ -616,34 +536,4 @@ bool try_receiving_batch(std::array<int, BATCH_SIZE>& upcoming_batch)
     }
 }
 
-// Still problematic -- uses a global array batches[].
-void queen_communicator::compose_and_send_batches()
-{
-    for (int overseer = 1; overseer < ws; overseer++)
-    {
-	if (running_low[overseer])
-	{
-	    //check_batch_finished(overseer);
-	    compose_batch(batches[overseer]);
-	    send_batch(batches[overseer], overseer);
-	    running_low[overseer] = false;
-	}
-    }
-}
-
-/*
-void send_out_batches()
-{
-    for (int overseer = 1; overseer < world_size; overseer++)
-    {
-	if (running_low[overseer])
-	{
-	    //check_batch_finished(overseer);
-	    compose_batch(batches[overseer]);
-	    transmit_batch(batches[overseer], overseer);
-	    running_low[overseer] = false;
-	}
-    }
-}
-*/
 #endif

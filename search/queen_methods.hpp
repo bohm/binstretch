@@ -270,7 +270,20 @@ int queen_class::start()
 		    {
 			collect_worker_tasks();
 			qcomm.collect_runlows(); // collect_running_lows();
-			qcomm.compose_and_send_batches(); // send_out_batches();
+
+			// We wish to have the loop here, so that net/ is independent on compose_batch().
+			for (int overseer = 1; overseer < world_size; overseer++)
+			{
+			    if (qcomm.is_running_low(overseer))
+			    {
+				//check_batch_finished(overseer);
+				compose_batch(batches[overseer]);
+				qcomm.send_batch(batches[overseer], overseer);
+				qcomm.satisfied_runlow(overseer);
+			    }
+			}
+
+			// qcomm.compose_and_send_batches(); // send_out_batches();
 			std::this_thread::sleep_for(std::chrono::milliseconds(TICK_SLEEP));
 		    }
 
