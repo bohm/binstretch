@@ -247,7 +247,7 @@ int queen_class::start()
 		    clear_batches();
 		    comm.round_start_and_finality(false);
 		    // queen sends the current monotonicity to the workers
-		    broadcast_monotonicity(monotonicity);
+		    comm.bcast_send_monotonicity(monotonicity);
 
 		    collect_tasks(computation_root);
 		    init_tstatus(tstatus_temporary); tstatus_temporary.clear();

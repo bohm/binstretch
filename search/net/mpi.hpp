@@ -47,6 +47,29 @@ const int TERMINATION_SIGNAL = -1;
 const int ROOT_SOLVED_SIGNAL = -2;
 const int ROOT_UNSOLVED_SIGNAL = -3;
 
+// We move the networking init outside of the communicator, in order
+// to make the communicator a (local) object that can be initialized
+// inside the main communication threads.
+std::pair<int, int> networking_init()
+{
+    int wsize = 0, wrank = 0;
+    int provided = 0;
+    MPI_Init_thread(NULL, NULL, MPI_THREAD_FUNNELED, &provided);
+    assert(provided == MPI_THREAD_FUNNELED);
+    MPI_Comm_size(MPI_COMM_WORLD, &wsize);
+    MPI_Comm_rank(MPI_COMM_WORLD, &wrank);
+    return std::pair<int,int>(wsize, wrank);
+}
+
+void networking_end()
+{
+    MPI_Finalize();
+}
+
+#define NETWORKING_SPLIT(function, wsize, wrank, argc, argv)	\
+    function(wsize, wrank, argc, argv);
+
+#define NETWORKING_JOIN()
 
 // The wrapper for queen-overseer communication.
 // In the MPI regime, it is assumed each process has its own communicator
@@ -55,12 +78,13 @@ class communicator
 {
 public:
     void sync_up();
-    void networking_init();
-    void networking_end();
     std::string machine_name();
     bool round_start_and_finality();
     void round_start_and_finality(bool finality);
     void round_end();
+
+    void bcast_send_monotonicity(int m);
+    int  bcast_recv_monotonicity();
 
 };
 
@@ -72,20 +96,6 @@ void communicator::sync_up()
 {
     MPI_Barrier(MPI_COMM_WORLD);
 
-}
-
-void communicator::networking_init()
-{
-    int provided = 0;
-    MPI_Init_thread(NULL, NULL, MPI_THREAD_FUNNELED, &provided);
-    assert(provided == MPI_THREAD_FUNNELED);
-    MPI_Comm_size(MPI_COMM_WORLD, &world_size);
-    MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
-}
-
-void communicator::networking_end()
-{
-    MPI_Finalize();
 }
 
 std::string communicator::machine_name()
@@ -223,55 +233,6 @@ void compute_thread_ranks()
 
     }
 }
-
-/*
-// queen transmits an irrelevant task to the right worker
-void transmit_irrelevant_task(int taskno)
-{
-    // MPI_Request blankreq;
-    int target_overseer = overseer_map[taskno/chunk];
-    // print_if<DEBUG>("Transmitting task %d as irrelevant.\n", taskno);
-    MPI_Send(&taskno, 1, MPI_INT, target_overseer, net::SENDING_IRRELEVANT, MPI_COMM_WORLD);
-}
-
-void transmit_all_irrelevant()
-{
-    int p = irrel_taskq.pop_if_able();
-    while (p != -1)
-    {
-	transmit_irrelevant_task(p);
-	irrel_transmitted_count++;
-	p = irrel_taskq.pop_if_able();
-    }
-}
-
-void fetch_irrelevant_tasks(const int& overseer_lb, const int& overseer_ub)
-{
-    MPI_Status stat;
-    int irrel_task_incoming = 0;
-    int ir_task = 0;
-
-    MPI_Iprobe(QUEEN, net::SENDING_IRRELEVANT, MPI_COMM_WORLD, &irrel_task_incoming, &stat);
-
-    while (irrel_task_incoming)
-    {
-	irrel_task_incoming = 0;
-	MPI_Recv(&ir_task, 1, MPI_INT, QUEEN, net::SENDING_IRRELEVANT, MPI_COMM_WORLD, &stat);
-	if (!(ir_task >= overseer_lb && ir_task < overseer_ub))
-	{
-	    print_if<true>("Overseer %d fetched task %d which is out of bounds [%d,%d).\n",
-			world_rank, ir_task, overseer_lb, overseer_ub);
-	    print_if<true>("Chunk size: %d.\n", chunk);
-	    assert(ir_task >= overseer_lb && ir_task < overseer_ub);
-	}
-	// mark task as irrelevant
-	tstatus[ir_task].store(TASK_PRUNED);
-        print_if<DEBUG>("Worker %d: marking %d as irrelevant.\n", world_rank, ir_task);
-	MPI_Iprobe(QUEEN, net::SENDING_IRRELEVANT, MPI_COMM_WORLD, &irrel_task_incoming, &stat);
-    }
-}
-*/
-
 // Workers fetch and ignore additional signals about root solved (since it may arrive in two places).
 void ignore_additional_signals()
 {
@@ -330,8 +291,6 @@ void ignore_additional_solutions()
 	MPI_Recv(&irrel, 1, MPI_INT, sender, net::RUNNING_LOW, MPI_COMM_WORLD, &stat);
 	MPI_Iprobe(MPI_ANY_SOURCE, net::RUNNING_LOW, MPI_COMM_WORLD, &running_low_received, &stat);
     }
-
-
 }
 
 
@@ -364,13 +323,13 @@ void blocking_check_root_solved()
     }
 }
 
-void broadcast_monotonicity(int m)
+void communicator::bcast_send_monotonicity(int m)
 {
     assert(BEING_QUEEN);
     MPI_Bcast(&m, 1, MPI_INT, QUEEN, MPI_COMM_WORLD);
 }
 
-int broadcast_monotonicity()
+int communicator::bcast_recv_monotonicity()
 {
     assert(BEING_OVERSEER);
     int m = 0;

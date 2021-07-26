@@ -105,6 +105,11 @@ const int PERMANENT = 1;
 
 // queen's world_rank
 const int QUEEN = 0;
+// a test for queen being the only process working
+#define QUEEN_ONLY (world_size == 1)
+#define BEING_OVERSEER (world_rank != QUEEN)
+#define BEING_QUEEN (world_rank == QUEEN)
+
 
 // bitsize of queen's dpcache
 const unsigned int QUEEN_DPLOG = 26;
