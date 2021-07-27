@@ -134,7 +134,9 @@ void overseer::start()
     zobrist_quadruple zq = comm.bcast_recv_and_allocate_zobrist();
     std::tie(Zi, Zl, Zlow, Zlast) = zq;
 		      
-    compute_thread_ranks();
+    // compute_thread_ranks();
+    comm.send_number_of_workers(worker_count);
+    comm.learn_worker_rank();
     finished_tasks = new semiatomic_q[worker_count];
     std::thread* threads = new std::thread[worker_count];
 

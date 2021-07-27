@@ -76,21 +76,32 @@ void networking_end()
 // and it calls MPI in its methods.
 class communicator
 {
-
-    // batching model
-    int ws;
-    bool *running_low;
+    int ws = 0;
+    int worker_world_size = 0;
+    int num_of_workers = 0;
+    bool *running_low = NULL;
+    int* workers_per_overseer = NULL; // number of worker threads for each worker
+    int* overseer_map = NULL; // a quick map from workers to overseer
 
 public:
     void deferred_construction(int worldsize)
 	{
 	    ws = worldsize;
 	    running_low = new bool[worldsize];
+	    workers_per_overseer = new int[worldsize];
+	}
+
+    void allocate_overseer_map()
+	{
+	    assert(worker_world_size > 0);
+	    overseer_map = new int[worker_world_size];
 	}
 
     ~communicator()
 	{
 	    delete running_low;
+	    delete workers_per_overseer;
+	    delete overseer_map;
 	}
 
     void reset_runlows()
@@ -122,6 +133,11 @@ public:
 
     void bcast_send_zobrist(zobrist_quadruple zq);
     zobrist_quadruple bcast_recv_and_allocate_zobrist();
+
+    void send_number_of_workers(int num_workers);
+    std::pair<int,int> learn_worker_rank();
+    void compute_thread_ranks();
+
 
     void send_batch(int *batch, int target_overseer);
     void collect_runlows();
@@ -211,7 +227,7 @@ void communicator::round_start_and_finality(bool finality)
 
 void communicator::round_end()
 {
-    comm.sync_up();
+    sync_up();
 }
 
 void transmit_measurements(measure_attr& meas)
@@ -239,10 +255,62 @@ void send_root_solved()
 	MPI_Send(&ROOT_SOLVED_SIGNAL, 1, MPI_INT, i, net::ROOT_SOLVED, MPI_COMM_WORLD);
     }
 }
+// Overseers use the next two functions to learn the size of the overall worker pool.
+void communicator::send_number_of_workers(int num_workers)
+{
+    this->num_of_workers = num_workers;
+    MPI_Send(&num_workers, 1, MPI_INT, QUEEN, net::THREAD_COUNT, MPI_COMM_WORLD);
+}
 
-int* workers_per_overseer; // number of worker threads for each worker
-int* overseer_map = NULL; // a quick map from workers to overseer
+std::pair<int,int> communicator::learn_worker_rank()
+{
+    int worker_rank = 0;
+    MPI_Status stat;
 
+    MPI_Recv(&worker_rank, 1, MPI_INT, QUEEN, net::THREAD_RANK, MPI_COMM_WORLD, &stat);
+    MPI_Bcast(&worker_world_size, 1, MPI_INT, QUEEN, MPI_COMM_WORLD);
+    print_if<VERBOSE>("Overseer %d has %d threads, ranked [%d,%d] of %d total.\n",
+		      world_rank, this->num_of_workers, worker_rank,
+		      worker_rank + worker_count - 1, worker_world_size);
+    return std::pair(worker_rank, worker_world_size);
+}
+
+// The queen uses the analogous method to compute the thread ranking and tranmits this info.
+void communicator::compute_thread_ranks()
+{
+    MPI_Status stat;
+    int worker_rank = 0;
+    
+    for (int overseer = 1; overseer < world_size; overseer++)
+    {
+	MPI_Recv(&workers_per_overseer[overseer], 1, MPI_INT, overseer, net::THREAD_COUNT, MPI_COMM_WORLD, &stat);
+    }
+
+    for (int overseer = 1; overseer < world_size; overseer++)
+    {
+	MPI_Send(&worker_rank, 1, MPI_INT, overseer, net::THREAD_RANK, MPI_COMM_WORLD);
+	worker_rank += workers_per_overseer[overseer];
+    }
+
+    thread_rank_size = worker_rank;
+    MPI_Bcast(&thread_rank_size, 1, MPI_INT, QUEEN, MPI_COMM_WORLD);
+
+    // compute overseer map
+    overseer_map = new int[thread_rank_size];
+    int cur_thread = 0;
+    int partial_sum = 0;
+    for (int overseer = 1; overseer < world_size; overseer++)
+    {
+	partial_sum += workers_per_overseer[overseer]; 
+	while (cur_thread < partial_sum)
+	{
+	    overseer_map[cur_thread] = overseer;
+	    cur_thread++;
+	}
+    }
+}
+
+/*
 void compute_thread_ranks()
 {
     MPI_Status stat;
@@ -288,7 +356,7 @@ void compute_thread_ranks()
 	}
 
     }
-}
+    }*/
 
 void communicator::bcast_send_monotonicity(int m)
 {
