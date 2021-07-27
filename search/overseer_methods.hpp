@@ -17,7 +17,7 @@ void overseer::cleanup()
 	next_task.store(0);
 	
 	for (int p = 0; p < worker_count; p++) { finished_tasks[p].clear(); }
-	ignore_additional_signals();
+	comm.ignore_additional_signals();
 
 	// clear caches, as monotonicity invalidates some situations
 	root_solved.store(false);
@@ -187,8 +187,27 @@ void overseer::start()
 	    }
 
 
-// receive (new) task array
-	    broadcast_tarray_tstatus();
+            // receive (new) task array
+	    
+	    // Attention: this potentially writes the same variable it reads in the local communication model.
+	    tcount = comm.bcast_recv_tcount();
+	    init_tarray();
+	    init_tstatus();
+
+	    // Synchronize tarray.
+	    for (int i = 0; i < tcount; i++)
+	    {
+		flat_task transport = comm.bcast_recv_flat_task();
+		tarray[i].load(transport);
+	    }
+
+  	    auto [tstatus_len, tstatus_transport_copy] = comm.bcast_recv_int_array(QUEEN);
+	    for (int i = 0; i < tcount; i++)
+	    {
+		tstatus[i].store(static_cast<task_status>(tstatus_transport_copy[i]));
+	    }
+	    delete tstatus_transport_copy;
+
 	    print_if<COMM_DEBUG>("Tarray + tstatus initialized.\n");
 
 	    // Set batch pointer as if the last batch is completed;

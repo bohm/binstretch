@@ -128,8 +128,23 @@ public:
     void round_start_and_finality(bool finality);
     void round_end();
 
+    // Basic sending and receiving an int, plus equivalent aliases.
+    void bcast_send_int(int root_sender, int num);
+    int bcast_recv_int(int root_sender);
+
+    void bcast_send_int_array(int root_sender, int* array, int length);
+    std::pair<int, int*> bcast_recv_int_array(int root_sender);
+    void bcast_send_uint64_array(int root_sender, uint64_t* array, int length);
+    std::pair<int, uint64_t*> bcast_recv_uint64_array(int root_sender);
+
     void bcast_send_monotonicity(int m);
-    int  bcast_recv_monotonicity();
+    int bcast_recv_monotonicity();
+    void bcast_send_tcount(int tc);
+    int bcast_recv_tcount();
+    flat_task bcast_recv_flat_task();
+    void bcast_send_flat_task(flat_task& ft);
+
+
 
     void bcast_send_zobrist(zobrist_quadruple zq);
     zobrist_quadruple bcast_recv_and_allocate_zobrist();
@@ -138,18 +153,23 @@ public:
     std::pair<int,int> learn_worker_rank();
     void compute_thread_ranks();
 
-    void send_batch(int *batch, int target_overseer);
-    void collect_runlows();
-
     void transmit_measurements(measure_attr& meas);
     void receive_measurements();
     void send_root_solved();
 
+
     // mpi_ocomm.hpp
-    bool try_receiving_batch(std::array<int, BATCH_SIZE>& upcoming_batch);
+    void ignore_additional_signals();
+    void check_root_solved();
     void send_solution_pair(int ftask_id, int solution);
     void request_new_batch();
-    void check_root_solved();
+    bool try_receiving_batch(std::array<int, BATCH_SIZE>& upcoming_batch);
+
+    // mpi_qcomm.hpp
+    void send_batch(int *batch, int target_overseer);
+    void collect_runlows();
+    void ignore_additional_solutions();
+
 };
 
 // Currently (MPI is the only option), we store the communicator as a global variable.
@@ -172,16 +192,64 @@ std::string communicator::machine_name()
     return std::string(processor_name);
 }
 
+
+// A generic function for a quick broadcast of a number.
+void communicator::bcast_send_int(int root_sender, int num)
+{
+     MPI_Bcast(&num, 1, MPI_INT, root_sender, MPI_COMM_WORLD);
+}
+
+int communicator::bcast_recv_int(int root_sender)
+{
+    int ret = 0;
+    MPI_Bcast(&ret, 1, MPI_INT, root_sender, MPI_COMM_WORLD);
+    return ret;
+}
+
+// Generic blocking array transmission. Includes transmitting the length first.
+// The root sender is usually implicit (oftentimes QUEEN).
+void communicator::bcast_send_int_array(int root_sender, int* array, int length)
+{
+    MPI_Bcast(&length, 1, MPI_INT, root_sender, MPI_COMM_WORLD);
+    MPI_Bcast(array, length, MPI_INT, root_sender, MPI_COMM_WORLD);
+}
+
+// Receives and initializes an array. The application should destroy it when done.
+std::pair<int, int*> communicator::bcast_recv_int_array(int root_sender)
+{
+    int length = 0;
+    MPI_Bcast(&length, 1, MPI_INT, root_sender, MPI_COMM_WORLD);
+    int *arr = new int[length];
+    MPI_Bcast(arr, length, MPI_INT, root_sender, MPI_COMM_WORLD);
+    return std::pair(length, arr);
+}
+
+void communicator::bcast_send_uint64_array(int root_sender, uint64_t* array, int length)
+{
+    MPI_Bcast(&length, 1, MPI_INT, root_sender, MPI_COMM_WORLD);
+    MPI_Bcast(array, length, MPI_UNSIGNED_LONG, root_sender, MPI_COMM_WORLD);
+}
+
+// Receives and initializes an array. The application should destroy it when done.
+std::pair<int, uint64_t*> communicator::bcast_recv_uint64_array(int root_sender)
+{
+    int length = 0;
+    MPI_Bcast(&length, 1, MPI_INT, root_sender, MPI_COMM_WORLD);
+    uint64_t *arr = new uint64_t[length];
+    MPI_Bcast(arr, length, MPI_UNSIGNED_LONG, root_sender, MPI_COMM_WORLD);
+    return std::pair(length, arr);
+}
+
 // Zobrist arrays are global (because workers need frequent access to them),
 // but when synchronizing them we do so without accessing the global arrays.
 void communicator::bcast_send_zobrist(zobrist_quadruple zq)
 {
     auto& [zi, zl, zlow, zlast] = zq;
     assert(zi != NULL && zl != NULL && zlow != NULL && zlast != NULL);
-    MPI_Bcast(zi, (MAX_ITEMS+1)*(S+1), MPI_UNSIGNED_LONG, QUEEN, MPI_COMM_WORLD);
-    MPI_Bcast(zl, (BINS+1)*(R+1), MPI_UNSIGNED_LONG, QUEEN, MPI_COMM_WORLD);
-    MPI_Bcast(zlow, S+1, MPI_UNSIGNED_LONG, QUEEN, MPI_COMM_WORLD);
-    MPI_Bcast(zlast, S+1, MPI_UNSIGNED_LONG, QUEEN, MPI_COMM_WORLD);
+    bcast_send_uint64_array(QUEEN, zi, (MAX_ITEMS+1)*(S+1));
+    bcast_send_uint64_array(QUEEN, zl, (BINS+1)*(R+1));
+    bcast_send_uint64_array(QUEEN, zlow, (S+1));
+    bcast_send_uint64_array(QUEEN, zlast, (S+1));
 
     print_if<COMM_DEBUG>("Queen Zi[1], Zl[1], Zlow[1], Zlast[1]: %" PRIu64
 			 ", %" PRIu64 ", %" PRIu64 ", %" PRIu64 ".\n",
@@ -191,17 +259,16 @@ void communicator::bcast_send_zobrist(zobrist_quadruple zq)
 
 zobrist_quadruple communicator::bcast_recv_and_allocate_zobrist()
 {
-    uint64_t *zi = new uint64_t[(S+1)*(MAX_ITEMS+1)];
-    uint64_t *zl = new uint64_t[(BINS+1)*(R+1)];
-    uint64_t *zlow = new uint64_t[S+1];
-    uint64_t *zlast = new uint64_t[S+1];
+    auto [zi_len, zi] = bcast_recv_uint64_array(QUEEN);
+    auto [zl_len, zl] = bcast_recv_uint64_array(QUEEN);
+    auto [zlow_len, zlow] = bcast_recv_uint64_array(QUEEN);
+    auto [zlast_len, zlast] = bcast_recv_uint64_array(QUEEN);
 
-    // bcast blocks, no need to synchronize
-    MPI_Bcast(zi, (MAX_ITEMS+1)*(S+1), MPI_UNSIGNED_LONG, QUEEN, MPI_COMM_WORLD);
-    MPI_Bcast(zl, (BINS+1)*(R+1), MPI_UNSIGNED_LONG, QUEEN, MPI_COMM_WORLD);
-    MPI_Bcast(zlow, S+1, MPI_UNSIGNED_LONG, QUEEN, MPI_COMM_WORLD);
-    MPI_Bcast(zlast, S+1, MPI_UNSIGNED_LONG, QUEEN, MPI_COMM_WORLD);
-
+    assert(zi_len == (S+1)*(MAX_ITEMS+1));
+    assert(zl_len == (BINS+1)*(R+1));
+    assert(zlow_len == S+1);
+    assert(zlast_len == S+1);
+    
     print_if<COMM_DEBUG>("Process %d Zi[1], Zl[1], Zlow[1], Zlast[1]: %" PRIu64
 			 ", %" PRIu64 ", %" PRIu64 ", %" PRIu64 ".\n",
 			 world_rank, zi[1], zl[1], zlow[1], zlast[1]);
@@ -319,78 +386,47 @@ void communicator::compute_thread_ranks()
     }
 }
 
+// We create these overloads to imbue more meaning into the queen/overseer code.
 void communicator::bcast_send_monotonicity(int m)
 {
     assert(BEING_QUEEN);
-    MPI_Bcast(&m, 1, MPI_INT, QUEEN, MPI_COMM_WORLD);
+    bcast_send_int(QUEEN, m);
+    // MPI_Bcast(&m, 1, MPI_INT, QUEEN, MPI_COMM_WORLD);
 }
 
 int communicator::bcast_recv_monotonicity()
 {
     assert(BEING_OVERSEER);
-    int m = 0;
-    MPI_Bcast(&m, 1, MPI_INT, QUEEN, MPI_COMM_WORLD);
-    return m;
-
+    return bcast_recv_int(QUEEN);
+    // int m = 0;
+    // MPI_Bcast(&m, 1, MPI_INT, QUEEN, MPI_COMM_WORLD);
+    // return m;
 }
 
-void broadcast_tarray_tstatus()
+void communicator::bcast_send_tcount(int tc)
 {
-    if (BEING_QUEEN)
-    {
-	assert(tcount > 0);
-    }
-    
-    MPI_Bcast(&tcount, 1, MPI_INT, QUEEN, MPI_COMM_WORLD);
+    assert(BEING_QUEEN);
+    assert(tc > 0);
+    bcast_send_int(QUEEN, tc);
+}
 
-    if (BEING_OVERSEER)
-    {
-	print_if<COMM_DEBUG>("Received tcount %d.\n", tcount);
-	init_tarray();
-	init_tstatus();
-    }
+int communicator::bcast_recv_tcount()
+{
+    return bcast_recv_int(QUEEN);
+}
 
-    for (int i = 0; i < tcount; i++)
-    {
-	flat_task transport;
-	if (BEING_QUEEN)
-	{
-	    transport = tarray[i].flatten();
-	}
-	MPI_Bcast(transport.shorts, BINS+S+6, MPI_SHORT, QUEEN, MPI_COMM_WORLD);
-	MPI_Bcast(transport.longs, 2, MPI_UNSIGNED_LONG, QUEEN, MPI_COMM_WORLD);
+void communicator::bcast_send_flat_task(flat_task& ft)
+{
+    MPI_Bcast(ft.shorts, BINS+S+6, MPI_SHORT, QUEEN, MPI_COMM_WORLD);
+    MPI_Bcast(ft.longs, 2, MPI_UNSIGNED_LONG, QUEEN, MPI_COMM_WORLD);
+}
 
-	if (BEING_OVERSEER)
-	{
-	    tarray[i].load(transport);
-	}
-
-
-	// we work around passing an atomic<int> array
-	int tstatus_i = 0;
-	if (BEING_QUEEN)
-	{
-	    tstatus_i = static_cast<int>(tstatus[i].load());
-	}
-	
-	MPI_Bcast(&tstatus_i, 1, MPI_INT, QUEEN, MPI_COMM_WORLD);
-
-	if (BEING_OVERSEER)
-	{
-	    tstatus[i].store(static_cast<task_status>(tstatus_i));
-	}
-    }
-
-    if (BEING_OVERSEER)
-    {
-	print_if<COMM_DEBUG>("Overseer %d: tarray and tstatus synchronized.\n", world_rank);
-    }
-
-
-    if (BEING_QUEEN)
-    {
-	print_if<PROGRESS>("Tasks synchronized.\n");
-    }
+flat_task communicator::bcast_recv_flat_task()
+{
+    flat_task ret;
+    MPI_Bcast(ret.shorts, BINS+S+6, MPI_SHORT, QUEEN, MPI_COMM_WORLD);
+    MPI_Bcast(ret.longs, 2, MPI_UNSIGNED_LONG, QUEEN, MPI_COMM_WORLD);
+    return ret;
 }
 
 #endif

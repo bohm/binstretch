@@ -260,7 +260,27 @@ int queen_class::start()
 		    // the numbers will not make any sense.
 		
 		    print_if<PROGRESS>("Queen: Generated %d tasks.\n", tcount);
-		    broadcast_tarray_tstatus();
+		    comm.bcast_send_tcount(tcount);
+		    // Synchronize tarray.
+		    for (int i = 0; i < tcount; i++)
+		    {
+			flat_task transport = tarray[i].flatten();
+			comm.bcast_send_flat_task(transport);
+		    }
+
+		    // Synchronize tstatus.
+		    int *tstatus_transport_copy = new int[tcount];
+		    for (int i = 0; i < tcount; i++)
+		    {
+			tstatus_transport_copy[i] = static_cast<int>(tstatus[i].load());
+		    }
+		    // After "de-atomizing" it, use a generic array broadcast.
+		    comm.bcast_send_int_array(QUEEN, tstatus_transport_copy, tcount);
+		    delete tstatus_transport_copy;
+		    
+		    print_if<PROGRESS>("Queen: Tasks synchronized.\n");
+
+		    // broadcast_tarray_tstatus();
 		    taskpointer = 0;
 		
 		    auto x = std::thread(&queen_class::updater, this, computation_root);
@@ -299,7 +319,7 @@ int queen_class::start()
 		    destroy_tarray();
 		    destroy_tstatus();
 		    comm.round_end();
-		    ignore_additional_solutions();
+		    comm.ignore_additional_solutions();
 		}
 	
 		if (PROGRESS)

@@ -30,7 +30,7 @@ void communicator::collect_runlows()
 
 
 // Queen fetches and ignores the remaining tasks from the previous iteration.
-void ignore_additional_solutions()
+void communicator::ignore_additional_solutions()
 {
     int solution_received = 0;
     int solution_pair[2] = {0,0};

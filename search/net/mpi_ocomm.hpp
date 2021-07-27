@@ -3,7 +3,7 @@
 
 
 // Workers fetch and ignore additional signals about root solved (since it may arrive in two places).
-void ignore_additional_signals()
+void communicator::ignore_additional_signals()
 {
     MPI_Status stat;
     int signal_present = 0;
