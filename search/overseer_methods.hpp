@@ -294,7 +294,7 @@ void overseer::start()
 				     dpc->meas.empty_positions));
 							
     
-	    transmit_measurements(collected_meas);
+	    comm.transmit_measurements(collected_meas);
 	    delete dpc;
 	    delete stc;
 	    delete[] finished_tasks;

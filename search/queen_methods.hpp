@@ -294,7 +294,7 @@ int queen_class::start()
 		    // Updater_result is no longer POSTPONED; end the round.
 		    // Send ROOT_SOLVED signal to workers that wait for tasks and those
 		    // that process tasks.
-		    send_root_solved();
+		    comm.send_root_solved();
 		    // collect remaining, unnecessary solutions
 		    destroy_tarray();
 		    destroy_tstatus();
@@ -375,7 +375,7 @@ int queen_class::start()
     // We are terminating, start final round.
     print_if<COMM_DEBUG>("Queen: starting final round.\n");
     comm.round_start_and_finality(true);
-    receive_measurements();
+    comm.receive_measurements();
     comm.round_end();
 
     if (PROGRESS)
