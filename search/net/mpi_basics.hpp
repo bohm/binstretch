@@ -145,6 +145,11 @@ public:
     void receive_measurements();
     void send_root_solved();
 
+    // mpi_ocomm.hpp
+    bool try_receiving_batch(std::array<int, BATCH_SIZE>& upcoming_batch);
+    void send_solution_pair(int ftask_id, int solution);
+    void request_new_batch();
+    void check_root_solved();
 };
 
 // Currently (MPI is the only option), we store the communicator as a global variable.

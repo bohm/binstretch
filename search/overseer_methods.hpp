@@ -96,7 +96,7 @@ void overseer::process_finished_tasks()
 	    task_status solution = tstatus[ftask_id].load();
 	    if (solution == task_status::alg_win || solution == task_status::adv_win)
 	    {
-		send_solution_pair(ftask_id, static_cast<int>(solution));
+		comm.send_solution_pair(ftask_id, static_cast<int>(solution));
 	    }
 	    ftask_id = finished_tasks[p].pop_if_able();
 	}
@@ -214,7 +214,7 @@ void overseer::start()
 	    // Processing loop for an overseer.
 	    while(true)
 	    {
-		check_root_solved();
+		comm.check_root_solved();
 		if (root_solved)
 		{
 		    print_if<PROGRESS>("Overseer %d (on %s): Received root solved, ending round.\n", world_rank, machine_name.c_str());
@@ -234,13 +234,13 @@ void overseer::start()
 		{
 		    print_if<TASK_DEBUG>("Overseer %d (on %s): Requesting a new batch (next_task: %u, tasklist: %u). \n", world_rank, machine_name.c_str(), next_task.load(), tasks.size());
 
-		    request_new_batch();
+		    comm.request_new_batch();
 		    batch_requested = true;
 		}
 
 		if (batch_requested)
 		{
-		    bool batch_received = try_receiving_batch(upcoming_batch);
+		    bool batch_received = comm.try_receiving_batch(upcoming_batch);
 		    if (batch_received)
 		    {
 			batch_requested = false;

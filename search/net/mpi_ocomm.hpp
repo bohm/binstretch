@@ -35,7 +35,7 @@ void ignore_additional_signals()
  
 }
 
-void check_root_solved()
+void communicator::check_root_solved()
 {
     MPI_Status stat;
     int root_solved_flag = 0;
@@ -52,40 +52,20 @@ void check_root_solved()
     }
 }
 
-void blocking_check_root_solved()
+void communicator::send_solution_pair(int ftask_id, int solution)
 {
-    MPI_Status stat;
-    int r_s = -1;
-    MPI_Recv(&r_s, 1, MPI_INT, QUEEN, net::ROOT_SOLVED, MPI_COMM_WORLD, &stat);
-    // set global root solved flag
-    if (r_s == ROOT_SOLVED_SIGNAL)
-    {
-	root_solved.store(true);
-    }
-}
-
-void send_solution_pair(int ftask_id, int solution)
-{
-    int solution_pair[2];
-    solution_pair[0] = ftask_id; solution_pair[1] = solution;
+    int solution_pair[2] = {ftask_id, solution};
+    // solution_pair[0] = ftask_id; solution_pair[1] = solution;
     MPI_Send(&solution_pair, 2, MPI_INT, QUEEN, net::SOLUTION, MPI_COMM_WORLD);
 }
 
-void request_new_batch()
+void communicator::request_new_batch()
 {
     int irrel = 0;
     MPI_Send(&irrel, 1, MPI_INT, QUEEN, net::RUNNING_LOW, MPI_COMM_WORLD);
 }
 
-
-void receive_batch(int *current_batch)
-{
-    MPI_Status stat;
-    print_if<COMM_DEBUG>("Overseer %d receives the new batch.\n", world_rank);
-    MPI_Recv(current_batch, BATCH_SIZE, MPI_INT, QUEEN, net::SENDING_BATCH, MPI_COMM_WORLD, &stat);
-}
-
-bool try_receiving_batch(std::array<int, BATCH_SIZE>& upcoming_batch)
+bool communicator::try_receiving_batch(std::array<int, BATCH_SIZE>& upcoming_batch)
 {
     print_if<TASK_DEBUG>("Overseer %d: Attempting to receive a new batch. \n",
 		      world_rank);
