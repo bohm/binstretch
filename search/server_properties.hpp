@@ -103,6 +103,8 @@ std::tuple<unsigned int, unsigned int, unsigned int> server_properties(const cha
     } else if ( (strcmp(server_name, "cslog-server1") == 0) )
     {
 	return std::make_tuple(40, 39, 63);
+    } else if ( (strcmp(server_name, "grill") == 0) ){
+	return std::make_tuple(34, 34, 8);
     } else {
 	return std::make_tuple(28, 28, 4);
     }
