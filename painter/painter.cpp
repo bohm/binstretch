@@ -19,7 +19,30 @@ dag *canvas = NULL;
 bool color = true;
 bool shortheur = false;
 
-void item_histogram(int reldepth, adv_list& curlist)
+
+// Overall histogram for items.
+std::array<int,S+1> ITEM_HIST = {0};
+
+void histogram_adv(adversary_vertex *adv_v)
+{
+    assert(adv_v->out.size() == 1);
+    adv_outedge *right_move = *(adv_v->out.begin());
+    ITEM_HIST[right_move->item]++;
+}
+
+void histogram(dag *d)
+{
+    // Perform the histogram via a DFS.
+    dfs(d, histogram_adv, do_nothing);
+    for (int i = 1; i <= S; i++)
+    {
+	fprintf(stderr, "Item size %2d: %4d.\n", i, ITEM_HIST[i]);
+    }
+	   
+}
+
+// Histogram for items layer by layer.
+void layer_histogram(int reldepth, adv_list& curlist)
 {
     std::array<int, S+1> histogram = {0};
     
@@ -36,7 +59,7 @@ void item_histogram(int reldepth, adv_list& curlist)
 	histogram[right_move->item]++;
     }
 
-    fprintf(stderr, "Item %2d:", (reldepth/2+1));
+    fprintf(stderr, "Depth %2d:", (reldepth/2+1));
     for (int i = 1; i <= S; i++)
     {
 	if (histogram[i] != 0)
@@ -53,9 +76,9 @@ void item_histogram(int reldepth, adv_list& curlist)
     
 }
 
-void histogram(dag *d)
+void layer_histogram(dag *d)
 {
-    layer_traversal(d, item_histogram, do_nothing);
+    layer_traversal(d, layer_histogram, do_nothing);
 }
 
 const int MONOTONICITY_LIMIT = 0;
@@ -515,7 +538,8 @@ int main(int argc, char **argv)
     // dfs(canvas, next_item_fourteen_test, do_nothing);
 
     histogram(canvas);
-    monotonicity_skips(canvas);
+    layer_histogram(canvas);
+    // monotonicity_skips(canvas);
     
     if (cut)
     {
