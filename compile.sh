@@ -78,16 +78,16 @@ fi
 
 
 if [[ "$BUILDING_SEARCH" = true ]]; then
-	echo "Running: mpic++ -I./ -Wall -std=c++17 $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S main.cpp -o ../$OUTPUT/search-$BINS-$R-$S -pthread"
-	cd search; mpic++ -I./ -Wall -std=c++17 $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S main.cpp -o ../$OUTPUT/search-$BINS-$R-$S -pthread; cd ..
+	echo "Running: mpic++ -I./ -Wall -std=c++20 $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S main.cpp -o ../$OUTPUT/search-$BINS-$R-$S -pthread"
+	cd search; mpic++ -I./ -Wall -std=c++20 $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S main.cpp -o ../$OUTPUT/search-$BINS-$R-$S -pthread; cd ..
 fi
 
 if [[ "$BUILDING_PAINTER" = true ]]; then
-	echo "Running: g++ -Wall -std=c++17 $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S painter.cpp -o ../$OUTPUT/painter-$BINS-$R-$S -pthread"
-	cd painter; g++ -Wall -std=c++17 $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S painter.cpp -o ../$OUTPUT/painter-$BINS-$R-$S -pthread; cd ..
+	echo "Running: g++ -Wall -std=c++20 $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S painter.cpp -o ../$OUTPUT/painter-$BINS-$R-$S -pthread"
+	cd painter; g++ -Wall -std=c++20 $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S painter.cpp -o ../$OUTPUT/painter-$BINS-$R-$S -pthread; cd ..
 fi
 
 if [[ "$BUILDING_ROOSTER" = true ]]; then
     echo "Compiling converter binary for $BINS bins and ratio $R/$S bins into $OUTPUT/rooster-$BINS-$R-$S."
-    cd rooster; g++ -I../ -Wall -std=c++17 $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S rooster.cpp -o ../$OUTPUT/rooster-$BINS-$R-$S -pthread; cd ..
+    cd rooster; g++ -I../ -Wall -std=c++20 $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S rooster.cpp -o ../$OUTPUT/rooster-$BINS-$R-$S -pthread; cd ..
 fi

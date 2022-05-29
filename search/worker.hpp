@@ -1,6 +1,8 @@
 #ifndef _WORKER_HPP
 #define _WORKER_HPP 1
 
+#include <condition_variable>
+
 #include "common.hpp"
 #include "server_properties.hpp"
 #include "binconf.hpp"
