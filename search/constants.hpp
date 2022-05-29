@@ -125,6 +125,19 @@ const int TASK_RECEIVED = 1;
 #define STRATEGY_BOUNDED 2
 #define STRATEGY_BASIC_LIMIT 3
 
+
+// Plugging in some common monotonicity values.
+
+#if IBINS == 3 && IR == 86 && IS == 63
+const int RECOMMENDED_MONOTONICITY = 6;
+#elif IBINS == 3 && IR == 112 && IS == 82
+const int RECOMMENDED_MONOTONICITY = 8;
+#elif IBINS >= 8 && IR == 19 && IS == 14
+const int RECOMMENDED_MONOTONICITY = 1;
+#else
+const int RECOMMENDED_MONOTONICITY = 0;
+#endif
+
 // Sanity check for definition of the variables that should be passed
 // by the build script.
 
@@ -147,5 +160,7 @@ const int TASK_RECEIVED = 1;
 #error "The macro constant II_S needs to be passed by the compiler!"
 #define II_S {} // ditto 
 #endif
+
+
 
 #endif // _CONSTANTS_HPP
