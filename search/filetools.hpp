@@ -55,43 +55,41 @@ std::string build_treetop_filename(std::tm* timestamp)
 // a full loadfile takes too long.
 
 
-std::array<bin_int, BINS+1> load_line_with_loads(FILE* fin)
+std::array<bin_int, BINS+1> load_segment_with_loads(FILE* fin)
 {
     std::array<bin_int, BINS+1> ret = {};
     
-    fscanf(fin, "[");
+    assert(fscanf(fin, "[") == 0);
     for (int i = 1; i <= BINS; i++)
     {
-	if (i != 1)
+	if (fscanf(fin, "%" SCNd16, &(ret[i])) != 1)
 	{
-	    fscanf(fin, " ");
+	    ERROR("Could not scan the %d-th item from the loads segment.\n", i);
 	}
 
-	fscanf(fin, "%" SCNd16, &(ret[i]));
     }
-    fscanf(fin, "]\n");
+    assert(fscanf(fin, "]") == 0);
     return ret;
 }
 
-std::array<bin_int, S+1> load_line_with_items(FILE* fin)
+std::array<bin_int, S+1> load_segment_with_items(FILE* fin)
 {
     std::array<bin_int, S+1> ret = {};
     
-    fscanf(fin, "(");
+    assert(fscanf(fin, " (") == 0);
     for (int j = 1; j <= S; j++)
     {
-	if (j != 1)
+	if (fscanf(fin, "%" SCNd16, &(ret[j])) != 1)
 	{
-	    fscanf(fin, " ");
+	    ERROR("Could not scan the %d-th item from the items segment.\n", j);
 	}
-
-	fscanf(fin, "%" SCNd16, &(ret[j]));
     }
-    fscanf(fin, ")\n");
+ 
+    assert(fscanf(fin, ")") == 0);
     return ret;
 }
 
-bin_int load_last_item_line(FILE *fin)
+bin_int load_last_item_segment(FILE *fin)
 {
     bin_int last_item = 0;
     if(fscanf(fin, "%" SCNd16, &last_item) != 1)
@@ -109,10 +107,10 @@ binconf loadbinconf(const char* filename)
 	ERROR("Unable to open file %s\n", filename);
     }
 
-    std::array<bin_int, BINS+1> loads = load_line_with_loads(fin);
-    std::array<bin_int, S+1> items = load_line_with_items(fin);
-    bin_int last_item = load_last_item_line(fin);
-    fprintf(stderr, "Loadbinconf: Loaded last item %d.\n", (int) last_item);
+    std::array<bin_int, BINS+1> loads = load_segment_with_loads(fin);
+    std::array<bin_int, S+1> items = load_segment_with_items(fin);
+    bin_int last_item = load_last_item_segment(fin);
+    // fprintf(stderr, "Loadbinconf: Loaded last item %d.\n", (int) last_item);
 
     fclose(fin);
 

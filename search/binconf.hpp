@@ -460,7 +460,6 @@ bool binconf_equal(const binconf *a, const binconf *b)
     return true;
 }
 
-
 // debug function for printing bin configurations (into stderr or log files)
 void print_binconf_stream(FILE* stream, const binconf& b, bool newline = true)
 {
