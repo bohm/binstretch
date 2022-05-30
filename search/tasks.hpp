@@ -157,58 +157,8 @@ public:
 
 
 
-// stack for processing the saplings
-std::stack<sapling> sapling_stack;
 // a queue where one sapling can put its own tasks
-std::queue<sapling> regrow_queue;
-
-void add_sapling(adversary_vertex* v)
-{
-    sapling s; s.root = v; s.regrow_level = 0;
-    sapling_stack.push(s);
-}
-
-void build_sapling_queue(adversary_vertex *v);
-void build_sapling_queue(algorithm_vertex *v);
-
-void build_sapling_queue(adversary_vertex *v)
-{
-    if (v->visited) { return; }
-    v->visited = true;
-
-    if (v->sapling)
-    {
-	// Consistency check: sapling should have no outedges
-	assert(v->out.size() == 0);
-	add_sapling(v);
-	// We remove the sapling status from the vertex, since
-	// it is in the queue now.
-	v->sapling = false;
-    } else {
-	for (auto& e: v->out)
-	{
-	    build_sapling_queue(e->to);
-	}
-    }
-}
-
-void build_sapling_queue(algorithm_vertex *v)
-{
-    if (v->visited) { return; }
-    v->visited = true;
-    for (auto& e: v->out)
-    {
-	build_sapling_queue(e->to);
-    }
-
-}
-
-
-void build_sapling_queue(dag *r)
-{
-    r->clear_visited();
-    build_sapling_queue(r->root);
-}
+std::queue<sapling> regrow_queue; // This potentially does not work currently.
 
 std::atomic<task_status> *tstatus;
 std::vector<task_status> tstatus_temporary;

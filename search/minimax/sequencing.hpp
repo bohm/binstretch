@@ -54,8 +54,8 @@ victory sequencing(binconf& root, adversary_vertex* root_vertex)
 
     if (!USING_ADVISOR || !advice_file_found)
     {
-	sapling just_root; just_root.root = root_vertex; just_root.regrow_level = 0;
-	sapling_stack.push(just_root);
+	root_vertex->sapling = true;
+	root_vertex->win = victory::uncertain;
 	return victory::uncertain;
     } else {
 
@@ -119,7 +119,6 @@ template <minimax MODE> victory sequencing_adversary(binconf *b, unsigned int de
 	
 	if (suggestion == 0)
 	{
-	    add_sapling(adv_to_evaluate);
 	    adv_to_evaluate->sapling = true;
 	    adv_to_evaluate->win = victory::uncertain;
 	    return victory::uncertain;

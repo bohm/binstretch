@@ -7,7 +7,7 @@
 #include "tasks.hpp"
 #include "server_properties.hpp"
 #include "loadfile.hpp"
-#include "loadbinconf.hpp"
+#include "saplings.hpp"
 #include "savefile.hpp"
 #include "queen.hpp"
 
@@ -157,24 +157,20 @@ int queen_class::start()
 
     if (PROGRESS) { scheduler_start = std::chrono::system_clock::now(); }
 
-    while (!sapling_stack.empty())
+    update_and_count_saplings(qdag); // Leave only uncertain saplings.
+    dfs_find_sapling(qdag);
+    
+    while (first_unfinished_sapling.root != nullptr)
     {
-	sapling currently_growing = sapling_stack.top();
-	sapling_stack.pop();
+	
+	sapling currently_growing = first_unfinished_sapling;
+	
 	bool lower_bound_complete = false;
 	computation_root = currently_growing.root;
 
-	// If the vertex is solved (because it is reachable from some other sapling),
-	// just move on.
 	if (computation_root->win != victory::uncertain)
-	{
-	    print_if<PROGRESS>("Queen: sapling queue size: %zu, current sapling (see below) skipped, already computed.\n",
-			    sapling_stack.size());
-	    print_binconf<PROGRESS>(computation_root->bc);
-
-	    assert(computation_root->win == victory::adv);
-	    continue;
-	} else {
+        {
+	    assert(OUTPUT); 
 	    computation_root->state = vert_state::expand;
 	}
 
@@ -213,7 +209,7 @@ int queen_class::start()
 		task_depth += TASK_DEPTH_STEP;
 		task_load += TASK_LOAD_STEP;
 	    }
-	    print_if<PROGRESS>("Queen: sapling queue size: %zu, current sapling of regrow level %d:\n", sapling_stack.size(), regrow_level);
+	    print_if<PROGRESS>("Queen: sapling count: %d, current sapling of regrow level %d:\n", sapling_counter, regrow_level);
 	    print_binconf<PROGRESS>(computation_root->bc);
 
 	    computation<minimax::generating> comp;
@@ -418,7 +414,7 @@ int queen_class::start()
     // We currently print output when:
     // ONEPASS is false, the last sapling was winning for Algorithm,
     // and there are no more saplings in the queue.
-    if (!ONEPASS && ret == 0 && sapling_stack.empty())
+    if (!ONEPASS && ret == 0 && sapling_counter == 0)
     {
 	output_useful = true;
     }
