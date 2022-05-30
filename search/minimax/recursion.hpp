@@ -198,10 +198,15 @@ template<minimax MODE> victory computation<MODE>::adversary(adversary_vertex *ad
 	    }*/ 
 	    
 	    // mark current adversary vertex (created by algorithm() in previous step) as a task
-	    
-	    adv_to_evaluate->task = true;
-	    adv_to_evaluate->win = victory::uncertain;
-	    return victory::uncertain;
+
+	     // There are now cases where a vertex might be computed previously, but it fits as a task now.)
+	     if (adv_to_evaluate->win == victory::uncertain)
+	     {
+		 adv_to_evaluate->task = true;
+		 // adv_to_evaluate->win = victory::uncertain;
+	     }
+
+	     return adv_to_evaluate->win; // previously: return victory::uncertain
 	}
     }
 

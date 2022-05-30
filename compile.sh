@@ -23,7 +23,9 @@ I_S="{}"
 OUTPUT="build"
 BUILDING_ROOSTER=true
 BUILDING_PAINTER=true
+BUILDING_KIBBITZER=true
 BUILDING_SEARCH=true
+
 OPTFLAG="-O3"
 
 # Skip first three parameters, then iterate over the rest of the arguments.
@@ -41,16 +43,25 @@ while (( "$#" )); do
 	--search)
 	    BUILDING_ROOSTER=false
 	    BUILDING_PAINTER=false
+	    BUILDING_KIBBITZER=false
 	    shift
 	    ;;
 	--painter)
 	    BUILDING_SEARCH=false
 	    BUILDING_ROOSTER=false
+	    BUILDING_KIBBITZER=false
 	    shift
 	    ;;
 	--rooster)
 	    BUILDING_SEARCH=false
 	    BUILDING_PAINTER=false
+	    BUILDING_KIBBITZER=false
+	    shift
+	    ;;
+	--kibbitzer)
+	    BUILDING_SEARCH=false
+	    BUILDING_PAINTER=false
+	    BUILDING_ROOSTER=false
 	    shift
 	    ;;
 	--debug)
@@ -85,6 +96,11 @@ fi
 if [[ "$BUILDING_PAINTER" = true ]]; then
 	echo "Running: g++ -Wall -std=c++20 $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S painter.cpp -o ../$OUTPUT/painter-$BINS-$R-$S -pthread"
 	cd painter; g++ -Wall -std=c++20 $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S painter.cpp -o ../$OUTPUT/painter-$BINS-$R-$S -pthread; cd ..
+fi
+
+if [[ "$BUILDING_KIBBITZER" = true ]]; then
+	echo "Running: g++ -Wall -std=c++20 $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S kibbitzer.cpp -o ../$OUTPUT/kibbitzer-$BINS-$R-$S -pthread"
+	cd kibbitzer; g++ -Wall -std=c++20 $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S kibbitzer.cpp -o ../$OUTPUT/kibbitzer-$BINS-$R-$S -pthread; cd ..
 fi
 
 if [[ "$BUILDING_ROOSTER" = true ]]; then

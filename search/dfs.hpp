@@ -393,4 +393,27 @@ void reset_values(dag *d, adversary_vertex *r)
 }
 
 
+void purge_all_tasks(adversary_vertex *v)
+{
+    v->task = false;
+}
+
+void purge_all_tasks(dag *d)
+{
+    dfs(d, purge_all_tasks, do_nothing);
+}
+
+// Consistency check to make sure there are no tasks in the tree before
+// task generation starts.
+void assert_no_tasks_adv(adversary_vertex *v)
+{
+    assert(!v->task);
+}
+
+
+void assert_no_tasks(dag *d)
+{
+    dfs(d, assert_no_tasks_adv, do_nothing);
+}
+
 #endif

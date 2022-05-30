@@ -7,11 +7,12 @@
 #include <cstdlib>
 #include <cassert>
 #include <map>
-
+#include <filesystem>
 
 #include "common.hpp"
 #include "binconf.hpp"
 #include "optconf.hpp"
+#include "advisor.hpp"
 #include "thread_attr.hpp"
 #include "minimax/computation.hpp"
 #include "dag/dag.hpp"
@@ -25,38 +26,52 @@
 
 template <minimax MODE> victory sequencing_adversary(binconf *b, unsigned int depth, computation<MODE> *comp,
 			 adversary_vertex *adv_to_evaluate, algorithm_vertex* parent_alg,
-			 const std::vector<bin_int>& seq);
+			 const advisor& advis);
 template <minimax MODE> victory sequencing_algorithm(binconf *b, int k, unsigned int depth, computation<MODE> *comp,
 			 algorithm_vertex *alg_to_evaluate, adversary_vertex *parent_adv,
-			 const std::vector<bin_int>& seq);
+			 const advisor& advis);
 
+
+bool USING_ADVISOR = true;
 
 // Generates a tree with saplings (not tasks) from a sequence of items
-victory sequencing(const std::vector<bin_int>& seq, binconf& root, adversary_vertex* root_vertex)
+victory sequencing(binconf& root, adversary_vertex* root_vertex)
 {
 
     computation<minimax::generating> comp;
 
     onlineloads_init(comp.ol, &root);
+    advisor simple_advis;
 
-    if (seq.empty())
+    char advice_filename[256];
+    sprintf(advice_filename, "./experiments/advice-%d-%d-%d.txt", (int) BINS, (int) R, (int) S);
+    bool advice_file_found = false;
+    if (std::filesystem::exists(advice_filename))
+    {
+	simple_advis.load_advice_file(advice_filename);
+	advice_file_found = true;
+    }
+
+    if (!USING_ADVISOR || !advice_file_found)
     {
 	sapling just_root; just_root.root = root_vertex; just_root.regrow_level = 0;
 	sapling_stack.push(just_root);
 	return victory::uncertain;
     } else {
-	victory ret = sequencing_adversary<minimax::generating>(&root, 0, &comp, root_vertex, NULL, seq);
+
+	victory ret = sequencing_adversary<minimax::generating>(&root, 0, &comp, root_vertex, NULL, simple_advis);
 	return ret;
     }
 }
 
 template <minimax MODE> victory sequencing_adversary(binconf *b, unsigned int depth, computation<MODE> *comp,
 			 adversary_vertex *adv_to_evaluate, algorithm_vertex* parent_alg,
-			 const std::vector<bin_int>& seq)
+			 const advisor& advis)
 {
     algorithm_vertex *upcoming_alg = NULL;
     adv_outedge *new_edge = NULL;
     bool switch_to_heuristic = false;
+    bin_int suggestion = 0;
    
     /* Everything can be packed into one bin, return 1. */
     if ((b->loads[BINS] + (BINS*S - b->totalload())) < R)
@@ -96,12 +111,19 @@ template <minimax MODE> victory sequencing_adversary(binconf *b, unsigned int de
     }
 
 
-    if (!comp->heuristic_regime && depth == seq.size())
+    if (!comp->heuristic_regime)
     {
-	add_sapling(adv_to_evaluate);
-	adv_to_evaluate->sapling = true;
-	adv_to_evaluate->win = victory::uncertain;
-	return victory::uncertain;
+	suggestion = advis.suggest_advice(b);
+	// fprintf(stderr, "Suggestion %d for binconf ", (int) suggestion); // Debug.
+	// print_binconf_stream(stderr, b); 
+	
+	if (suggestion == 0)
+	{
+	    add_sapling(adv_to_evaluate);
+	    adv_to_evaluate->sapling = true;
+	    adv_to_evaluate->win = victory::uncertain;
+	    return victory::uncertain;
+	}
     }
 
     victory below = victory::alg;
@@ -113,7 +135,8 @@ template <minimax MODE> victory sequencing_adversary(binconf *b, unsigned int de
 	item_size = comp->current_strategy->next_item(b);
     } else
     {
-	item_size = seq[depth];
+	assert(suggestion != 0);
+	item_size = suggestion;
     }
     // print_if<DEBUG>("Trying player zero choices, with maxload starting at %d\n", comp->maximum_feasible);
     print_if<DEBUG>("Sending item %d to algorithm.\n", item_size);
@@ -143,7 +166,7 @@ template <minimax MODE> victory sequencing_adversary(binconf *b, unsigned int de
 	    comp->current_strategy->increase_depth();
 	}
 
-	below = sequencing_algorithm(b, item_size, depth+1, comp, upcoming_alg, adv_to_evaluate, seq);
+	below = sequencing_algorithm(b, item_size, depth+1, comp, upcoming_alg, adv_to_evaluate, advis);
 
 	// ascend
 	if (comp->current_strategy != nullptr)
@@ -187,7 +210,7 @@ template <minimax MODE> victory sequencing_adversary(binconf *b, unsigned int de
 
 template <minimax MODE> victory sequencing_algorithm(binconf *b, int k, unsigned int depth, computation<MODE> *comp,
 			 algorithm_vertex *alg_to_evaluate, adversary_vertex *parent_adv,
-			 const std::vector<bin_int>& seq)
+			 const advisor& advis)
 {
 
     adversary_vertex* upcoming_adv = NULL;
@@ -235,7 +258,7 @@ template <minimax MODE> victory sequencing_algorithm(binconf *b, int k, unsigned
 
 	    if (!already_generated)
 	    {
-		below = sequencing_adversary<MODE>(b, depth, comp, upcoming_adv, alg_to_evaluate, seq);
+		below = sequencing_adversary<MODE>(b, depth, comp, upcoming_adv, alg_to_evaluate, advis);
 		print_if<DEBUG>("SEQ: Alg packs into bin %d, the new configuration is:", i);
 		print_binconf<DEBUG>(b);
 		print_if<DEBUG>("Resulting in: ");

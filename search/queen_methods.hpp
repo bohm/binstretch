@@ -144,13 +144,15 @@ int queen_class::start()
 	binconf root = loadbinconf(root_binconf_file);
 	root.consistency_check();
 	qdag->add_root(root);
-	sequencing(INITIAL_SEQUENCE, root, qdag->root);
+	USING_ADVISOR = false; // Do not use the advice file when the root is fixed beforehand.
+	sequencing(root, qdag->root);
+	
 
     } else { // Sequence the treetop.
 	qdag = new dag;
 	binconf root = {INITIAL_LOADS, INITIAL_ITEMS};
 	qdag->add_root(root);
-	sequencing(INITIAL_SEQUENCE, root, qdag->root);
+	sequencing(root, qdag->root);
     }
 
     if (PROGRESS) { scheduler_start = std::chrono::system_clock::now(); }
@@ -176,8 +178,24 @@ int queen_class::start()
 	    computation_root->state = vert_state::expand;
 	}
 
+	// Purge all new vertices, so that only vert_state::fixed and vert_state::expand remain.
+	// Note: we added this alongside the advisor, so that vertices can be tasks in various depths.
+	// This might still cause issues down the line.
+	purge_new(qdag, computation_root);
+	assert_no_tasks(qdag);
+	
 	// Currently we cannot expand a vertex with outedges.
-	assert(computation_root->out.size() == 0);
+	if (computation_root->out.size() != 0)
+	{
+	    fprintf(stderr, "Error: computation root has %ld outedges.\n", computation_root->out.size());
+	    if (computation_root->win == victory::uncertain)
+	    {
+		fprintf(stderr, "Uncertain status.\n");
+	    }
+	    print_binconf<PROGRESS>(computation_root->bc);
+	    exit(-1);
+
+	}
 	
 	monotonicity = FIRST_PASS;
 	task_depth = TASK_DEPTH_INIT;
@@ -348,6 +366,7 @@ int queen_class::start()
 		    }
 
 		    finish_branches(qdag, computation_root);
+		    purge_all_tasks(qdag);
 		    break;
 		}
 
@@ -355,6 +374,7 @@ int queen_class::start()
 		{
 		    losing_saplings++;
 		    purge_new(qdag, computation_root);
+		    purge_all_tasks(qdag);
 		    break;
 		}
 	    }
