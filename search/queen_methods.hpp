@@ -7,6 +7,7 @@
 #include "tasks.hpp"
 #include "server_properties.hpp"
 #include "loadfile.hpp"
+#include "loadbinconf.hpp"
 #include "savefile.hpp"
 #include "queen.hpp"
 
@@ -27,9 +28,9 @@ queen_class::queen_class(int argc, char** argv)
     if (argc > 1)
     {
         assert(argc == 2);
-	load_treetop = true;
+	load_root_binconf = true;
 	assert(strlen(argv[1]) <= 255);
-	strcpy(treetop_file, argv[1]);
+	strcpy(root_binconf_file, argv[1]);
     }
 }
 
@@ -137,15 +138,14 @@ int queen_class::start()
 
     comm.sync_up(); // Sync before any rounds start.
 
-    if (load_treetop)
+    if (load_root_binconf)
     {
-	partial_dag *d = loadfile(treetop_file);
-	d->populate_edgesets();
-	d->populate_next_items();
-	binconf empty; empty.hashinit();
-	d->populate_binconfs(empty);
-        qdag = d->finalize();
-	build_sapling_queue(qdag);
+	qdag = new dag;
+	binconf root = loadbinconf(root_binconf_file);
+	root.consistency_check();
+	qdag->add_root(root);
+	sequencing(INITIAL_SEQUENCE, root, qdag->root);
+
     } else { // Sequence the treetop.
 	qdag = new dag;
 	binconf root = {INITIAL_LOADS, INITIAL_ITEMS};
@@ -184,7 +184,8 @@ int queen_class::start()
 	task_load = TASK_LOAD_INIT;
 	
 	// Reset sapling's last item (so that the search space is a little bit better).
-	computation_root->bc.last_item = 1;
+	// TODO (2022-05-30): Why did we use to do this?
+	// computation_root->bc.last_item = 1;
 
 	// We iterate to REGROW_LIMIT + 1 because the last iteration will complete the tree.
 	for(int regrow_level = 0; regrow_level <= REGROW_LIMIT+1; regrow_level++)
@@ -254,7 +255,17 @@ int queen_class::start()
 		    collect_tasks(computation_root);
 		    init_tstatus(tstatus_temporary); tstatus_temporary.clear();
 		    init_tarray(tarray_temporary); tarray_temporary.clear();
-		    permute_tarray_tstatus(); // randomly shuffles the tasks 
+
+		    // 2022-05-30: It is still not clear to me what is the right absolute order here.
+		    // In the future, it makes sense to do some prioritization in the task queue.
+		    // Until then, we just reverse the queue (largest items go first). This leads
+		    // to a lot of failures early, but these failures will be quick.
+		    
+		    // permute_tarray_tstatus(); // We do not permute currently.
+		    reverse_tarray_tstatus();
+		    
+		    // print_tasks(); // Large debug print.
+		    
 		    // irrel_taskq.init(tcount);
 		    // note: do not push into irrel_taskq before permutation is done;
 		    // the numbers will not make any sense.
@@ -405,7 +416,17 @@ int queen_class::start()
 	print_if<PROGRESS>("Full evaluation time: %Lfs.\n", scheduler_time.count());
     }
 
-    // We now print only once, after a full tree is generated.
+    // Print the treetop of the tree (with tasks offloaded) for logging purposes.
+    if (output_useful)
+    {
+	std::string binstamp = filename_binstamp();
+
+        std::time_t t = std::time(0);   // Get time now.
+	std::tm* now = std::localtime(&t);
+	savefile(build_treetop_filename(now).c_str(), qdag, qdag->root);
+    }
+    
+    // We now print the full output only once, after a full tree is generated.
     if (OUTPUT && output_useful)
     {
 	savefile(qdag, qdag->root);

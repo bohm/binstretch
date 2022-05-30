@@ -172,6 +172,10 @@ const int PROGRESS_AFTER = 500;
 
 const int MAX_EXPANSION = 1;
 
+
+const std::string OUTPUT_DIR = "./results";
+const std::string LOG_DIR = "./logs";
+
 // ------------------------------------------------
 // debug constants
 

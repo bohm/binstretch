@@ -10,16 +10,6 @@
 
 // Read an input file and load the aforementioned tree into memory.
 
-void ERROR(const char *format, ...)
-{
-    va_list argptr;
-    va_start(argptr, format);
-    vfprintf(stderr, format, argptr);
-    va_end(argptr);
-
-    abort();
-}
-
 enum class line_type { adversary_vertex, algorithm_vertex, algorithm_outedge, adversary_outedge, command, header, footer, other};
 
 

@@ -19,12 +19,20 @@ dag *canvas = NULL;
 bool color = true;
 bool shortheur = false;
 
+// TODO: Make this option togglable via command flags. Priority: low.
+bool FULL_BIN_CONFIGURATION = true;
 
 // Overall histogram for items.
 std::array<int,S+1> ITEM_HIST = {0};
 
 void histogram_adv(adversary_vertex *adv_v)
 {
+    // Ignore heuristic vertices (when shortheur is triggered).
+    if (shortheur && adv_v->heur_vertex)
+    {
+	return;
+    }
+	
     assert(adv_v->out.size() == 1);
     adv_outedge *right_move = *(adv_v->out.begin());
     ITEM_HIST[right_move->item]++;
@@ -36,7 +44,7 @@ void histogram(dag *d)
     dfs(d, histogram_adv, do_nothing);
     for (int i = 1; i <= S; i++)
     {
-	fprintf(stderr, "Item size %2d: %4d.\n", i, ITEM_HIST[i]);
+	fprintf(stderr, "Item size %2d: %5d.\n", i, ITEM_HIST[i]);
     }
 	   
 }
@@ -64,11 +72,11 @@ void layer_histogram(int reldepth, adv_list& curlist)
     {
 	if (histogram[i] != 0)
 	{
-	    fprintf(stderr, " [%2d]: %4d", i, histogram[i]);
+	    fprintf(stderr, " [%2d]: %5d", i, histogram[i]);
 	} else
 	{
 	    // Print a blank segment of the same size, so that it is easier to read for humans.
-	    fprintf(stderr, "           ");
+	    fprintf(stderr, "            ");
 	}
     }
     fprintf(stderr, "\n");
@@ -130,6 +138,21 @@ std::string build_label(adversary_vertex *v)
 	}
 	ss << v->bc.loads[i];
     }
+
+    if (FULL_BIN_CONFIGURATION)
+    {
+	ss << "\n";
+	for (int j=1; j<=S; j++)
+	{
+	    if(j != 1)
+	    {
+		ss << " ";
+	    }
+	    ss << v->bc.items[j];
+	}
+	ss << "\n";
+    }
+
 
     // TODO: print a heuristic as a part of the label.
     if (v->heur_vertex)

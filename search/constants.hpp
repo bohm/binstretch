@@ -6,6 +6,18 @@
 typedef uint64_t llu;
 typedef signed char tiny;
 
+
+void ERROR(const char *format, ...)
+{
+    va_list argptr;
+    va_start(argptr, format);
+    vfprintf(stderr, format, argptr);
+    va_end(argptr);
+
+    abort();
+}
+
+
 // Victory states.
 // The meaning of uncertain = yet to be evaluated, not enough data, postponed (perhaps).
 // The maaning of irrelevant = no longer important, can be freely passed above, computation is over.

@@ -1,12 +1,14 @@
 #include <cstdio>
 #include <cstdlib>
 #include <csignal>
+#include <filesystem>
 #include <inttypes.h>
 
 #include "net/mpi.hpp"
 
 #include "common.hpp"
 #include "binconf.hpp"
+#include "filetools.hpp"
 #include "hash.hpp"
 #include "queen.hpp"
 #include "overseer.hpp"
@@ -25,6 +27,7 @@ void handle_sigusr1(int signo)
     }
 
 }
+
 
 // We employ a bit of indirection to account for both concurrent
 // approaches. MPI launches main() on each machine separately, so
@@ -101,6 +104,9 @@ int main(int argc, char** argv)
     {
 	fprintf(stderr, "Warning: cannot catch SIGUSR1.\n");
     }
+
+    folder_checks();
+    
     auto [wsize, wrank] = networking_init();
 
     // The macro below creates the right amount of threads all running main_thread with

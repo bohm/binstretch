@@ -83,6 +83,12 @@ public:
 
 	    return ret;
 	}
+
+    void print() const
+	{
+	    fprintf(stderr, "(Exp. depth: %2d) ", expansion_depth); 
+	    print_binconf_stream(stderr, bc);
+	}
 };
 
 // A sapling is an adversary vertex which will be processed by the parallel
@@ -293,6 +299,15 @@ int tstatus_id(const adversary_vertex *v)
     return -1;
 }
 
+// Printing the full task queue for analysis/debugging purposes.
+void print_tasks()
+{
+    for (int i = 0; i < tcount; i++)
+    {
+	fprintf(stderr, "Task %6d", i);
+	tarray[i].print();
+    }
+}
 
 // permutes tarray and tstatus (with the same permutation), rebuilds tmap.
 void permute_tarray_tstatus()
@@ -307,6 +322,34 @@ void permute_tarray_tstatus()
     
     // permutes the tasks 
     std::random_shuffle(perm.begin(), perm.end());
+    task *tarray_new = new task[tcount];
+    std::atomic<task_status> *tstatus_new = new std::atomic<task_status>[tcount];
+    for (int i = 0; i < tcount; i++)
+    {
+	tarray_new[perm[i]] = tarray[i];
+	tstatus_new[perm[i]].store(tstatus[i]);
+    }
+
+    delete[] tarray;
+    delete[] tstatus;
+    tarray = tarray_new;
+    tstatus = tstatus_new;
+
+    rebuild_tmap();
+}
+
+// Reverses tarray and tstatus, rebuilds tmap.
+// The code is a bit wonky, as we just modify permute_tarray_tstatus().
+void reverse_tarray_tstatus()
+{
+    assert(tcount > 0);
+    std::vector<int> perm;
+
+    for (int i = 0; i < tcount; i++)
+    {
+        perm.push_back((tcount-1)-i);
+    }
+    
     task *tarray_new = new task[tcount];
     std::atomic<task_status> *tstatus_new = new std::atomic<task_status>[tcount];
     for (int i = 0; i < tcount; i++)
@@ -470,15 +513,6 @@ victory completion_check(uint64_t hash)
     }
 
     return victory::uncertain;
-}
-
-// A debug function for printing out the global task map. 
-void print_tasks()
-{
-    for(int i = 0; i < tcount; i++)
-    {
-	print_binconf_stream(stderr, &tarray[i].bc);
-    }
 }
 
 // -- batching --

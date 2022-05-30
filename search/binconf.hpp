@@ -251,6 +251,17 @@ public:
     
 	}
 
+    binconf(const std::array<bin_int, BINS+1> initial_loads, const std::array<bin_int, S+1> initial_items,
+	    bin_int initial_last_item = 1)
+	{
+	    loads = initial_loads;
+	    items = initial_items;
+	    last_item = initial_last_item;
+
+	    hash_loads_init();
+	}
+   
+
     bin_int totalload() const
     {
 	return _totalload;
