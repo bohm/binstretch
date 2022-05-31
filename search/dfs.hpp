@@ -291,52 +291,6 @@ bool finish_branches(dag *d, adversary_vertex *r)
     return finish_branches_rec(r);
 }
 
-// Marks all vertices as vert_state::finished.
-void finish_sapling_alg(algorithm_vertex *v);
-void finish_sapling_adv(adversary_vertex *v);
-
-void finish_sapling_adv(adversary_vertex *v)
-{
-    if (v->visited || v->state == vert_state::finished)
-    {
-	return;
-    }
-    v->visited = true;
-    assert(v->win == victory::adv);
-
-    v->task = false;
-    v->state = vert_state::finished;
-    // v->task = false;
-    for (auto& e: v->out)
-    {
-	finish_sapling_alg(e->to);
-    }
-}
-
-void finish_sapling_alg(algorithm_vertex *v)
-{
-    if (v->visited)
-    {
-	return;
-    }
-    v->visited = true;
-
-    assert(v->win == victory::adv);
-    // v->task = false;
-    v->state = vert_state::finished;
-    for (auto& e: v->out)
-    {
-	finish_sapling_adv(e->to);
-    }
-}
-
-
-void finish_sapling(dag *d, adversary_vertex *r)
-{
-    d->clear_visited();
-    finish_sapling_adv(r);
-}
-
 
 void reset_values_adv(adversary_vertex *v);
 void reset_values_alg(algorithm_vertex *v);

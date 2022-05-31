@@ -25,13 +25,6 @@ Message sequence:
 // Parse input parameters to the program (overseers ignore them).
 queen_class::queen_class(int argc, char** argv)
 {
-    if (argc > 1)
-    {
-        assert(argc == 2);
-	load_root_binconf = true;
-	assert(strlen(argv[1]) <= 255);
-	strcpy(root_binconf_file, argv[1]);
-    }
 }
 
 void queen_class::updater(adversary_vertex* sapling)
@@ -138,16 +131,13 @@ int queen_class::start()
 
     comm.sync_up(); // Sync before any rounds start.
 
-    if (load_root_binconf)
+    if (CUSTOM_ROOTFILE)
     {
 	qdag = new dag;
-	binconf root = loadbinconf(root_binconf_file);
+	binconf root = loadbinconf(ROOT_FILENAME);
 	root.consistency_check();
 	qdag->add_root(root);
-	USING_ADVISOR = false; // Do not use the advice file when the root is fixed beforehand.
 	sequencing(root, qdag->root);
-	
-
     } else { // Sequence the treetop.
 	qdag = new dag;
 	binconf root = {INITIAL_LOADS, INITIAL_ITEMS};
@@ -396,11 +386,17 @@ int queen_class::start()
 		assert(updater_result == victory::adv);
 		// Transform tasks into vert_state::expand and
 		// vert_state::fresh vertices into vert_state::fixed.
+		
 		relabel_and_fix(qdag, computation_root, &(comp.meas));
 	    }
+
 	}
 
-	
+	// Before leaving the while loop, update the sapling information.
+	    
+	update_and_count_saplings(qdag); // Leave only uncertain saplings.
+	dfs_find_sapling(qdag);
+
 	// Do not try other saplings at the moment if one of them is a losing state.
 	// Disabled with ONEPASS = true (so that onepass counts the % of wins)
 	if (!ONEPASS && ret == 1)

@@ -28,11 +28,48 @@ void handle_sigusr1(int signo)
 
 }
 
-
 // We employ a bit of indirection to account for both concurrent
 // approaches. MPI launches main() on each machine separately, so
 // there is no need to do more, but for the std::thread approach
 // we initialize main_thread several times.
+
+std::pair<bool,std::string> parse_parameter_advfile(int argc, char **argv, int pos)
+{
+    char filename_buf[256];
+    
+    if (strcmp(argv[pos], "--advice") == 0)
+    {
+	if (pos == argc-1)
+	{
+	    fprintf(stderr, "Error: parameter --advice must be followed by a filename.\n");
+	    exit(-1);
+	}
+	    
+	sscanf(argv[pos+1], "%s", filename_buf);
+	
+	return std::make_pair(true, std::string(filename_buf));
+    }
+    return std::make_pair(false, "");
+}
+
+std::pair<bool,std::string> parse_parameter_rootfile(int argc, char **argv, int pos)
+{
+    char filename_buf[256];
+    
+    if (strcmp(argv[pos], "--root") == 0)
+    {
+	if (pos == argc-1)
+	{
+	    fprintf(stderr, "Error: parameter --root must be followed by a filename.\n");
+	    exit(-1);
+	}
+	    
+	sscanf(argv[pos+1], "%s", filename_buf);
+	
+	return std::make_pair(true, std::string(filename_buf));
+    }
+    return std::make_pair(false, "");
+}
 
 void main_thread(int ws, int wr, int argc, char** argv)
 {
@@ -52,7 +89,34 @@ void main_thread(int ws, int wr, int argc, char** argv)
 	    ov = new overseer();
 	    ov->start();
 	} else { // queen
-	    
+
+	    for (int i = 0; i <= argc-2; i++)
+	    {
+		auto [advfile_flag, advice_file] = parse_parameter_advfile(argc, argv, i);
+
+		if (advfile_flag)
+		{
+		    CUSTOM_ADVICEFILE = true;
+		    fprintf(stderr, "Found the --advice flag, value %s.\n", advice_file.c_str());
+		    strcpy(ADVICE_FILENAME, advice_file.c_str());
+		}
+
+	        auto [rootfile_flag, root_file] = parse_parameter_rootfile(argc, argv, i);
+
+		if (rootfile_flag)
+		{
+		    CUSTOM_ROOTFILE = true;
+		    fprintf(stderr, "Found the --root flag, parameter %s.\n", root_file.c_str());
+		    strcpy(ROOT_FILENAME, root_file.c_str());
+		}
+	    }
+
+	    if (!CUSTOM_ADVICEFILE)
+	    {
+		sprintf(ADVICE_FILENAME, "./experiments/advice-%d-%d-%d.txt", (int) BINS, (int) R, (int) S);
+	    }
+
+
 	    // create output file name
 	    sprintf(outfile, "%d_%d_%dbins.dot", R,S,BINS);
  

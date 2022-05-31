@@ -43,23 +43,26 @@ victory sequencing(binconf& root, adversary_vertex* root_vertex)
     onlineloads_init(comp.ol, &root);
     advisor simple_advis;
 
-    char advice_filename[256];
-    sprintf(advice_filename, "./experiments/advice-%d-%d-%d.txt", (int) BINS, (int) R, (int) S);
     bool advice_file_found = false;
-    if (std::filesystem::exists(advice_filename))
+    if (std::filesystem::exists(ADVICE_FILENAME))
     {
-	simple_advis.load_advice_file(advice_filename);
+	simple_advis.load_advice_file(ADVICE_FILENAME);
 	advice_file_found = true;
+    } else
+    {
+	print_if<PROGRESS>("Not using any advice file.\n");
     }
 
     if (!USING_ADVISOR || !advice_file_found)
     {
+	print_if<PROGRESS>("Not using the advisor.\n");
 	root_vertex->sapling = true;
 	root_vertex->win = victory::uncertain;
 	return victory::uncertain;
     } else {
-
+	print_if<PROGRESS>("Sequencing with advisor starts.\n");
 	victory ret = sequencing_adversary<minimax::generating>(&root, 0, &comp, root_vertex, NULL, simple_advis);
+	print_if<PROGRESS>("Sequencing with advisor ends.\n");
 	return ret;
     }
 }
@@ -114,8 +117,8 @@ template <minimax MODE> victory sequencing_adversary(binconf *b, unsigned int de
     if (!comp->heuristic_regime)
     {
 	suggestion = advis.suggest_advice(b);
-	// fprintf(stderr, "Suggestion %d for binconf ", (int) suggestion); // Debug.
-	// print_binconf_stream(stderr, b); 
+	fprintf(stderr, "Suggestion %d for binconf ", (int) suggestion); // Debug.
+	print_binconf_stream(stderr, b); 
 	
 	if (suggestion == 0)
 	{

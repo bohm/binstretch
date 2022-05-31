@@ -295,6 +295,13 @@ const bin_int MAX_UNABLE_TO_PACK = -2;
 
 const bin_int IN_PROGRESS = 2;
 
+
+char ADVICE_FILENAME[256];
+char ROOT_FILENAME[256];
+bool CUSTOM_ROOTFILE = false;
+bool CUSTOM_ADVICEFILE = false;
+
+
 // monotonicity 0: monotonely non-decreasing lower bound
 // monotonicity S: equivalent to full generality lower bound
 int monotonicity; 
