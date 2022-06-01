@@ -59,12 +59,6 @@ Iteration time: 64.348430s.
 
 Iteration time: 401.568838s.
 
-* [5 4 1 1 1 0 0 0 0] (7 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 has 43967 tasks
-
--- it seems to be cut too early.
-   Even [5 4 4 1 1 0 0 0 0] (8 1 0 0 1 0 0 0 0 0 0 0 0 0) 2 is slow.
-
-
 
 
 Problem 2:
@@ -242,5 +236,18 @@ Correction:
 [6 3 3 2 1 0 0 0 0] (8 1 0 0 1 0 0 0 0 0 0 0 0 0) 2 suggestion: 7
 [6 4 3 1 1 0 0 0 0] (8 1 0 0 1 0 0 0 0 0 0 0 0 0) 2 suggestion: 7
 [6 4 3 2 2 1 1 0 0] (8 1 0 1 1 0 0 0 0 0 0 0 0 0) 4 suggestion: 4
+
+Problem 8:
+
+* [5 4 1 1 1 0 0 0 0] (7 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 has 43967 tasks
+
+-- it seems to be cut too early.
+   Even [5 4 4 1 1 0 0 0 0] (8 1 0 0 1 0 0 0 0 0 0 0 0 0) 2 is slow.
+
+In fact, for 8 bins, [5 4 4 1 1 0 0 0] (8 1 0 0 1 0 0 0 0 0 0 0 0 0) 2
+is winning for alg, so the lower bound avoids this situation on purpose.
+
+In fact, this is one of the reasons why just sending 8 ones is not right.
+
 
 
