@@ -406,17 +406,7 @@ public:
 	    return (loadhash ^ itemhash ^ Zalg[next_item]);
 	}
     
-    void consistency_check() const
-	{
-	    assert(_itemcount == itemcount_explicit());
-	    assert(_totalload == totalload_explicit());
-	    bin_int totalload_items = 0;
-	    for (int i =1; i <= S; i++)
-	    {
-		totalload_items += i*items[i];
-	    }
-	    assert(totalload_items == _totalload);
-	}
+    void consistency_check() const;
 };
 
 void duplicate(binconf *t, const binconf *s)
@@ -469,9 +459,9 @@ void print_binconf_stream(FILE* stream, const binconf& b, bool newline = true)
 	if(first)
 	{
 	    first = false;
-	    fprintf(stream, "[%02d", b.loads[i]);
+	    fprintf(stream, "[%d", b.loads[i]);
 	} else {
-	    fprintf(stream, " %02d", b.loads[i]);
+	    fprintf(stream, " %d", b.loads[i]);
 	}
     }
     fprintf(stream, "] ");
@@ -481,14 +471,14 @@ void print_binconf_stream(FILE* stream, const binconf& b, bool newline = true)
     {
 	if (first)
 	{
-	    fprintf(stream, "(%02d", b.items[j]);
+	    fprintf(stream, "(%d", b.items[j]);
 	    first = false;
 	} else {
-	    fprintf(stream, " %02d", b.items[j]);
+	    fprintf(stream, " %d", b.items[j]);
 	}
     }
 
-    fprintf(stream, ") %02d", b.last_item);
+    fprintf(stream, ") %d", b.last_item);
 
     if(newline)
     {
@@ -517,6 +507,23 @@ template <bool MODE> void print_binconf(const binconf *b, bool newline = true)
 	print_binconf<MODE>(*b, newline);
     }
 }
+
+void binconf::consistency_check() const
+	{
+	    assert(_itemcount == itemcount_explicit());
+	    assert(_totalload == totalload_explicit());
+	    bin_int totalload_items = 0;
+	    for (int i =1; i <= S; i++)
+	    {
+		totalload_items += i*items[i];
+	    }
+	    if (totalload_items != _totalload)
+	    {
+		fprintf(stderr, "Total load in the items section does not match the total load from loads.\n");
+		print_binconf_stream(stderr, *this);
+		assert(totalload_items == _totalload);
+	    }
+	}
 
 // Caution: assign_item forgets the last assigned item, so you need
 // to take care of it manually, if you want to unassign later.

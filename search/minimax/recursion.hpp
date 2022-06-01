@@ -106,6 +106,19 @@ template<minimax MODE> victory computation<MODE>::adversary(adversary_vertex *ad
 	    assert(adv_to_evaluate->win == victory::adv);
 	    return adv_to_evaluate->win;
 	}
+
+	// Check the assumptions cache and immediately mark this vertex as solved if present.
+	// (Mild TODO: we should probably mark it in the tree as solved in some way, to avoid issues from checking the bound.
+    
+	if (USING_ASSUMPTIONS)
+	{
+	    victory check = assumer.check(bstate);
+	    if(check != victory::uncertain)
+	    {
+		adv_to_evaluate->win = check;
+		return check;
+	    }
+	}
     }
     
     // Turn off adversary heuristics if convenient (e.g. for machine verification).

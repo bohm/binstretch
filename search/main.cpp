@@ -33,6 +33,26 @@ void handle_sigusr1(int signo)
 // there is no need to do more, but for the std::thread approach
 // we initialize main_thread several times.
 
+std::pair<bool,std::string> parse_parameter_assumefile(int argc, char **argv, int pos)
+{
+    char filename_buf[256];
+    
+    if (strcmp(argv[pos], "--assume") == 0)
+    {
+	if (pos == argc-1)
+	{
+	    fprintf(stderr, "Error: parameter --assume must be followed by a filename.\n");
+	    exit(-1);
+	}
+	    
+	sscanf(argv[pos+1], "%s", filename_buf);
+	
+	return std::make_pair(true, std::string(filename_buf));
+    }
+    return std::make_pair(false, "");
+}
+
+
 std::pair<bool,std::string> parse_parameter_advfile(int argc, char **argv, int pos)
 {
     char filename_buf[256];
@@ -96,7 +116,7 @@ void main_thread(int ws, int wr, int argc, char** argv)
 
 		if (advfile_flag)
 		{
-		    CUSTOM_ADVICEFILE = true;
+		    USING_ADVISOR = true;
 		    fprintf(stderr, "Found the --advice flag, value %s.\n", advice_file.c_str());
 		    strcpy(ADVICE_FILENAME, advice_file.c_str());
 		}
@@ -109,12 +129,21 @@ void main_thread(int ws, int wr, int argc, char** argv)
 		    fprintf(stderr, "Found the --root flag, parameter %s.\n", root_file.c_str());
 		    strcpy(ROOT_FILENAME, root_file.c_str());
 		}
+
+		auto [assumefile_flag, assume_file] = parse_parameter_assumefile(argc, argv, i);
+
+		if (assumefile_flag)
+		{
+		    USING_ASSUMPTIONS = true;
+		    fprintf(stderr, "Found the --assume flag, value %s.\n", assume_file.c_str());
+		    strcpy(ASSUMPTIONS_FILENAME, assume_file.c_str());
+		}
 	    }
 
-	    if (!CUSTOM_ADVICEFILE)
+	    /*if (!CUSTOM_ADVICEFILE)
 	    {
 		sprintf(ADVICE_FILENAME, "./experiments/advice-%d-%d-%d.txt", (int) BINS, (int) R, (int) S);
-	    }
+		}*/
 
 
 	    // create output file name

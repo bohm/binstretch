@@ -32,8 +32,6 @@ template <minimax MODE> victory sequencing_algorithm(binconf *b, int k, unsigned
 			 const advisor& advis);
 
 
-bool USING_ADVISOR = true;
-
 // Generates a tree with saplings (not tasks) from a sequence of items
 victory sequencing(binconf& root, adversary_vertex* root_vertex)
 {
@@ -44,13 +42,18 @@ victory sequencing(binconf& root, adversary_vertex* root_vertex)
     advisor simple_advis;
 
     bool advice_file_found = false;
-    if (std::filesystem::exists(ADVICE_FILENAME))
+    if (USING_ADVISOR && std::filesystem::exists(ADVICE_FILENAME))
     {
 	simple_advis.load_advice_file(ADVICE_FILENAME);
 	advice_file_found = true;
     } else
     {
 	print_if<PROGRESS>("Not using any advice file.\n");
+    }
+
+    if (USING_ASSUMPTIONS && std::filesystem::exists(ASSUMPTIONS_FILENAME))
+    {
+	comp.assumer.load_file(ASSUMPTIONS_FILENAME);
     }
 
     if (!USING_ADVISOR || !advice_file_found)
@@ -81,6 +84,19 @@ template <minimax MODE> victory sequencing_adversary(binconf *b, unsigned int de
     {
 	adv_to_evaluate->win = victory::alg; 
 	return victory::alg;
+    }
+
+    // Check the assumptions cache and immediately mark this vertex as solved if present.
+    // (Mild TODO: we should probably mark it in the tree as solved in some way, to avoid issues from checking the bound.
+    
+    if (USING_ASSUMPTIONS)
+    {
+	victory check = comp->assumer.check(*b);
+	if(check != victory::uncertain)
+	{
+	    adv_to_evaluate->win = check;
+	    return check;
+	}
     }
 
     if (ADVERSARY_HEURISTICS)
@@ -114,11 +130,11 @@ template <minimax MODE> victory sequencing_adversary(binconf *b, unsigned int de
     }
 
 
-    if (!comp->heuristic_regime)
+    if (!comp->heuristic_regime && USING_ADVISOR)
     {
 	suggestion = advis.suggest_advice(b);
-	fprintf(stderr, "Suggestion %d for binconf ", (int) suggestion); // Debug.
-	print_binconf_stream(stderr, b); 
+	// fprintf(stderr, "Suggestion %d for binconf ", (int) suggestion); // Debug.
+	// print_binconf_stream(stderr, b); 
 	
 	if (suggestion == 0)
 	{

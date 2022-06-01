@@ -87,7 +87,7 @@ public:
 		    ERROR("Suggestion %d failed to load.\n", adv_arr.size());
 		}
 
-		curbc.constiency_check();
+		curbc.consistency_check();
 		
 		advice adv; adv.bc = curbc; adv.suggestion = suggestion;
 		adv_arr.push_back(adv);

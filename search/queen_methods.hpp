@@ -131,6 +131,13 @@ int queen_class::start()
 
     comm.sync_up(); // Sync before any rounds start.
 
+    assumptions assumer;
+    if (USING_ASSUMPTIONS && std::filesystem::exists(ASSUMPTIONS_FILENAME))
+    {
+	assumer.load_file(ASSUMPTIONS_FILENAME);
+    }
+
+
     if (CUSTOM_ROOTFILE)
     {
 	qdag = new dag;
@@ -204,7 +211,12 @@ int queen_class::start()
 
 	    computation<minimax::generating> comp;
 	    comp.regrow_level = regrow_level;
-	    
+
+	    if (USING_ASSUMPTIONS)
+	    {
+		comp.assumer = assumer;
+	    }
+
 	    // do not change monotonicity when regrowing (regrow_level >= 1)
 	    for (; monotonicity <= S-1; monotonicity++)
 	    {
@@ -235,6 +247,8 @@ int queen_class::start()
 			{
 			    winning_saplings++;
 			}
+			fprintf(stderr, "Purging all tasks.\n");
+			purge_all_tasks(qdag);
 			break;
 		    } else if (computation_root->win == victory::alg)
 		    {
@@ -242,6 +256,8 @@ int queen_class::start()
 			{
 			    losing_saplings++;
 			    purge_new(qdag, computation_root);
+			    fprintf(stderr, "Purging all tasks.\n");
+			    purge_all_tasks(qdag);
 			    break;
 			} else
 			{
@@ -352,6 +368,7 @@ int queen_class::start()
 		    }
 
 		    finish_branches(qdag, computation_root);
+		    fprintf(stderr, "Purging all tasks.\n");
 		    purge_all_tasks(qdag);
 		    break;
 		}
@@ -360,6 +377,7 @@ int queen_class::start()
 		{
 		    losing_saplings++;
 		    purge_new(qdag, computation_root);
+		    fprintf(stderr, "Purging all tasks.\n");
 		    purge_all_tasks(qdag);
 		    break;
 		}
@@ -398,8 +416,8 @@ int queen_class::start()
 	dfs_find_sapling(qdag);
 
 	// Do not try other saplings at the moment if one of them is a losing state.
-	// Disabled with ONEPASS = true (so that onepass counts the % of wins)
-	if (!ONEPASS && ret == 1)
+	// Also terminates for ONEPASS mode.
+	if (ret == 1)
 	{
 	    break;
 	}
@@ -429,7 +447,7 @@ int queen_class::start()
     }
 
     // Print the treetop of the tree (with tasks offloaded) for logging purposes.
-    if (output_useful)
+    if (ret != 1)
     {
 	std::string binstamp = filename_binstamp();
 

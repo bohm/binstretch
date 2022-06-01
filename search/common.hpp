@@ -45,11 +45,9 @@ const int TASK_DEPTH_STEP = 2; // The amount by which the depth is increased whe
 // whether to print the output as a single tree or as multiple trees.
 const bool SINGLE_TREE = true;
 
-// Onepass mode: Do only one pass of monotonicity on all saplings and report % of successes.
-// Useful to count how many saplings need more monotonicity than FIRST_PASS.
-
+// Onepass mode: Do only one pass of monotonicity and terminate if it fails.
 // const bool ONEPASS = false;
-const bool ONEPASS = false;
+const bool ONEPASS = true;
 
 // log tasks which run at least some amount of time
 const bool TASKLOG = false;
@@ -299,7 +297,7 @@ const bin_int IN_PROGRESS = 2;
 char ADVICE_FILENAME[256];
 char ROOT_FILENAME[256];
 bool CUSTOM_ROOTFILE = false;
-bool CUSTOM_ADVICEFILE = false;
+bool USING_ADVISOR = false;
 
 
 // monotonicity 0: monotonely non-decreasing lower bound

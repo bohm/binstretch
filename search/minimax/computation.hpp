@@ -2,6 +2,8 @@
 #define MINIMAX_COMPUTATION_HPP
 // dynprog global variables and other attributes separate for each thread.
 
+#include "assumptions.hpp"
+
 template <minimax MODE> class computation
 {
 public:
@@ -47,6 +49,9 @@ public:
     heuristic_strategy *current_strategy = NULL;
     uint64_t overdue_tasks = 0;
     int regrow_level = 0;
+
+    assumptions assumer; // An assumptions cache.
+    
 
     // --- measure attributes ---
     measure_attr meas; // measurements for one computation
