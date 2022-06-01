@@ -1,0 +1,246 @@
+Random pastes from the execution of the lower bound:
+
+Queen: sapling queue size: 58, current sapling of regrow level 0:
+05-03-02-01-01-01-00-00-00 [l:02] (06,01,00,00,01,00,00,00,00,00|00,00,00,00)
+Queen: Switching to monotonicity 1.
+Overseer 1 waits for monotonicity.
+Queen: Starting the round.
+Queen: Generated 69277 tasks.
+Queen: Tasks synchronized.
+Tarray + tstatus initialized.
+Overseer 1 sleeping until all workers are ready.
+Overseer 1 wakes up.
+Overseer 1 receives the new batch.
+Overseer 1 receives the new batch.
+Overseer 1 receives the new batch.
+Overseer 1 receives the new batch.
+Overseer 1 receives the new batch.
+Overseer 1 receives the new batch.
+Overseer 1 receives the new batch.
+Overseer 1 receives the new batch.
+Overseer 1 receives the new batch.
+Overseer 1 receives the new batch.
+Overseer 1 receives the new batch.
+Queen collects task number 512. 
+Overseer 1 receives the new batch.
+Update: Visited 94255 verts, unfinished tasks in tree: 68727.
+Update: Visited 94251 verts, unfinished tasks in tree: 68724.
+Overseer 1 receives the new batch.
+Overseer 1 receives the new batch.
+Update: Visited 94108 verts, unfinished tasks in tree: 68630.
+Overseer 1 receives the new batch.
+Update: Visited 94009 verts, unfinished tasks in tree: 68557.
+We have evaluated the tree: adv wins
+Prune/receive collisions: 103.
+Queen: Sending root solved to overseer 1.
+Overseer 1 (on grill): Received root solved, ending round.
+Overseer 1 sleeping until all workers are waiting.
+Overseer 1 wakes up.
+Iteration time: 309.943728s.
+
+Low-volume nodes:
+
+Queen: sapling queue size: 55, current sapling of regrow level 0:
+05-03-01-01-01-01-00-00-00 [l:01] (07,00,00,00,01,00,00,00,00,00|00,00,00,00)
+
+Queen: sapling queue size: 54, current sapling of regrow level 0: (takes a long time)
+05-04-01-01-01-00-00-00-00 [l:01] (07,00,00,00,01,00,00,00,00,00|00,00,00,00)
+
+
+[06 04 04 03 02 00 00 00 00] (06 02 00 01 01 00 00 00 00 00 00 00 00 00) 04 (takes a long time)
+Iteration time: 362.613369s.
+
+[07 03 02 02 02 00 00 00 00] (07 02 00 00 01 00 00 00 00 00 00 00 00 00) 01
+(parent: [6 3 2 2 2 0 0 0 0] (6 2 0 0 1 0 0 0 0 0 0 0 0 0) 2 suggestion: 1)
+Iteration time: 64.348430s.
+
+
+* [5 4 3 3 2 1 0 0 0] (6 2 1 0 1 0 0 0 0 0 0 0 0 0) 2 has 99000 tasks.
+
+Iteration time: 401.568838s.
+
+* [5 4 1 1 1 0 0 0 0] (7 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 has 43967 tasks
+
+-- it seems to be cut too early.
+   Even [5 4 4 1 1 0 0 0 0] (8 1 0 0 1 0 0 0 0 0 0 0 0 0) 2 is slow.
+
+
+
+
+Problem 2:
+
+
+[5 4 1 1 1 1 1 0 0] (5 0 0 1 1 0 0 0 0 0 0 0 0 0) 4 suggestion: 3
+[8 4 1 1 1 1 1 0 0] (5 0 1 1 1 0 0 0 0 0 0 0 0 0) 3 suggestion: 2
+[8 4 3 1 1 1 1 0 0] (5 1 1 1 1 0 0 0 0 0 0 0 0 0) 2 suggestion: 4
+=>
+[08 04 04 03 01 01 01 01 00] (05 01 01 02 01 00 00 00 00 00 00 00 00 00) 04 (not winning)
+
+Correction 2:
+
+0 [loads="5 4 1 1 1 1 1 0 0",player=adv];
+0 -> 3377 [next=4]
+3377 [loads="5 4 1 1 1 1 1 0 0",next_item=4,player=alg];
+3377 -> 26221 [bin=8]
+3377 -> 21842 [bin=3]
+3377 -> 17233 [bin=2]
+3377 -> 3378 [bin=1]
+26221 [loads="5 4 4 1 1 1 1 1 0",player=adv];
+26221 -> 26266 [next=5]
+21842 [loads="5 5 4 1 1 1 1 0 0",player=adv];
+21842 -> 22462 [next=5]
+17233 [loads="8 5 1 1 1 1 1 0 0",player=adv];
+17233 -> 17420 [next=7]
+3378 [loads="9 4 1 1 1 1 1 0 0",player=adv];
+3378 -> 3729 [next=4]
+
+Problem 3:
+
+[12 05 04 01 01 01 00 00 00] (06 00 00 02 02 00 00 00 00 00 00 00 00 00) 04
+( parent: [8 5 4 1 1 1 0 0 0] (6 0 0 1 2 0 0 0 0 0 0 0 0 0) 5 suggestion: 4)
+( grandparent: [8 4 1 1 1 0 0 0 0] (6 0 0 1 1 0 0 0 0 0 0 0 0 0) 4 suggestion: 5)
+( great-grandparent: [8 1 1 1 0 0 0 0 0] (6 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 4)
+
+Observation (regarding problem 3):
+[8 1 1 1 1 0 0 0 0] (7 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion 4: should work (checked all 3 options)
+
+[9 1 1 1 0 0 0 0 0] (7 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion 6: is not winning
+as (15 1 1 1 0 0 0 0 0] is algorithmically good.
+
+What if 1 and then 2 is presented from  [9 1 1 1 0 0 0 0 0] (7 0 0 0 1 0 0 0 0 0 0 0 0 0) ?
+
+* [10 1 1 1 0 0 0 0 0] should be easy.
+
+Subcase problem-3-2-a 2-b 2-c 2-d:
+* [9 2 2 1 1 0 0 0 0] (8 1 0 0 1 0 0 0 0 0 0 0 0 0) 2 is winning if you send 3
+but not if you send 4 (!)
+
+* [9 3 2 1 0 0 0 0 0] (8 1 0 0 1 0 0 0 0 0 0 0 0 0) 2 is winning if you send 4
+
+  but [09 04 03 02 01 00 00 00 00] (08 01 00 01 01 00 00 00 00 00 00 00 00 00) 04 takes some 240 seconds!
+
+* [9 2 1 1 1 1 0 0 0 0] winning: send 4
+
+* [9 3 1 1 1 0 0 0 0] not winning if you send 4
+  Suggestion 3 for binconf [09 03 01 01 01 00 00 00 00] (08 01 00 00 01 00 00 00 00 00 00 00 00 00) 02 works.
+
+Still to check:
+
+[8 2 1 1 0 0 0 0 0] (7 0 0 0 1 0 0 0 0 0 0 0 0 0) suggestion 4 does not work generally.
+
+[8 2 1 1 0 0 0 0 0] (7 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 works better again with sending 1 and 2,
+and more specifically this advice block:
+
+[8 2 1 1 0 0 0 0 0] (7 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 1
+[8 2 1 1 1 0 0 0 0] (8 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 4
+[9 2 1 1 0 0 0 0 0] (8 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 2
+[9 3 2 1 0 0 0 0 0] (8 1 0 0 1 0 0 0 0 0 0 0 0 0) 2 suggestion: 3
+[9 2 2 1 1 0 0 0 0] (8 1 0 0 1 0 0 0 0 0 0 0 0 0) 2 suggestion: 3
+[8 3 1 1 0 0 0 0 0] (8 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 2
+[8 3 3 1 0 0 0 0 0] (8 1 0 0 1 0 0 0 0 0 0 0 0 0) 2 suggestion: 3
+[8 3 2 1 1 0 0 0 0] (8 1 0 0 1 0 0 0 0 0 0 0 0 0) 2 suggestion: 3
+[8 2 2 1 0 0 0 0 0] (8 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 2
+[8 2 2 2 1 0 0 0 0] (8 1 0 0 1 0 0 0 0 0 0 0 0 0) 2 suggestion: 3
+
+Correction 3:
+
+Root: 
+[8 1 1 1 0 0 0 0 0] (6 0 0 0 1 0 0 0 0 0 0 0 0 0) 1
+
+Solution:
+[8 1 1 1 0 0 0 0 0] (6 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 1
+[8 1 1 1 1 0 0 0 0] (7 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 4
+[9 1 1 1 0 0 0 0 0] (7 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 1
+[9 1 1 1 1 0 0 0 0] (8 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 4
+[9 2 1 1 0 0 0 0 0] (8 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 2
+[9 3 2 1 0 0 0 0 0] (8 1 0 0 1 0 0 0 0 0 0 0 0 0) 2 suggestion: 4
+[9 2 2 1 1 0 0 0 0] (8 1 0 0 1 0 0 0 0 0 0 0 0 0) 2 suggestion: 3
+[8 2 1 1 0 0 0 0 0] (7 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 1
+[8 2 1 1 1 0 0 0 0] (8 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 4
+[8 3 1 1 0 0 0 0 0] (8 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 2
+[8 3 3 1 0 0 0 0 0] (8 1 0 0 1 0 0 0 0 0 0 0 0 0) 2 suggestion: 3
+[8 3 2 1 1 0 0 0 0] (8 1 0 0 1 0 0 0 0 0 0 0 0 0) 2 suggestion: 3
+[8 2 2 1 0 0 0 0 0] (8 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 2
+[8 2 2 2 1 0 0 0 0] (8 1 0 0 1 0 0 0 0 0 0 0 0 0) 2 suggestion: 3
+
+Problem 4:
+
+[07 04 04 02 02 01 01 00 00] (06 01 00 02 01 00 00 00 00 00 00 00 00 00) 04
+  parent:      [7 4 2 2 1 1 0 0 0] (6 1 0 1 1 0 0 0 0 0 0 0 0 0) 4 suggestion: 4
+  grandparent: [7 2 2 1 1 0 0 0 0] (6 1 0 0 1 0 0 0 0 0 0 0 0 0) 2 suggestion: 4
+  [7 4 2 2 1 1 0 0 0] (6 1 0 1 1 0 0 0 0 0 0 0 0 0) 4 suggestion: 3 also fails.
+
+> [07 04 02 01 01 01 00 00 00] (07 02 00 00 01 00 00 00 00 00 00 00 00 00) 02                                                            fails, interestingly.
+
+Correction 4;
+
+* Just add more 1 items in this case, namely until you get 8 0 0 0 1, then it
+it easy.
+
+[7 2 1 1 0 0 0 0 0] (6 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 is winnable
+with advice
+
+[7 2 1 1 0 0 0 0 0] (6 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 1
+[8 2 1 1 0 0 0 0 0] (7 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 1
+[7 3 1 1 0 0 0 0 0] (7 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 1
+[7 2 2 1 0 0 0 0 0] (7 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 1
+[7 2 1 1 1 0 0 0 0] (7 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 1
+[9 2 1 1 0 0 0 0 0] (8 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 2
+[9 1 1 1 1 0 0 0 0] (8 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 4
+[8 2 1 1 1 0 0 0 0] (8 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 4
+[8 3 1 1 0 0 0 0 0] (8 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 2
+[8 2 2 1 0 0 0 0 0] (8 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 2
+
+Problem 5:
+
+[5 4 3 3 3 2 1 0 0] (5 1 3 0 1 0 0 0 0 0 0 0 0 0) 2 fails
+
+Correction:
+
+[5 4 3 3 3 1 0 0 0] (5 0 3 0 1 0 0 0 0 0 0 0 0 0) 3 suggestion: 3
+[5 4 3 3 3 3 1 0 0] (5 0 3 0 2 0 0 0 0 0 0 0 0 0) 3 suggestion: 4
+[5 4 4 3 3 3 0 0 0] (5 0 3 0 2 0 0 0 0 0 0 0 0 0) 3 suggestion: 3
+[6 5 4 3 3 1 0 0 0] (5 0 3 0 2 0 0 0 0 0 0 0 0 0) 3 suggestion: 3
+[7 5 3 3 3 1 0 0 0] (5 0 3 0 2 0 0 0 0 0 0 0 0 0) 3 suggestion: 4
+[8 4 3 3 3 1 0 0 0] (5 0 3 0 2 0 0 0 0 0 0 0 0 0) 3 suggestion: 3
+
+Problem 6:
+
+[8 4 3 3 2 1 0 0 0] (6 0 2 1 1 0 0 0 0 0 0 0 0 0) 4 fails
+
+Correction:
+[8 3 2 1 0 0 0 0 0] (6 0 1 0 1 0 0 0 0 0 0 0 0 0) 3 suggestion: 3
+[8 3 3 2 1 0 0 0 0] (6 0 2 0 1 0 0 0 0 0 0 0 0 0) 3 suggestion: 3
+[8 4 3 2 0 0 0 0 0] (6 0 2 0 1 0 0 0 0 0 0 0 0 0) 3 suggestion: 3
+[8 5 3 1 0 0 0 0 0] (6 0 2 0 1 0 0 0 0 0 0 0 0 0) 3 suggestion: 7
+[8 3 3 3 2 1 0 0 0] (6 0 3 0 1 0 0 0 0 0 0 0 0 0) 3 suggestion: 2
+[8 4 3 3 2 0 0 0 0] (6 0 3 0 1 0 0 0 0 0 0 0 0 0) 3 suggestion: 2
+[8 5 3 3 1 0 0 0 0] (6 0 3 0 1 0 0 0 0 0 0 0 0 0) 3 suggestion: 7
+
+Problem 7:
+
+[15 4 2 1 1 1 0 0 0] (6 0 0 2 2 0 0 0 0 0 0 0 0 0) 4 fails
+
+parent: [15 2 1 1 1 0 0 0 0] (6 0 0 1 2 0 0 0 0 0 0 0 0 0) 4 suggestion: 4
+
+[15 2 1 1 1 0 0 0 0] (6 0 0 1 2 0 0 0 0 0 0 0 0 0) 4 also fails
+
+[6 2 1 1 1 0 0 0 0] (6 0 0 0 1 0 0 0 0 0 0 0 0 0) 4 is the root of the problem.
+
+Just suggest 1 instead of the 5.
+
+[6 2 1 1 1 0 0 0 0] (6 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 1 likely works
+
+but probably also needs expanding wole advice
+
+[6 3 2 1 1 0 0 0 0] (8 0 0 0 1 0 0 0 0 0 0 0 0 0) 1
+
+Correction:
+[6 2 1 1 1 0 0 0 0] (6 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 1
+[6 3 2 1 1 0 0 0 0] (8 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 2
+[6 3 2 2 1 1 0 0 0] (8 1 0 0 1 0 0 0 0 0 0 0 0 0) 2 suggestion: 4
+[6 3 3 2 1 0 0 0 0] (8 1 0 0 1 0 0 0 0 0 0 0 0 0) 2 suggestion: 7
+[6 4 3 1 1 0 0 0 0] (8 1 0 0 1 0 0 0 0 0 0 0 0 0) 2 suggestion: 7
+[6 4 3 2 2 1 1 0 0] (8 1 0 1 1 0 0 0 0 0 0 0 0 0) 4 suggestion: 4
+
+
