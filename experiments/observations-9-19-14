@@ -244,10 +244,123 @@ Problem 8:
 -- it seems to be cut too early.
    Even [5 4 4 1 1 0 0 0 0] (8 1 0 0 1 0 0 0 0 0 0 0 0 0) 2 is slow.
 
-In fact, for 8 bins, [5 4 4 1 1 0 0 0] (8 1 0 0 1 0 0 0 0 0 0 0 0 0) 2
-is winning for alg, so the lower bound avoids this situation on purpose.
+In fact, for 8 bins, there are winnable positions for alg:
 
-In fact, this is one of the reasons why just sending 8 ones is not right.
+ *  [5 4 2 1 1 0 0 0] (8 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 is winning for alg with monotonicity 1
+so the lower bound avoids this situation on purpose.
+ *  [5 4 2 1 0 0 0 0] (7 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 is also winning.
 
+Adv wins:
 
+ * [5 3 0 0 0 0 0 0 0] (3 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 3 is winning for adv
+ * [5 3 1 0 0 0 0 0 0] (4 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 3 is also winning.
+ * [5 3 1 1 0 0 0 0 0] (5 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 3
+ * [5 3 1 1 1 0 0 0 0] (6 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 2
+ * [5 2 2 0 0 0 0 0 0] (4 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 3
+ * [5 1 1 1 1 0 0 0 0] (4 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 4
+ * [5 1 1 1 1 1 0 0 0] (5 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 4
+
+Is this enough to avoid reaching [5 4 2 1 0 0 0 0] (7 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 
+from the root? We also have a related issue:
+
+[5 2 1 1 0 0 0 0 0] (4 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 => 
+[5 2 2 1 0 0 0 0 0] (5 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 => 
+[5 2 2 1 1 0 0 0 0] (6 0 0 0 1 0 0 0 0 0 0 0 0 0) 1
+
+Here, 8 advises to not send 2, as it goes to [5 4 2 1 1 0 ...]
+
+---
+
+Takes a long time (probable alg win):
+
+[5 2 2 1 0 0 0 0 0] (5 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 3
+
+---
+
+Alg wins:
+
+ * [5 4 3 0 0 0 0 0 0] (4 0 1 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 4
+   by playing [5 4 4 3 0 0 0 0 0] (4 0 1 1 1 0 0 0 0 0 0 0 0 0) 4 
+
+   Is [5 4 3 3 0 0 0 0 0] (4 0 2 0 1 0 0 0 0 0 0 0 0 0) 3 (suggestion 3 instead of 4) any different?
+	Actually adv wins this one.
+
+ * [5 4 1 1 1 0 0 0 0] (7 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 4
+
+ * [5 4 1 1 1 0 0 0 0] (7 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 3
+   via [5 4 4 1 1 0 0 0 0] (7 0 1 0 1 0 0 0 0 0 0 0 0 0) 3
+
+ * [5 3 1 1 1 0 0 0 0] (6 0 0 0 1 0 0 0 0 0 0 0 0 0) 3 suggestion: 3
+   via [8 3 1 1 1 0 0 0 0] (6 0 1 0 1 0 0 0 0 0 0 0 0 0) 3
+
+ * [8 4 2 1 0 0 0 0 0] (4 0 2 0 1 0 0 0 0 0 0 0 0 0) 3 suggestion: 3
+   by playing [8 4 4 2 0 0 0 0 0] (4 0 3 0 1 0 0 0 0 0 0 0 0 0) 3
+
+   This also means that alg wins
+   [5 4 2 1 0 0 0 0 0] (4 0 1 0 1 0 0 0 0 0 0 0 0 0) 3 suggestion: 3,3 (note the double suggestion)
+
+ * [5 4 2 1 1 0 0 0 0] (6 1 0 0 1 0 0 0 0 0 0 0 0 0) 2 suggestion: 3
+   by playing [8 4 2 1 1 0 0 0 0] (6 1 1 0 1 0 0 0 0 0 0 0 0 0) 3.
+
+ * [5 4 2 1 1 0 0 0 0] (6 1 0 0 1 0 0 0 0 0 0 0 0 0) 2 suggestion: 4
+   by playing [9 4 2 1 1 0 0 0 0] (6 1 0 1 1 0 0 0 0 0 0 0 0 0) 4
+
+ * [5 3 2 1 1 0 0 0 0] (7 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 4
+   by playing [5 4 3 2 1 1 0 0 0] (7 0 0 1 1 0 0 0 0 0 0 0 0 0) 4
+
+ * [5 3 2 1 1 0 0 0 0] (7 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 3
+   by playing [8 3 2 1 1 0 0 0 0] (7 0 1 0 1 0 0 0 0 0 0 0 0 0) 3
+
+---
+
+Current critical path:
+[5 2 1 0 0 0 0 0 0] (3 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 => (only move that doesn't win)
+[5 2 1 1 0 0 0 0 0] (4 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 => (potentially more moves here)
+[5 2 2 1 0 0 0 0 0] (5 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 => 
+[5 2 2 1 1 0 0 0 0] (6 0 0 0 1 0 0 0 0 0 0 0 0 0) 1
+or
+[5 3 2 1 0 0 0 0 0] (6 0 0 0 1 0 0 0 0 0 0 0 0 0) 1
+
+---
+
+[5 2 2 1 1 0 0 0 0] (6 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 4
+actually works for a while at least:
+adv wins [9 2 2 1 1 0 0 0 0] (6 0 0 1 1 0 0 0 0 0 0 0 0 0) 4
+         [6 5 2 1 1 0 0 0 0] (6 0 0 1 1 0 0 0 0 0 0 0 0 0) 4
+         [5 5 2 2 1 0 0 0 0] (6 0 0 1 1 0 0 0 0 0 0 0 0 0) 4
+
+alg wins [5 4 2 2 1 1 0 0 0] (6 0 0 1 1 0 0 0 0 0 0 0 0 0) 4
+   [5 2 2 1 1 0 0 0 0] (6 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 4
+
+alg wins [8 2 2 1 1 0 0 0 0] (6 0 1 0 1 0 0 0 0 0 0 0 0 0) 3
+   [5 2 2 1 1 0 0 0 0] (6 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 3
+
+alg wins [10 2 2 1 1 0 0 0 0] (6 0 0 0 2 0 0 0 0 0 0 0 0 0) 5
+   [5 2 2 1 1 0 0 0 0] (6 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 5
+
+---
+
+Investigating which positions of type [5 3 x] are good and bad:
+ * adv wins [5 3 0 0 0 0 0 0 0] (3 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 (suggestion: 3)
+ * adv wins [5 3 1 0 0 0 0 0 0] (4 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 (suggestion: 3)
+ * adv wins [5 3 1 1 0 0 0 0 0] (5 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 (suggestion: 3)
+ * adv wins [5 3 1 1 1 0 0 0 0] (6 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 2
+
+ * alg wins [14 3 1 1 0 0 0 0 0] (5 0 1 0 1 1 0 0 0 0 0 0 0 0) 6
+   comes from [5 1 1 1 0 0 0 0 0] after sending 3 and 6.
+
+ *
+The main question of Problem 8: is [5 1 1 1 0 0 0 0 0] (3 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 just winning for alg no matter what?
+It was losing for ALG for 8 bins, but the strategy there does not apply here.
+
+Observation: These are some of the reasons why just sending 8 ones is not right.
+
+Problem 9:
+
+alg wins [6 4 4 2 2 1 1 0 0 0] (7 0 0 2 1 0 0 0 0 0 0 0 0 0) 4 
+alg wins the parent, too:  [6 4 2 2 1 1 0 0 0] (7 0 0 1 1 0 0 0 0 0 0 0 0 0) 4 
+
+Easy solution:
+
+adv wins [6 2 2 2 1 0 0 0 0] (8 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 2
 

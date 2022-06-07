@@ -111,6 +111,7 @@ const std::vector<bin_int> INITIAL_SEQUENCE = II_S;
 
 // Monotonicity of the first pass. Can be between 0 (fully-monotonic lower bound) and S-1 (full generality).
 const int FIRST_PASS = RECOMMENDED_MONOTONICITY;
+// const int FIRST_PASS = 2;
 // constants used for good situations
 const int RMOD = (R-1);
 const int ALPHA = (RMOD-S);
