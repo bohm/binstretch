@@ -2,6 +2,48 @@
 #define DAG_PRINT
 #include "../dynprog/wrappers.hpp"
 
+// Some helper functions that belong somewhere else.
+
+void dotprint_victory(victory win, FILE* stream = stderr, bool first = false)
+{
+    if(!first)
+    {
+	fprintf(stream, ", ");
+    }
+    
+    switch (win)
+    {
+    case victory::uncertain:
+	fprintf(stream, "vict=uncertain"); break;
+    case victory::adv:
+	fprintf(stream, "vict=adv"); break;
+    case victory::alg:
+	fprintf(stream, "vict=alg"); break;
+    case victory::irrelevant:
+	fprintf(stream, "vict="); break;
+    }
+}
+
+void dotprint_state(vert_state vs, FILE* stream = stderr, bool first = false)
+{
+    if(!first)
+    {
+	fprintf(stream, ", ");
+    }
+    
+    switch (vs)
+    {
+    case vert_state::fresh:
+	fprintf(stream, "state=fresh"); break;
+    case vert_state::finished:
+	fprintf(stream, "state=finished"); break;
+    case vert_state::expand:
+	fprintf(stream, "state=expand"); break;
+    case vert_state::fixed:
+	fprintf(stream, "state=fixed"); break;
+    }
+}
+
 void adversary_vertex::print(FILE *stream, bool debug)
 {
     // Print loads.
@@ -38,8 +80,10 @@ void adversary_vertex::print(FILE *stream, bool debug)
     if (debug)
     {
 	fprintf(stream, ",indegree=%zu,outdegree=%zu", in.size(), out.size());
+	dotprint_victory(win,stream);
+	dotprint_state(state,stream);
     }
-    
+
     // Print additional parameters (mostly used for re-loading the tree and such).
     if (task)
     {

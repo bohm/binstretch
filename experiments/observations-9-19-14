@@ -1,366 +1,188 @@
-Random pastes from the execution of the lower bound:
+Investigating the fully 1-monotonic lower bound for 19/14, starting from 1:
 
-Queen: sapling queue size: 58, current sapling of regrow level 0:
-05-03-02-01-01-01-00-00-00 [l:02] (06,01,00,00,01,00,00,00,00,00|00,00,00,00)
-Queen: Switching to monotonicity 1.
-Overseer 1 waits for monotonicity.
-Queen: Starting the round.
-Queen: Generated 69277 tasks.
-Queen: Tasks synchronized.
-Tarray + tstatus initialized.
-Overseer 1 sleeping until all workers are ready.
-Overseer 1 wakes up.
-Overseer 1 receives the new batch.
-Overseer 1 receives the new batch.
-Overseer 1 receives the new batch.
-Overseer 1 receives the new batch.
-Overseer 1 receives the new batch.
-Overseer 1 receives the new batch.
-Overseer 1 receives the new batch.
-Overseer 1 receives the new batch.
-Overseer 1 receives the new batch.
-Overseer 1 receives the new batch.
-Overseer 1 receives the new batch.
-Queen collects task number 512. 
-Overseer 1 receives the new batch.
-Update: Visited 94255 verts, unfinished tasks in tree: 68727.
-Update: Visited 94251 verts, unfinished tasks in tree: 68724.
-Overseer 1 receives the new batch.
-Overseer 1 receives the new batch.
-Update: Visited 94108 verts, unfinished tasks in tree: 68630.
-Overseer 1 receives the new batch.
-Update: Visited 94009 verts, unfinished tasks in tree: 68557.
-We have evaluated the tree: adv wins
-Prune/receive collisions: 103.
-Queen: Sending root solved to overseer 1.
-Overseer 1 (on grill): Received root solved, ending round.
-Overseer 1 sleeping until all workers are waiting.
-Overseer 1 wakes up.
-Iteration time: 309.943728s.
+[2 2 1 1 0 0 0 0 0] (6 0 0 0 0 0 0 0 0 0 0 0 0 0) 1 is a very underloaded sapling.
 
-Low-volume nodes:
+The advice from 8 bins suggests sending one more item of size 1:
 
-Queen: sapling queue size: 55, current sapling of regrow level 0:
-05-03-01-01-01-01-00-00-00 [l:01] (07,00,00,00,01,00,00,00,00,00|00,00,00,00)
+[2 2 1 1 0 0 0 0 0] (6 0 0 0 0 0 0 0 0 0 0 0 0 0) 1 suggestion: 1
+[2 2 1 1 1 0 0 0 0] (7 0 0 0 0 0 0 0 0 0 0 0 0 0) 1 suggestion: 5
+[2 2 2 1 0 0 0 0 0] (7 0 0 0 0 0 0 0 0 0 0 0 0 0) 1 suggestion: 3
+[3 2 1 1 0 0 0 0 0] (7 0 0 0 0 0 0 0 0 0 0 0 0 0) 1 suggestion: 3
+[3 3 2 1 1 0 0 0 0] (7 0 1 0 0 0 0 0 0 0 0 0 0 0) 3 suggestion: 3
+[4 3 2 1 0 0 0 0 0] (7 0 1 0 0 0 0 0 0 0 0 0 0 0) 3 suggestion: 3
+[5 3 1 1 0 0 0 0 0] (7 0 1 0 0 0 0 0 0 0 0 0 0 0) 3 suggestion: 6
+[6 2 1 1 0 0 0 0 0] (7 0 1 0 0 0 0 0 0 0 0 0 0 0) 3 suggestion: 7
+[3 2 2 2 1 0 0 0 0] (7 0 1 0 0 0 0 0 0 0 0 0 0 0) 3 suggestion: 3
+[4 2 2 2 0 0 0 0 0] (7 0 1 0 0 0 0 0 0 0 0 0 0 0) 3 suggestion: 3
+[5 2 2 1 0 0 0 0 0] (7 0 1 0 0 0 0 0 0 0 0 0 0 0) 3 suggestion: 6
 
-Queen: sapling queue size: 54, current sapling of regrow level 0: (takes a long time)
-05-04-01-01-01-00-00-00-00 [l:01] (07,00,00,00,01,00,00,00,00,00|00,00,00,00)
+Even with this, some saplings take quite a bit of time:
 
+[4 3 3 2 1 0 0 0 0] (7 0 2 0 0 0 0 0 0 0 0 0 0 0) 3 (adv wins, 583.956000s)
+[4 4 3 2 0 0 0 0 0] (7 0 2 0 0 0 0 0 0 0 0 0 0 0) 3 (adv wins, 775.606694s)
+[4 3 2 2 2 0 0 0 0] (7 0 2 0 0 0 0 0 0 0 0 0 0 0) 3 (adv wins, 502.354828s)
+[3 3 2 2 2 1 0 0 0] (7 0 2 0 0 0 0 0 0 0 0 0 0 0) 3 (adv wins, 155.424956s)
 
-[06 04 04 03 02 00 00 00 00] (06 02 00 01 01 00 00 00 00 00 00 00 00 00) 04 (takes a long time)
-Iteration time: 362.613369s.
+---
 
-[07 03 02 02 02 00 00 00 00] (07 02 00 00 01 00 00 00 00 00 00 00 00 00) 01
-(parent: [6 3 2 2 2 0 0 0 0] (6 2 0 0 1 0 0 0 0 0 0 0 0 0) 2 suggestion: 1)
-Iteration time: 64.348430s.
+Problem 1:
 
+alg wins [7 2 1 1 1 0 0 0 0] (7 0 0 0 1 0 0 0 0 0 0 0 0 0) 5, coming from
+[2 2 1 1 1 0 0 0 0] (7 0 0 0 0 0 0 0 0 0 0 0 0 0) 1 suggestion: 5
 
-* [5 4 3 3 2 1 0 0 0] (6 2 1 0 1 0 0 0 0 0 0 0 0 0) 2 has 99000 tasks.
+Resolution (adv wins this):
+[2 2 1 1 1 0 0 0 0] (7 0 0 0 0 0 0 0 0 0 0 0 0 0) 1 suggestion: 1
+[3 2 1 1 1 0 0 0 0] (8 0 0 0 0 0 0 0 0 0 0 0 0 0) 1 suggestion: 4
+[2 2 2 1 1 0 0 0 0] (8 0 0 0 0 0 0 0 0 0 0 0 0 0) 1 suggestion: 4
+[2 2 1 1 1 1 0 0 0] (8 0 0 0 0 0 0 0 0 0 0 0 0 0) 1 suggestion: 4
 
-Iteration time: 401.568838s.
+What about [2 2 1 1 0 0 0 0 0]? Well, all it takes is send one more one:
 
+[3 2 1 1 0 0 0 0 0] (7 0 0 0 0 0 0 0 0 0 0 0 0 0) 1 suggestion: 3
+[4 3 2 1 0 0 0 0 0] (7 0 1 0 0 0 0 0 0 0 0 0 0 0) 3 suggestion: 3
+[4 4 3 2 0 0 0 0 0] (7 0 2 0 0 0 0 0 0 0 0 0 0 0) 3 suggestion: 3
+[4 3 3 2 1 0 0 0 0] (7 0 2 0 0 0 0 0 0 0 0 0 0 0) 3 suggestion: 3
+[4 3 3 3 2 1 0 0 0] (7 0 3 0 0 0 0 0 0 0 0 0 0 0) 3 suggestion: 3
+[4 4 3 3 2 0 0 0 0] (7 0 3 0 0 0 0 0 0 0 0 0 0 0) 3 suggestion: 3
+[5 4 3 3 1 0 0 0 0] (7 0 3 0 0 0 0 0 0 0 0 0 0 0) 3 suggestion: 3
+[6 4 3 2 1 0 0 0 0] (7 0 3 0 0 0 0 0 0 0 0 0 0 0) 3 suggestion: 6
+[7 3 3 2 1 0 0 0 0] (7 0 3 0 0 0 0 0 0 0 0 0 0 0) 3 suggestion: 7
+[7 4 3 3 2 0 0 0 0] (7 0 4 0 0 0 0 0 0 0 0 0 0 0) 3 suggestion: 4
+[6 4 4 3 2 0 0 0 0] (7 0 4 0 0 0 0 0 0 0 0 0 0 0) 3 suggestion: 3
+[6 4 4 3 3 2 0 0 0] (7 0 5 0 0 0 0 0 0 0 0 0 0 0) 3 suggestion: 2
+[6 4 3 3 3 2 1 0 0] (7 0 5 0 0 0 0 0 0 0 0 0 0 0) 3 suggestion: 2
+[4 4 3 3 3 3 2 0 0] (7 0 5 0 0 0 0 0 0 0 0 0 0 0) 3 suggestion: 2
 
+(This was learned by asking about 3 2 1 1 for 8 bins, then following the advice.)
 
-Problem 2:
+Note: Actually, alg wins [4 2 1 1 0 0 0 0] (8 0 0 0 0 0 0 0 0 0 0 0 0 0) 1 (8 bins)
 
+This means that sending 8 ones again without taking care is not a great idea.
 
-[5 4 1 1 1 1 1 0 0] (5 0 0 1 1 0 0 0 0 0 0 0 0 0) 4 suggestion: 3
-[8 4 1 1 1 1 1 0 0] (5 0 1 1 1 0 0 0 0 0 0 0 0 0) 3 suggestion: 2
-[8 4 3 1 1 1 1 0 0] (5 1 1 1 1 0 0 0 0 0 0 0 0 0) 2 suggestion: 4
-=>
-[08 04 04 03 01 01 01 01 00] (05 01 01 02 01 00 00 00 00 00 00 00 00 00) 04 (not winning)
+---
 
-Correction 2:
+Non-Problem 2:
 
-0 [loads="5 4 1 1 1 1 1 0 0",player=adv];
-0 -> 3377 [next=4]
-3377 [loads="5 4 1 1 1 1 1 0 0",next_item=4,player=alg];
-3377 -> 26221 [bin=8]
-3377 -> 21842 [bin=3]
-3377 -> 17233 [bin=2]
-3377 -> 3378 [bin=1]
-26221 [loads="5 4 4 1 1 1 1 1 0",player=adv];
-26221 -> 26266 [next=5]
-21842 [loads="5 5 4 1 1 1 1 0 0",player=adv];
-21842 -> 22462 [next=5]
-17233 [loads="8 5 1 1 1 1 1 0 0",player=adv];
-17233 -> 17420 [next=7]
-3378 [loads="9 4 1 1 1 1 1 0 0",player=adv];
-3378 -> 3729 [next=4]
+[3 3 2 2 1 0 0 0 0] (5 0 2 0 0 0 0 0 0 0 0 0 0 0) 3 takes a long time
 
-Problem 3:
+... but actually adv wins, so it is fine.
 
-[12 05 04 01 01 01 00 00 00] (06 00 00 02 02 00 00 00 00 00 00 00 00 00) 04
-( parent: [8 5 4 1 1 1 0 0 0] (6 0 0 1 2 0 0 0 0 0 0 0 0 0) 5 suggestion: 4)
-( grandparent: [8 4 1 1 1 0 0 0 0] (6 0 0 1 1 0 0 0 0 0 0 0 0 0) 4 suggestion: 5)
-( great-grandparent: [8 1 1 1 0 0 0 0 0] (6 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 4)
+Note: Adv wins [4 3 3 0 0 0 0 0 0] (7 0 1 0 0 0 0 0 0 0 0 0 0 0) 3, interestingly,
+as well as [3 3 3 1 0 0 0 0 0] (7 0 1 0 0 0 0 0 0 0 0 0 0 0) 3.
 
-Observation (regarding problem 3):
-[8 1 1 1 1 0 0 0 0] (7 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion 4: should work (checked all 3 options)
+This means that adv wins: [3 3 1 0 0 0 0 0 0] (7 0 0 0 0 0 0 0 0 0 0 0 0 0) 1
+with resolution: [3 3 1 0 0 0 0 0 0] (7 0 0 0 0 0 0 0 0 0 0 0 0 0) 1 suggestion: 3
 
-[9 1 1 1 0 0 0 0 0] (7 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion 6: is not winning
-as (15 1 1 1 0 0 0 0 0] is algorithmically good.
+---
 
-What if 1 and then 2 is presented from  [9 1 1 1 0 0 0 0 0] (7 0 0 0 1 0 0 0 0 0 0 0 0 0) ?
+Problem 3: alg wins
+[8 1 1 1 0 0 0 0 0] (6 0 0 0 1 0 0 0 0 0 0 0 0 0) 5, coming from
+  [3 1 1 1 0 0 0 0 0] (6 0 0 0 0 0 0 0 0 0 0 0 0 0) 1 suggestion; 5 (advice from 8 bins).
 
-* [10 1 1 1 0 0 0 0 0] should be easy.
+We could wait for [4 1 1 1 0 0 0 0 0], in principle, as [3 2 1 1 0 0 0 0 0] is winning for adv and [3 1 1 1 1 0 0 0 0] might also be.
+It is currently not clear if this is the right move.
 
-Subcase problem-3-2-a 2-b 2-c 2-d:
-* [9 2 2 1 1 0 0 0 0] (8 1 0 0 1 0 0 0 0 0 0 0 0 0) 2 is winning if you send 3
-but not if you send 4 (!)
+Notes:
 
-* [9 3 2 1 0 0 0 0 0] (8 1 0 0 1 0 0 0 0 0 0 0 0 0) 2 is winning if you send 4
+adv wins [3 3 3 1 1 0 0 0 0] (6 1 1 0 0 0 0 0 0 0 0 0 0 0) 3
 
-  but [09 04 03 02 01 00 00 00 00] (08 01 00 01 01 00 00 00 00 00 00 00 00 00) 04 takes some 240 seconds!
+with resolution
 
-* [9 2 1 1 1 1 0 0 0 0] winning: send 4
+[3 3 3 1 1 0 0 0 0] (6 1 1 0 0 0 0 0 0 0 0 0 0 0) 3 suggestion: 3
+[3 3 3 3 1 1 0 0 0] (6 1 2 0 0 0 0 0 0 0 0 0 0 0) 3 suggestion: 5
+[4 3 3 3 1 0 0 0 0] (6 1 2 0 0 0 0 0 0 0 0 0 0 0) 3 suggestion: 3
+[6 3 3 1 1 0 0 0 0] (6 1 2 0 0 0 0 0 0 0 0 0 0 0) 3 suggestion: 6
+[6 4 3 3 1 0 0 0 0] (6 1 3 0 0 0 0 0 0 0 0 0 0 0) 3 suggestion: 3
+[4 4 3 3 3 0 0 0 0] (6 1 3 0 0 0 0 0 0 0 0 0 0 0) 3 suggestion: 3
+[7 4 3 3 3 0 0 0 0] (6 1 4 0 0 0 0 0 0 0 0 0 0 0) 3 suggestion: 4
+[6 4 4 3 3 0 0 0 0] (6 1 4 0 0 0 0 0 0 0 0 0 0 0) 3 suggestion: 3
+[6 4 4 3 3 3 0 0 0] (6 1 5 0 0 0 0 0 0 0 0 0 0 0) 3 suggestion: 2
+[4 4 3 3 3 3 3 0 0] (6 1 5 0 0 0 0 0 0 0 0 0 0 0) 3 suggestion: 2
 
-* [9 3 1 1 1 0 0 0 0] not winning if you send 4
-  Suggestion 3 for binconf [09 03 01 01 01 00 00 00 00] (08 01 00 00 01 00 00 00 00 00 00 00 00 00) 02 works.
+relevant tree: ./logs/9bins-19-14--2022-06-15--17-20-24-treetop.log.
 
-Still to check:
+Using the above as an assumption, we get that
 
-[8 2 1 1 0 0 0 0 0] (7 0 0 0 1 0 0 0 0 0 0 0 0 0) suggestion 4 does not work generally.
+adv wins [3 3 1 1 0 0 0 0 0] (6 1 0 0 0 0 0 0 0 0 0 0 0 0) 2
 
-[8 2 1 1 0 0 0 0 0] (7 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 works better again with sending 1 and 2,
-and more specifically this advice block:
+with the resolution
 
-[8 2 1 1 0 0 0 0 0] (7 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 1
-[8 2 1 1 1 0 0 0 0] (8 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 4
-[9 2 1 1 0 0 0 0 0] (8 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 2
-[9 3 2 1 0 0 0 0 0] (8 1 0 0 1 0 0 0 0 0 0 0 0 0) 2 suggestion: 3
-[9 2 2 1 1 0 0 0 0] (8 1 0 0 1 0 0 0 0 0 0 0 0 0) 2 suggestion: 3
-[8 3 1 1 0 0 0 0 0] (8 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 2
-[8 3 3 1 0 0 0 0 0] (8 1 0 0 1 0 0 0 0 0 0 0 0 0) 2 suggestion: 3
-[8 3 2 1 1 0 0 0 0] (8 1 0 0 1 0 0 0 0 0 0 0 0 0) 2 suggestion: 3
-[8 2 2 1 0 0 0 0 0] (8 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 2
-[8 2 2 2 1 0 0 0 0] (8 1 0 0 1 0 0 0 0 0 0 0 0 0) 2 suggestion: 3
+[3 3 1 1 0 0 0 0 0] (6 1 0 0 0 0 0 0 0 0 0 0 0 0) 2 suggestion: 3
+[4 3 3 1 0 0 0 0 0] (6 1 1 0 0 0 0 0 0 0 0 0 0 0) 3 suggestion: 3
+[4 4 3 3 0 0 0 0 0] (6 1 2 0 0 0 0 0 0 0 0 0 0 0) 3 suggestion: 3
+[4 4 3 3 3 0 0 0 0] (6 1 3 0 0 0 0 0 0 0 0 0 0 0) 3 suggestion: 3
+[7 4 3 3 3 0 0 0 0] (6 1 4 0 0 0 0 0 0 0 0 0 0 0) 3 suggestion: 4
+[6 4 4 3 3 0 0 0 0] (6 1 4 0 0 0 0 0 0 0 0 0 0 0) 3 suggestion: 3
+[6 4 4 3 3 3 0 0 0] (6 1 5 0 0 0 0 0 0 0 0 0 0 0) 3 suggestion: 2
+[4 4 3 3 3 3 3 0 0] (6 1 5 0 0 0 0 0 0 0 0 0 0 0) 3 suggestion: 2
+[4 3 3 3 1 0 0 0 0] (6 1 2 0 0 0 0 0 0 0 0 0 0 0) 3 suggestion: 3
+[4 3 3 3 3 1 0 0 0] (6 1 3 0 0 0 0 0 0 0 0 0 0 0) 3 suggestion: 4
+[6 4 3 3 1 0 0 0 0] (6 1 3 0 0 0 0 0 0 0 0 0 0 0) 3 suggestion: 3
+[7 3 3 3 1 0 0 0 0] (6 1 3 0 0 0 0 0 0 0 0 0 0 0) 3 suggestion: 5
+[3 3 3 1 1 0 0 0 0] (6 1 1 0 0 0 0 0 0 0 0 0 0 0) 3 suggestion: 3
+[3 3 3 3 1 1 0 0 0] (6 1 2 0 0 0 0 0 0 0 0 0 0 0) 3 suggestion: 5
+[6 3 3 1 1 0 0 0 0] (6 1 2 0 0 0 0 0 0 0 0 0 0 0) 3 suggestion: 6
 
-Correction 3:
+As for [3 2 1 1 1 0 0 0 0] (6 1 0 0 0 0 0 0 0 0 0 0 0 0) 2, after checking, it
+works the same as [3 2 1 1 1 0 0 0 0] (8 0 0 0 0 0 0 0 0 0 0 0 0 0) 1 and it is winnable by adv by:
 
-Root: 
-[8 1 1 1 0 0 0 0 0] (6 0 0 0 1 0 0 0 0 0 0 0 0 0) 1
+[3 2 1 1 1 0 0 0 0] (6 1 0 0 0 0 0 0 0 0 0 0 0 0) 2 suggestion: 4
 
-Solution:
-[8 1 1 1 0 0 0 0 0] (6 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 1
-[8 1 1 1 1 0 0 0 0] (7 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 4
-[9 1 1 1 0 0 0 0 0] (7 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 1
-[9 1 1 1 1 0 0 0 0] (8 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 4
-[9 2 1 1 0 0 0 0 0] (8 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 2
-[9 3 2 1 0 0 0 0 0] (8 1 0 0 1 0 0 0 0 0 0 0 0 0) 2 suggestion: 4
-[9 2 2 1 1 0 0 0 0] (8 1 0 0 1 0 0 0 0 0 0 0 0 0) 2 suggestion: 3
-[8 2 1 1 0 0 0 0 0] (7 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 1
-[8 2 1 1 1 0 0 0 0] (8 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 4
-[8 3 1 1 0 0 0 0 0] (8 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 2
-[8 3 3 1 0 0 0 0 0] (8 1 0 0 1 0 0 0 0 0 0 0 0 0) 2 suggestion: 3
-[8 3 2 1 1 0 0 0 0] (8 1 0 0 1 0 0 0 0 0 0 0 0 0) 2 suggestion: 3
-[8 2 2 1 0 0 0 0 0] (8 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 2
-[8 2 2 2 1 0 0 0 0] (8 1 0 0 1 0 0 0 0 0 0 0 0 0) 2 suggestion: 3
+So, adding the main root, we see that
+adv wins [3 1 1 1 0 0 0 0 0] (6 0 0 0 0 0 0 0 0 0 0 0 0 0) 1 with advice
+
+[3 1 1 1 0 0 0 0 0] (6 0 0 0 0 0 0 0 0 0 0 0 0 0) 1 suggestion: 2
+[3 2 1 1 1 0 0 0 0] (6 1 0 0 0 0 0 0 0 0 0 0 0 0) 2 suggestion: 4
+[3 3 1 1 0 0 0 0 0] (6 1 0 0 0 0 0 0 0 0 0 0 0 0) 2 suggestion: 3
+[4 3 3 1 0 0 0 0 0] (6 1 1 0 0 0 0 0 0 0 0 0 0 0) 3 suggestion: 3
+[4 4 3 3 0 0 0 0 0] (6 1 2 0 0 0 0 0 0 0 0 0 0 0) 3 suggestion: 3
+[4 4 3 3 3 0 0 0 0] (6 1 3 0 0 0 0 0 0 0 0 0 0 0) 3 suggestion: 3
+[7 4 3 3 3 0 0 0 0] (6 1 4 0 0 0 0 0 0 0 0 0 0 0) 3 suggestion: 4
+[6 4 4 3 3 0 0 0 0] (6 1 4 0 0 0 0 0 0 0 0 0 0 0) 3 suggestion: 3
+[6 4 4 3 3 3 0 0 0] (6 1 5 0 0 0 0 0 0 0 0 0 0 0) 3 suggestion: 2
+[4 4 3 3 3 3 3 0 0] (6 1 5 0 0 0 0 0 0 0 0 0 0 0) 3 suggestion: 2
+[4 3 3 3 1 0 0 0 0] (6 1 2 0 0 0 0 0 0 0 0 0 0 0) 3 suggestion: 3
+[4 3 3 3 3 1 0 0 0] (6 1 3 0 0 0 0 0 0 0 0 0 0 0) 3 suggestion: 4
+[6 4 3 3 1 0 0 0 0] (6 1 3 0 0 0 0 0 0 0 0 0 0 0) 3 suggestion: 3
+[7 3 3 3 1 0 0 0 0] (6 1 3 0 0 0 0 0 0 0 0 0 0 0) 3 suggestion: 5
+[3 3 3 1 1 0 0 0 0] (6 1 1 0 0 0 0 0 0 0 0 0 0 0) 3 suggestion: 3
+[3 3 3 3 1 1 0 0 0] (6 1 2 0 0 0 0 0 0 0 0 0 0 0) 3 suggestion: 5
+[6 3 3 1 1 0 0 0 0] (6 1 2 0 0 0 0 0 0 0 0 0 0 0) 3 suggestion: 6
+
+(and more advice if you undo some assumptions).
+
+---
 
 Problem 4:
 
-[07 04 04 02 02 01 01 00 00] (06 01 00 02 01 00 00 00 00 00 00 00 00 00) 04
-  parent:      [7 4 2 2 1 1 0 0 0] (6 1 0 1 1 0 0 0 0 0 0 0 0 0) 4 suggestion: 4
-  grandparent: [7 2 2 1 1 0 0 0 0] (6 1 0 0 1 0 0 0 0 0 0 0 0 0) 2 suggestion: 4
-  [7 4 2 2 1 1 0 0 0] (6 1 0 1 1 0 0 0 0 0 0 0 0 0) 4 suggestion: 3 also fails.
+[2 1 1 1 1 0 0 0 0] (6 0 0 0 0 0 0 0 0 0 0 0 0 0) 1 suggestion: 5
 
-> [07 04 02 01 01 01 00 00 00] (07 02 00 00 01 00 00 00 00 00 00 00 00 00) 02                                                            fails, interestingly.
+also doesn't work.
 
-Correction 4;
+We can try sending one more one, which must go to three states:
+1) [2 2 1 1 1 0 0 0 0] (7 0 0 0 0 0 0 0 0 0 0 0 0 0) 1 (we've seen it before)
 
-* Just add more 1 items in this case, namely until you get 8 0 0 0 1, then it
-it easy.
+2) [2 1 1 1 1 1 0 0 0] (7 0 0 0 0 0 0 0 0 0 0 0 0 0) 1
+solved by (adv wins):
+   [2 1 1 1 1 1 0 0 0] (7 0 0 0 0 0 0 0 0 0 0 0 0 0) 1 suggestion: 4
 
-[7 2 1 1 0 0 0 0 0] (6 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 is winnable
-with advice
-
-[7 2 1 1 0 0 0 0 0] (6 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 1
-[8 2 1 1 0 0 0 0 0] (7 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 1
-[7 3 1 1 0 0 0 0 0] (7 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 1
-[7 2 2 1 0 0 0 0 0] (7 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 1
-[7 2 1 1 1 0 0 0 0] (7 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 1
-[9 2 1 1 0 0 0 0 0] (8 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 2
-[9 1 1 1 1 0 0 0 0] (8 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 4
-[8 2 1 1 1 0 0 0 0] (8 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 4
-[8 3 1 1 0 0 0 0 0] (8 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 2
-[8 2 2 1 0 0 0 0 0] (8 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 2
-
-Problem 5:
-
-[5 4 3 3 3 2 1 0 0] (5 1 3 0 1 0 0 0 0 0 0 0 0 0) 2 fails
-
-Correction:
-
-[5 4 3 3 3 1 0 0 0] (5 0 3 0 1 0 0 0 0 0 0 0 0 0) 3 suggestion: 3
-[5 4 3 3 3 3 1 0 0] (5 0 3 0 2 0 0 0 0 0 0 0 0 0) 3 suggestion: 4
-[5 4 4 3 3 3 0 0 0] (5 0 3 0 2 0 0 0 0 0 0 0 0 0) 3 suggestion: 3
-[6 5 4 3 3 1 0 0 0] (5 0 3 0 2 0 0 0 0 0 0 0 0 0) 3 suggestion: 3
-[7 5 3 3 3 1 0 0 0] (5 0 3 0 2 0 0 0 0 0 0 0 0 0) 3 suggestion: 4
-[8 4 3 3 3 1 0 0 0] (5 0 3 0 2 0 0 0 0 0 0 0 0 0) 3 suggestion: 3
-
-Problem 6:
-
-[8 4 3 3 2 1 0 0 0] (6 0 2 1 1 0 0 0 0 0 0 0 0 0) 4 fails
-
-Correction:
-[8 3 2 1 0 0 0 0 0] (6 0 1 0 1 0 0 0 0 0 0 0 0 0) 3 suggestion: 3
-[8 3 3 2 1 0 0 0 0] (6 0 2 0 1 0 0 0 0 0 0 0 0 0) 3 suggestion: 3
-[8 4 3 2 0 0 0 0 0] (6 0 2 0 1 0 0 0 0 0 0 0 0 0) 3 suggestion: 3
-[8 5 3 1 0 0 0 0 0] (6 0 2 0 1 0 0 0 0 0 0 0 0 0) 3 suggestion: 7
-[8 3 3 3 2 1 0 0 0] (6 0 3 0 1 0 0 0 0 0 0 0 0 0) 3 suggestion: 2
-[8 4 3 3 2 0 0 0 0] (6 0 3 0 1 0 0 0 0 0 0 0 0 0) 3 suggestion: 2
-[8 5 3 3 1 0 0 0 0] (6 0 3 0 1 0 0 0 0 0 0 0 0 0) 3 suggestion: 7
-
-Problem 7:
-
-[15 4 2 1 1 1 0 0 0] (6 0 0 2 2 0 0 0 0 0 0 0 0 0) 4 fails
-
-parent: [15 2 1 1 1 0 0 0 0] (6 0 0 1 2 0 0 0 0 0 0 0 0 0) 4 suggestion: 4
-
-[15 2 1 1 1 0 0 0 0] (6 0 0 1 2 0 0 0 0 0 0 0 0 0) 4 also fails
-
-[6 2 1 1 1 0 0 0 0] (6 0 0 0 1 0 0 0 0 0 0 0 0 0) 4 is the root of the problem.
-
-Just suggest 1 instead of the 5.
-
-[6 2 1 1 1 0 0 0 0] (6 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 1 likely works
-
-but probably also needs expanding wole advice
-
-[6 3 2 1 1 0 0 0 0] (8 0 0 0 1 0 0 0 0 0 0 0 0 0) 1
-
-Correction:
-[6 2 1 1 1 0 0 0 0] (6 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 1
-[6 3 2 1 1 0 0 0 0] (8 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 2
-[6 3 2 2 1 1 0 0 0] (8 1 0 0 1 0 0 0 0 0 0 0 0 0) 2 suggestion: 4
-[6 3 3 2 1 0 0 0 0] (8 1 0 0 1 0 0 0 0 0 0 0 0 0) 2 suggestion: 7
-[6 4 3 1 1 0 0 0 0] (8 1 0 0 1 0 0 0 0 0 0 0 0 0) 2 suggestion: 7
-[6 4 3 2 2 1 1 0 0] (8 1 0 1 1 0 0 0 0 0 0 0 0 0) 4 suggestion: 4
-
-Problem 8:
-
-* [5 4 1 1 1 0 0 0 0] (7 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 has 43967 tasks
-
--- it seems to be cut too early.
-   Even [5 4 4 1 1 0 0 0 0] (8 1 0 0 1 0 0 0 0 0 0 0 0 0) 2 is slow.
-
-In fact, for 8 bins, there are winnable positions for alg:
-
- *  [5 4 2 1 1 0 0 0] (8 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 is winning for alg with monotonicity 1
-so the lower bound avoids this situation on purpose.
- *  [5 4 2 1 0 0 0 0] (7 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 is also winning.
-
-Adv wins:
-
- * [5 3 0 0 0 0 0 0 0] (3 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 3 is winning for adv
- * [5 3 1 0 0 0 0 0 0] (4 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 3 is also winning.
- * [5 3 1 1 0 0 0 0 0] (5 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 3
- * [5 3 1 1 1 0 0 0 0] (6 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 2
- * [5 2 2 0 0 0 0 0 0] (4 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 3
- * [5 1 1 1 1 0 0 0 0] (4 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 4
- * [5 1 1 1 1 1 0 0 0] (5 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 4
-
-Is this enough to avoid reaching [5 4 2 1 0 0 0 0] (7 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 
-from the root? We also have a related issue:
-
-[5 2 1 1 0 0 0 0 0] (4 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 => 
-[5 2 2 1 0 0 0 0 0] (5 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 => 
-[5 2 2 1 1 0 0 0 0] (6 0 0 0 1 0 0 0 0 0 0 0 0 0) 1
-
-Here, 8 advises to not send 2, as it goes to [5 4 2 1 1 0 ...]
-
----
-
-Takes a long time (probable alg win):
-
-[5 2 2 1 0 0 0 0 0] (5 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 3
-
----
-
-Alg wins:
-
- * [5 4 3 0 0 0 0 0 0] (4 0 1 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 4
-   by playing [5 4 4 3 0 0 0 0 0] (4 0 1 1 1 0 0 0 0 0 0 0 0 0) 4 
-
-   Is [5 4 3 3 0 0 0 0 0] (4 0 2 0 1 0 0 0 0 0 0 0 0 0) 3 (suggestion 3 instead of 4) any different?
-	Actually adv wins this one.
-
- * [5 4 1 1 1 0 0 0 0] (7 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 4
-
- * [5 4 1 1 1 0 0 0 0] (7 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 3
-   via [5 4 4 1 1 0 0 0 0] (7 0 1 0 1 0 0 0 0 0 0 0 0 0) 3
-
- * [5 3 1 1 1 0 0 0 0] (6 0 0 0 1 0 0 0 0 0 0 0 0 0) 3 suggestion: 3
-   via [8 3 1 1 1 0 0 0 0] (6 0 1 0 1 0 0 0 0 0 0 0 0 0) 3
-
- * [8 4 2 1 0 0 0 0 0] (4 0 2 0 1 0 0 0 0 0 0 0 0 0) 3 suggestion: 3
-   by playing [8 4 4 2 0 0 0 0 0] (4 0 3 0 1 0 0 0 0 0 0 0 0 0) 3
-
-   This also means that alg wins
-   [5 4 2 1 0 0 0 0 0] (4 0 1 0 1 0 0 0 0 0 0 0 0 0) 3 suggestion: 3,3 (note the double suggestion)
-
- * [5 4 2 1 1 0 0 0 0] (6 1 0 0 1 0 0 0 0 0 0 0 0 0) 2 suggestion: 3
-   by playing [8 4 2 1 1 0 0 0 0] (6 1 1 0 1 0 0 0 0 0 0 0 0 0) 3.
-
- * [5 4 2 1 1 0 0 0 0] (6 1 0 0 1 0 0 0 0 0 0 0 0 0) 2 suggestion: 4
-   by playing [9 4 2 1 1 0 0 0 0] (6 1 0 1 1 0 0 0 0 0 0 0 0 0) 4
-
- * [5 3 2 1 1 0 0 0 0] (7 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 4
-   by playing [5 4 3 2 1 1 0 0 0] (7 0 0 1 1 0 0 0 0 0 0 0 0 0) 4
-
- * [5 3 2 1 1 0 0 0 0] (7 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 3
-   by playing [8 3 2 1 1 0 0 0 0] (7 0 1 0 1 0 0 0 0 0 0 0 0 0) 3
-
----
-
-Current critical path:
-[5 2 1 0 0 0 0 0 0] (3 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 => (only move that doesn't win)
-[5 2 1 1 0 0 0 0 0] (4 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 => (potentially more moves here)
-[5 2 2 1 0 0 0 0 0] (5 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 => 
-[5 2 2 1 1 0 0 0 0] (6 0 0 0 1 0 0 0 0 0 0 0 0 0) 1
 or
-[5 3 2 1 0 0 0 0 0] (6 0 0 0 1 0 0 0 0 0 0 0 0 0) 1
+
+[3 1 1 1 1 0 0 0 0] (7 0 0 0 0 0 0 0 0 0 0 0 0 0) 1
+
+solved by (adv wins):
+   [3 1 1 1 1 0 0 0 0] (7 0 0 0 0 0 0 0 0 0 0 0 0 0) 1 suggestion: 4
+
+Note: [4 3 1 1 1 1 0 0 0] (7 0 0 1 0 0 0 0 0 0 0 0 0 0) 4 took some time.
+
+Resolution:
+
+[2 1 1 1 1 0 0 0 0] (6 0 0 0 0 0 0 0 0 0 0 0 0 0) 1 suggestion: 1
+[2 1 1 1 1 1 0 0 0] (7 0 0 0 0 0 0 0 0 0 0 0 0 0) 1 suggestion: 4
+[3 1 1 1 1 0 0 0 0] (7 0 0 0 0 0 0 0 0 0 0 0 0 0) 1 suggestion: 4
 
 ---
 
-[5 2 2 1 1 0 0 0 0] (6 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 4
-actually works for a while at least:
-adv wins [9 2 2 1 1 0 0 0 0] (6 0 0 1 1 0 0 0 0 0 0 0 0 0) 4
-         [6 5 2 1 1 0 0 0 0] (6 0 0 1 1 0 0 0 0 0 0 0 0 0) 4
-         [5 5 2 2 1 0 0 0 0] (6 0 0 1 1 0 0 0 0 0 0 0 0 0) 4
-
-alg wins [5 4 2 2 1 1 0 0 0] (6 0 0 1 1 0 0 0 0 0 0 0 0 0) 4
-   [5 2 2 1 1 0 0 0 0] (6 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 4
-
-alg wins [8 2 2 1 1 0 0 0 0] (6 0 1 0 1 0 0 0 0 0 0 0 0 0) 3
-   [5 2 2 1 1 0 0 0 0] (6 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 3
-
-alg wins [10 2 2 1 1 0 0 0 0] (6 0 0 0 2 0 0 0 0 0 0 0 0 0) 5
-   [5 2 2 1 1 0 0 0 0] (6 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 5
-
----
-
-Investigating which positions of type [5 3 x] are good and bad:
- * adv wins [5 3 0 0 0 0 0 0 0] (3 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 (suggestion: 3)
- * adv wins [5 3 1 0 0 0 0 0 0] (4 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 (suggestion: 3)
- * adv wins [5 3 1 1 0 0 0 0 0] (5 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 (suggestion: 3)
- * adv wins [5 3 1 1 1 0 0 0 0] (6 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 2
-
- * alg wins [14 3 1 1 0 0 0 0 0] (5 0 1 0 1 1 0 0 0 0 0 0 0 0) 6
-   comes from [5 1 1 1 0 0 0 0 0] after sending 3 and 6.
-
- *
-The main question of Problem 8: is [5 1 1 1 0 0 0 0 0] (3 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 just winning for alg no matter what?
-It was losing for ALG for 8 bins, but the strategy there does not apply here.
-
-Observation: These are some of the reasons why just sending 8 ones is not right.
-
-Problem 9:
-
-alg wins [6 4 4 2 2 1 1 0 0 0] (7 0 0 2 1 0 0 0 0 0 0 0 0 0) 4 
-alg wins the parent, too:  [6 4 2 2 1 1 0 0 0] (7 0 0 1 1 0 0 0 0 0 0 0 0 0) 4 
-
-Easy solution:
-
-adv wins [6 2 2 2 1 0 0 0 0] (8 0 0 0 1 0 0 0 0 0 0 0 0 0) 1 suggestion: 2
+Somewhat slow: [4 3 1 1 1 1 0 0 0] (7 0 0 1 0 0 0 0 0 0 0 0 0 0) 4
+is now running for a while.
 

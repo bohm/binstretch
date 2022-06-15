@@ -172,7 +172,13 @@ template<minimax MODE> victory computation<MODE>::adversary(adversary_vertex *ad
 	{
 	    // When the vertex is fixed, we know it is part of the lower bound.
 	    // We do not generate any more options; instead we just iterate over the edges that are there.
-	    assert(adv_to_evaluate->out.size() == 1);
+	    if(adv_to_evaluate->out.size() != 1)
+	    {
+		// debug information
+		fprintf(stderr, "Adversary vertex during generation has a non-standard out size.\n");
+		adv_to_evaluate->print(stderr, true);
+		assert(adv_to_evaluate->out.size() == 1);
+	    }
 
 	    std::list<adv_outedge*>::iterator it = adv_to_evaluate->out.begin();
 

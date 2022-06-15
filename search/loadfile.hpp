@@ -175,9 +175,11 @@ partial_dag* loadfile(const char* filename)
 	    }
 	    if (first_adversary)
 	    {
+		print_if<DEBUG>("Adding vertex with old name %d as root.\n", name);
 		pd->add_root(name, is_sapling, heurstring);
 		first_adversary = false;
 	    } else {
+		print_if<DEBUG>("Adding vertex with name %d.\n", name);
 		pd->add_adv_vertex(name, is_sapling, heurstring);
 	    }
 	    break;
