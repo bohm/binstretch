@@ -68,8 +68,8 @@ public:
 	    ret.shorts[1] = expansion_depth;
 	    ret.shorts[2] = bc._totalload;
 	    ret.shorts[3] = bc._itemcount;
-	    ret.longs[1] = bc.loadhash;
-	    ret.longs[2] = bc.itemhash;
+	    ret.longs[0] = bc.loadhash;
+	    ret.longs[1] = bc.itemhash;
 	    
 	    for (int i = 0; i <= BINS; i++)
 	    {
