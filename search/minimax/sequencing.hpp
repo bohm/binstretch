@@ -7,7 +7,6 @@
 #include <cstdlib>
 #include <cassert>
 #include <map>
-#include <filesystem>
 
 #include "common.hpp"
 #include "binconf.hpp"
@@ -42,7 +41,7 @@ victory sequencing(binconf& root, adversary_vertex* root_vertex)
     advisor simple_advis;
 
     bool advice_file_found = false;
-    if (USING_ADVISOR && std::filesystem::exists(ADVICE_FILENAME))
+    if (USING_ADVISOR && fs::exists(ADVICE_FILENAME))
     {
 	simple_advis.load_advice_file(ADVICE_FILENAME);
 	advice_file_found = true;
@@ -51,7 +50,7 @@ victory sequencing(binconf& root, adversary_vertex* root_vertex)
 	print_if<PROGRESS>("Not using any advice file.\n");
     }
 
-    if (USING_ASSUMPTIONS && std::filesystem::exists(ASSUMPTIONS_FILENAME))
+    if (USING_ASSUMPTIONS && fs::exists(ASSUMPTIONS_FILENAME))
     {
 	comp.assumer.load_file(ASSUMPTIONS_FILENAME);
     }
