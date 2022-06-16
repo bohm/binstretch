@@ -4,7 +4,7 @@
 
 // To have the code buildable on Ubuntu 18.04, we include this
 // compiler-dependent hack.
-#if __cplusplus >= 201703L
+#if __has_include(<filesystem>)
 #include <filesystem>
 namespace fs = std::filesystem;
 #else
