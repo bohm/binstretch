@@ -79,29 +79,6 @@ const bin_int BINS = IBINS;
 const std::vector<bin_int> INITIAL_LOADS = {};
 const std::vector<bin_int> INITIAL_ITEMS = {};
 
-// You can also insert an initial sequence here, and the adversary will use it as a predefined start.
-
-//const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1,1,1};
-//const std::vector<bin_int> INITIAL_SEQUENCE = {1,1,1,1,1,1,1,1,1,1};
-//const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1,1,1,1};
-//const std::vector<bin_int> INITIAL_SEQUENCE = {4,1,1};
-
-// const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1,1,1,1,1,1}; // 10x1
-// const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1,1,1,1,1}; // 9x1
-// const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1,1,1,1}; // 8x1
-// const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1,1,1}; // 7x1
-// const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1,1}; // 6x1
-// const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1,1}; // 5x1, works for 8 bins and monotonicity 1.
-// const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1,1}; // 4x1
-// const std::vector<bin_int> INITIAL_SEQUENCE = {5,1,1,1}; // 3x1
-// const std::vector<bin_int> INITIAL_SEQUENCE = {5};
-
-// const std::vector<bin_int> INITIAL_SEQUENCE = {2,2};
-// const std::vector<bin_int> INITIAL_SEQUENCE = {2};
-
-// const std::vector<bin_int> INITIAL_SEQUENCE = {};
-const std::vector<bin_int> INITIAL_SEQUENCE = II_S;
-
 // const int FIRST_PASS = 0; // enough to get a lb of 19/14 on 6,7 bins.
 // const int FIRST_PASS = 1; // enough for 19/14 on 8 bins.
 // const int FIRST_PASS = 6; // enough for 86/63 on 3 bins.

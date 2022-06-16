@@ -132,7 +132,7 @@ int queen_class::start()
     comm.sync_up(); // Sync before any rounds start.
 
     assumptions assumer;
-    if (USING_ASSUMPTIONS && std::filesystem::exists(ASSUMPTIONS_FILENAME))
+    if (USING_ASSUMPTIONS && fs::exists(ASSUMPTIONS_FILENAME))
     {
 	assumer.load_file(ASSUMPTIONS_FILENAME);
     }

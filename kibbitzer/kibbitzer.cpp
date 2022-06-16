@@ -19,11 +19,13 @@ dag *canvas = NULL;
 bool color = true;
 bool shortheur = false;
 int cut_at_depth = 0;
+bin_int cut_at_size = 0;
 
 void build_suggestion(adversary_vertex *v)
 {
     if (v->out.size() > 1)
     {
+	v->print(stderr, true);
 	ERROR("Inconsistency detected, an adversary vertex has more than one outedge.\n");
     }
 
@@ -100,6 +102,14 @@ void cutdepth_adv(adversary_vertex *v)
     }
 }
 
+void sizedepth_adv(adversary_vertex *v)
+{
+    if (v->bc.last_item >= cut_at_size)
+    {
+	canvas->remove_outedges<minimax::generating>(v);
+    }
+}
+
 void cut_fullbins(adversary_vertex *v)
 {
     if (v->bc.loads[BINS] > 0)
@@ -116,31 +126,59 @@ void cut_fullbins(dag *d)
 
 void usage()
 {
-    fprintf(stderr, "Usage: ./kibbitz [-cut NUM] infile.dag outfile-advice.txt\n");
+    fprintf(stderr, "Usage: ./kibbitz [-sizecut NUM] [-depthcut NUM] infile.dag outfile-advice.txt\n");
 }
 
-std::pair<bool,int> parse_parameter_cutdepth(int argc, char **argv, int pos)
-{
-    int cut_at_depth = 0;
 
-    if (strcmp(argv[pos], "-cut") == 0)
+std::pair<bool,int> parse_parameter_sizecut(int argc, char **argv, int pos)
+{
+    int sizecut_val = 0;
+
+    if (strcmp(argv[pos], "-sizecut") == 0)
     {
 	if (pos == argc-3)
 	{
-	    fprintf(stderr, "Error: parameter -d must be followed by a number.\n");
+	    fprintf(stderr, "Error: parameter -sizecut must be followed by a number.\n");
 	    usage();
 	    exit(-1);
 	}
 	    
-	sscanf(argv[pos+1], "%d", &cut_at_depth);
+	sscanf(argv[pos+1], "%d", &sizecut_val);
 	
-	if (cut_at_depth < 1)
+	if (sizecut_val < 1)
 	{
-	    fprintf(stderr, "The numeric value for -d could not be parsed.\n");
+	    fprintf(stderr, "The numeric value for -sizecut could not be parsed.\n");
 	    usage();
 	    exit(-1);
 	}
-	return std::make_pair(true, cut_at_depth);
+	return std::make_pair(true, sizecut_val);
+    }
+    return std::make_pair(false, 0);
+}
+
+
+std::pair<bool,int> parse_parameter_depthcut(int argc, char **argv, int pos)
+{
+    int depthcut_val = 0;
+
+    if (strcmp(argv[pos], "-depthcut") == 0)
+    {
+	if (pos == argc-3)
+	{
+	    fprintf(stderr, "Error: parameter -depthcut must be followed by a number.\n");
+	    usage();
+	    exit(-1);
+	}
+	    
+	sscanf(argv[pos+1], "%d", &depthcut_val);
+	
+	if (depthcut_val < 1)
+	{
+	    fprintf(stderr, "The numeric value for -depthcut could not be parsed.\n");
+	    usage();
+	    exit(-1);
+	}
+	return std::make_pair(true, depthcut_val);
     }
     return std::make_pair(false, 0);
 }
@@ -157,7 +195,8 @@ int main(int argc, char **argv)
     
     std::string infile(argv[argc-2]);
     std::string outfile(argv[argc-1]);
-    bool cut = false;
+    bool depthcut = false;
+    bool sizecut = false;
     
     if (infile == outfile)
     {
@@ -170,13 +209,23 @@ int main(int argc, char **argv)
 
     for (int i = 0; i < argc-2; i++)
     {
-	auto [parsed_cut, parsed_depth] = parse_parameter_cutdepth(argc, argv, i);
+	auto [parsed_cut, parsed_depth] = parse_parameter_depthcut(argc, argv, i);
 
 	if (parsed_cut)
 	{
-	    cut = true;
+	    depthcut = true;
 	    cut_at_depth = parsed_depth;
+	} else
+	{
+	    auto [parsed_sizecut, sizecut_val] = parse_parameter_sizecut(argc, argv, i);
+
+	    if (parsed_sizecut)
+	    {
+		sizecut = true;
+		cut_at_size = (bin_int) sizecut_val;
+	    }
 	}
+
     }
 
     fprintf(stderr, "Transforming dag %s into advice list %s.\n", infile.c_str(), outfile.c_str());
@@ -192,9 +241,14 @@ int main(int argc, char **argv)
     cut_heuristics(canvas);
     cut_fullbins(canvas);
 
-    if (cut)
+    if (depthcut)
     {
 	dfs(canvas, cutdepth_adv, do_nothing);
+    }
+
+    if (sizecut)
+    {
+	dfs(canvas, sizedepth_adv, do_nothing);
     }
  
     build_suggestions(canvas, outfile);

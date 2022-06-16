@@ -2,7 +2,7 @@
 
 usage()
 {
-	echo "usage: ./build.sh M T G [\"{INITIAL_SEQUENCE}\"] [-odir output-dir] [--search/--painter/--rooster] [--debug]"
+	echo "usage: ./build.sh M T G [-odir output-dir] [--search/--painter/--rooster/--kibbitzer] [--debug] [--older]"
 	echo "where M: the number of bins/machines (e.g. 6)"
 	echo "      T: the allowed load of bins (e.g. 19)"
 	echo "      G: the optimal maximum load of all bins (e.g. 14)"
@@ -25,7 +25,8 @@ BUILDING_ROOSTER=true
 BUILDING_PAINTER=true
 BUILDING_KIBBITZER=true
 BUILDING_SEARCH=true
-
+CPP_STANDARD="c++17"
+LINKING_SUFFIX=""
 OPTFLAG="-O3"
 
 # Skip first three parameters, then iterate over the rest of the arguments.
@@ -64,6 +65,10 @@ while (( "$#" )); do
 	    BUILDING_ROOSTER=false
 	    shift
 	    ;;
+	--older)
+	    LINKING_SUFFIX="-lstdc++fs"
+	    shift
+	    ;;
 	--debug)
 	    OPTFLAG="-g3"
 	    shift
@@ -89,21 +94,21 @@ fi
 
 
 if [[ "$BUILDING_SEARCH" = true ]]; then
-	echo "Running: mpic++ -I./ -Wall -std=c++20 $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S main.cpp -o ../$OUTPUT/search-$BINS-$R-$S -pthread"
-	cd search; mpic++ -I./ -Wall -std=c++20 $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S main.cpp -o ../$OUTPUT/search-$BINS-$R-$S -pthread; cd ..
+	echo "Running: mpic++ -I./ -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S main.cpp -o ../$OUTPUT/search-$BINS-$R-$S -pthread $LINKING_SUFFIX"
+	cd search; mpic++ -I./ -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S main.cpp -o ../$OUTPUT/search-$BINS-$R-$S -pthread $LINKING_SUFFIX; cd ..
 fi
 
 if [[ "$BUILDING_PAINTER" = true ]]; then
-	echo "Running: g++ -Wall -std=c++20 $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S painter.cpp -o ../$OUTPUT/painter-$BINS-$R-$S -pthread"
-	cd painter; g++ -Wall -std=c++20 $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S painter.cpp -o ../$OUTPUT/painter-$BINS-$R-$S -pthread; cd ..
+	echo "Running: g++ -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S painter.cpp -o ../$OUTPUT/painter-$BINS-$R-$S -pthread $LINKING_SUFFIX"
+	cd painter; g++ -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S painter.cpp -o ../$OUTPUT/painter-$BINS-$R-$S -pthread $LINKING_SUFFIX; cd ..
 fi
 
 if [[ "$BUILDING_KIBBITZER" = true ]]; then
-	echo "Running: g++ -Wall -std=c++20 $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S kibbitzer.cpp -o ../$OUTPUT/kibbitzer-$BINS-$R-$S -pthread"
-	cd kibbitzer; g++ -Wall -std=c++20 $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S kibbitzer.cpp -o ../$OUTPUT/kibbitzer-$BINS-$R-$S -pthread; cd ..
+	echo "Running: g++ -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S kibbitzer.cpp -o ../$OUTPUT/kibbitzer-$BINS-$R-$S -pthread $LINKING_SUFFIX"
+	cd kibbitzer; g++ -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S kibbitzer.cpp -o ../$OUTPUT/kibbitzer-$BINS-$R-$S -pthread $LINKING_SUFFIX; cd ..
 fi
 
 if [[ "$BUILDING_ROOSTER" = true ]]; then
     echo "Compiling converter binary for $BINS bins and ratio $R/$S bins into $OUTPUT/rooster-$BINS-$R-$S."
-    cd rooster; g++ -I../ -Wall -std=c++20 $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S rooster.cpp -o ../$OUTPUT/rooster-$BINS-$R-$S -pthread; cd ..
+    cd rooster; g++ -I../ -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S rooster.cpp -o ../$OUTPUT/rooster-$BINS-$R-$S -pthread $LINKING_SUFFIX; cd ..
 fi

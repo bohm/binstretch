@@ -5,13 +5,13 @@
 
 void folder_checks()
 {
-    if (!std::filesystem::is_directory(LOG_DIR))
+    if (!fs::is_directory(LOG_DIR))
     {
 	fprintf(stderr, "The log directory is not found, terminating.\n");
 	exit(-1);
     }
 
-    if (!std::filesystem::is_directory(OUTPUT_DIR))
+    if (!fs::is_directory(OUTPUT_DIR))
     {
 	fprintf(stderr, "The output directory is not found, terminating.\n");
 	exit(-1);

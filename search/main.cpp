@@ -1,7 +1,6 @@
 #include <cstdio>
 #include <cstdlib>
 #include <csignal>
-#include <filesystem>
 #include <inttypes.h>
 
 #include "net/mpi.hpp"
@@ -168,12 +167,10 @@ void main_thread(int ws, int wr, int argc, char** argv)
 	assert(ret == 0 || ret == 1);
 	if(ret == 0)
 	{
-	    fprintf(stdout, "Lower bound for %d/%d Bin Stretching on %d bins with monotonicity %d and starting seq: ",
+	    fprintf(stdout, "Lower bound for %d/%d Bin Stretching on %d bins with monotonicity %d",
 		    R,S,BINS,monotonicity);
-	    print_sequence(stdout, INITIAL_SEQUENCE);
 	} else {
 	    fprintf(stdout, "Algorithm wins %d/%d Bin Stretching on %d bins with sequence:\n", R,S,BINS);
-	    print_sequence(stdout, INITIAL_SEQUENCE);
 	}
 	
 	fprintf(stderr, "Number of tasks: %d, collected tasks: %u,  pruned tasks %" PRIu64 ".\n,",

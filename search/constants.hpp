@@ -1,7 +1,18 @@
 #ifndef _CONSTANTS_HPP
 #define _CONSTANTS_HPP 1
-
 // System constants that do not need to be modified.
+
+// To have the code buildable on Ubuntu 18.04, we include this
+// compiler-dependent hack.
+#if __cplusplus >= 201703L
+#include <filesystem>
+namespace fs = std::filesystem;
+#else
+#include <experimental/filesystem>
+namespace fs = std::experimental::filesystem;
+#endif
+
+
 
 typedef uint64_t llu;
 typedef signed char tiny;
@@ -169,12 +180,5 @@ const int RECOMMENDED_MONOTONICITY = 0;
 #error "The macro constant IS needs to be passed by the compiler!"
 #define IS 3 // ditto 
 #endif
-
-#ifndef II_S
-#error "The macro constant II_S needs to be passed by the compiler!"
-#define II_S {} // ditto 
-#endif
-
-
 
 #endif // _CONSTANTS_HPP
