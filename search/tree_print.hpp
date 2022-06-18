@@ -29,7 +29,7 @@ void print_states(FILE *stream, adversary_vertex *v)
 	fprintf(stream, "s");
     }
 
-    if (v->state == vert_state::expand)
+    if (v->state == vert_state::expandable)
     { 
 	fprintf(stream, "E");
     } else if (v->state == vert_state::fresh)

@@ -45,10 +45,6 @@ const int TASK_DEPTH_STEP = 2; // The amount by which the depth is increased whe
 // whether to print the output as a single tree or as multiple trees.
 const bool SINGLE_TREE = true;
 
-// Onepass mode: Do only one pass of monotonicity and terminate if it fails.
-// const bool ONEPASS = false;
-const bool ONEPASS = true;
-
 // log tasks which run at least some amount of time
 const bool TASKLOG = false;
 const long double TASKLOG_THRESHOLD = 60.0; // in seconds

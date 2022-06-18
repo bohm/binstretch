@@ -101,7 +101,11 @@ template<minimax MODE> victory computation<MODE>::adversary(adversary_vertex *ad
 	}
 	adv_to_evaluate->visited = true;
 
-	if (adv_to_evaluate->state == vert_state::finished)
+	// We do not proceed further with expandable or finished vertices. The expandable ones need to be visited
+	// again, but the single one being expanded will be relabeled as "expanding".
+	if (adv_to_evaluate->state == vert_state::fixed ||
+	    adv_to_evaluate->state == vert_state::finished ||
+	    adv_to_evaluate->state == vert_state::expandable)
 	{
 	    assert(adv_to_evaluate->win == victory::adv);
 	    return adv_to_evaluate->win;
@@ -131,9 +135,12 @@ template<minimax MODE> victory computation<MODE>::adversary(adversary_vertex *ad
 	
 	if (vic == victory::adv)
 	{
-	    print_if<DEBUG>("GEN: Adversary heuristic ");
-	    print_if<DEBUG>("%d", static_cast<int>(strategy->type));
-	    print_if<DEBUG>(" is successful.\n");
+	    if (GENERATING)
+	    {
+		print_if<DEBUG>("GEN: Adversary heuristic ");
+		print_if<DEBUG>("%d", static_cast<int>(strategy->type));
+		print_if<DEBUG>(" is successful.\n");
+	    }
 
 	    if (EXPLORING)
 	    {
@@ -168,6 +175,7 @@ template<minimax MODE> victory computation<MODE>::adversary(adversary_vertex *ad
 	// for some other sapling.)
 
 	// fixed -- vertex is already part of the prescribed lower bound (e.g. by previous computation)
+	/*
 	if (adv_to_evaluate->state == vert_state::fixed)
 	{
 	    // When the vertex is fixed, we know it is part of the lower bound.
@@ -192,12 +200,13 @@ template<minimax MODE> victory computation<MODE>::adversary(adversary_vertex *ad
 	    adv_to_evaluate->win = below;
 	    return below;
 	}
+	*/
 
 	// assert
-	if (adv_to_evaluate->state != vert_state::fresh && adv_to_evaluate->state != vert_state::expand)
+	if (adv_to_evaluate->state != vert_state::fresh && adv_to_evaluate->state != vert_state::expanding)
 	{
-	    print_if<true>("Assert failed: adversary vertex state is %d.\n", adv_to_evaluate->state);
-	    assert(adv_to_evaluate->state == vert_state::fresh || adv_to_evaluate->state == vert_state::expand); // no other state should go past this point
+	    print_if<true>("Assert failed: adversary vertex state is %s.\n", state_name(adv_to_evaluate->state).c_str());
+	    assert(adv_to_evaluate->state == vert_state::fresh || adv_to_evaluate->state == vert_state::expanding); // no other state should go past this point
 	}
 
 	// we now do creation of tasks only until the REGROW_LIMIT is reached
@@ -382,7 +391,7 @@ template<minimax MODE> victory computation<MODE>::algorithm(int pres_item, algor
 	}
 	alg_to_evaluate->visited = true;
 
-	if (alg_to_evaluate->state == vert_state::finished)
+	if (alg_to_evaluate->state == vert_state::finished || alg_to_evaluate->state == vert_state::fixed)
 	{
 	    assert(alg_to_evaluate->win == victory::adv);
 	    return alg_to_evaluate->win;

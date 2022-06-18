@@ -96,8 +96,30 @@ enum class task_status {available, batched, pruned, alg_win, adv_win, irrelevant
 enum class updater_states {postponed, terminating, overdue, irrelevant};
 
 // States of a vertex in a currently evaluating minimax graph.
-enum class vert_state {fresh, finished, expand, fixed};
+enum class vert_state {fresh, finished, expandable, expanding, fixed};
 
+std::string state_name(vert_state st)
+{
+    switch (st)
+    {
+    case vert_state::fresh:
+	return "fresh";
+	break;
+    case vert_state::finished:
+	return "finished";
+	break;
+    case vert_state::expandable:
+	return "expandable";
+	break;
+    case vert_state::expanding:
+	return "expanding";
+	break;
+    default:
+    case vert_state::fixed:
+	return "fixed";
+	break;
+    }
+}
 typedef int8_t maybebool;
 
 const maybebool MB_INFEASIBLE = 0;

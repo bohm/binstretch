@@ -93,12 +93,39 @@ public:
 
 // A sapling is an adversary vertex which will be processed by the parallel
 // minimax algorithm (its tree will be expanded).
-struct sapling
+class sapling
 {
-    adversary_vertex *root;
+public:
+    adversary_vertex *root = nullptr;
     int regrow_level = 0;
     std::string filename;
     uint64_t binconf_hash; // binconf hash for debug purposes
+    bool expansion = false;
+    bool evaluation = true;
+
+    void mark_in_progress()
+	{
+	    if (evaluation)
+	    {
+		// We currently do nothing if it is just being evaluated.
+	    } else if (expansion)
+	    {
+		root->state = vert_state::expanding;
+	    }
+	}
+
+    void mark_complete()
+	{
+	    if (evaluation)
+	    {
+		root->sapling = false;
+	    } else if (expansion)
+	    {
+		// Note: the vertex might become finished, but a recursive function
+		// needs to be called to verify this.
+		root->state = vert_state::fixed;
+	    }
+	}
 };
 
 
@@ -389,11 +416,11 @@ void collect_tasks_adv(adversary_vertex *v)
 
     if (v->task)
     {
-	if(v->win != victory::uncertain || ((v->state != vert_state::fresh) && (v->state != vert_state::expand)) )
+	if(v->win != victory::uncertain || ((v->state != vert_state::fresh) && (v->state != vert_state::expandable)) )
 	{
 	    print_if<true>("Trouble with task vertex %" PRIu64 ": it has winning value not UNCERTAIN, but %d.\n",
 			v->id, v->win);
-	    assert(v->win == victory::uncertain && ((v->state == vert_state::fresh) || (v->state == vert_state::expand)) );
+	    assert(v->win == victory::uncertain && ((v->state == vert_state::fresh) || (v->state == vert_state::expandable)) );
 	}
 
 	task newtask(v->bc);
@@ -433,7 +460,7 @@ void collect_tasks(adversary_vertex *r)
     collect_tasks_adv(r);
 }
 
-void clear_tasks()
+void clear_task_structures()
 {
     tcount = 0;
     thead = 0;
@@ -543,6 +570,14 @@ void compose_batch(int *batch)
 	assert(batch[i] >= -1 && batch[i] < tcount);
 	i++;
     }
+}
+
+void mark_task_as_expanadable(adversary_vertex *v, int regrow_level)
+{
+    assert(v->task);
+    v->task = false;
+    v->state = vert_state::expandable;
+    v->regrow_level = regrow_level;
 }
 
 #endif

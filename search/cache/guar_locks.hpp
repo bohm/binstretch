@@ -283,7 +283,7 @@ void guar_cache_locks::insert(const binconf& itemlist, const bool feasibility)
     }
 
     // if the cache is full, choose a random position
-    uint64_t randpos = std::min(htsize, startpos + (rand() % LINPROBE_LIMIT) );
+    uint64_t randpos = std::min(htsize-1, startpos + (rand() % LINPROBE_LIMIT) );
     std::unique_lock l(locks[block(randpos)]); // Lock.
     ht[randpos] = inserted;
     MEASURE_ONLY(meas.insert_randomly++);

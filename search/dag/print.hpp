@@ -20,7 +20,7 @@ void dotprint_victory(victory win, FILE* stream = stderr, bool first = false)
     case victory::alg:
 	fprintf(stream, "vict=alg"); break;
     case victory::irrelevant:
-	fprintf(stream, "vict="); break;
+	fprintf(stream, "vict=irrel"); break;
     }
 }
 
@@ -37,8 +37,10 @@ void dotprint_state(vert_state vs, FILE* stream = stderr, bool first = false)
 	fprintf(stream, "state=fresh"); break;
     case vert_state::finished:
 	fprintf(stream, "state=finished"); break;
-    case vert_state::expand:
-	fprintf(stream, "state=expand"); break;
+    case vert_state::expandable:
+	fprintf(stream, "state=expandable"); break;
+    case vert_state::expanding:
+	fprintf(stream, "state=expanding"); break;
     case vert_state::fixed:
 	fprintf(stream, "state=fixed"); break;
     }
@@ -333,4 +335,33 @@ void dag::print_subdag(algorithm_vertex *v, FILE *stream, bool debug)
     fprintf(stream, "--- End of subdag. ---\n");
 }
 
+void dag::print_children(adversary_vertex *v)
+{
+    fprintf(stderr, "Printing children:\n");
+    for(adv_outedge *e : v->out)
+    {
+	e->to->print(stderr, true);
+    }
+}
+
+void dag::print_path_to_root(adversary_vertex *v)
+{
+
+    adversary_vertex *cur = v;
+    int ic_old = v->bc.itemcount();
+    while(cur != root)
+    {
+	cur->print(stderr, true);
+	assert(cur->in.size() != 0);
+	alg_outedge *e1 = *(cur->in.begin());
+	algorithm_vertex *alg_v = e1->from;
+	alg_v->print(stderr, true);
+	assert(alg_v->in.size() != 0);
+	adv_outedge *e2 = *(alg_v->in.begin());
+	cur = e2->from;
+	int ic_new = cur->bc.itemcount();
+	assert(ic_new == ic_old - 1);
+	ic_old = ic_new;
+    }
+}
 #endif

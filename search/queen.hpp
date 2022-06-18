@@ -12,6 +12,7 @@ std::atomic<victory> updater_result(victory::uncertain);
 
 int winning_saplings = 0;
 int losing_saplings = 0;
+binconf losing_binconf; // A global bin configuration for output purposes.
 
 // Queen has a formal class 
 class queen_class

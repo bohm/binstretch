@@ -61,9 +61,9 @@ public:
 		}
 		fprintf(stderr, "\n");
 		print_binconf<true>(current_conf);
-		assert( (int) itemlist.size() > relative_depth);
 	    }
 
+	    assert( (int) itemlist.size() > relative_depth);
 	    return itemlist[relative_depth];
 	}
 

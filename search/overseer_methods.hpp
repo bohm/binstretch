@@ -206,7 +206,7 @@ void overseer::start()
 	    {
 		tstatus[i].store(static_cast<task_status>(tstatus_transport_copy[i]));
 	    }
-	    delete tstatus_transport_copy;
+	    delete[] tstatus_transport_copy;
 
 	    print_if<COMM_DEBUG>("Tarray + tstatus initialized.\n");
 

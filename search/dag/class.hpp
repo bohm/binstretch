@@ -86,9 +86,12 @@ public:
     void print_lowerbound_dfs(algorithm_vertex *v, FILE* stream, bool debug = false);
     void print_lowerbound_bfs(FILE* stream, bool debug = false);
 
+    // Debugging functions.
     void print(FILE* stream, bool debug = false);
     void print_subdag(adversary_vertex *v, FILE* stream, bool debug = false);
     void print_subdag(algorithm_vertex *v, FILE* stream, bool debug = false);
+    void print_path_to_root(adversary_vertex *v);
+    void print_children(adversary_vertex *v);
 
     // Cloning subroutines.
     dag* subdag(adversary_vertex *newroot);
@@ -165,6 +168,9 @@ public:
     bool task = false; // task is a separate boolean because an vert_state::expand vertex can be a task itself.
     bool sapling = false;
 
+    int regrow_level = 0; // In case the vertex is expandable, this will guide the iteration in which
+    // it is expanded.
+    
     bool reference = false; // In some cases (not in the main search algorithm), the DAG below is not present,
     // but the vertex is only a reference to another DAG in a list.
     // Currently useful only in the Coq formatter rooster.cpp.

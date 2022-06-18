@@ -9,8 +9,10 @@
 #include "loadfile.hpp"
 #include "saplings.hpp"
 #include "savefile.hpp"
+#include "performance_timer.hpp"
+#include "sapling_manager.hpp"
+#include "cleanup.hpp"
 #include "queen.hpp"
-
 /*
 
 Message sequence:
@@ -105,16 +107,17 @@ void queen_class::updater(adversary_vertex* sapling)
 
 int queen_class::start()
 {
-    std::chrono::time_point<std::chrono::system_clock> iteration_start, iteration_end,
-	scheduler_start, scheduler_end;
     int sapling_no = 0;
     int ret = 0;
     bool output_useful = false; // Set to true when it is clear output will be printed.
-
+    performance_timer perf_timer;
+    
     comm.deferred_construction(world_size);
     std::string machine_name = comm.machine_name();
     fprintf(stderr, "Queen: reporting for duty: %s, rank %d out of %d instances\n",
 	    machine_name.c_str(), world_rank, world_size);
+
+    perf_timer.queen_start();
 
     zobrist_init();
     comm.bcast_send_zobrist(zobrist_quadruple(Zi, Zl, Zlow, Zlast));
@@ -152,31 +155,31 @@ int queen_class::start()
 	sequencing(root, qdag->root);
     }
 
-    if (PROGRESS) { scheduler_start = std::chrono::system_clock::now(); }
+    sapling_manager sap_man(qdag);
 
+    int regrow_threshold = 0;
+    int last_regrow_threshold = 0;
     update_and_count_saplings(qdag); // Leave only uncertain saplings.
-    dfs_find_sapling(qdag);
-    
-    while (first_unfinished_sapling.root != nullptr)
+    sapling job = sap_man.find_sapling(); // Can find a sapling to expand or evaluate.
+    while (job.root != nullptr)
     {
-	
-	sapling currently_growing = first_unfinished_sapling;
+	// --- BEGIN INIT PHASE ---
+	perf_timer.new_sapling_start();
+	perf_timer.init_phase_start();
+
+	job.mark_in_progress();
+	regrow_threshold = job.regrow_level;
 	
 	bool lower_bound_complete = false;
-	computation_root = currently_growing.root;
+	computation_root = job.root;
 
 	if (computation_root->win != victory::uncertain)
-        {
-	    assert(OUTPUT); 
-	    computation_root->state = vert_state::expand;
+	{
+	    assert(job.expansion);
+	    // We reset the job to be uncertain, so that minimax generation actually does something.
+	    computation_root->win = victory::uncertain;
 	}
 
-	// Purge all new vertices, so that only vert_state::fixed and vert_state::expand remain.
-	// Note: we added this alongside the advisor, so that vertices can be tasks in various depths.
-	// This might still cause issues down the line.
-	purge_new(qdag, computation_root);
-	assert_no_tasks(qdag);
-	
 	// Currently we cannot expand a vertex with outedges.
 	if (computation_root->out.size() != 0)
 	{
@@ -191,244 +194,178 @@ int queen_class::start()
 	}
 	
 	monotonicity = FIRST_PASS;
-	task_depth = TASK_DEPTH_INIT;
-	task_load = TASK_LOAD_INIT;
-	
-	// Reset sapling's last item (so that the search space is a little bit better).
-	// TODO (2022-05-30): Why did we use to do this?
-	// computation_root->bc.last_item = 1;
+	task_depth = TASK_DEPTH_INIT + job.regrow_level * TASK_DEPTH_STEP;
+	task_load = TASK_LOAD_INIT + job.regrow_level * TASK_LOAD_STEP;
 
-	// We iterate to REGROW_LIMIT + 1 because the last iteration will complete the tree.
-	for(int regrow_level = 0; regrow_level <= REGROW_LIMIT+1; regrow_level++)
+	// We do not regrow with a for loop anymore, we regrow using the job system in the DAG instead.
+	print_if<PROGRESS>("Queen: sapling count: %d, current sapling of regrow level %d:\n", sapling_counter, job.regrow_level);
+	print_binconf<PROGRESS>(computation_root->bc);
+
+	computation<minimax::generating> comp;
+	comp.regrow_level = job.regrow_level;
+
+	if (USING_ASSUMPTIONS)
 	{
-	    if (regrow_level > 0 && regrow_level <= REGROW_LIMIT)
-	    {
-		task_depth += TASK_DEPTH_STEP;
-		task_load += TASK_LOAD_STEP;
-	    }
-	    print_if<PROGRESS>("Queen: sapling count: %d, current sapling of regrow level %d:\n", sapling_counter, regrow_level);
-	    print_binconf<PROGRESS>(computation_root->bc);
-
-	    computation<minimax::generating> comp;
-	    comp.regrow_level = regrow_level;
-
-	    if (USING_ASSUMPTIONS)
-	    {
-		comp.assumer = assumer;
-	    }
-
-	    // do not change monotonicity when regrowing (regrow_level >= 1)
-	    for (; monotonicity <= S-1; monotonicity++)
-	    {
-		print_if<PROGRESS>("Queen: Switching to monotonicity %d.\n", monotonicity);
-
-		if (PROGRESS) { iteration_start = std::chrono::system_clock::now(); }
-
-		// Clear old task and task structures.
-		// irrel_taskq.clear();
-		clear_tasks();
-
-                // Purge all new vertices, so that only vert_state::fixed and vert_state::expand remain.
-		purge_new(qdag, computation_root);
-		reset_values(qdag, computation_root);
-		comm.reset_runlows(); // reset_running_lows();
-		qdag->clear_visited();
-		removed_task_count = 0;
-		updater_result = generate<minimax::generating>(currently_growing, &comp);
-		
-		computation_root->win = updater_result.load(std::memory_order_acquire);
-		if (computation_root->win != victory::uncertain)
-		{
-		    fprintf(stderr, "Queen: Completed lower bound.\n");
-		    if (computation_root->win == victory::adv)
-		    {
-			lower_bound_complete = true;
-			if (ONEPASS)
-			{
-			    winning_saplings++;
-			}
-			fprintf(stderr, "Purging all tasks.\n");
-			purge_all_tasks(qdag);
-			break;
-		    } else if (computation_root->win == victory::alg)
-		    {
-			if (ONEPASS)
-			{
-			    losing_saplings++;
-			    purge_new(qdag, computation_root);
-			    fprintf(stderr, "Purging all tasks.\n");
-			    purge_all_tasks(qdag);
-			    break;
-			} else
-			{
-			    continue;
-			}
-		    }
-		} else {
-		    // queen needs to start the round
-		    print_if<COMM_DEBUG>("Queen: Starting the round.\n");
-		    clear_batches();
-		    comm.round_start_and_finality(false);
-		    // queen sends the current monotonicity to the workers
-		    comm.bcast_send_monotonicity(monotonicity);
-
-		    collect_tasks(computation_root);
-		    init_tstatus(tstatus_temporary); tstatus_temporary.clear();
-		    init_tarray(tarray_temporary); tarray_temporary.clear();
-
-		    // 2022-05-30: It is still not clear to me what is the right absolute order here.
-		    // In the future, it makes sense to do some prioritization in the task queue.
-		    // Until then, we just reverse the queue (largest items go first). This leads
-		    // to a lot of failures early, but these failures will be quick.
-		    
-		    // permute_tarray_tstatus(); // We do not permute currently.
-		    reverse_tarray_tstatus();
-		    
-		    // print_tasks(); // Large debug print.
-		    
-		    // irrel_taskq.init(tcount);
-		    // note: do not push into irrel_taskq before permutation is done;
-		    // the numbers will not make any sense.
-		
-		    print_if<PROGRESS>("Queen: Generated %d tasks.\n", tcount);
-		    comm.bcast_send_tcount(tcount);
-		    // Synchronize tarray.
-		    for (int i = 0; i < tcount; i++)
-		    {
-			flat_task transport = tarray[i].flatten();
-			comm.bcast_send_flat_task(transport);
-		    }
-
-		    // Synchronize tstatus.
-		    int *tstatus_transport_copy = new int[tcount];
-		    for (int i = 0; i < tcount; i++)
-		    {
-			tstatus_transport_copy[i] = static_cast<int>(tstatus[i].load());
-		    }
-		    // After "de-atomizing" it, use a generic array broadcast.
-		    comm.bcast_send_int_array(QUEEN, tstatus_transport_copy, tcount);
-		    delete tstatus_transport_copy;
-		    
-		    print_if<PROGRESS>("Queen: Tasks synchronized.\n");
-
-		    // broadcast_tarray_tstatus();
-		    taskpointer = 0;
-		
-		    auto x = std::thread(&queen_class::updater, this, computation_root);
-		    // wake up updater thread.
-		
-		    // Main loop of this thread (the variable is updated by the other thread).
-		    while(updater_result == victory::uncertain)
-		    {
-			collect_worker_tasks();
-			comm.collect_runlows(); // collect_running_lows();
-
-			// We wish to have the loop here, so that net/ is independent on compose_batch().
-			for (int overseer = 1; overseer < world_size; overseer++)
-			{
-			    if (comm.is_running_low(overseer))
-			    {
-				//check_batch_finished(overseer);
-				compose_batch(batches[overseer]);
-				comm.send_batch(batches[overseer], overseer);
-				comm.satisfied_runlow(overseer);
-			    }
-			}
-
-			// comm.compose_and_send_batches(); // send_out_batches();
-			std::this_thread::sleep_for(std::chrono::milliseconds(TICK_SLEEP));
-		    }
-
-		    // suspend updater thread
-		    x.join();
-
-		    // Updater_result is no longer POSTPONED; end the round.
-		    // Send ROOT_SOLVED signal to workers that wait for tasks and those
-		    // that process tasks.
-		    comm.send_root_solved();
-		    // collect remaining, unnecessary solutions
-		    destroy_tarray();
-		    destroy_tstatus();
-		    comm.round_end();
-		    comm.ignore_additional_solutions();
-		}
-	
-		if (PROGRESS)
-		{
-		    iteration_end = std::chrono::system_clock::now();
-		    std::chrono::duration<long double> iteration_time = iteration_end - iteration_start;
-		    print_if<PROGRESS>("Iteration time: %Lfs.\n", iteration_time.count());
-		}
-		
-		if (updater_result == victory::adv)
-		{
-		    if (ONEPASS)
-		    {
-			winning_saplings++;
-		    }
-
-		    finish_branches(qdag, computation_root);
-		    fprintf(stderr, "Purging all tasks.\n");
-		    purge_all_tasks(qdag);
-		    break;
-		}
-
-		if (ONEPASS)
-		{
-		    losing_saplings++;
-		    purge_new(qdag, computation_root);
-		    fprintf(stderr, "Purging all tasks.\n");
-		    purge_all_tasks(qdag);
-		    break;
-		}
-	    }
-	    
-	    // When we are not regrowing, we just finish up and move to the next sapling.
-	    // We also finish up when the lower bound is complete.
-	    if ((!REGROW && (updater_result == victory::adv)) ||
-		(REGROW && updater_result == victory::adv && lower_bound_complete))
-	    {
-		finish_sapling(qdag, computation_root);
-		break;
-	    }
-
-	    // When we compute 1 in this step, at least one of the saplings is definitely
-	    // a wrong move, which (currently) means Algorithm should be the winning player.
-	    if (updater_result == victory::alg)
-	    {
-		ret = 1;
-		break;
-	    } else
-	    {
-		// return value is 0, but the tree needs to be expanded.
-		assert(updater_result == victory::adv);
-		// Transform tasks into vert_state::expand and
-		// vert_state::fresh vertices into vert_state::fixed.
-		
-		relabel_and_fix(qdag, computation_root, &(comp.meas));
-	    }
-
+	    comp.assumer = assumer;
 	}
 
-	// Before leaving the while loop, update the sapling information.
-	    
-	update_and_count_saplings(qdag); // Leave only uncertain saplings.
-	dfs_find_sapling(qdag);
+	// 2022-06-17: We currently do not switch monotonicity for specific subtrees.
+	// It could make sense to do it on a sapling-by-sapling basis, again through some external advice.
 
-	// Do not try other saplings at the moment if one of them is a losing state.
-	// Also terminates for ONEPASS mode.
-	if (ret == 1)
+
+	clear_task_structures();
+
+	comm.reset_runlows(); // reset_running_lows();
+	qdag->clear_visited();
+	removed_task_count = 0;
+
+	// --- END INIT PHASE ---
+	// --- BEGIN GENERATION PHASE ---
+	perf_timer.init_phase_end();
+	perf_timer.generation_phase_start();
+
+	updater_result = generate<minimax::generating>(job, &comp);
+	perf_timer.generation_phase_end();
+
+	computation_root->win = updater_result.load(std::memory_order_acquire);
+
+	// If we have already finished via generation, we skip the parallel phase.
+	// We still enter the cleanup phase.
+	if (computation_root->win != victory::uncertain)
 	{
+	    fprintf(stderr, "Queen: Completed lower bound in the generation phase.\n");
+	    if (computation_root->win == victory::adv)
+	    {
+		lower_bound_complete = true;
+		winning_saplings++;
+	    } else if (computation_root->win == victory::alg)
+	    {
+		losing_saplings++;
+		break;
+	    }
+	// --- END GENERATION PHASE ---
+	// --- BEGIN PARALLEL PHASE ---
+	} else {
+	    perf_timer.parallel_phase_start();
+	    
+	    // Queen needs to start the round.
+	    print_if<COMM_DEBUG>("Queen: Starting the round.\n");
+	    clear_batches();
+	    comm.round_start_and_finality(false);
+	    // Queen sends the current monotonicity to the workers.
+	    comm.bcast_send_monotonicity(monotonicity);
+
+	    collect_tasks(computation_root);
+	    init_tstatus(tstatus_temporary); tstatus_temporary.clear();
+	    init_tarray(tarray_temporary); tarray_temporary.clear();
+
+	    // 2022-05-30: It is still not clear to me what is the right absolute order here.
+	    // In the future, it makes sense to do some prioritization in the task queue.
+	    // Until then, we just reverse the queue (largest items go first). This leads
+	    // to a lot of failures early, but these failures will be quick.
+
+	    // permute_tarray_tstatus(); // We do not permute currently.
+	    reverse_tarray_tstatus();
+
+	    // print_tasks(); // Large debug print.
+
+	    // irrel_taskq.init(tcount);
+	    // note: do not push into irrel_taskq before permutation is done;
+	    // the numbers will not make any sense.
+
+	    print_if<PROGRESS>("Queen: Generated %d tasks.\n", tcount);
+	    comm.bcast_send_tcount(tcount);
+	    // Synchronize tarray.
+	    for (int i = 0; i < tcount; i++)
+	    {
+		flat_task transport = tarray[i].flatten();
+		comm.bcast_send_flat_task(transport);
+	    }
+
+	    // Synchronize tstatus.
+	    int *tstatus_transport_copy = new int[tcount];
+	    for (int i = 0; i < tcount; i++)
+	    {
+		tstatus_transport_copy[i] = static_cast<int>(tstatus[i].load());
+	    }
+	    // After "de-atomizing" it, use a generic array broadcast.
+	    comm.bcast_send_int_array(QUEEN, tstatus_transport_copy, tcount);
+	    delete[] tstatus_transport_copy;
+
+	    print_if<PROGRESS>("Queen: Tasks synchronized.\n");
+
+	    // broadcast_tarray_tstatus();
+	    taskpointer = 0;
+
+	    auto x = std::thread(&queen_class::updater, this, computation_root);
+	    // wake up updater thread.
+
+	    // Main loop of this thread (the variable is updated by the other thread).
+	    while(updater_result == victory::uncertain)
+	    {
+		collect_worker_tasks();
+		comm.collect_runlows(); // collect_running_lows();
+
+		// We wish to have the loop here, so that net/ is independent on compose_batch().
+		for (int overseer = 1; overseer < world_size; overseer++)
+		{
+		    if (comm.is_running_low(overseer))
+		    {
+			//check_batch_finished(overseer);
+			compose_batch(batches[overseer]);
+			comm.send_batch(batches[overseer], overseer);
+			comm.satisfied_runlow(overseer);
+		    }
+		}
+
+		// comm.compose_and_send_batches(); // send_out_batches();
+		std::this_thread::sleep_for(std::chrono::milliseconds(TICK_SLEEP));
+	    }
+
+	    // suspend updater thread
+	    x.join();
+
+	    // Updater_result is no longer POSTPONED; end the round.
+	    // Send ROOT_SOLVED signal to workers that wait for tasks and those
+	    // that process tasks.
+	    comm.send_root_solved();
+	    // collect remaining, unnecessary solutions
+	    destroy_tarray();
+	    destroy_tstatus();
+	    comm.round_end();
+	    comm.ignore_additional_solutions();
+	}
+	// --- END PARALLEL PHASE ---
+	// --- BEGIN CLEANUP PHASE ---
+	perf_timer.parallel_phase_end();
+	perf_timer.new_sapling_end(job);
+
+	job.mark_complete();
+	if (updater_result == victory::adv)
+	{
+	    winning_saplings++;
+	    cleanup_after_adv_win(qdag, job); // Cleanup also prunes winning saplings.
+	} else
+	{
+	    losing_binconf = job.root->bc;
+	    ret = 1;
 	    break;
 	}
-	
+
+	// return value is 0, but the tree needs to be expanded.
+	assert(updater_result == victory::adv);
+
+        // --- END CLEANUP PHASE ---
+	job = sap_man.find_sapling();
 	sapling_no++;
     }
 
+    // --- End of the whole evaluation loop. ---
+    
     // We currently print output when:
-    // ONEPASS is false, the last sapling was winning for Algorithm,
+    // the last sapling was winning for Algorithm,
     // and there are no more saplings in the queue.
-    if (!ONEPASS && ret == 0 && sapling_counter == 0)
+    if (ret == 0 && sapling_counter == 0)
     {
 	output_useful = true;
     }
@@ -439,12 +376,7 @@ int queen_class::start()
     comm.receive_measurements();
     comm.round_end();
 
-    if (PROGRESS)
-    {
-	scheduler_end = std::chrono::system_clock::now();
-	std::chrono::duration<long double> scheduler_time = scheduler_end - scheduler_start;
-	print_if<PROGRESS>("Full evaluation time: %Lfs.\n", scheduler_time.count());
-    }
+    perf_timer.queen_end();
 
     // Print the treetop of the tree (with tasks offloaded) for logging purposes.
     if (ret != 1)

@@ -139,12 +139,6 @@ void main_thread(int ws, int wr, int argc, char** argv)
 		}
 	    }
 
-	    /*if (!CUSTOM_ADVICEFILE)
-	    {
-		sprintf(ADVICE_FILENAME, "./experiments/advice-%d-%d-%d.txt", (int) BINS, (int) R, (int) S);
-		}*/
-
-
 	    // create output file name
 	    sprintf(outfile, "%d_%d_%dbins.dot", R,S,BINS);
  
@@ -170,18 +164,17 @@ void main_thread(int ws, int wr, int argc, char** argv)
 	    fprintf(stdout, "Lower bound for %d/%d Bin Stretching on %d bins with monotonicity %d",
 		    R,S,BINS,monotonicity);
 	} else {
-	    fprintf(stdout, "Algorithm wins %d/%d Bin Stretching on %d bins with sequence:\n", R,S,BINS);
+	    fprintf(stdout, "Algorithm wins %d/%d Bin Stretching on %d bins with monotonicity %d. ",
+		    R,S,BINS,monotonicity);
+
+	    fprintf(stdout, "Losing sapling configuration:\n");
+	    print_binconf_stream(stdout, losing_binconf);
 	}
 	
 	fprintf(stderr, "Number of tasks: %d, collected tasks: %u,  pruned tasks %" PRIu64 ".\n,",
 		tcount, qmemory::collected_cumulative.load(), removed_task_count);
 	fprintf(stderr, "Pruned & transmitted tasks: %" PRIu64 "\n", irrel_transmitted_count);
-
-	if (ONEPASS)
-	{
-	    fprintf(stderr, "Monotonicity %d: Number of winning saplings %d, losing saplings: %d.\n", monotonicity,
-		    winning_saplings, losing_saplings);
-	}
+	fprintf(stderr, "Number of winning saplings %d.\n", winning_saplings);
 
 	hashtable_cleanup();
     }
