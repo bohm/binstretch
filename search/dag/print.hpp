@@ -91,13 +91,19 @@ void adversary_vertex::print(FILE *stream, bool debug)
     {
 	assert(out.size() == 0);
 	fprintf(stream, ",task=true");
-    } else if (sapling)
+    }
+    
+    if (sapling)
     {
 	fprintf(stream, ",sapling=true");
-    } else if (reference) // Reference to another tree in a list -- only makes sense for rooster.cpp.
+    }
+    
+    if (reference) // Reference to another tree in a list -- only makes sense for rooster.cpp.
     {
 	fprintf(stream, ",reference=true");
-    } else if (heur_vertex)
+    }
+
+    if (heur_vertex)
     {
 	assert(heur_strategy != NULL);
 	fprintf(stream, ",heur=\"%s\"", heur_strategy->print(&bc).c_str() );

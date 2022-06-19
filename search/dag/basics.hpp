@@ -283,6 +283,37 @@ template <minimax MODE> void dag::remove_outedges_except(adversary_vertex *v, in
     //assert(v->out.size() == 1);
 }
 
+// Removes all losing outedges for adv.
+template <minimax MODE> void dag::remove_losing_outedges(adversary_vertex *v)
+{
+    std::list<adv_outedge*>::iterator it = v->out.begin();
+    // We do the actual removal in this loop, so we can remove edges easily.
+    while (it != v->out.end())
+    {
+	algorithm_vertex *down = (*it)->to;
+	if (down->win != victory::adv)
+	{
+	    remove_inedge<MODE>(*it);
+	    del_adv_outedge(*it);
+	    it = v->out.erase(it); // serves as it++
+	} else
+	{
+	    it++;
+	}
+    }
+}
+
+// Removes all outedges except the last one (from the front of the list).
+template <minimax MODE> void dag::remove_outedges_except_last(adversary_vertex *v)
+{
+    while (v->out.size() > 1)
+    {
+	remove_inedge<MODE>(*(v->out.begin()));
+	del_adv_outedge(*(v->out.begin()));
+	v->out.erase(v->out.begin());
+    }
+}
+
 // Just mark reachable vertices as visited.
 
 void dag::mark_reachable(adversary_vertex *v)

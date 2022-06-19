@@ -309,20 +309,151 @@ void fix_vertices_remove_tasks(dag *d, sapling job)
 }
 
 
+
+// Some very particular corner cases may happen. For example,
+// a vertex marked as a sapling originally may become a task
+// (which means it is reachable from another sapling) but it
+// is left unresolved.
+
+// This might lead to strange cases, such as vertices existing below
+// a sapling which are not evaluated yet.
+
+// Keeping a list of saplings might lead to issues when regrow is
+// started, as there are technically saplings appearing (and disappearing).
+
+// It is best to allow for a linear-time traversal and cleanup.
+
+void cleanup_dag_rec(dag *d, adversary_vertex *adv_v);
+void cleanup_dag_rec(dag *d, algorithm_vertex *alg_v);
+int sapling_counter = 0; // Currently counts only non-evaluated saplings.
+
+void cleanup_dag_from_root(dag *d)
+{
+    sapling_counter = 0;
+    d->clear_visited();
+    cleanup_dag_rec(d, d->root);
+}
+
+void cleanup_dag_rec(dag *d, adversary_vertex *adv_v)
+{
+    if (adv_v->visited)
+    {
+	return;
+    }
+    adv_v->visited = true;
+
+    if (adv_v->sapling) // evaluation-type sapling
+    {
+	// If the sapling is winning, we just crop all non-winning paths
+	// and also all winning paths except one.
+	
+	if (adv_v->win == victory::adv)
+	{
+	    adv_v->sapling = false;
+	    d->remove_losing_outedges<minimax::generating>(adv_v);
+	    d->remove_outedges_except_last<minimax::generating>(adv_v);
+	}
+	else if (adv_v->win == victory::alg)
+	{
+	    adv_v->print(stderr, true);
+	    ERROR("One of the saplings is actually winning for ALG. This marks some inconistency in the graph.");
+	}
+	else // victory::uncertain
+	{
+	    // Remove all edges going down from the sapling. It will continue to be a sapling.
+	    d->remove_outedges<minimax::generating>(adv_v);
+	    sapling_counter++;
+	}
+    } else if (adv_v->state == vert_state::expandable) // expansion-type sapling
+    {
+	// I am skipping this for now, but it will be important very soon.
+    }
+
+    // Cleanup rules for tasks (note: in corner cases, a vertex might be both a sapling and a task).
+    if (adv_v->task)
+    {
+	adv_v->task = false; // All tasks should be gone after a cleanup.
+	
+	// If the task was never evaluated, it just loses the task status.
+	if (adv_v->win == victory::uncertain)
+	{
+	    d->remove_outedges<minimax::generating>(adv_v);
+	}
+
+	if (adv_v->win == victory::adv)
+	{
+	    if (adv_v->out.size() != 0)
+	    {
+		// If a task actually ends up with an edge towards somewhere else,
+		// this means that the task actually has a winning strategy already in the tree.
+		// It is a rare case, but it (maybe) still can happen. We just unmark it at this point.
+
+		assert(adv_v->out.size() == 1);
+	    } else
+	    {
+		// A normal task, looks like a leaf. Mark as expandable.
+		adv_v->state = vert_state::expandable;
+		adv_v->regrow_level = glob_last_regrow_level+1;
+	    }
+	}
+    }
+
+    // Cleanup rules for fresh vertices.
+
+    if (adv_v->state == vert_state::fresh)
+    {
+	if (adv_v->win == victory::adv)
+	{
+	    d->remove_losing_outedges<minimax::generating>(adv_v);
+	    d->remove_outedges_except_last<minimax::generating>(adv_v);
+	    adv_v->state = vert_state::fixed;
+	}
+
+	// if (adv_v->win == victory::uncertain) {}
+        // We keep the remaining uncertain vertices in the tree, as they are
+	// parts of paths from the root which are yet to be evaluated. We also keep them fresh.
+	
+    }
+
+    // We now recurse on all edges which remain in the graph.
+
+    for(adv_outedge *e: adv_v->out)
+    {
+	cleanup_dag_rec(d, e->to);
+    }
+}
+
+void cleanup_dag_rec(dag *d, algorithm_vertex *alg_v)
+{
+    if (alg_v->visited)
+    {
+	return;
+    }
+    alg_v->visited = true;
+    
+    for(alg_outedge *e: alg_v->out)
+    {
+	cleanup_dag_rec(d, e->to);
+    }
+}
+
 void cleanup_after_adv_win(dag *d, sapling job)
 {
-    cleanup_winning_subtree(d, job.root);
-    fix_vertices_remove_tasks(d, job);
+    // cleanup_winning_subtree(d, job.root);
+    // fix_vertices_remove_tasks(d, job);
+
+    cleanup_dag_from_root(d);
     if(job.expansion)
     {
 	finish_branches(d, job.root);
     }
 
-    update_and_count_saplings(d);
+    // update_and_count_saplings(d);
     // Consistency checks.
-    assert_no_tasks(qdag);
+    assert_no_tasks(d);
     consistency_checker c(d, false);
     c.check();
 }
+
 
 #endif

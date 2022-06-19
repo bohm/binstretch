@@ -159,7 +159,9 @@ int queen_class::start()
 
     int regrow_threshold = 0;
     int last_regrow_threshold = 0;
-    update_and_count_saplings(qdag); // Leave only uncertain saplings.
+    // update_and_count_saplings(qdag); // Leave only uncertain saplings.
+
+    cleanup_dag_from_root(qdag);
     sapling job = sap_man.find_sapling(); // Can find a sapling to expand or evaluate.
     while (job.root != nullptr)
     {

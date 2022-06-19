@@ -161,10 +161,10 @@ void main_thread(int ws, int wr, int argc, char** argv)
 	assert(ret == 0 || ret == 1);
 	if(ret == 0)
 	{
-	    fprintf(stdout, "Lower bound for %d/%d Bin Stretching on %d bins with monotonicity %d",
+	    fprintf(stdout, "Lower bound for %d/%d Bin Stretching on %d bins with monotonicity %d.\n",
 		    R,S,BINS,monotonicity);
 	} else {
-	    fprintf(stdout, "Algorithm wins %d/%d Bin Stretching on %d bins with monotonicity %d. ",
+	    fprintf(stdout, "Algorithm wins %d/%d Bin Stretching on %d bins with monotonicity %d.\n ",
 		    R,S,BINS,monotonicity);
 
 	    fprintf(stdout, "Losing sapling configuration:\n");

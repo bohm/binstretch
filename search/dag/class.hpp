@@ -80,6 +80,9 @@ public:
     template <minimax MODE> void remove_edge(adv_outedge *e);
 
     template <minimax MODE> void remove_outedges_except(adversary_vertex *v, int right_item);
+    template <minimax MODE> void remove_outedges_except_last(adversary_vertex *v);
+    template <minimax MODE> void remove_losing_outedges(adversary_vertex *v);
+  
 
     // Printing subroutines.
     void print_lowerbound_dfs(adversary_vertex *v, FILE* stream, bool debug = false);
