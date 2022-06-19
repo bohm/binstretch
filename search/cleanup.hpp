@@ -323,6 +323,9 @@ void fix_vertices_remove_tasks(dag *d, sapling job)
 
 // It is best to allow for a linear-time traversal and cleanup.
 
+// Note: Currently, the cleanup does not stop at fixed or finished vertices.
+// It may make sense to stop there.
+
 void cleanup_dag_rec(dag *d, adversary_vertex *adv_v);
 void cleanup_dag_rec(dag *d, algorithm_vertex *alg_v);
 int sapling_counter = 0; // Currently counts only non-evaluated saplings.
@@ -430,6 +433,11 @@ void cleanup_dag_rec(dag *d, algorithm_vertex *alg_v)
 	return;
     }
     alg_v->visited = true;
+
+    if (adv_v->state == vert_state::fresh && adv_v->win == victory::adv)
+    {
+	adv_v->state = vert_state::fixed;
+    }
     
     for(alg_outedge *e: alg_v->out)
     {
