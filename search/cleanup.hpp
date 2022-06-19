@@ -450,6 +450,12 @@ void cleanup_after_adv_win(dag *d, sapling job)
     // cleanup_winning_subtree(d, job.root);
     // fix_vertices_remove_tasks(d, job);
 
+    // For debugging purposes, we do two consistency checks.
+
+    fprintf(stderr, "Consistency check before cleanup:\n");
+    consistency_checker c1(d, false);
+    c1.check();
+   
     cleanup_dag_from_root(d);
     if(job.expansion)
     {
@@ -458,9 +464,11 @@ void cleanup_after_adv_win(dag *d, sapling job)
 
     // update_and_count_saplings(d);
     // Consistency checks.
+
+    fprintf(stderr, "Consistency check after cleanup:\n");
     assert_no_tasks(d);
-    consistency_checker c(d, false);
-    c.check();
+    consistency_checker c2(d, false);
+    c2.check();
 }
 
 
