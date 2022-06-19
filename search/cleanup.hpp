@@ -434,9 +434,9 @@ void cleanup_dag_rec(dag *d, algorithm_vertex *alg_v)
     }
     alg_v->visited = true;
 
-    if (adv_v->state == vert_state::fresh && adv_v->win == victory::adv)
+    if (alg_v->state == vert_state::fresh && alg_v->win == victory::adv)
     {
-	adv_v->state = vert_state::fixed;
+	alg_v->state = vert_state::fixed;
     }
     
     for(alg_outedge *e: alg_v->out)
