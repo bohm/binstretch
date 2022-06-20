@@ -80,28 +80,35 @@ std::pair<algorithm_vertex *, adv_outedge*> attach_matching_vertex(dag *d, adver
 
     algorithm_vertex* upcoming_alg = nullptr;
     adv_outedge* connecting_outedge = nullptr;
-    // Optimization: if the vertex state is fixed, then it was created before, and we do not need
-    // to search in the big graph.
 
-    // In fact, when it is fixed, there should be exactly one move (for adversary).
-    if (adv_to_evaluate->state == vert_state::fixed)
+    // We have removed the special case for fixed vertices.
+    // Fixed vertices should never really reach this function.
+    assert(adv_to_evaluate->state != vert_state::fixed);
+    
+    // Check vertex cache if this algorithmic vertex is already present.
+    auto it = d->alg_by_hash.find(adv_to_evaluate->bc.alghash(next_item));
+    if (it == d->alg_by_hash.end())
     {
-	assert(adv_to_evaluate->out.size() == 1);
-	std::list<adv_outedge*>::iterator it = adv_to_evaluate->out.begin();
+	// The vertex is not present, and so the edge is not present either.
+	upcoming_alg = d->add_alg_vertex(adv_to_evaluate->bc, next_item);
+	connecting_outedge = qdag->add_adv_outedge(adv_to_evaluate, upcoming_alg, next_item);
+    } else {
 	
-	upcoming_alg = (*it)->to;
-	return std::pair(upcoming_alg, *it);
-    } else
-    {
-	// Check vertex cache if this algorithmic vertex is already present.
-	// std::map<llu, adversary_vertex*>::iterator it;
-	auto it = d->alg_by_hash.find(adv_to_evaluate->bc.alghash(next_item));
-	if (it == d->alg_by_hash.end())
+	// The vertex exists, and so the edge might also exist.  The
+	// check creates a mild slowdown in principle, as we traverse a
+	// list. Still, only in the generation phase, which is
+	// likely never to be a bottleneck.
+
+	upcoming_alg = it->second;
+	
+	auto edge_localization = std::find_if(adv_to_evaluate->out.begin(), adv_to_evaluate->out.end(),
+					      [next_item](auto it) -> bool {return it->item == next_item;});
+	if (edge_localization != adv_to_evaluate->out.end())
 	{
-	    upcoming_alg = d->add_alg_vertex(adv_to_evaluate->bc, next_item);
-	    connecting_outedge = qdag->add_adv_outedge(adv_to_evaluate, upcoming_alg, next_item);
-	} else {
-	    upcoming_alg = it->second;
+	    connecting_outedge = *edge_localization;
+	}
+	else
+	{
 	    // create new edge
 	    connecting_outedge = qdag->add_adv_outedge(adv_to_evaluate, upcoming_alg, next_item);
 	}
@@ -110,7 +117,6 @@ std::pair<algorithm_vertex *, adv_outedge*> attach_matching_vertex(dag *d, adver
     return std::pair(upcoming_alg, connecting_outedge);
 }
 
-// Currently, attach_matching_vertex() for algorithm does not care about "fixed" vertices.
 std::pair<adversary_vertex *, alg_outedge *> attach_matching_vertex(dag *d,
 								    algorithm_vertex *alg_to_evaluate,
 								    binconf *binconf_after_pack,
@@ -127,7 +133,20 @@ std::pair<adversary_vertex *, alg_outedge *> attach_matching_vertex(dag *d,
 	connecting_outedge = d->add_alg_outedge(alg_to_evaluate, upcoming_adv, target_bin);
     } else {
 	upcoming_adv = it->second;
-	connecting_outedge = d->add_alg_outedge(alg_to_evaluate, upcoming_adv, target_bin);
+
+	// The vertex exists, and so the edge might also exist.
+	auto edge_localization = std::find_if(alg_to_evaluate->out.begin(), alg_to_evaluate->out.end(),
+					      [target_bin](auto it) -> bool {return it->target_bin == target_bin;});
+	if (edge_localization != alg_to_evaluate->out.end())
+	{
+	    connecting_outedge = *edge_localization;
+	}
+	else
+	{
+	    // create new edge
+	    connecting_outedge = d->add_alg_outedge(alg_to_evaluate, upcoming_adv, target_bin);
+	}
+
     }
 
     return std::pair(upcoming_adv, connecting_outedge);
