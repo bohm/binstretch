@@ -231,6 +231,10 @@ int queen_class::start()
 
 	computation_root->win = updater_result.load(std::memory_order_acquire);
 
+	fprintf(stderr, "Consistency check after generation.\n");
+	consistency_checker c_after_gen(qdag, false);
+	c_after_gen.check();
+
 	// If we have already finished via generation, we skip the parallel phase.
 	// We still enter the cleanup phase.
 	if (computation_root->win != victory::uncertain)
