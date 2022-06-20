@@ -173,11 +173,21 @@ void algorithm_vertex::print(FILE *stream, bool debug)
 
 void adv_outedge::print(FILE* stream, bool debug)
 {
+    if (debug)
+    {
+	fprintf(stream, "e%" PRIu64 ": ", id);
+    }
+
     fprintf(stream, "%" PRIu64 " -> %" PRIu64 " [next=%d]\n", from->id, to->id, item);
 }
 
 void alg_outedge::print(FILE* stream, bool debug)
 {
+    if (debug)
+    {
+	fprintf(stream, "e%" PRIu64 ": ", id);
+    }
+
     fprintf(stream, "%" PRIu64 " -> %" PRIu64 " [bin=%d]\n", from->id, to->id, target_bin);
 }
 
@@ -346,6 +356,7 @@ void dag::print_children(adversary_vertex *v)
     fprintf(stderr, "Printing children:\n");
     for(adv_outedge *e : v->out)
     {
+	e->print(stderr,true);
 	e->to->print(stderr, true);
     }
 }
@@ -355,6 +366,7 @@ void dag::print_children(algorithm_vertex *alg_v)
     fprintf(stderr, "Printing children:\n");
     for(alg_outedge *e : alg_v->out)
     {
+	e->print(stderr,true);
 	e->to->print(stderr, true);
     }
 }
