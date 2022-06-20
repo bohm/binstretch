@@ -1,7 +1,27 @@
 #ifndef _DAG_BASICS_HPP
 #define _DAG_BASICS_HPP 1
 
+
 // Short and basic methods for the dag class and vertex/edge classes.
+
+#define VERTEX_ASSERT(DAG, VERT, STATEMENT) \
+    if (!(STATEMENT)) {			    \
+    VERT->print(stderr, true); \
+    DAG->print_children(VERT); \
+    DAG->print_path_to_root(VERT); \
+    assert(STATEMENT); \
+    }
+
+#define EDGE_ASSERT(DAG, EDGE, STATEMENT) \
+    if (!(STATEMENT)) {			  \
+    EDGE->print(stderr, true); \
+    EDGE->from->print(stderr, true); \
+    EDGE->to->print(stderr, true); \
+    DAG->print_children(EDGE->from); \
+    DAG->print_path_to_root(EDGE->to); \
+    assert(STATEMENT); \
+    }
+
 
 algorithm_vertex* dag::add_alg_vertex(const binconf& b, int next_item, std::string optimal = "", bool allow_duplicates = false)
 {

@@ -1,24 +1,7 @@
 #ifndef _DAG_CONSISTENCY_HPP
 #define _DAG_CONSISTENCY_HPP 1
 
-#define VERTEX_ASSERT(DAG, VERT, STATEMENT) \
-    if (!STATEMENT) { \
-    V->print(stderr, true); \
-    DAG->print_children(VERT); \
-    DAG->print_path_to_root(VERT); \
-    assert(STATEMENT); \
-    }
-
-#define EDGE_ASSERT(DAG, EDGE, STATEMENT) \
-    if (!STATEMENT) {\
-    EDGE->print(stderr, true); \
-    EDGE->from->print(stderr, true); \
-    EDGE->to->print(stderr, true); \
-    DAG->print_children(EDGE->from); \
-    DAG->print_path_to_root(EDGE->to); \
-    assert(STATEMENT); \
-    }
-
+#include "../dag/dag.hpp"
 
 class consistency_checker
 {

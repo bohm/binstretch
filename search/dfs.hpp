@@ -123,4 +123,41 @@ void assert_no_tasks(dag *d)
     dfs(d, assert_no_tasks_adv, do_nothing);
 }
 
+// Assert that a vertex has degree 1 if it is winning (run after the cleanup).
+void assert_winning_adversary_degree(adversary_vertex *v)
+{
+    if (v->win == victory::adv)
+    {
+	VERTEX_ASSERT(glob_dfs_dag,v, (v->out.size() <= 1));
+    }
+}
+
+void assert_winning_degrees(dag *d)
+{
+    dfs(d, assert_winning_adversary_degree, do_nothing);
+}
+
+// Assert that there are no fresh winning vertices in the dag (run after the cleanup).
+void assert_no_fresh_winning(adversary_vertex *v)
+{
+    if (v->state == vert_state::fresh)
+    {
+	VERTEX_ASSERT(glob_dfs_dag, v, v->win != victory::adv);
+    }
+}
+
+void assert_no_fresh_winning(algorithm_vertex *v)
+{
+    if (v->state == vert_state::fresh)
+    {
+	VERTEX_ASSERT(glob_dfs_dag, v, v->win != victory::adv);
+    }
+}
+
+void assert_no_fresh_winning(dag *d)
+{
+    dfs(d, assert_no_fresh_winning, assert_no_fresh_winning);
+}
+
+
 #endif

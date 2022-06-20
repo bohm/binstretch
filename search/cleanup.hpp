@@ -467,6 +467,8 @@ void cleanup_after_adv_win(dag *d, sapling job)
 
     fprintf(stderr, "Consistency check after cleanup:\n");
     assert_no_tasks(d);
+    assert_winning_degrees(d);
+    assert_no_fresh_winning(d);
     consistency_checker c2(d, false);
     c2.check();
 }
