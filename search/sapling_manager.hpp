@@ -7,8 +7,6 @@
 class sapling_manager
 {
 private:
-    bool evaluation = true;
-    bool expansion = false;
     int regrow_threshold = 0;
     dag *d = nullptr;
     sapling first_found_job;
@@ -18,6 +16,9 @@ private:
     void find_unexpanded_sapling_adv(adversary_vertex *v);
     void find_unexpanded_sapling_alg(algorithm_vertex *v);
 public:
+    bool evaluation = true;
+    bool expansion = false;
+
     sapling_manager(dag *graph)
 	{
 	    d = graph; // The graph pointer does not need to change during the computation.

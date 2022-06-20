@@ -169,6 +169,7 @@ int queen_class::start()
 	perf_timer.new_sapling_start();
 	perf_timer.init_phase_start();
 
+
 	job.mark_in_progress();
 	regrow_threshold = job.regrow_level;
 	
@@ -361,6 +362,29 @@ int queen_class::start()
 	// return value is 0, but the tree needs to be expanded.
 	assert(updater_result == victory::adv);
 
+	// If the root is fully computed and winning for anyone, we stop.
+	if (qdag->root->win != victory::uncertain)
+	{
+	    sap_man.evaluation = false;
+	    if (qdag->root->win == victory::alg)
+	    {
+		ret = 1;
+	    } else
+	    {
+		// ret = 0; // Not needed.
+		// Clean the full graph, starting from the root.
+		sapling rootjob;
+		rootjob.root = qdag->root;
+		fprintf(stderr, "Begin root cleanup.\n");
+		cleanup_after_adv_win(qdag, rootjob);
+		if (REGROW)
+		{
+		    sap_man.expansion = true;
+		}
+	    }
+	    break; // We break either way if win is victory::adv or victory::alg.
+	}
+	
         // --- END CLEANUP PHASE ---
 	job = sap_man.find_sapling();
 	sapling_no++;
@@ -368,14 +392,6 @@ int queen_class::start()
 
     // --- End of the whole evaluation loop. ---
     
-    // We currently print output when:
-    // the last sapling was winning for Algorithm,
-    // and there are no more saplings in the queue.
-    if (ret == 0 && sapling_counter == 0)
-    {
-	output_useful = true;
-    }
-
     // We are terminating, start final round.
     print_if<COMM_DEBUG>("Queen: starting final round.\n");
     comm.round_start_and_finality(true);
@@ -395,7 +411,7 @@ int queen_class::start()
     }
     
     // We now print the full output only once, after a full tree is generated.
-    if (OUTPUT && output_useful)
+    if (OUTPUT)
     {
 	savefile(qdag, qdag->root);
     }
