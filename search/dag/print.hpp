@@ -350,9 +350,18 @@ void dag::print_children(adversary_vertex *v)
     }
 }
 
+void dag::print_children(algorithm_vertex *alg_v)
+{
+    fprintf(stderr, "Printing children:\n");
+    for(alg_outedge *e : alg_v->out)
+    {
+	e->to->print(stderr, true);
+    }
+}
+
 void dag::print_path_to_root(adversary_vertex *v)
 {
-
+    fprintf(stderr, "Path to root:\n");
     adversary_vertex *cur = v;
     int ic_old = v->bc.itemcount();
     while(cur != root)
@@ -369,5 +378,14 @@ void dag::print_path_to_root(adversary_vertex *v)
 	assert(ic_new == ic_old - 1);
 	ic_old = ic_new;
     }
+}
+
+void dag::print_path_to_root(algorithm_vertex *alg_v)
+{
+    fprintf(stderr, "Path to root:\n");
+    alg_v->print(stderr, true);
+    assert(alg_v->in.size() != 0);
+    adv_outedge *e = *(alg_v->in.begin());
+    print_path_to_root(e->from);
 }
 #endif

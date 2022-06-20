@@ -1,6 +1,25 @@
 #ifndef _DAG_CONSISTENCY_HPP
 #define _DAG_CONSISTENCY_HPP 1
 
+#define VERTEX_ASSERT(DAG, VERT, STATEMENT) \
+    if (!STATEMENT) { \
+    V->print(stderr, true); \
+    DAG->print_children(VERT); \
+    DAG->print_path_to_root(VERT); \
+    assert(STATEMENT); \
+    }
+
+#define EDGE_ASSERT(DAG, EDGE, STATEMENT) \
+    if (!STATEMENT) {\
+    EDGE->print(stderr, true); \
+    EDGE->from->print(stderr, true); \
+    EDGE->to->print(stderr, true); \
+    DAG->print_children(EDGE->from); \
+    DAG->print_path_to_root(EDGE->to); \
+    assert(STATEMENT); \
+    }
+
+
 class consistency_checker
 {
 public:
@@ -60,6 +79,7 @@ void consistency_checker::consistency_traversal_rec(adversary_vertex *adv_v)
 
 	// Check that it is present in from's out-list.
 	algorithm_vertex *alg_from = e->from;
+	EDGE_ASSERT(d, e, (std::find(alg_from->out.begin(), alg_from->out.end(), e) != alg_from->out.end()));
 	assert(std::find(alg_from->out.begin(), alg_from->out.end(), e) != alg_from->out.end());
     }
     
@@ -69,7 +89,8 @@ void consistency_checker::consistency_traversal_rec(adversary_vertex *adv_v)
 
 	// Check that it is present in from's out-list.
 	algorithm_vertex *alg_to = e->to;
-	assert(std::find(alg_to->in.begin(), alg_to->in.end(), e) != alg_to->in.end());
+	EDGE_ASSERT(d, e, (std::find(alg_to->in.begin(), alg_to->in.end(), e) != alg_to->in.end()));
+	// assert(std::find(alg_to->in.begin(), alg_to->in.end(), e) != alg_to->in.end());
     }
 
     // Now, recurse.
@@ -101,7 +122,8 @@ void consistency_checker::consistency_traversal_rec(algorithm_vertex *alg_v)
 
 	// Check that it is present in from's out-list.
 	adversary_vertex *adv_from = e->from;
-	assert(std::find(adv_from->out.begin(), adv_from->out.end(), e) != adv_from->out.end());
+	EDGE_ASSERT(d, e, (std::find(adv_from->out.begin(), adv_from->out.end(), e) != adv_from->out.end()));
+	// assert(std::find(adv_from->out.begin(), adv_from->out.end(), e) != adv_from->out.end());
     }
     
     for(alg_outedge *e : alg_v->out)
@@ -110,7 +132,8 @@ void consistency_checker::consistency_traversal_rec(algorithm_vertex *alg_v)
 
 	// Check that it is present in from's out-list.
 	adversary_vertex *adv_to = e->to;
-	assert(std::find(adv_to->in.begin(), adv_to->in.end(), e) != adv_to->in.end());
+	EDGE_ASSERT(d, e, (std::find(adv_to->in.begin(), adv_to->in.end(), e) != adv_to->in.end()));
+	// assert(std::find(adv_to->in.begin(), adv_to->in.end(), e) != adv_to->in.end());
     }
 
     // Now, recurse.

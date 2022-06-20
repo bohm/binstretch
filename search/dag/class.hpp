@@ -94,7 +94,9 @@ public:
     void print_subdag(adversary_vertex *v, FILE* stream, bool debug = false);
     void print_subdag(algorithm_vertex *v, FILE* stream, bool debug = false);
     void print_path_to_root(adversary_vertex *v);
+    void print_path_to_root(algorithm_vertex *alg_v);
     void print_children(adversary_vertex *v);
+    void print_children(algorithm_vertex *v);
 
     // Cloning subroutines.
     dag* subdag(adversary_vertex *newroot);
