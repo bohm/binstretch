@@ -49,6 +49,7 @@ public:
     heuristic_strategy *current_strategy = NULL;
     uint64_t overdue_tasks = 0;
     int regrow_level = 0;
+    bool evaluation = true;
 
     assumptions assumer; // An assumptions cache.
     

@@ -6,7 +6,7 @@
 #include "minimax/sequencing.hpp"
 #include "tasks.hpp"
 #include "server_properties.hpp"
-#include "loadfile.hpp"
+// #include "loadfile.hpp"
 #include "saplings.hpp"
 #include "savefile.hpp"
 #include "performance_timer.hpp"
@@ -29,14 +29,16 @@ queen_class::queen_class(int argc, char** argv)
 {
 }
 
-void queen_class::updater(adversary_vertex* sapling)
+void queen_class::updater(sapling job)
 {
 
     unsigned int last_printed = 0;
     qmemory::collected_cumulative = 0;
     unsigned int cycle_counter = 0;
-
-    while (updater_result == victory::uncertain)
+    updater_computation ucomp(qdag, job);
+    
+    // while (ucomp.root_result == victory::uncertain && ucomp.updater_result == victory::uncertain)
+    while (ucomp.continue_updating())
     {
 	std::this_thread::sleep_for(std::chrono::milliseconds(TICK_SLEEP));
 	// unsigned int currently_collected = collect_tasks();
@@ -50,59 +52,70 @@ void queen_class::updater(adversary_vertex* sapling)
 	
 	// update main tree and task map
 	// bool should_do_update = ((qmemory::collected_now >= TICK_TASKS) || (tcount - thead <= TICK_TASKS)) && (updater_result == POSTPONED);
-	bool should_do_update = true;
+	const bool should_do_update = true;
 	if (should_do_update)
 	{
 	    cycle_counter++;
 	    qmemory::collected_now.store(0, std::memory_order_release);
-	    update_attr uat;
-	    qdag->clear_visited();
-	    updater_result.store(update(sapling, uat), std::memory_order_release);
+	    // updater_result.store(update(sapling, uat), std::memory_order_release);
+	    ucomp.update();
 	    if (cycle_counter >= 100)
 	    {
 		print_if<VERBOSE>("Update: Visited %" PRIu64 " verts, unfinished tasks in tree: %" PRIu64 ".\n",
-			   uat.vertices_visited, uat.unfinished_tasks);
+			   ucomp.vertices_visited, ucomp.unfinished_tasks);
 
-		if (VERBOSE && uat.unfinished_tasks <= 10)
+		if(VERBOSE)
 		{
-		    print_unfinished_with_binconf(sapling);
+		    job.print_sapling(stderr);
+		}
+		if(ucomp.unfinished_tasks == 0 && job.root->win == victory::uncertain)
+		{
+		    /*
+		    FILE *flog = fopen("./logs/uncertain-job.log", "w");
+		    qdag->clear_visited();
+		    qdag->print_lowerbound_dfs(job.root, flog, true);
+		    fclose(flog);
+		    */
+		    
+		}
+		if (VERBOSE && ucomp.unfinished_tasks <= 10)
+		{
+		    // print_unfinished_with_binconf(job.root);
 		}
 
 		if (TASK_DEBUG)
 		{
-		    print_unfinished(sapling);
+		    // print_unfinished(job.root);
 		}
 		
 		cycle_counter = 0;
 	    }
 
-	    // TODO: make these work again.
-	    if (updater_result == victory::uncertain && uat.unfinished_tasks == 0)
-	    {
-		print_if<true>("The tree is in a strange state.\n");
-		// fprintf(stderr, "A debug tree will be created with extra id 99.\n");
-		// print_debug_dag(computation_root, 0, 99);
-		assert(updater_result != victory::uncertain || uat.unfinished_tasks > 0);
-	    }
-
-	    if (debug_print_requested.load(std::memory_order_acquire) == true)
-	    {
-		print_if<true>("Queen: printing the current state of the tree, as requested.\n");
-		// fprintf(stderr, "A debug tree will be created with extra id 100.\n");
-		// print_debug_dag(computation_root, 0, 100);
-		debug_print_requested.store(false, std::memory_order_release);
-	    }
-
-	    if (updater_result != victory::uncertain)
+	    if (!ucomp.continue_updating()) 
 	    {
 		fprintf(stderr, "We have evaluated the tree: ");
-		print(stderr, updater_result.load(std::memory_order_acquire));
+		fprintf(stderr, "updater=");
+		print(stderr, ucomp.updater_result);
+		fprintf(stderr, " root=");
+		print(stderr, ucomp.root_result);
+
+		/*
+		FILE *flog = fopen("./logs/algwin.log", "w");
+		qdag->clear_visited();
+		qdag->print_lowerbound_dfs(job.root, flog, true);
+		fclose(flog);
+		*/
+
 		fprintf(stderr, "\n");
+
 		print_if<MEASURE>("Prune/receive collisions: %" PRIu64 ".\n", g_meas.pruned_collision);
 		g_meas.pruned_collision = 0;
+		
+		assert(ucomp.updater_result != victory::uncertain);
 	    }
 	}
     }
+    updater_running.store(false);
 }
 
 int queen_class::start()
@@ -111,6 +124,7 @@ int queen_class::start()
     int ret = 0;
     bool output_useful = false; // Set to true when it is clear output will be printed.
     performance_timer perf_timer;
+    uint64_t sapling_counter = 0;
     
     comm.deferred_construction(world_size);
     std::string machine_name = comm.machine_name();
@@ -161,7 +175,8 @@ int queen_class::start()
     int last_regrow_threshold = 0;
     // update_and_count_saplings(qdag); // Leave only uncertain saplings.
 
-    cleanup_dag_from_root(qdag);
+    cleanup_after_adv_win(qdag, true);
+    sapling_counter = sap_man.count_uncertain_boundary();
     sapling job = sap_man.find_sapling(); // Can find a sapling to expand or evaluate.
     while (job.root != nullptr)
     {
@@ -180,7 +195,7 @@ int queen_class::start()
 	{
 	    assert(job.expansion);
 	    // We reset the job to be uncertain, so that minimax generation actually does something.
-	    computation_root->win = victory::uncertain;
+	    // computation_root->win = victory::uncertain;
 	}
 
 	// Currently we cannot expand a vertex with outedges.
@@ -201,8 +216,15 @@ int queen_class::start()
 	task_load = TASK_LOAD_INIT + job.regrow_level * TASK_LOAD_STEP;
 
 	// We do not regrow with a for loop anymore, we regrow using the job system in the DAG instead.
-	print_if<PROGRESS>("Queen: sapling count: %d, current sapling of regrow level %d:\n", sapling_counter, job.regrow_level);
+	print_if<PROGRESS>("Queen: Boundary count: %d, current sapling of regrow level %d:\n", sapling_counter, job.regrow_level);
 	print_binconf<PROGRESS>(computation_root->bc);
+
+	/*
+	FILE *flog = fopen("./logs/before-generation.log", "w");
+	qdag->clear_visited();
+	qdag->print_lowerbound_dfs(qdag->root, flog, true);
+	fclose(flog);
+	*/
 
 	computation<minimax::generating> comp;
 	comp.regrow_level = job.regrow_level;
@@ -228,6 +250,8 @@ int queen_class::start()
 	perf_timer.generation_phase_start();
 
 	updater_result = generate<minimax::generating>(job, &comp);
+	mark_tasks(qdag, job);
+	
 	perf_timer.generation_phase_end();
 
 	computation_root->win = updater_result.load(std::memory_order_acquire);
@@ -304,11 +328,12 @@ int queen_class::start()
 	    // broadcast_tarray_tstatus();
 	    taskpointer = 0;
 
-	    auto x = std::thread(&queen_class::updater, this, computation_root);
+	    updater_running.store(true);
+	    auto x = std::thread(&queen_class::updater, this, job);
 	    // wake up updater thread.
 
 	    // Main loop of this thread (the variable is updated by the other thread).
-	    while(updater_result == victory::uncertain)
+	    while (updater_running.load())
 	    {
 		collect_worker_tasks();
 		comm.collect_runlows(); // collect_running_lows();
@@ -348,10 +373,10 @@ int queen_class::start()
 	perf_timer.new_sapling_end(job);
 
 	job.mark_complete();
-	if (updater_result == victory::adv)
+	if (job.root->win == victory::adv)
 	{
 	    winning_saplings++;
-	    cleanup_after_adv_win(qdag, job); // Cleanup also prunes winning saplings.
+	    cleanup_after_adv_win(qdag, job.evaluation); // Cleanup also prunes winning saplings.
 	} else
 	{
 	    losing_binconf = job.root->bc;
@@ -360,7 +385,7 @@ int queen_class::start()
 	}
 
 	// return value is 0, but the tree needs to be expanded.
-	assert(updater_result == victory::adv);
+	assert(job.root->win == victory::adv);
 
 	// If the root is fully computed and winning for anyone, we stop.
 	if (qdag->root->win != victory::uncertain)
@@ -369,6 +394,7 @@ int queen_class::start()
 	    if (qdag->root->win == victory::alg)
 	    {
 		ret = 1;
+
 	    } else
 	    {
 		// ret = 0; // Not needed.
@@ -376,7 +402,7 @@ int queen_class::start()
 		sapling rootjob;
 		rootjob.root = qdag->root;
 		fprintf(stderr, "Begin root cleanup.\n");
-		cleanup_after_adv_win(qdag, rootjob);
+		cleanup_after_adv_win(qdag, job.evaluation);
 		if (REGROW)
 		{
 		    sap_man.expansion = true;
@@ -386,6 +412,7 @@ int queen_class::start()
 	}
 	
         // --- END CLEANUP PHASE ---
+	sapling_counter = sap_man.count_uncertain_boundary();
 	job = sap_man.find_sapling();
 	sapling_no++;
     }
@@ -398,6 +425,12 @@ int queen_class::start()
     comm.receive_measurements();
     comm.round_end();
 
+    // Global post-evaluation checks belong here.
+    if (ret == 0)
+    {
+	assert(qdag->root->win == victory::adv);
+    }
+    
     perf_timer.queen_end();
 
     // Print the treetop of the tree (with tasks offloaded) for logging purposes.

@@ -14,7 +14,7 @@
 #include "thread_attr.hpp"
 #include "minimax/computation.hpp"
 #include "dag/dag.hpp"
-#include "tree_print.hpp"
+// #include "tree_print.hpp"
 #include "hash.hpp"
 #include "cache/guarantee.hpp"
 #include "cache/state.hpp"
@@ -101,15 +101,35 @@ template<minimax MODE> victory computation<MODE>::adversary(adversary_vertex *ad
 	}
 	adv_to_evaluate->visited = true;
 
+	
 	// We do not proceed further with expandable or finished vertices. The expandable ones need to be visited
 	// again, but the single one being expanded will be relabeled as "expanding".
-	if (adv_to_evaluate->state == vert_state::fixed ||
-	    adv_to_evaluate->state == vert_state::finished ||
-	    adv_to_evaluate->state == vert_state::expandable)
+	if (adv_to_evaluate->state == vert_state::finished)
 	{
 	    assert(adv_to_evaluate->win == victory::adv);
 	    return adv_to_evaluate->win;
 	}
+
+	// In the evaluation mode, we do not go down vertices that are fixed.
+	// In expansion mode, this only holds for finished vertices.
+	if (evaluation)
+	{
+	    if (adv_to_evaluate->state == vert_state::fixed)
+	    {
+		assert(adv_to_evaluate->win == victory::adv);
+		return adv_to_evaluate->win;
+	    }
+	}
+
+	// Any vertex which is touched by generation becomes temporarily a non-leaf.
+	// In principle, it might become a leaf again, if say the task function decides -- but
+	// we just mark it as such.
+
+	if (adv_to_evaluate->leaf == leaf_type::boundary)
+	{
+	    adv_to_evaluate->leaf = leaf_type::nonleaf;
+	}
+
 
 	// Check the assumptions cache and immediately mark this vertex as solved if present.
 	// (Mild TODO: we should probably mark it in the tree as solved in some way, to avoid issues from checking the bound.
@@ -120,6 +140,7 @@ template<minimax MODE> victory computation<MODE>::adversary(adversary_vertex *ad
 	    if(check != victory::uncertain)
 	    {
 		adv_to_evaluate->win = check;
+		adv_to_evaluate->leaf = leaf_type::assumption;
 		return check;
 	    }
 	}
@@ -150,6 +171,7 @@ template<minimax MODE> victory computation<MODE>::adversary(adversary_vertex *ad
 		this->heuristic_regime = true;
 		this->heuristic_starting_depth = itemdepth;
 		this->current_strategy = strategy;
+
 	    }
 	}
     }
@@ -162,7 +184,7 @@ template<minimax MODE> victory computation<MODE>::adversary(adversary_vertex *ad
 	// We can already mark the vertex as "won", but the question is
 	// whether not to do it later.
 	adv_to_evaluate->win = victory::adv;
-
+	adv_to_evaluate->leaf = leaf_type::heuristical; // It may or may not be a leaf in the true sense.
     }
 
     if (GENERATING)
@@ -202,6 +224,13 @@ template<minimax MODE> victory computation<MODE>::adversary(adversary_vertex *ad
 	}
 	*/
 
+	if (adv_to_evaluate->leaf == leaf_type::heuristical && !this->heuristic_regime)
+	{
+	    fprintf(stderr, "Fatal error, we are not in heuristic regime even though the vertex is heuristical.\n");
+	    adv_to_evaluate->print(stderr, true);
+	    assert(!(adv_to_evaluate->leaf == leaf_type::heuristical && !this->heuristic_regime));
+	}
+
 	// assert
 	if (adv_to_evaluate->state != vert_state::fresh && adv_to_evaluate->state != vert_state::expanding)
 	{
@@ -225,13 +254,12 @@ template<minimax MODE> victory computation<MODE>::adversary(adversary_vertex *ad
 		adv_to_evaluate->state = vert_state::fresh;
 	    }*/ 
 	    
-	    // mark current adversary vertex (created by algorithm() in previous step) as a task
 
 	     // There are now cases where a vertex might be computed previously, but it fits as a task now.)
 	     if (adv_to_evaluate->win == victory::uncertain)
 	     {
-		 adv_to_evaluate->task = true;
-		 // adv_to_evaluate->win = victory::uncertain;
+		 // We do not mark as a task here, we leave it to a specialized function.
+		 adv_to_evaluate->leaf = leaf_type::boundary;
 	     }
 
 	     return adv_to_evaluate->win; // previously: return victory::uncertain
@@ -391,11 +419,25 @@ template<minimax MODE> victory computation<MODE>::algorithm(int pres_item, algor
 	}
 	alg_to_evaluate->visited = true;
 
+	// Any vertex which is touched by generation becomes temporarily a non-leaf.
+	// In principle, it might become a leaf again, if say the task function decides -- but
+	// we just mark it as such.
+
+
+	if (heuristic_regime)
+	{
+	    alg_to_evaluate->leaf = leaf_type::heuristical;
+	}
+	
+	assert(alg_to_evaluate->leaf != leaf_type::boundary);
+	// alg_to_evaluate->leaf = leaf_type::nonleaf;
+
 	if (alg_to_evaluate->state == vert_state::finished || alg_to_evaluate->state == vert_state::fixed)
 	{
 	    assert(alg_to_evaluate->win == victory::adv);
 	    return alg_to_evaluate->win;
 	}
+
     }
  
     if (gsheuristic(&bstate, pres_item, &(this->meas)) == 1)
@@ -405,6 +447,7 @@ template<minimax MODE> victory computation<MODE>::algorithm(int pres_item, algor
 	    alg_to_evaluate->win = victory::alg;
 	    // A possible todo for much later: mark vertex as winning for adversary
 	    // and the heuristic with which it is winning.
+	    alg_to_evaluate->leaf = leaf_type::heuristical;
 	}
 	return victory::alg;
     }
@@ -519,7 +562,16 @@ template<minimax MODE> victory computation<MODE>::algorithm(int pres_item, algor
     }
 
     // r is now 0 or POSTPONED, depending on the circumstances
-    if (MODE == minimax::generating) { alg_to_evaluate->win = win; }
+    if (MODE == minimax::generating)
+    {
+	alg_to_evaluate->win = win;
+
+	// If the vertex has degree zero and no descendants, it is a true leaf -- no move for algorithm is allowed.
+	if (win == victory::adv && alg_to_evaluate->out.size() == 0)
+	{
+	    alg_to_evaluate->leaf = leaf_type::trueleaf;
+	}
+    }
     return win;
 }
 
@@ -552,6 +604,12 @@ template <minimax MODE> victory generate(sapling start_sapling, computation<MODE
 {
     duplicate(&(comp->bstate), &start_sapling.root->bc);
     comp->bstate.hashinit();
+
+    if (start_sapling.expansion)
+    {
+	comp->evaluation = false;
+    }
+    
     onlineloads_init(comp->ol, &(comp->bstate));
 
     victory ret = comp->adversary(start_sapling.root, NULL);

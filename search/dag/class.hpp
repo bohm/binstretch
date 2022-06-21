@@ -62,6 +62,7 @@ public:
     void del_alg_outedge(alg_outedge *gonner);
 
     void clear_visited();
+    void clear_visited_secondary();
 
     // Erase unreachable vertices.
     void mark_reachable(adversary_vertex *v);
@@ -82,6 +83,7 @@ public:
     template <minimax MODE> void remove_outedges_except(adversary_vertex *v, int right_item);
     template <minimax MODE> void remove_outedges_except_last(adversary_vertex *v);
     template <minimax MODE> void remove_losing_outedges(adversary_vertex *v);
+    template <minimax MODE> void remove_fresh_outedges(adversary_vertex *v);
   
 
     // Printing subroutines.
@@ -97,6 +99,7 @@ public:
     void print_path_to_root(algorithm_vertex *alg_v);
     void print_children(adversary_vertex *v);
     void print_children(algorithm_vertex *v);
+    void print_two_ancestors(adversary_vertex *v);
 
     // Cloning subroutines.
     dag* subdag(adversary_vertex *newroot);
@@ -131,8 +134,10 @@ public:
     int next_item;
     uint64_t id;
     bool visited = false;
+    bool visited_secondary = false;
     victory win = victory::uncertain;
     vert_state state = vert_state::fresh;
+    leaf_type leaf = leaf_type::nonleaf;
 
     std::string label;
     std::string cosmetics; // A string of properties that are not important during the run but will be printed.
@@ -162,6 +167,11 @@ public:
     uint64_t id;
     // int depth; // Depth increases only in adversary's steps.
     bool visited = false; // We use this for DFS (e.g. for printing).
+
+    // A secondary visited for convenience. This is slightly hacky, but
+    // currently this is sufficent for us. Use when checking a running a second DFS
+    // as part of a DFS.
+    bool visited_secondary = false;
     
     vert_state state = vert_state::fresh;
     victory win = victory::uncertain;
@@ -170,8 +180,10 @@ public:
     heuristic_strategy *heur_strategy = nullptr;
 
     int expansion_depth = 0;
-    bool task = false; // task is a separate boolean because an vert_state::expand vertex can be a task itself.
-    bool sapling = false;
+    bool task = false; // Task is a separate boolean because a boundary vertex may or may not be a task.
+    // bool sapling = false;
+
+    leaf_type leaf = leaf_type::nonleaf;
 
     int regrow_level = 0; // In case the vertex is expandable, this will guide the iteration in which
     // it is expanded.
@@ -218,7 +230,8 @@ public:
 	    heur_vertex = true;
 	    heur_strategy = h->clone();
 	}
-    
+
+    bool nonfresh_descendants();
     void print(FILE* stream, bool debug = false);
 };
 

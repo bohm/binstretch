@@ -215,18 +215,12 @@ bool finish_branches_rec(adversary_vertex *v)
     // Fresh vertices should have been previously cleaned up into "fixed" and removed vertices.
     // We also use vert_state::expanding only as a state for a single root/sapling.
     
-    assert(v->state == vert_state::finished || v->state == vert_state::expandable || v->state == vert_state::fixed);
+    assert(v->state == vert_state::finished || v->state == vert_state::fixed);
 
     // Finished vertices have no more expanadable vertices below them.
     if (v->state == vert_state::finished)
     {
 	return true;
-    }
-
-    // Expandable vertices by definition *do* have an expandable vertex below.
-    if (v->state == vert_state::expandable)
-    {
-	return false;
     }
 
     if (v->visited)
@@ -237,12 +231,20 @@ bool finish_branches_rec(adversary_vertex *v)
     
     v->visited = true;
 
-    // Anything that matches this should be a true leaf.
     if (v->out.size() == 0)
     {
-	assert(v->win == victory::adv);
-	v->state = vert_state::finished;
-	return true;
+	if (v->leaf == leaf_type::trueleaf || v->leaf == leaf_type::heuristical || v->leaf == leaf_type::assumption)
+	{
+	    // It remains in the graph, and so should be winning for adv.
+	    assert(v->win == victory::adv);
+	    v->state = vert_state::finished;
+	    return true;
+	} else if (v->leaf == leaf_type::boundary)
+	{
+	    // A boundary vertex which is not a true leaf must be still pending for expansion.
+	    assert(v->state == vert_state::fixed);
+	    return false;
+	}
     }
 
     assert(v->out.size() == 1);
@@ -275,6 +277,7 @@ bool finish_branches_rec(algorithm_vertex *v)
     
     v->visited = true;
 
+    // This recursion also deals with true leaves, as boundary vertices are only of player ADV.
     bool children_finished = true;
     for (auto& e: v->out)
     {
@@ -326,18 +329,16 @@ void fix_vertices_remove_tasks(dag *d, sapling job)
 // Note: Currently, the cleanup does not stop at fixed or finished vertices.
 // It may make sense to stop there.
 
-void cleanup_dag_rec(dag *d, adversary_vertex *adv_v);
-void cleanup_dag_rec(dag *d, algorithm_vertex *alg_v);
-int sapling_counter = 0; // Currently counts only non-evaluated saplings.
+void evaluation_cleanup(dag *d, adversary_vertex *adv_v);
+void evaluation_cleanup(dag *d, algorithm_vertex *alg_v);
 
-void cleanup_dag_from_root(dag *d)
+void evaluation_cleanup_root(dag *d)
 {
-    sapling_counter = 0;
     d->clear_visited();
-    cleanup_dag_rec(d, d->root);
+    evaluation_cleanup(d, d->root);
 }
 
-void cleanup_dag_rec(dag *d, adversary_vertex *adv_v)
+void evaluation_cleanup(dag *d, adversary_vertex *adv_v)
 {
     if (adv_v->visited)
     {
@@ -345,69 +346,19 @@ void cleanup_dag_rec(dag *d, adversary_vertex *adv_v)
     }
     adv_v->visited = true;
 
-    if (adv_v->sapling) // evaluation-type sapling
-    {
-	// If the sapling is winning, we just crop all non-winning paths
-	// and also all winning paths except one.
-	
-	if (adv_v->win == victory::adv)
-	{
-	    adv_v->sapling = false;
-	    d->remove_losing_outedges<minimax::generating>(adv_v);
-	    d->remove_outedges_except_last<minimax::generating>(adv_v);
-	}
-	else if (adv_v->win == victory::alg)
-	{
-	    adv_v->print(stderr, true);
-	    ERROR("One of the saplings is actually winning for ALG. This marks some inconistency in the graph.");
-	}
-	else // victory::uncertain
-	{
-	    // Remove all edges going down from the sapling. It will continue to be a sapling.
-	    d->remove_outedges<minimax::generating>(adv_v);
-	    sapling_counter++;
-	}
-    } else if (adv_v->state == vert_state::expandable) // expansion-type sapling
-    {
-	// I am skipping this for now, but it will be important very soon.
-    }
-
-    // Cleanup rules for tasks (note: in corner cases, a vertex might be both a sapling and a task).
-    if (adv_v->task)
-    {
-	adv_v->task = false; // All tasks should be gone after a cleanup.
-	
-	// If the task was never evaluated, it just loses the task status.
-	if (adv_v->win == victory::uncertain)
-	{
-	    d->remove_outedges<minimax::generating>(adv_v);
-	}
-
-	if (adv_v->win == victory::adv)
-	{
-	    if (adv_v->out.size() != 0)
-	    {
-		// If a task actually ends up with an edge towards somewhere else,
-		// this means that the task actually has a winning strategy already in the tree.
-		// It is a rare case, but it (maybe) still can happen. We just unmark it at this point.
-
-		assert(adv_v->out.size() == 1);
-	    } else
-	    {
-		// A normal task, looks like a leaf. Mark as expandable.
-		adv_v->state = vert_state::expandable;
-		adv_v->regrow_level = glob_last_regrow_level+1;
-	    }
-	}
-    }
-
     // Cleanup rules for fresh vertices.
 
     if (adv_v->state == vert_state::fresh)
     {
 	if (adv_v->win == victory::adv)
 	{
-	    d->remove_losing_outedges<minimax::generating>(adv_v);
+	    if (adv_v->nonfresh_descendants())
+	    {
+		d->remove_fresh_outedges<minimax::generating>(adv_v);
+	    } else
+	    {
+		d->remove_losing_outedges<minimax::generating>(adv_v);
+	    }
 	    d->remove_outedges_except_last<minimax::generating>(adv_v);
 	    adv_v->state = vert_state::fixed;
 	}
@@ -415,18 +366,22 @@ void cleanup_dag_rec(dag *d, adversary_vertex *adv_v)
 	// if (adv_v->win == victory::uncertain) {}
         // We keep the remaining uncertain vertices in the tree, as they are
 	// parts of paths from the root which are yet to be evaluated. We also keep them fresh.
-	
     }
 
+    if (adv_v->state == vert_state::fixed)
+    {
+	VERTEX_ASSERT(d, adv_v, (adv_v->win == victory::adv));
+	VERTEX_ASSERT(d, adv_v, (adv_v->out.size() <= 1));
+    }
     // We now recurse on all edges which remain in the graph.
 
     for(adv_outedge *e: adv_v->out)
     {
-	cleanup_dag_rec(d, e->to);
+	evaluation_cleanup(d, e->to);
     }
 }
 
-void cleanup_dag_rec(dag *d, algorithm_vertex *alg_v)
+void evaluation_cleanup(dag *d, algorithm_vertex *alg_v)
 {
     if (alg_v->visited)
     {
@@ -441,11 +396,11 @@ void cleanup_dag_rec(dag *d, algorithm_vertex *alg_v)
     
     for(alg_outedge *e: alg_v->out)
     {
-	cleanup_dag_rec(d, e->to);
+	evaluation_cleanup(d, e->to);
     }
 }
 
-void cleanup_after_adv_win(dag *d, sapling job)
+void cleanup_after_adv_win(dag *d, bool evaluation)
 {
     // cleanup_winning_subtree(d, job.root);
     // fix_vertices_remove_tasks(d, job);
@@ -455,11 +410,18 @@ void cleanup_after_adv_win(dag *d, sapling job)
     fprintf(stderr, "Consistency check before cleanup:\n");
     consistency_checker c1(d, false);
     c1.check();
-   
-    cleanup_dag_from_root(d);
-    if(job.expansion)
+
+    unmark_tasks(d);
+    
+
+    if(evaluation)
     {
-	finish_branches(d, job.root);
+	evaluation_cleanup_root(d);
+    }
+    else // Expansion.
+    {
+	evaluation_cleanup_root(d);
+	finish_branches(d, d->root);
     }
 
     // update_and_count_saplings(d);
@@ -472,6 +434,7 @@ void cleanup_after_adv_win(dag *d, sapling job)
     consistency_checker c2(d, false);
     c2.check();
 }
+
 
 
 #endif

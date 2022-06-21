@@ -120,6 +120,32 @@ std::string state_name(vert_state st)
 	break;
     }
 }
+
+enum class leaf_type {nonleaf, heuristical, trueleaf, boundary, assumption};
+
+std::string leaf_type_name(leaf_type lt)
+{
+    switch (lt)
+    {
+    case leaf_type::heuristical:
+	return "heuristical";
+	break;
+    case leaf_type::trueleaf:
+	return "trueleaf";
+	break;
+    case leaf_type::boundary:
+	return "boundary";
+	break;
+    case leaf_type::assumption:
+	return "assumption";
+	break;
+    default:
+    case leaf_type::nonleaf:
+	return "nonleaf";
+	break;
+    }
+}
+
 typedef int8_t maybebool;
 
 const maybebool MB_INFEASIBLE = 0;
@@ -181,6 +207,10 @@ const int RECOMMENDED_MONOTONICITY = 6;
 const int RECOMMENDED_MONOTONICITY = 8;
 #elif IBINS >= 8 && IR == 19 && IS == 14
 const int RECOMMENDED_MONOTONICITY = 1;
+#elif IBINS == 6 && IR == 15 && IS == 11
+const int RECOMMENDED_MONOTONICITY = 3;
+#elif IBINS >= 7 && IR == 15 && IS == 11
+const int RECOMMENDED_MONOTONICITY = 5;
 #else
 const int RECOMMENDED_MONOTONICITY = 0;
 #endif

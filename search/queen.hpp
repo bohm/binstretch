@@ -18,33 +18,15 @@ binconf losing_binconf; // A global bin configuration for output purposes.
 class queen_class
 {
 public:
+    std::atomic<bool> updater_running = false;
     char root_binconf_file[256];
     bool load_root_binconf = false;
     queen_class(int argc, char **argv);
-    void updater(adversary_vertex *sapling);
+    void updater(sapling job);
     int start();
 };
 
 // A global pointer to *the* queen. It is NULL everywhere
 // except on the main two threads.
 queen_class* queen = NULL;
-// A global pointer to the main/queen dag.
-dag *qdag = NULL;
-
-// the root of the current computation,
-// may differ from the actual root of the graph.
-adversary_vertex *computation_root;
-adversary_vertex *expansion_root;
-
-// Some shared variables used by the queen which need to be
-// used in various places also.
-
-namespace qmemory
-{
-    // Global measure of queen's collected tasks.
-    std::atomic<unsigned int> collected_cumulative{0};
-    std::atomic<unsigned int> collected_now{0};
-
-
-};
 #endif

@@ -6,6 +6,7 @@
 #include <cstdio>
 #include "common.hpp"
 #include "dag/dag.hpp"
+#include "saplings.hpp"
 // #include "tree_print.hpp"
 // #include "queen.hpp"
 
@@ -159,5 +160,82 @@ void assert_no_fresh_winning(dag *d)
     dfs(d, assert_no_fresh_winning, assert_no_fresh_winning);
 }
 
+void mark_tasks_adv(dag *d, adversary_vertex *v, bool stop_on_certain);
+void mark_tasks_alg(dag *d, algorithm_vertex *v, bool stop_on_certain);
+
+void mark_tasks_adv(dag *d, adversary_vertex *v, bool stop_on_certain)
+{
+    if(v->visited)
+    {
+	return;
+    }
+
+    v->visited = true;
+
+    if (stop_on_certain && v->win != victory::uncertain)
+    {
+	return;
+    }
+    
+    if (v->out.size() == 0)
+    {
+	if (v->leaf == leaf_type::boundary)
+	{
+	    v->task = true;
+	}
+	
+    } else
+    {
+	assert(v->leaf != leaf_type::boundary);
+    }
+
+    for (adv_outedge *e : v->out)
+    {
+	mark_tasks_alg(d, e->to, stop_on_certain);
+    }
+}
+
+void mark_tasks_alg(dag *d, algorithm_vertex *v, bool stop_on_certain)
+{
+    if(v->visited)
+    {
+	return;
+    }
+
+    v->visited = true;
+
+    if (stop_on_certain && v->win != victory::uncertain)
+    {
+	return;
+    }
+ 
+    for (alg_outedge *e : v->out)
+    {
+	mark_tasks_adv(d, e->to, stop_on_certain);
+    }
+}
+
+void mark_tasks(dag *d, sapling job)
+{
+    print_if<PROGRESS>("Marking tasks. \n");
+    d->clear_visited();
+    if (job.evaluation)
+    {
+	mark_tasks_adv(d, job.root, true);
+    } else // Expansion.
+    {
+	mark_tasks_adv(d, job.root, false);
+    }
+}
+
+void unmark_tasks(adversary_vertex *adv_v)
+{
+    adv_v->task = false;
+}
+
+void unmark_tasks(dag *d)
+{
+    dfs(d, unmark_tasks, do_nothing);
+}
 
 #endif

@@ -187,6 +187,25 @@ void dag::clear_visited()
 
 }
 
+// Clear secondary visited flags.
+void dag::clear_visited_secondary()
+{
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-variable"
+    for (auto& [hash, vert] : adv_by_hash)
+    {
+	vert->visited_secondary = false;
+    }
+    
+    for (auto& [hash, vert] : alg_by_hash)
+    {
+	vert->visited_secondary = false;
+    }
+#pragma GCC diagnostic pop
+
+}
+
+
 
 /* Slightly clunky implementation due to the inability to do
  * a for loop in C++ through a list and erase from the list at the same time.
@@ -334,6 +353,27 @@ template <minimax MODE> void dag::remove_outedges_except_last(adversary_vertex *
     }
 }
 
+template <minimax MODE> void dag::remove_fresh_outedges(adversary_vertex *v)
+{
+    remove_losing_outedges<MODE>(v); // First remove all losing outedges.
+
+    std::list<adv_outedge*>::iterator it = v->out.begin();
+    while (it != v->out.end())
+    {
+	algorithm_vertex *down = (*it)->to;
+	if (down->state != vert_state::fresh)
+	{
+	    remove_inedge<MODE>(*it);
+	    del_adv_outedge(*it);
+	    it = v->out.erase(it); // serves as it++
+	} else
+	{
+	    it++;
+	}
+    }
+
+}
+
 // Just mark reachable vertices as visited.
 
 void dag::mark_reachable(adversary_vertex *v)
@@ -414,4 +454,16 @@ void dag::erase_unreachable()
     }
 }
 
+bool adversary_vertex::nonfresh_descendants()
+{
+    for (adv_outedge *e : out)
+    {
+	if (e->to->state == vert_state::fresh)
+	{
+	    return true;
+	}
+    }
+    return false;
+}
+	
 #endif

@@ -13,7 +13,10 @@ public:
 	    d = graph;
 	    loud = loudness;
 	}
-    
+
+    void check_heuristical_subdag(adversary_vertex *adv_v);
+    void check_heuristical_subdag(algorithm_vertex *adv_v);
+
     void consistency_traversal_rec(adversary_vertex *adv_v);
     void consistency_traversal_rec(algorithm_vertex *alg_v);
     void check()
@@ -23,6 +26,55 @@ public:
 	}
 };
 
+void consistency_checker::check_heuristical_subdag(adversary_vertex *adv_v)
+{
+    if(adv_v->visited_secondary)
+    {
+	return;
+    }
+
+    adv_v->visited_secondary = true;
+
+    VERTEX_ASSERT(d, adv_v, (adv_v->leaf == leaf_type::heuristical || adv_v->leaf == leaf_type::trueleaf));
+
+    for(adv_outedge *e : adv_v->out)
+    {
+	check_heuristical_subdag(e->to);
+    }
+}
+
+void consistency_checker::check_heuristical_subdag(algorithm_vertex *alg_v)
+{
+    if(alg_v->visited_secondary)
+    {
+	return;
+    }
+
+    alg_v->visited_secondary = true;
+
+    VERTEX_ASSERT(d, alg_v, (alg_v->leaf == leaf_type::heuristical || alg_v->leaf == leaf_type::trueleaf));
+    for(alg_outedge *e : alg_v->out)
+    {
+	check_heuristical_subdag(e->to);
+    }
+
+}
+
+void children_grandchildren_winning(dag *d, adversary_vertex *v)
+{
+    VERTEX_ASSERT(d, v, v->win == victory::adv);
+
+    for (adv_outedge *e : v->out)
+    {
+	algorithm_vertex* child = e->to;
+	VERTEX_ASSERT(d, child, child->win == victory::adv);
+	for (alg_outedge *ee : child->out)
+	{
+	    adversary_vertex* grandchild = ee->to;
+	    VERTEX_ASSERT(d, grandchild, grandchild->win == victory::adv);
+	}
+    }
+}
 
 void consistency_checker::consistency_traversal_rec(adversary_vertex *adv_v)
 {
@@ -37,18 +89,27 @@ void consistency_checker::consistency_traversal_rec(adversary_vertex *adv_v)
 	adv_v->print(stderr, true);
     }
     // First, check the vertex itself, namely its heuristical strategy.
-    if (adv_v->heur_vertex)
+    if (adv_v->heur_vertex || adv_v->leaf == leaf_type::heuristical)
     {
 	assert(adv_v->heur_strategy != nullptr);
 	if(loud)
 	{
 	    fprintf(stderr, "Printing heuristical strategy: %s.\n", (adv_v->heur_strategy->print(&adv_v->bc)).c_str());
 	}
+
+	// A quadratic check -- check that every reachable vertex from a heuristical is a heuristical vertex itself.
+	// d->clear_visited_secondary();
+	// check_heuristical_subdag(adv_v);
+	
     } else
     {
 	assert(adv_v->heur_strategy == nullptr);
     }
 
+    if (adv_v->win == victory::adv)
+    {
+	children_grandchildren_winning(d, adv_v);
+    }
     // Next, check the adjacencies.
 
     if(adv_v != d->root)

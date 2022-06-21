@@ -11,7 +11,29 @@ queue update code. */
 #include "common.hpp"
 #include "dag/dag.hpp"
 #include "dfs.hpp"
-#include "queen.hpp"
+// #include "queen.hpp"
+
+// Global variables that are already needed for tasks.
+// These belong more to queen.hpp, but queen needs to include tasks also.
+
+namespace qmemory
+{
+    // Global measure of queen's collected tasks.
+    std::atomic<unsigned int> collected_cumulative{0};
+    std::atomic<unsigned int> collected_now{0};
+
+
+};
+
+// A global pointer to the main/queen dag.
+dag *qdag = nullptr;
+
+// the root of the current computation,
+// may differ from the actual root of the graph.
+adversary_vertex *computation_root;
+adversary_vertex *expansion_root;
+
+// --- END GLOBALS ---
 
 // task but in a flat form; used for MPI
 struct flat_task
@@ -90,44 +112,6 @@ public:
 	    print_binconf_stream(stderr, bc);
 	}
 };
-
-// A sapling is an adversary vertex which will be processed by the parallel
-// minimax algorithm (its tree will be expanded).
-class sapling
-{
-public:
-    adversary_vertex *root = nullptr;
-    int regrow_level = 0;
-    std::string filename;
-    uint64_t binconf_hash; // binconf hash for debug purposes
-    bool expansion = false;
-    bool evaluation = true;
-
-    void mark_in_progress()
-	{
-	    if (evaluation)
-	    {
-		// We currently do nothing if it is just being evaluated.
-	    } else if (expansion)
-	    {
-		root->state = vert_state::expanding;
-	    }
-	}
-
-    void mark_complete()
-	{
-	    if (evaluation)
-	    {
-		root->sapling = false;
-	    } else if (expansion)
-	    {
-		// Note: the vertex might become finished, but a recursive function
-		// needs to be called to verify this.
-		root->state = vert_state::fixed;
-	    }
-	}
-};
-
 
 // semi-atomic queue: one pusher, one puller, no resize
 class semiatomic_q
@@ -572,12 +556,13 @@ void compose_batch(int *batch)
     }
 }
 
-void mark_task_as_expanadable(adversary_vertex *v, int regrow_level)
+/* void mark_task_as_expanadable(adversary_vertex *v, int regrow_level)
 {
-    assert(v->task);
-    v->task = false;
+    assert(v->leaf == leaf_type::task);
+    v->leaf = leaf_type::sapling;
     v->state = vert_state::expandable;
     v->regrow_level = regrow_level;
 }
 
+*/
 #endif

@@ -31,11 +31,11 @@ public:
     int id = -1;
     uint64_t name; // Their id as listed in the input file. May not be consecutive.
     bool visited = false;
-    bool sapling = false;
+    leaf_type leaf = leaf_type::nonleaf;
     bool heuristic = false;
     std::string heurstring;
     std::optional<binconf>  bc;
-    adversary_partial(int id, uint64_t name, bool is_sapling, std::string heurstring) : id(id), name(name), sapling(is_sapling), heurstring(heurstring) {};
+    adversary_partial(int id, uint64_t name, leaf_type l, std::string heurstring) : id(id), name(name), leaf(l), heurstring(heurstring) {};
 
 };
 
@@ -107,17 +107,17 @@ public:
     bool next_items_present = false;
     bool binconfs_present = false;
 
-    void add_adv_vertex(uint64_t name, bool is_sapling = false, std::string heurstring = "")
+    void add_adv_vertex(uint64_t name, leaf_type l = leaf_type::nonleaf, std::string heurstring = "")
 	{
 	    int id = v_adv.size();
-	    v_adv.emplace_back(adversary_partial(id, name, is_sapling, heurstring));
+	    v_adv.emplace_back(adversary_partial(id, name, l, heurstring));
 	    adv_by_name.insert({name, id});
 	}
 
-    void add_root(uint64_t name, bool is_sapling = false, std::string heurstring = "")
+    void add_root(uint64_t name, leaf_type l = leaf_type::nonleaf, std::string heurstring = "")
 	{
 	    root_name = name;
-	    add_adv_vertex(name, is_sapling, heurstring);
+	    add_adv_vertex(name, l, heurstring);
 	}
 
     void add_alg_vertex(uint64_t name, std::string optimal = "")
@@ -330,7 +330,7 @@ dag* partial_dag::finalize()
 	d->add_adv_vertex(v_adv[p].bc.value(), v_adv[p].heurstring);
 
 	// Set additional properties
-	d->adv_by_id.at(gid)->sapling = v_adv[p].sapling;
+	d->adv_by_id.at(gid)->leaf = v_adv[p].leaf;
 	d->adv_by_id.at(gid)->old_name = (int) v_adv[p].name;
 
     }
@@ -374,7 +374,6 @@ dag* partial_dag::finalize()
 
 	d->add_alg_outedge(from, to, e.bin);
     }
-
 
     return d;
 }

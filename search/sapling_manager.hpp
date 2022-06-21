@@ -11,8 +11,8 @@ private:
     dag *d = nullptr;
     sapling first_found_job;
     
-    void find_uncertain_sapling_adv(adversary_vertex *v);
-    void find_uncertain_sapling_alg(algorithm_vertex *v);
+    void find_uncertain_boundary_adv(adversary_vertex *v);
+    void find_uncertain_boundary_alg(algorithm_vertex *v);
     void find_unexpanded_sapling_adv(adversary_vertex *v);
     void find_unexpanded_sapling_alg(algorithm_vertex *v);
 public:
@@ -26,10 +26,11 @@ public:
     sapling find_sapling();
     sapling find_first_uncertain();
     sapling find_first_unexpanded();
+    uint64_t count_uncertain_boundary();
 };
 
 // We actually write this DFS in full, because we wish to visit saplings in a particular order.
-void sapling_manager::find_uncertain_sapling_adv(adversary_vertex *adv_v)
+void sapling_manager::find_uncertain_boundary_adv(adversary_vertex *adv_v)
 {
     if (adv_v->visited)
     {
@@ -38,9 +39,8 @@ void sapling_manager::find_uncertain_sapling_adv(adversary_vertex *adv_v)
 
     adv_v->visited = true;
 
-    if (adv_v->sapling)
+    if (adv_v->leaf == leaf_type::boundary && adv_v->win == victory::uncertain)
     {
-	assert(adv_v->win == victory::uncertain);
 	first_found_job.evaluation = true;
 	first_found_job.expansion = false;
 	first_found_job.root = adv_v;
@@ -63,11 +63,11 @@ void sapling_manager::find_uncertain_sapling_adv(adversary_vertex *adv_v)
 
     for (auto &p : edges_and_items)
     {
-	find_uncertain_sapling_alg(p.second);
+	find_uncertain_boundary_alg(p.second);
     }
 }
 
-void sapling_manager::find_uncertain_sapling_alg(algorithm_vertex *alg_v)
+void sapling_manager::find_uncertain_boundary_alg(algorithm_vertex *alg_v)
 {
     if (alg_v->visited)
     {
@@ -85,7 +85,7 @@ void sapling_manager::find_uncertain_sapling_alg(algorithm_vertex *alg_v)
     // No order needed here:
     for (alg_outedge* e: alg_v->out)
     {
-	find_uncertain_sapling_adv(e->to);
+	find_uncertain_boundary_adv(e->to);
     }
 }
 
@@ -93,7 +93,7 @@ sapling sapling_manager::find_first_uncertain()
 {
     d->clear_visited();
     first_found_job.root = nullptr;
-    find_uncertain_sapling_adv(d->root);
+    find_uncertain_boundary_adv(d->root);
     return first_found_job;
 }
 
@@ -223,4 +223,29 @@ sapling sapling_manager::find_sapling()
     return job_candidate; // equivalent to returning null.
 }
 
+
+// Counts uncertain boundary vertices via DFS, and makes sure some assertions are true also.
+uint64_t uncertain_boundary_counter = 0;
+void count_uncertain_boundary_adv(adversary_vertex *v)
+{
+    if (v->out.size() == 0)
+    {
+	VERTEX_ASSERT(glob_dfs_dag, v, (v->leaf != leaf_type::nonleaf));
+
+	if (v->leaf == leaf_type::boundary && v->win == victory::uncertain)
+	{
+	    uncertain_boundary_counter++;
+	}
+    } else
+    {
+	VERTEX_ASSERT(glob_dfs_dag, v, (v->leaf != leaf_type::boundary));
+    }
+}
+
+uint64_t sapling_manager::count_uncertain_boundary()
+{
+    uncertain_boundary_counter = 0;
+    dfs(d, count_uncertain_boundary_adv, do_nothing);
+    return uncertain_boundary_counter;
+}
 #endif

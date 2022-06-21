@@ -89,13 +89,12 @@ void adversary_vertex::print(FILE *stream, bool debug)
     // Print additional parameters (mostly used for re-loading the tree and such).
     if (task)
     {
-	assert(out.size() == 0);
 	fprintf(stream, ",task=true");
     }
     
-    if (sapling)
+    if (leaf != leaf_type::nonleaf)
     {
-	fprintf(stream, ",sapling=true");
+	fprintf(stream, ",leaf=%s", leaf_type_name(leaf).c_str());
     }
     
     if (reference) // Reference to another tree in a list -- only makes sense for rooster.cpp.
@@ -146,10 +145,16 @@ void algorithm_vertex::print(FILE *stream, bool debug)
  
     fprintf(stream, ",player=alg");
 
+    if (leaf != leaf_type::nonleaf)
+    {
+	fprintf(stream, ",leaf=%s", leaf_type_name(leaf).c_str());
+    }
+ 
     // If it is a debug print, print also the indegree and outdegree
     if (debug)
     {
 	fprintf(stream, ",indegree=%zu,outdegree=%zu", in.size(), out.size());
+	dotprint_victory(win,stream);
     }
   
     // If the vertex is a leaf, print a feasible optimal bin configuration.
@@ -368,6 +373,33 @@ void dag::print_children(algorithm_vertex *alg_v)
     {
 	e->print(stderr,true);
 	e->to->print(stderr, true);
+    }
+}
+
+// Prints the first ancestor and first grand-ancestor.
+void dag::print_two_ancestors(adversary_vertex *adv_v)
+{
+    fprintf(stderr, "Vertex:\n");
+    adv_v->print(stderr, true);
+    if (adv_v->in.empty())
+    {
+	fprintf(stderr, "No parent.\n");
+    } else
+    {
+	fprintf(stderr, "Parent: \n");
+	alg_outedge *up = *(adv_v->in.begin());
+	algorithm_vertex *up_alg = up->from;
+	up_alg->print(stderr, true);
+	if (up_alg->in.empty())
+	{
+	    fprintf(stderr, "No grandparent.\n");
+	} else
+	{
+	    fprintf(stderr, "Grandparent: \n");
+	    adv_outedge *upup = *(up_alg->in.begin());
+	    adversary_vertex *grandpa = upup->from;
+	    grandpa->print(stderr, true);
+	}
     }
 }
 

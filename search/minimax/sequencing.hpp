@@ -58,7 +58,7 @@ victory sequencing(binconf& root, adversary_vertex* root_vertex)
     if (!USING_ADVISOR || !advice_file_found)
     {
 	print_if<PROGRESS>("Not using the advisor.\n");
-	root_vertex->sapling = true;
+	root_vertex->leaf = leaf_type::boundary;
 	root_vertex->win = victory::uncertain;
 	return victory::uncertain;
     } else {
@@ -81,7 +81,9 @@ template <minimax MODE> victory sequencing_adversary(binconf *b, unsigned int de
     /* Everything can be packed into one bin, return 1. */
     if ((b->loads[BINS] + (BINS*S - b->totalload())) < R)
     {
-	adv_to_evaluate->win = victory::alg; 
+	adv_to_evaluate->win = victory::alg;
+	// The vertex should be deleted anyway, but we mark it as a heuristical leaf.
+	adv_to_evaluate->leaf = leaf_type::heuristical;
 	return victory::alg;
     }
 
@@ -94,6 +96,7 @@ template <minimax MODE> victory sequencing_adversary(binconf *b, unsigned int de
 	if(check != victory::uncertain)
 	{
 	    adv_to_evaluate->win = check;
+	    adv_to_evaluate->leaf = leaf_type::assumption;
 	    return check;
 	}
     }
@@ -126,6 +129,7 @@ template <minimax MODE> victory sequencing_adversary(binconf *b, unsigned int de
 	// We can already mark the vertex as "won", but the question is
 	// whether not to do it later.
 	adv_to_evaluate->win = victory::adv;
+	adv_to_evaluate->leaf = leaf_type::heuristical;
     }
 
 
@@ -137,7 +141,7 @@ template <minimax MODE> victory sequencing_adversary(binconf *b, unsigned int de
 	
 	if (suggestion == 0)
 	{
-	    adv_to_evaluate->sapling = true;
+	    adv_to_evaluate->leaf = leaf_type::boundary;
 	    adv_to_evaluate->win = victory::uncertain;
 	    return victory::uncertain;
 	}
@@ -234,9 +238,15 @@ template <minimax MODE> victory sequencing_algorithm(binconf *b, int k, unsigned
     if (gsheuristic(b,k, &(comp->meas) ) == 1)
     {
 	alg_to_evaluate->win = victory::alg;
+	alg_to_evaluate->leaf = leaf_type::heuristical;
 	return victory::alg;
     }
 
+
+    if (comp->heuristic_regime)
+    {
+	alg_to_evaluate->leaf = leaf_type::heuristical;
+    }
     victory r = victory::adv;
     victory below = victory::adv;
     int8_t i = 1;
@@ -252,8 +262,9 @@ template <minimax MODE> victory sequencing_algorithm(binconf *b, int k, unsigned
 
 	if ((b->loads[i] + k < R))
 	{
-// editing binconf in place -- undoing changes later
 	    
+            // editing binconf in place -- undoing changes later
+
 	    bin_int previously_last_item = b->last_item;
 	    int from = b->assign_and_rehash(k,i);
 	    int ol_from = onlineloads_assign(comp->ol, k);
@@ -314,6 +325,14 @@ template <minimax MODE> victory sequencing_algorithm(binconf *b, int k, unsigned
     }
 
     alg_to_evaluate->win = r;
+
+    
+    // If the vertex has degree zero and no descendants, it is a true leaf -- no move for algorithm is allowed.
+    if (alg_to_evaluate->win == victory::adv && alg_to_evaluate->out.size() == 0)
+    {
+	alg_to_evaluate->leaf = leaf_type::trueleaf;
+    }
+
     return r;
 }
 
