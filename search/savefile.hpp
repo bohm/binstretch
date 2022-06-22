@@ -2,6 +2,7 @@
 #define _SAVEFILE_HPP 1
 
 #include "common.hpp"
+#include "filetools.hpp"
 #include "dag/dag.hpp"
 #include "dynprog/wrappers.hpp"
 
@@ -48,10 +49,11 @@ void savefile(const char* filename, dag *d, adversary_vertex *r)
 // save to a default path
 void savefile(dag *d, adversary_vertex *r)
 {
-    char outfile[50];
-    sprintf(outfile, "bs%d_%d_%dbins.gen", R,S,BINS);
-    print_if<PROGRESS>("Printing the game graph in DOT format into %s.\n", outfile);
-    savefile(outfile, d, r); 
+    std::time_t t = std::time(0);   // Get time now.
+    std::tm* now = std::localtime(&t);
+    std::string filename = build_output_filename(now);
+    print_if<PROGRESS>("Printing the game graph in DOT format into %s.\n", filename.c_str());
+    savefile(filename.c_str(), d, r); 
 }
 
 

@@ -62,7 +62,7 @@ public:
 	    unfinished_tasks = 0;
 	    vertices_visited = 0;
 	    d->clear_visited();
-	    update_adv(d->root);
+	    update_adv(job.root);
 	    root_result = d->root->win;
 	    updater_result = job.root->win;
 	}
@@ -80,6 +80,7 @@ public:
     
     bool continue_updating()
 	{
+	    // fprintf(stderr, "Updater: seeing %ld tasks.\n", unfinished_tasks); 
 	    return (unfinished_tasks > 0);
 	}
 };
@@ -91,18 +92,9 @@ victory updater_computation::update_adv(adversary_vertex *v)
  
     assert(v != NULL);
 
-    if (evaluation)
+    if (v->win == victory::adv || v->win == victory::alg)
     {
-	if (v->win == victory::adv || v->win == victory::alg)
-	{
-	    return v->win;
-	}
-    } else // Expansion.
-    {
-	if (v->state == vert_state::finished)
-	{
-	    return v->win;
-	}
+	return v->win;
     }
 
     /* Already visited this update. */
@@ -127,7 +119,7 @@ victory updater_computation::update_adv(adversary_vertex *v)
 	    v->win = result;
 	}
     }
-	else if (v->leaf != leaf_type::nonleaf)
+    else if (v->leaf != leaf_type::nonleaf)
     {
 	// Deal with non-leaves.
 

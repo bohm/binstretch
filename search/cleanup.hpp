@@ -215,7 +215,7 @@ bool finish_branches_rec(adversary_vertex *v)
     // Fresh vertices should have been previously cleaned up into "fixed" and removed vertices.
     // We also use vert_state::expanding only as a state for a single root/sapling.
     
-    assert(v->state == vert_state::finished || v->state == vert_state::fixed);
+    VERTEX_ASSERT(qdag, v, (v->state == vert_state::finished || v->state == vert_state::fixed));
 
     // Finished vertices have no more expanadable vertices below them.
     if (v->state == vert_state::finished)
@@ -238,7 +238,7 @@ bool finish_branches_rec(adversary_vertex *v)
 	    // It remains in the graph, and so should be winning for adv.
 	    assert(v->win == victory::adv);
 	    v->state = vert_state::finished;
-	    return true;
+	    // return true;
 	} else if (v->leaf == leaf_type::boundary)
 	{
 	    // A boundary vertex which is not a true leaf must be still pending for expansion.

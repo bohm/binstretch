@@ -108,7 +108,7 @@ void consistency_checker::consistency_traversal_rec(adversary_vertex *adv_v)
 
     if (adv_v->win == victory::adv)
     {
-	children_grandchildren_winning(d, adv_v);
+	// children_grandchildren_winning(d, adv_v);
     }
     // Next, check the adjacencies.
 

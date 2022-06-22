@@ -111,15 +111,10 @@ std::tuple<int,std::string> parse_alg_vertex(const char *line)
 
 }
 
-std::tuple<int,bool,std::string> parse_adv_vertex(const char *line)
+std::tuple<int, std::string> parse_adv_vertex(const char *line)
 {
     int name = -1;
     sscanf(line, "%d", &name);
-    bool is_sapling = false;
-    if (strstr(line, "sapling=true") != nullptr)
-    {
-	is_sapling = true;
-    }
 
     // Check for heur="", and load the content.
     std::stringstream ss;
@@ -134,7 +129,7 @@ std::tuple<int,bool,std::string> parse_adv_vertex(const char *line)
 	}
     }
     
-    return std::make_tuple(name, is_sapling, ss.str());
+    return std::make_tuple(name, ss.str());
 
 }
 
@@ -161,14 +156,13 @@ partial_dag* loadfile(const char* filename)
 	std::ignore = fgets(line, 255, fin);
 	line_type l = recognize(line);
 	int name = -1, name_from = -1, name_to = -1, bin = -1, next_item = -1;
-	bool is_sapling = false;
 	std::string heurstring;
 	std::string optimal;
 
 	switch(l)
 	{
 	case line_type::adversary_vertex:
-	    std::tie(name, is_sapling, heurstring) = parse_adv_vertex(line);
+	    std::tie(name, heurstring) = parse_adv_vertex(line);
 	    if(name == -1)
 	    {
 		ERROR("Unable to parse adv. vertex line: %s\n", line);
@@ -176,11 +170,11 @@ partial_dag* loadfile(const char* filename)
 	    if (first_adversary)
 	    {
 		print_if<DEBUG>("Adding vertex with old name %d as root.\n", name);
-		pd->add_root(name, is_sapling, heurstring);
+		pd->add_root(name, heurstring);
 		first_adversary = false;
 	    } else {
 		print_if<DEBUG>("Adding vertex with name %d.\n", name);
-		pd->add_adv_vertex(name, is_sapling, heurstring);
+		pd->add_adv_vertex(name, heurstring);
 	    }
 	    break;
 	case line_type::algorithm_vertex:

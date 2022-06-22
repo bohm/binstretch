@@ -38,6 +38,7 @@ public:
 		// We currently do nothing here.
 	    } else if (expansion)
 	    {
+		root->state = vert_state::fixed;
 		// Note: the vertex might become finished, but a recursive function
 		// needs to be called to verify this.
 	    }

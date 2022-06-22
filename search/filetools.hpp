@@ -2,6 +2,7 @@
 #define _FILETOOLS_HPP 1
 
 #include <ctime>
+#include "common.hpp"
 
 void folder_checks()
 {
@@ -49,6 +50,15 @@ std::string build_treetop_filename(std::tm* timestamp)
 	return log_path;
 
 }
+
+std::string build_output_filename(std::tm* timestamp)
+{
+    	std::string binstamp = filename_binstamp();
+	std::string timestamp_str = filename_timestamp(timestamp);
+	std::string gen_path = OUTPUT_DIR + "/" + binstamp + timestamp_str + "-tree.gen";
+	return gen_path;
+}
+
 
 // A quick and dirty load binconf for a startup of a computation.
 // In the grand scheme of things, this should not be needed, but to create

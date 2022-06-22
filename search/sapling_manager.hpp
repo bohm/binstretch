@@ -26,7 +26,7 @@ public:
     sapling find_sapling();
     sapling find_first_uncertain();
     sapling find_first_unexpanded();
-    uint64_t count_uncertain_boundary();
+    uint64_t count_boundary();
 };
 
 // We actually write this DFS in full, because we wish to visit saplings in a particular order.
@@ -106,7 +106,10 @@ void sapling_manager::find_unexpanded_sapling_adv(adversary_vertex *adv_v)
 
     adv_v->visited = true;
 
-    if (adv_v->state == vert_state::expandable && adv_v->regrow_level <= regrow_threshold)
+    // fprintf(stderr, "Expansion consider vertex (regrow threshold %d):\n", regrow_threshold);
+    adv_v->print(stderr, true);
+    
+    if (adv_v->leaf == leaf_type::boundary && adv_v->regrow_level <= regrow_threshold)
     {
 	first_found_job.root = adv_v;
 	first_found_job.evaluation = false;
@@ -160,9 +163,9 @@ void sapling_manager::find_unexpanded_sapling_alg(algorithm_vertex *alg_v)
 sapling sapling_manager::find_first_unexpanded()
 {
     first_found_job.root = nullptr;
-    d->clear_visited();
     while (regrow_threshold <= REGROW_LIMIT)
     {
+	d->clear_visited();
 	find_unexpanded_sapling_adv(d->root);
 	if (first_found_job.root != nullptr)
 	{
@@ -170,7 +173,7 @@ sapling sapling_manager::find_first_unexpanded()
 	} else
 	{
 	    regrow_threshold++;
-	    print_if<PROGRESS>("Queen: Saplings now have regrow threshold %d", regrow_threshold);
+	    print_if<PROGRESS>("Queen: Saplings now have regrow threshold %d.\n", regrow_threshold);
 	}
     }
 
@@ -190,14 +193,6 @@ sapling sapling_manager::find_sapling()
 	if (job_candidate.root != nullptr)
 	{
 	    return job_candidate;
-	} else
-	{
-	    evaluation = false;
-	    expansion = true;
-	    if(REGROW)
-	    {
-		print_if<PROGRESS>("Queen: Switching from evaluation to expansion.");
-	    }
 	}
     }
 
@@ -226,6 +221,8 @@ sapling sapling_manager::find_sapling()
 
 // Counts uncertain boundary vertices via DFS, and makes sure some assertions are true also.
 uint64_t uncertain_boundary_counter = 0;
+uint64_t unexpanded_counter = 0;
+
 void count_uncertain_boundary_adv(adversary_vertex *v)
 {
     if (v->out.size() == 0)
@@ -242,10 +239,36 @@ void count_uncertain_boundary_adv(adversary_vertex *v)
     }
 }
 
-uint64_t sapling_manager::count_uncertain_boundary()
+void count_unexpanded_adv(adversary_vertex *v)
 {
-    uncertain_boundary_counter = 0;
-    dfs(d, count_uncertain_boundary_adv, do_nothing);
-    return uncertain_boundary_counter;
+    if (v->out.size() == 0)
+    {
+	VERTEX_ASSERT(glob_dfs_dag, v, (v->leaf != leaf_type::nonleaf));
+
+	if (v->leaf == leaf_type::boundary && v->state == vert_state::fixed)
+	{
+	    unexpanded_counter++;
+	}
+    } else
+    {
+	VERTEX_ASSERT(glob_dfs_dag, v, (v->leaf != leaf_type::boundary));
+    }
 }
+
+uint64_t sapling_manager::count_boundary()
+{
+    if (evaluation)
+    {
+	uncertain_boundary_counter = 0;
+	dfs(d, count_uncertain_boundary_adv, do_nothing);
+	return uncertain_boundary_counter;
+    } else
+    {
+	unexpanded_counter = 0;
+	dfs(d, count_unexpanded_adv, do_nothing);
+	return unexpanded_counter;
+
+    }
+}
+
 #endif

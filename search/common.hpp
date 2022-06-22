@@ -26,13 +26,13 @@
 const bool PROGRESS = true; // Whether to print progress info to stderr.
 const bool MEASURE = true; // Whether to collect and print measurements to stderr.
 
-const bool OUTPUT = false; // Whether to produce output.
-const bool REGROW = false; // Whether to regrow or just terminate after first iteration.
+const bool OUTPUT = true; // Whether to produce output.
+const bool REGROW = true; // Whether to regrow or just terminate after first iteration.
 
 // When producing output, how many times should a tree be regrown.
 // Note that REGROW_LIMIT = 0 still means a full tree will be generated.
 // const int REGROW_LIMIT = 65535;
-const int REGROW_LIMIT = 10;
+const int REGROW_LIMIT = 3;
 
 const int TASK_LOAD_INIT = 8; // A bound on total load of a configuration before we split it into a task.
 const int TASK_LOAD_STEP = 6; // The amount by which the load can increase when regrowing the tree.

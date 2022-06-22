@@ -235,7 +235,7 @@ template<minimax MODE> victory computation<MODE>::adversary(adversary_vertex *ad
 	if (adv_to_evaluate->state != vert_state::fresh && adv_to_evaluate->state != vert_state::expanding)
 	{
 	    print_if<true>("Assert failed: adversary vertex state is %s.\n", state_name(adv_to_evaluate->state).c_str());
-	    assert(adv_to_evaluate->state == vert_state::fresh || adv_to_evaluate->state == vert_state::expanding); // no other state should go past this point
+	    VERTEX_ASSERT(qdag, adv_to_evaluate, (adv_to_evaluate->state == vert_state::fresh || adv_to_evaluate->state == vert_state::expanding)); // no other state should go past this point
 	}
 
 	// we now do creation of tasks only until the REGROW_LIMIT is reached

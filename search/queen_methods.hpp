@@ -68,6 +68,7 @@ void queen_class::updater(sapling job)
 		{
 		    job.print_sapling(stderr);
 		}
+
 		if(ucomp.unfinished_tasks == 0 && job.root->win == victory::uncertain)
 		{
 		    /*
@@ -176,7 +177,7 @@ int queen_class::start()
     // update_and_count_saplings(qdag); // Leave only uncertain saplings.
 
     cleanup_after_adv_win(qdag, true);
-    sapling_counter = sap_man.count_uncertain_boundary();
+    sapling_counter = sap_man.count_boundary();
     sapling job = sap_man.find_sapling(); // Can find a sapling to expand or evaluate.
     while (job.root != nullptr)
     {
@@ -187,7 +188,11 @@ int queen_class::start()
 
 	job.mark_in_progress();
 	regrow_threshold = job.regrow_level;
-	
+
+	print_if<PROGRESS>("Queen: Boundary count: %ld, current sapling of regrow level %d:\n", sapling_counter, job.regrow_level);
+	print_binconf<PROGRESS>(job.root->bc);
+
+
 	bool lower_bound_complete = false;
 	computation_root = job.root;
 
@@ -195,7 +200,7 @@ int queen_class::start()
 	{
 	    assert(job.expansion);
 	    // We reset the job to be uncertain, so that minimax generation actually does something.
-	    // computation_root->win = victory::uncertain;
+	    computation_root->win = victory::uncertain;
 	}
 
 	// Currently we cannot expand a vertex with outedges.
@@ -216,9 +221,6 @@ int queen_class::start()
 	task_load = TASK_LOAD_INIT + job.regrow_level * TASK_LOAD_STEP;
 
 	// We do not regrow with a for loop anymore, we regrow using the job system in the DAG instead.
-	print_if<PROGRESS>("Queen: Boundary count: %d, current sapling of regrow level %d:\n", sapling_counter, job.regrow_level);
-	print_binconf<PROGRESS>(computation_root->bc);
-
 	/*
 	FILE *flog = fopen("./logs/before-generation.log", "w");
 	qdag->clear_visited();
@@ -394,7 +396,6 @@ int queen_class::start()
 	    if (qdag->root->win == victory::alg)
 	    {
 		ret = 1;
-
 	    } else
 	    {
 		// ret = 0; // Not needed.
@@ -406,13 +407,20 @@ int queen_class::start()
 		if (REGROW)
 		{
 		    sap_man.expansion = true;
+		    sap_man.evaluation = false;
+		    print_if<PROGRESS>("Queen: switching from evaluation to expansion.\n");
+
+		    FILE *flog = fopen("./logs/before-expansion.log", "w");
+		    qdag->clear_visited();
+		    qdag->print_lowerbound_dfs(qdag->root, flog, true);
+		    fclose(flog);
 		}
 	    }
-	    break; // We break either way if win is victory::adv or victory::alg.
 	}
 	
         // --- END CLEANUP PHASE ---
-	sapling_counter = sap_man.count_uncertain_boundary();
+	sapling_counter = sap_man.count_boundary();
+	fprintf(stderr, "Boundary size: %ld.\n", sapling_counter);
 	job = sap_man.find_sapling();
 	sapling_no++;
     }
@@ -436,8 +444,6 @@ int queen_class::start()
     // Print the treetop of the tree (with tasks offloaded) for logging purposes.
     if (ret != 1)
     {
-	std::string binstamp = filename_binstamp();
-
         std::time_t t = std::time(0);   // Get time now.
 	std::tm* now = std::localtime(&t);
 	savefile(build_treetop_filename(now).c_str(), qdag, qdag->root);
