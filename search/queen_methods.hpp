@@ -253,7 +253,7 @@ int queen_class::start()
 
 	updater_result = generate<minimax::generating>(job, &comp);
 	mark_tasks(qdag, job);
-	
+
 	perf_timer.generation_phase_end();
 
 	computation_root->win = updater_result.load(std::memory_order_acquire);

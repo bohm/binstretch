@@ -239,7 +239,9 @@ template<minimax MODE> victory computation<MODE>::adversary(adversary_vertex *ad
 	}
 
 	// we now do creation of tasks only until the REGROW_LIMIT is reached
-	if (!this->heuristic_regime && this->regrow_level <= REGROW_LIMIT && POSSIBLE_TASK(adv_to_evaluate, this->largest_since_computation_root, itemdepth))
+	if (!this->heuristic_regime && this->regrow_level <= REGROW_LIMIT
+	    && POSSIBLE_TASK(adv_to_evaluate, this->largest_since_computation_root, itemdepth)
+	    && adv_to_evaluate->out.empty())
 	{
 	    print_if<DEBUG>("GEN: Current conf is a possible task (itemdepth %d, task_depth %d, load %d, task_load %d, comp. root load: %d.\n ",
 	     		itemdepth, task_depth, bstate.totalload(), task_load, computation_root->bc.totalload());
@@ -259,6 +261,8 @@ template<minimax MODE> victory computation<MODE>::adversary(adversary_vertex *ad
 	     if (adv_to_evaluate->win == victory::uncertain)
 	     {
 		 // We do not mark as a task here, we leave it to a specialized function.
+		 // fprintf(stderr, "Marking vertex as new boundary:");
+		 // adv_to_evaluate->print(stderr, true);
 		 adv_to_evaluate->leaf = leaf_type::boundary;
 	     }
 

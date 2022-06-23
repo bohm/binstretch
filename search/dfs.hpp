@@ -186,7 +186,7 @@ void mark_tasks_adv(dag *d, adversary_vertex *v, bool stop_on_certain)
 	
     } else
     {
-	assert(v->leaf != leaf_type::boundary);
+	VERTEX_ASSERT(d, v, (v->leaf != leaf_type::boundary));
     }
 
     for (adv_outedge *e : v->out)
