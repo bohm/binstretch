@@ -143,6 +143,7 @@ template <minimax MODE> victory sequencing_adversary(binconf *b, unsigned int de
 	{
 	    adv_to_evaluate->leaf = leaf_type::boundary;
 	    adv_to_evaluate->win = victory::uncertain;
+	    adv_to_evaluate->sapling = true;
 	    return victory::uncertain;
 	}
     }

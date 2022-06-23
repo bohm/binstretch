@@ -383,6 +383,20 @@ bool possible_task_mixed(adversary_vertex *v, int largest_item, int current_dept
     }
 }
 
+bool possible_task_mixed2(adversary_vertex *v, int largest_item, int current_depth)
+{
+    if (largest_item >= S/2 && current_depth >= 2)
+    {
+	return true;
+    }
+
+    if (current_depth >= task_depth)
+    {
+	return true;
+    }
+
+    return false;
+}
 
 // Collects tasks from a generated tree.
 // To be called after generation, before the game starts.

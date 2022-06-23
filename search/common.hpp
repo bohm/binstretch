@@ -36,7 +36,7 @@ const int REGROW_LIMIT = 3;
 
 const int TASK_LOAD_INIT = 8; // A bound on total load of a configuration before we split it into a task.
 const int TASK_LOAD_STEP = 6; // The amount by which the load can increase when regrowing the tree.
-const int TASK_DEPTH_INIT = 6; //The maximum depth of a vertex in the tree before it is made into a task.
+const int TASK_DEPTH_INIT = 5; //The maximum depth of a vertex in the tree before it is made into a task.
 const int TASK_DEPTH_STEP = 2; // The amount by which the depth is increased when regrowing.
 
 // const int TASK_LOAD_INIT = 0;
@@ -128,8 +128,8 @@ const int LINPROBE_LIMIT = 8;
 const int DEFAULT_DP_SIZE = 100000;
 const int BESTFIT_THRESHOLD = (1*S)/10;
 
-#define POSSIBLE_TASK possible_task_mixed
-//#define POSSIBLE_TASK possible_task_depth
+#define POSSIBLE_TASK possible_task_mixed2
+// #define POSSIBLE_TASK possible_task_depth
 
 const int EXPANSION_DEPTH = 3;
 const int TASK_LARGEST_ITEM = 5;

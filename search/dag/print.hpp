@@ -91,6 +91,11 @@ void adversary_vertex::print(FILE *stream, bool debug)
     {
 	fprintf(stream, ",task=true");
     }
+
+    if (sapling)
+    {
+	fprintf(stream, ",sapling=true");
+    }
     
     if (leaf != leaf_type::nonleaf)
     {

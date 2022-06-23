@@ -35,6 +35,7 @@ public:
 	{
 	    if (evaluation)
 	    {
+		root->sapling = false;
 		// We currently do nothing here.
 	    } else if (expansion)
 	    {

@@ -181,7 +181,7 @@ public:
 
     int expansion_depth = 0;
     bool task = false; // Task is a separate boolean because a boundary vertex may or may not be a task.
-    // bool sapling = false;
+    bool sapling = false;
 
     leaf_type leaf = leaf_type::nonleaf;
 

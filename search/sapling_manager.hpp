@@ -11,8 +11,8 @@ private:
     dag *d = nullptr;
     sapling first_found_job;
     
-    void find_uncertain_boundary_adv(adversary_vertex *v);
-    void find_uncertain_boundary_alg(algorithm_vertex *v);
+    void find_uncertain_sapling_adv(adversary_vertex *v);
+    void find_uncertain_sapling_alg(algorithm_vertex *v);
     void find_unexpanded_sapling_adv(adversary_vertex *v);
     void find_unexpanded_sapling_alg(algorithm_vertex *v);
 public:
@@ -30,7 +30,7 @@ public:
 };
 
 // We actually write this DFS in full, because we wish to visit saplings in a particular order.
-void sapling_manager::find_uncertain_boundary_adv(adversary_vertex *adv_v)
+void sapling_manager::find_uncertain_sapling_adv(adversary_vertex *adv_v)
 {
     if (adv_v->visited)
     {
@@ -39,7 +39,7 @@ void sapling_manager::find_uncertain_boundary_adv(adversary_vertex *adv_v)
 
     adv_v->visited = true;
 
-    if (adv_v->leaf == leaf_type::boundary && adv_v->win == victory::uncertain)
+    if (adv_v->sapling && adv_v->win == victory::uncertain)
     {
 	first_found_job.evaluation = true;
 	first_found_job.expansion = false;
@@ -63,11 +63,11 @@ void sapling_manager::find_uncertain_boundary_adv(adversary_vertex *adv_v)
 
     for (auto &p : edges_and_items)
     {
-	find_uncertain_boundary_alg(p.second);
+	find_uncertain_sapling_alg(p.second);
     }
 }
 
-void sapling_manager::find_uncertain_boundary_alg(algorithm_vertex *alg_v)
+void sapling_manager::find_uncertain_sapling_alg(algorithm_vertex *alg_v)
 {
     if (alg_v->visited)
     {
@@ -85,7 +85,7 @@ void sapling_manager::find_uncertain_boundary_alg(algorithm_vertex *alg_v)
     // No order needed here:
     for (alg_outedge* e: alg_v->out)
     {
-	find_uncertain_boundary_adv(e->to);
+	find_uncertain_sapling_adv(e->to);
     }
 }
 
@@ -93,7 +93,7 @@ sapling sapling_manager::find_first_uncertain()
 {
     d->clear_visited();
     first_found_job.root = nullptr;
-    find_uncertain_boundary_adv(d->root);
+    find_uncertain_sapling_adv(d->root);
     return first_found_job;
 }
 

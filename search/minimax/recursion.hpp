@@ -243,9 +243,12 @@ template<minimax MODE> victory computation<MODE>::adversary(adversary_vertex *ad
 	    && POSSIBLE_TASK(adv_to_evaluate, this->largest_since_computation_root, itemdepth)
 	    && adv_to_evaluate->out.empty())
 	{
-	    print_if<DEBUG>("GEN: Current conf is a possible task (itemdepth %d, task_depth %d, load %d, task_load %d, comp. root load: %d.\n ",
+	    if (DEBUG)
+	    {
+		fprintf(stderr, "Gen: Current conf is a possible task (itemdepth %d, task_depth %d, load %d, task_load %d, comp. root load: %d.\n ",
 	     		itemdepth, task_depth, bstate.totalload(), task_load, computation_root->bc.totalload());
-	     print_binconf<DEBUG>(&bstate);
+		adv_to_evaluate->print(stderr, true);
+	    }
 
 	    // disabled for now:
 	    // In some corner cases a vertex that is to be expanded becomes itself a task (again).
