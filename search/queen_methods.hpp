@@ -204,7 +204,7 @@ int queen_class::start()
 	}
 
 	// Currently we cannot expand a vertex with outedges.
-	if (computation_root->out.size() != 0)
+	/* if (computation_root->out.size() != 0)
 	{
 	    fprintf(stderr, "Error: computation root has %ld outedges.\n", computation_root->out.size());
 	    if (computation_root->win == victory::uncertain)
@@ -215,6 +215,7 @@ int queen_class::start()
 	    exit(-1);
 
 	}
+	*/
 	
 	monotonicity = FIRST_PASS;
 	task_depth = TASK_DEPTH_INIT + job.regrow_level * TASK_DEPTH_STEP;

@@ -233,8 +233,8 @@ void unmark_tasks(adversary_vertex *adv_v)
 
     if (adv_v->task && adv_v->leaf == leaf_type::boundary)
     {
-	fprintf(stderr, "Marking ex-task with regrow level %d.\n", (adv_v->regrow_level)+1);
-	adv_v->print(stderr, true);
+	// fprintf(stderr, "Marking ex-task with regrow level %d.\n", (adv_v->regrow_level)+1);
+	// adv_v->print(stderr, true);
 	(adv_v->regrow_level)++;
     } else if(adv_v->task)
     {

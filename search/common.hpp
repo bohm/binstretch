@@ -26,8 +26,8 @@
 const bool PROGRESS = true; // Whether to print progress info to stderr.
 const bool MEASURE = true; // Whether to collect and print measurements to stderr.
 
-const bool OUTPUT = true; // Whether to produce output.
-const bool REGROW = true; // Whether to regrow or just terminate after first iteration.
+const bool OUTPUT = false; // Whether to produce output.
+const bool REGROW = false; // Whether to regrow or just terminate after first iteration.
 
 // When producing output, how many times should a tree be regrown.
 // Note that REGROW_LIMIT = 0 still means a full tree will be generated.
@@ -128,7 +128,7 @@ const int LINPROBE_LIMIT = 8;
 const int DEFAULT_DP_SIZE = 100000;
 const int BESTFIT_THRESHOLD = (1*S)/10;
 
-#define POSSIBLE_TASK possible_task_mixed2
+#define POSSIBLE_TASK possible_task_mixed
 // #define POSSIBLE_TASK possible_task_depth
 
 const int EXPANSION_DEPTH = 3;
