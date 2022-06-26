@@ -420,8 +420,8 @@ int queen_class::start()
 	}
 	
         // --- END CLEANUP PHASE ---
-	sapling_counter = sap_man.count_boundary();
-	fprintf(stderr, "Boundary size: %ld.\n", sapling_counter);
+	sapling_counter = sap_man.count_saplings();
+	fprintf(stderr, "Saplings in graph: %ld.\n", sapling_counter);
 	job = sap_man.find_sapling();
 	sapling_no++;
     }

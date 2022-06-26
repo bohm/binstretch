@@ -26,7 +26,7 @@ public:
     sapling find_sapling();
     sapling find_first_uncertain();
     sapling find_first_unexpanded();
-    uint64_t count_boundary();
+    uint64_t count_saplings();
 };
 
 // We actually write this DFS in full, because we wish to visit saplings in a particular order.
@@ -223,19 +223,16 @@ sapling sapling_manager::find_sapling()
 uint64_t uncertain_boundary_counter = 0;
 uint64_t unexpanded_counter = 0;
 
-void count_uncertain_boundary_adv(adversary_vertex *v)
+void count_uncertain_saplings_adv(adversary_vertex *v)
 {
     if (v->out.size() == 0)
     {
 	VERTEX_ASSERT(glob_dfs_dag, v, (v->leaf != leaf_type::nonleaf));
 
-	if (v->leaf == leaf_type::boundary && v->win == victory::uncertain)
+	if (v->sapling && v->win == victory::uncertain)
 	{
 	    uncertain_boundary_counter++;
 	}
-    } else
-    {
-	VERTEX_ASSERT(glob_dfs_dag, v, (v->leaf != leaf_type::boundary));
     }
 }
 
@@ -255,12 +252,12 @@ void count_unexpanded_adv(adversary_vertex *v)
     }
 }
 
-uint64_t sapling_manager::count_boundary()
+uint64_t sapling_manager::count_saplings()
 {
     if (evaluation)
     {
 	uncertain_boundary_counter = 0;
-	dfs(d, count_uncertain_boundary_adv, do_nothing);
+	dfs(d, count_uncertain_saplings_adv, do_nothing);
 	return uncertain_boundary_counter;
     } else
     {
