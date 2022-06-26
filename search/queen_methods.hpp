@@ -189,7 +189,7 @@ int queen_class::start()
 	job.mark_in_progress();
 	regrow_threshold = job.regrow_level;
 
-	print_if<PROGRESS>("Queen: Boundary count: %ld, current sapling of regrow level %d:\n", sapling_counter, job.regrow_level);
+	print_if<PROGRESS>("Queen: Sapling count: %ld, current sapling of regrow level %d:\n", sapling_counter, job.regrow_level);
 	print_binconf<PROGRESS>(job.root->bc);
 
 

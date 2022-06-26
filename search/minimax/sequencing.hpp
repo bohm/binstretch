@@ -59,6 +59,7 @@ victory sequencing(binconf& root, adversary_vertex* root_vertex)
     {
 	print_if<PROGRESS>("Not using the advisor.\n");
 	root_vertex->leaf = leaf_type::boundary;
+	root_vertex->sapling = true;
 	root_vertex->win = victory::uncertain;
 	return victory::uncertain;
     } else {
@@ -139,13 +140,16 @@ template <minimax MODE> victory sequencing_adversary(binconf *b, unsigned int de
 	// fprintf(stderr, "Suggestion %d for binconf ", (int) suggestion); // Debug.
 	// print_binconf_stream(stderr, b); 
 	
-	if (suggestion == 0)
-	{
-	    adv_to_evaluate->leaf = leaf_type::boundary;
-	    adv_to_evaluate->win = victory::uncertain;
-	    adv_to_evaluate->sapling = true;
-	    return victory::uncertain;
-	}
+    }
+
+    if (!comp->heuristic_regime && suggestion == 0)
+    {
+	adv_to_evaluate->leaf = leaf_type::boundary;
+	adv_to_evaluate->win = victory::uncertain;
+	adv_to_evaluate->sapling = true;
+	fprintf(stderr, "Marking as sapling: ");
+	adv_to_evaluate->print(stderr, true);
+	return victory::uncertain;
     }
 
     victory below = victory::alg;
