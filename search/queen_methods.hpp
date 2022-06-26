@@ -177,7 +177,7 @@ int queen_class::start()
     // update_and_count_saplings(qdag); // Leave only uncertain saplings.
 
     cleanup_after_adv_win(qdag, true);
-    sapling_counter = sap_man.count_boundary();
+    sapling_counter = sap_man.count_saplings();
     sapling job = sap_man.find_sapling(); // Can find a sapling to expand or evaluate.
     while (job.root != nullptr)
     {
