@@ -54,6 +54,17 @@ public:
 	    expansion = job.expansion;
 	}
 
+    // A reduced constructor, when we wish to only update from root.
+    updater_computation(dag *graph)
+    {
+	    d = graph;
+	    sapling rootjob;
+	    rootjob.root = d->root;
+	    rootjob.evaluation = true;
+	    this->job = rootjob;
+	    evaluation = true;
+    }
+
     victory update_adv(adversary_vertex *v);
     victory update_alg(algorithm_vertex *v); 
     void update()
@@ -66,6 +77,15 @@ public:
 	    root_result = d->root->win;
 	    updater_result = job.root->win;
 	}
+
+    void update_root()
+    	{
+	    unfinished_tasks = 0;
+	    vertices_visited = 0;
+	    d->clear_visited();
+	    update_adv(d->root);
+	    root_result = d->root->win;
+    	}
 
     void count_tasks()
 	{

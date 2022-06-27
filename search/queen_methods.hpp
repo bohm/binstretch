@@ -437,6 +437,10 @@ int queen_class::start()
     // Global post-evaluation checks belong here.
     if (ret == 0)
     {
+	// If the graph looks evaluated, we just run one more update of the root to make sure the
+	// winning states are propagated well.
+	updater_computation upd(qdag);
+	upd.update_root();
 	assert(qdag->root->win == victory::adv);
     }
     
