@@ -80,11 +80,17 @@ public:
 
     void update_root()
     	{
+	    uint64_t previous_unfinished_tasks = unfinished_tasks;
+	    uint64_t previous_vertices_visited = vertices_visited;
 	    unfinished_tasks = 0;
 	    vertices_visited = 0;
 	    d->clear_visited();
 	    update_adv(d->root);
 	    root_result = d->root->win;
+	    // We reset the unfinished_tasks and vertices_visited
+	    // so that we do not mess up the continue_updating() check.
+	    unfinished_tasks = previous_unfinished_tasks;
+	    vertices_visited = previous_vertices_visited;
     	}
 
     void count_tasks()

@@ -94,7 +94,19 @@ void queen_class::updater(sapling job)
 
 	    if (!ucomp.continue_updating()) 
 	    {
-		fprintf(stderr, "We have evaluated the tree: ");
+		print_if<PROGRESS>("Updater: Sapling updating finished.\n");
+
+		// If the graph looks evaluated, we just run one more
+		// update of the root to make sure the
+		// winning states are propagated well, that the tasks with adv-winning are removed, and
+		// so forth.
+
+		if (ucomp.updater_result == victory::adv)
+		{
+		    print_if<PROGRESS>("Updater: Updating once from the root.\n");
+		    ucomp.update_root();
+		}
+	
 		fprintf(stderr, "updater=");
 		print(stderr, ucomp.updater_result);
 		fprintf(stderr, " root=");
@@ -437,10 +449,11 @@ int queen_class::start()
     // Global post-evaluation checks belong here.
     if (ret == 0)
     {
-	// If the graph looks evaluated, we just run one more update of the root to make sure the
-	// winning states are propagated well.
-	updater_computation upd(qdag);
-	upd.update_root();
+	// One final update run should establish that the root is winning.
+	updater_computation ucomp_root(qdag);
+	print_if<PROGRESS>("Queen: One final update run.\n");
+	ucomp_root.update_root();
+
 	assert(qdag->root->win == victory::adv);
     }
     

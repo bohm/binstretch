@@ -106,10 +106,14 @@ void consistency_checker::consistency_traversal_rec(adversary_vertex *adv_v)
 	assert(adv_v->heur_strategy == nullptr);
     }
 
-    if (adv_v->win == victory::adv)
-    {
+    // In the tree at any certain point, there should be only adversary-winning positions.
+
+    VERTEX_ASSERT(d, adv_v, (adv_v->win == victory::adv || adv_v->win == victory::uncertain));
+
+    // if (adv_v->win == victory::adv)
+    // {
 	// children_grandchildren_winning(d, adv_v);
-    }
+    // }
     // Next, check the adjacencies.
 
     if(adv_v != d->root)
