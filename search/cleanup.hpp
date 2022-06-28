@@ -407,7 +407,7 @@ void cleanup_after_adv_win(dag *d, bool evaluation)
 
     // For debugging purposes, we do two consistency checks.
 
-    fprintf(stderr, "Consistency check before cleanup:\n");
+    print_if<DEBUG>("Consistency check before cleanup:\n");
     consistency_checker c1(d, false);
     c1.check();
 
@@ -427,7 +427,7 @@ void cleanup_after_adv_win(dag *d, bool evaluation)
     // update_and_count_saplings(d);
     // Consistency checks.
 
-    fprintf(stderr, "Consistency check after cleanup:\n");
+    print_if<DEBUG>("Consistency check after cleanup:\n");
     assert_no_tasks(d);
     assert_winning_degrees(d);
     assert_no_fresh_winning(d);

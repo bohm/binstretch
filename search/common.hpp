@@ -23,8 +23,8 @@
 
 #include "constants.hpp" // Non-changeable system constants.
 
-const bool PROGRESS = true; // Whether to print progress info to stderr.
-const bool MEASURE = true; // Whether to collect and print measurements to stderr.
+const bool PROGRESS = false; // Whether to print progress info to stderr.
+const bool MEASURE = false; // Whether to collect and print measurements to stderr.
 
 const bool OUTPUT = false; // Whether to produce output.
 const bool REGROW = false; // Whether to regrow or just terminate after first iteration.
@@ -151,9 +151,9 @@ const std::string LOG_DIR = "./logs";
 // ------------------------------------------------
 // debug constants
 
-const bool VERBOSE = true;
+const bool VERBOSE = false;
 const bool DEBUG = false;
-const bool COMM_DEBUG = true; // Network debug messages.
+const bool COMM_DEBUG = false; // Network debug messages.
 const bool TASK_DEBUG = false; // Debugging creation of tasks, batching, etc.
 const bool GRAPH_DEBUG = false; // Debugging the DAG creation and adding/removing edges.
 const bool PARSING_DEBUG = false; // Debugging loading and saving a file.

@@ -105,12 +105,15 @@ void queen_class::updater(sapling job)
 		    // print_if<PROGRESS>("Updater: Updating once from the root.\n");
 		    ucomp.update_root();
 		}
-	
-		fprintf(stderr, "updater=");
-		print(stderr, ucomp.updater_result);
-		fprintf(stderr, " root=");
-		print(stderr, ucomp.root_result);
-		fprintf(stderr, "\n");
+
+		if (VERBOSE)
+		{
+		    fprintf(stderr, "updater=");
+		    print(stderr, ucomp.updater_result);
+		    fprintf(stderr, " root=");
+		    print(stderr, ucomp.root_result);
+		    fprintf(stderr, "\n");
+		}
 
 		print_if<MEASURE>("Prune/receive collisions: %" PRIu64 ".\n", g_meas.pruned_collision);
 		g_meas.pruned_collision = 0;
@@ -132,7 +135,7 @@ int queen_class::start()
     
     comm.deferred_construction(world_size);
     std::string machine_name = comm.machine_name();
-    fprintf(stderr, "Queen: reporting for duty: %s, rank %d out of %d instances\n",
+    print_if<PROGRESS>("Queen: reporting for duty: %s, rank %d out of %d instances\n",
 	    machine_name.c_str(), world_rank, world_size);
 
     perf_timer.queen_start();
@@ -262,7 +265,7 @@ int queen_class::start()
 
 	computation_root->win = updater_result.load(std::memory_order_acquire);
 
-	fprintf(stderr, "Consistency check after generation.\n");
+	print_if<VERBOSE>("Consistency check after generation.\n");
 	consistency_checker c_after_gen(qdag, false);
 	c_after_gen.check();
 
@@ -270,7 +273,7 @@ int queen_class::start()
 	// We still enter the cleanup phase.
 	if (computation_root->win != victory::uncertain)
 	{
-	    fprintf(stderr, "Queen: Completed lower bound in the generation phase.\n");
+	    print_if<VERBOSE>("Queen: Completed lower bound in the generation phase.\n");
 	    if (computation_root->win == victory::adv)
 	    {
 		lower_bound_complete = true;
@@ -406,7 +409,7 @@ int queen_class::start()
 		// Clean the full graph, starting from the root.
 		sapling rootjob;
 		rootjob.root = qdag->root;
-		fprintf(stderr, "Begin root cleanup.\n");
+		print_if<VERBOSE>("Begin root cleanup.\n");
 		cleanup_after_adv_win(qdag, job.evaluation);
 		if (REGROW)
 		{
@@ -424,7 +427,7 @@ int queen_class::start()
 	
         // --- END CLEANUP PHASE ---
 	sapling_counter = sap_man.count_saplings();
-	fprintf(stderr, "Saplings in graph: %ld.\n", sapling_counter);
+	// fprintf(stderr, "Saplings in graph: %ld.\n", sapling_counter);
 	job = sap_man.find_sapling();
 	sapling_no++;
     }
@@ -465,7 +468,7 @@ int queen_class::start()
     }
 
     // Print measurements and clean up.
-    g_meas.print();
+    MEASURE_ONLY(g_meas.print());
     // delete_running_lows(); happens upon comm destruction.
 
     delete dpc;

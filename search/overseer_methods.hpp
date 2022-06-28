@@ -108,7 +108,7 @@ void overseer::start()
     int monotonicity_last_round;
 
     std::string machine_name = comm.machine_name();
-    printf("Overseer reporting for duty: %s, rank %d out of %d instances\n",
+    print_if<PROGRESS>("Overseer reporting for duty: %s, rank %d out of %d instances\n",
 	   machine_name.c_str(), world_rank, world_size);
 
     comm.deferred_construction(world_size);
@@ -129,7 +129,7 @@ void overseer::start()
     // If we want to have a reserve CPU slot for the overseer itself, we should subtract 1.
     worker_count = std::get<2>(settings);
 
-    print_if<true>("Overseer %d at server %s: conflog %d, dplog %d, worker_count %d\n",
+    print_if<VERBOSE>("Overseer %d at server %s: conflog %d, dplog %d, worker_count %d\n",
 		world_rank, machine_name.c_str(), conflog, dplog, worker_count);
     zobrist_quadruple zq = comm.bcast_recv_and_allocate_zobrist();
     std::tie(Zi, Zl, Zlow, Zlast) = zq;

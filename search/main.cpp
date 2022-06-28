@@ -116,7 +116,7 @@ void main_thread(int ws, int wr, int argc, char** argv)
 		if (advfile_flag)
 		{
 		    USING_ADVISOR = true;
-		    fprintf(stderr, "Found the --advice flag, value %s.\n", advice_file.c_str());
+		    print_if<VERBOSE>("Found the --advice flag, value %s.\n", advice_file.c_str());
 		    strcpy(ADVICE_FILENAME, advice_file.c_str());
 		}
 
@@ -125,7 +125,7 @@ void main_thread(int ws, int wr, int argc, char** argv)
 		if (rootfile_flag)
 		{
 		    CUSTOM_ROOTFILE = true;
-		    fprintf(stderr, "Found the --root flag, parameter %s.\n", root_file.c_str());
+		    print_if<VERBOSE>("Found the --root flag, parameter %s.\n", root_file.c_str());
 		    strcpy(ROOT_FILENAME, root_file.c_str());
 		}
 
@@ -134,7 +134,7 @@ void main_thread(int ws, int wr, int argc, char** argv)
 		if (assumefile_flag)
 		{
 		    USING_ASSUMPTIONS = true;
-		    fprintf(stderr, "Found the --assume flag, value %s.\n", assume_file.c_str());
+		    print_if<VERBOSE>("Found the --assume flag, value %s.\n", assume_file.c_str());
 		    strcpy(ASSUMPTIONS_FILENAME, assume_file.c_str());
 		}
 	    }
@@ -144,9 +144,9 @@ void main_thread(int ws, int wr, int argc, char** argv)
  
 	    if (BINS == 3 && 3*ALPHA >= S)
 	    {
-		fprintf(stderr, "All good situation heuristics will be applied.\n");
+		print_if<VERBOSE>("All good situation heuristics will be applied.\n");
 	    } else {
-		fprintf(stderr, "Only some good situations will be applied.\n");
+		print_if<VERBOSE>("Only some good situations will be applied.\n");
 	    }
 
 	    // queen is now by default two-threaded
@@ -161,20 +161,36 @@ void main_thread(int ws, int wr, int argc, char** argv)
 	assert(ret == 0 || ret == 1);
 	if(ret == 0)
 	{
-	    fprintf(stdout, "Lower bound for %d/%d Bin Stretching on %d bins with monotonicity %d.\n",
+	    fprintf(stdout, "Lower bound for %d/%d Bin Stretching on %d bins with monotonicity %d from ",
 		    R,S,BINS,monotonicity);
+	    if (CUSTOM_ROOTFILE)
+	    {
+		binconf root = loadbinconf(ROOT_FILENAME);
+		print_binconf_stream(stdout, root, true);
+	    } else
+	    {
+		fprintf(stdout, "the empty configuration.\n");
+	    }
 	} else {
-	    fprintf(stdout, "Algorithm wins %d/%d Bin Stretching on %d bins with monotonicity %d.\n ",
+	    fprintf(stdout, "Algorithm wins %d/%d Bin Stretching on %d bins with monotonicity %d from ",
 		    R,S,BINS,monotonicity);
+	    if (CUSTOM_ROOTFILE)
+	    {
+		binconf root = loadbinconf(ROOT_FILENAME);
+		print_binconf_stream(stdout, root, true);
+	    } else
+	    {
+		fprintf(stdout, "the empty configuration.\n");
+	    }
 
 	    fprintf(stdout, "Losing sapling configuration:\n");
 	    print_binconf_stream(stdout, losing_binconf);
 	}
 	
-	fprintf(stderr, "Number of tasks: %d, collected tasks: %u,  pruned tasks %" PRIu64 ".\n,",
+	print_if<MEASURE>("Number of tasks: %d, collected tasks: %u,  pruned tasks %" PRIu64 ".\n,",
 		tcount, qmemory::collected_cumulative.load(), removed_task_count);
-	fprintf(stderr, "Pruned & transmitted tasks: %" PRIu64 "\n", irrel_transmitted_count);
-	fprintf(stderr, "Number of winning saplings %d.\n", winning_saplings);
+	print_if<MEASURE>("Pruned & transmitted tasks: %" PRIu64 "\n", irrel_transmitted_count);
+	print_if<MEASURE>("Number of winning saplings %d.\n", winning_saplings);
 
 	hashtable_cleanup();
     }
