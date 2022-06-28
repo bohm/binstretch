@@ -100,7 +100,7 @@ template<minimax MODE> victory computation<MODE>::adversary(adversary_vertex *ad
 	    return adv_to_evaluate->win;
 	}
 	adv_to_evaluate->visited = true;
-
+	GEN_ONLY(meas.adv_vertices_visited++); // For performance measurement only.
 	
 	// We do not proceed further with expandable or finished vertices. The expandable ones need to be visited
 	// again, but the single one being expanded will be relabeled as "expanding".
@@ -425,7 +425,8 @@ template<minimax MODE> victory computation<MODE>::algorithm(int pres_item, algor
 	    return alg_to_evaluate->win;
 	}
 	alg_to_evaluate->visited = true;
-
+	GEN_ONLY(meas.alg_vertices_visited++); // For performance measurement only.
+	
 	// Any vertex which is touched by generation becomes temporarily a non-leaf.
 	// In principle, it might become a leaf again, if say the task function decides -- but
 	// we just mark it as such.

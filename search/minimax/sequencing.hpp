@@ -19,6 +19,7 @@
 #include "fits.hpp"
 #include "gs.hpp"
 #include "tasks.hpp"
+#include "heur_adv.hpp"
 
 // Currently sequencing is templated but "not really" -- it is only for generation.
 // This should be fixed soon.

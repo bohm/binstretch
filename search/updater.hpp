@@ -109,6 +109,8 @@ public:
 	    // fprintf(stderr, "Updater: seeing %ld tasks.\n", unfinished_tasks); 
 	    return (unfinished_tasks > 0);
 	}
+
+
 };
 
 victory updater_computation::update_adv(adversary_vertex *v)

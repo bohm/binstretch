@@ -34,6 +34,7 @@ void queen_class::updater(sapling job)
 
     unsigned int last_printed = 0;
     qmemory::collected_cumulative = 0;
+    reset_collected_now();
     unsigned int cycle_counter = 0;
     updater_computation ucomp(qdag, job);
     
@@ -52,12 +53,10 @@ void queen_class::updater(sapling job)
 	
 	// update main tree and task map
 	// bool should_do_update = ((qmemory::collected_now >= TICK_TASKS) || (tcount - thead <= TICK_TASKS)) && (updater_result == POSTPONED);
-	const bool should_do_update = true;
-	if (should_do_update)
+	if (update_recommendation())
 	{
+	    reset_collected_now();
 	    cycle_counter++;
-	    qmemory::collected_now.store(0, std::memory_order_release);
-	    // updater_result.store(update(sapling, uat), std::memory_order_release);
 	    ucomp.update();
 	    if (cycle_counter >= 100)
 	    {
@@ -94,7 +93,7 @@ void queen_class::updater(sapling job)
 
 	    if (!ucomp.continue_updating()) 
 	    {
-		print_if<PROGRESS>("Updater: Sapling updating finished.\n");
+		print_if<PROGRESS>("Updater: Sapling updating finished. ");
 
 		// If the graph looks evaluated, we just run one more
 		// update of the root to make sure the
@@ -103,7 +102,7 @@ void queen_class::updater(sapling job)
 
 		if (ucomp.updater_result == victory::adv)
 		{
-		    print_if<PROGRESS>("Updater: Updating once from the root.\n");
+		    // print_if<PROGRESS>("Updater: Updating once from the root.\n");
 		    ucomp.update_root();
 		}
 	
@@ -111,14 +110,6 @@ void queen_class::updater(sapling job)
 		print(stderr, ucomp.updater_result);
 		fprintf(stderr, " root=");
 		print(stderr, ucomp.root_result);
-
-		/*
-		FILE *flog = fopen("./logs/algwin.log", "w");
-		qdag->clear_visited();
-		qdag->print_lowerbound_dfs(job.root, flog, true);
-		fclose(flog);
-		*/
-
 		fprintf(stderr, "\n");
 
 		print_if<MEASURE>("Prune/receive collisions: %" PRIu64 ".\n", g_meas.pruned_collision);

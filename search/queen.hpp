@@ -4,6 +4,8 @@
 #include <atomic>
 
 #include "dag/dag.hpp"
+#include "tasks.hpp"
+#include "saplings.hpp"
 
 // Queen global variables and declarations.
 
@@ -24,6 +26,18 @@ public:
     queen_class(int argc, char **argv);
     void updater(sapling job);
     int start();
+
+    // Returns true if the updater thread should do an update, since
+    // there are sufficiently many tasks collected.
+    inline bool update_recommendation()
+	{
+	    return qmemory::collected_now >= 1;
+	}
+
+    inline void reset_collected_now()
+	{
+	    qmemory::collected_now.store(0, std::memory_order_release);
+	}
 };
 
 // A global pointer to *the* queen. It is NULL everywhere

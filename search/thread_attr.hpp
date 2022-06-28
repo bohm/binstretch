@@ -96,6 +96,9 @@ struct measure_attr
     uint64_t bc_already_inserted = 0;
     uint64_t bc_in_progress_insert = 0;
     uint64_t bc_overwrite = 0;
+
+    uint64_t adv_vertices_visited = 0;
+    uint64_t alg_vertices_visited = 0;
     
     uint64_t inner_loop = 0;
     uint64_t dynprog_calls = 0;
@@ -143,6 +146,10 @@ struct measure_attr
 	    
 	    maximum_feasible_counter += other.maximum_feasible_counter;
 	    dynprog_calls += other.dynprog_calls;
+
+	    adv_vertices_visited += other.adv_vertices_visited;
+	    alg_vertices_visited += other.adv_vertices_visited;
+ 
 	    inner_loop += other.inner_loop;
 	    largest_queue_observed = std::max(largest_queue_observed, other.largest_queue_observed);
 	    bestfit_calls += other.bestfit_calls;

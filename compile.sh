@@ -2,7 +2,7 @@
 
 usage()
 {
-	echo "usage: ./build.sh M T G [-odir output-dir] [--search/--painter/--rooster/--kibbitzer] [--debug] [--older]"
+	echo "usage: ./build.sh M T G [-odir output-dir] [--search/--painter/--rooster/--kibbitzer/--minitools] [--debug] [--older]"
 	echo "where M: the number of bins/machines (e.g. 6)"
 	echo "      T: the allowed load of bins (e.g. 19)"
 	echo "      G: the optimal maximum load of all bins (e.g. 14)"
@@ -25,6 +25,7 @@ BUILDING_ROOSTER=true
 BUILDING_PAINTER=true
 BUILDING_KIBBITZER=true
 BUILDING_SEARCH=true
+BUILDING_MINITOOLS=true
 CPP_STANDARD="c++17"
 LINKING_SUFFIX=""
 OPTFLAG="-O3"
@@ -45,26 +46,39 @@ while (( "$#" )); do
 	    BUILDING_ROOSTER=false
 	    BUILDING_PAINTER=false
 	    BUILDING_KIBBITZER=false
+	    BUILDING_MINITOOLS=false
 	    shift
 	    ;;
 	--painter)
 	    BUILDING_SEARCH=false
 	    BUILDING_ROOSTER=false
 	    BUILDING_KIBBITZER=false
+	    BUILDING_MINITOOLS=false
+
 	    shift
 	    ;;
 	--rooster)
 	    BUILDING_SEARCH=false
 	    BUILDING_PAINTER=false
 	    BUILDING_KIBBITZER=false
+	    BUILDING_MINITOOLS=false
 	    shift
 	    ;;
 	--kibbitzer)
 	    BUILDING_SEARCH=false
 	    BUILDING_PAINTER=false
 	    BUILDING_ROOSTER=false
+	    BUILDING_MINITOOLS=false
 	    shift
 	    ;;
+	--minitools)
+	    BUILDING_SEARCH=false
+	    BUILDING_PAINTER=false
+	    BUILDING_ROOSTER=false
+	    BUILDING_KIBBITZER=false
+	    shift
+	    ;;
+
 	--older)
 	    LINKING_SUFFIX="-lstdc++fs"
 	    shift
@@ -112,3 +126,10 @@ if [[ "$BUILDING_ROOSTER" = true ]]; then
     echo "Compiling converter binary for $BINS bins and ratio $R/$S bins into $OUTPUT/rooster-$BINS-$R-$S."
     cd rooster; g++ -I../ -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S rooster.cpp -o ../$OUTPUT/rooster-$BINS-$R-$S -pthread $LINKING_SUFFIX; cd ..
 fi
+
+if [[ "$BUILDING_MINITOOLS" = true ]]; then
+	echo "Running: g++ -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S listsaplings.cpp -o ../$OUTPUT/listsaplings-$BINS-$R-$S -pthread $LINKING_SUFFIX"
+	cd minitools; g++ -I../search/ -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S listsaplings.cpp -o ../$OUTPUT/listsaplings-$BINS-$R-$S -pthread $LINKING_SUFFIX; cd ..
+fi
+
+
