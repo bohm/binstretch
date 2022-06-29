@@ -23,11 +23,11 @@
 
 #include "constants.hpp" // Non-changeable system constants.
 
-const bool PROGRESS = false; // Whether to print progress info to stderr.
-const bool MEASURE = false; // Whether to collect and print measurements to stderr.
-
+const bool PROGRESS = true; // Whether to print progress info to stderr.
+const bool MEASURE = true; // Whether to collect and print measurements to stderr.
+const bool VERBOSE = true; // Further information about progress.
 const bool OUTPUT = false; // Whether to produce output.
-const bool REGROW = false; // Whether to regrow or just terminate after first iteration.
+const bool REGROW = true; // Whether to regrow or just terminate after first iteration.
 
 // When producing output, how many times should a tree be regrown.
 // Note that REGROW_LIMIT = 0 still means a full tree will be generated.
@@ -151,7 +151,6 @@ const std::string LOG_DIR = "./logs";
 // ------------------------------------------------
 // debug constants
 
-const bool VERBOSE = false;
 const bool DEBUG = false;
 const bool COMM_DEBUG = false; // Network debug messages.
 const bool TASK_DEBUG = false; // Debugging creation of tasks, batching, etc.
