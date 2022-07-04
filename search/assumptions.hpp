@@ -1,9 +1,10 @@
 #ifndef _ASSUMPTIONS_HPP
 #define _ASSUMPTIONS_HPP 1
 
+#include <iostream>
+#include <sstream>
 #include "common.hpp"
 #include "constants.hpp"
-
 bool USING_ASSUMPTIONS = false;
 char ASSUMPTIONS_FILENAME[256];
 
@@ -55,15 +56,22 @@ public:
 
 	    while(!feof(assumefin))
 	    {
-		// Using filetools functions to load the bin configuration part.
-		std::array<bin_int, BINS+1> loads = load_segment_with_loads(assumefin);
-		std::array<bin_int, S+1> items = load_segment_with_items(assumefin);
-		bin_int last_item = load_last_item_segment(assumefin);
-		binconf curbc(loads, items, last_item);
+		char linebuf[1024];
+		fgets(linebuf, 1024, assumefin);
+		std::string line(linebuf);
+		std::stringstream str_s(line);
 		
+		// Using filetools functions to load the bin configuration part.
+		std::array<bin_int, BINS+1> loads = load_segment_with_loads(str_s);
+		std::array<bin_int, S+1> items = load_segment_with_items(str_s);
+		bin_int last_item = load_last_item_segment(str_s);
+		binconf curbc(loads, items, last_item);
+
+		std::string rest;
+		std::getline(str_s, rest);
 		// Load the assumption
 		char textual_assumption[30];
-		if(fscanf(assumefin, " assumption: %s\n", textual_assumption) != 1)
+		if(sscanf(rest.c_str(), " assumption: %s\n", textual_assumption) != 1)
 		{
 		    ERROR("Assumption %d failed to load.\n", assume_arr.size());
 		}

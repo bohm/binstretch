@@ -165,7 +165,7 @@ void main_thread(int ws, int wr, int argc, char** argv)
 		    R,S,BINS,monotonicity);
 	    if (CUSTOM_ROOTFILE)
 	    {
-		binconf root = loadbinconf(ROOT_FILENAME);
+		binconf root = loadbinconf_singlefile(ROOT_FILENAME);
 		print_binconf_stream(stdout, root, true);
 	    } else
 	    {
@@ -176,7 +176,7 @@ void main_thread(int ws, int wr, int argc, char** argv)
 		    R,S,BINS,monotonicity);
 	    if (CUSTOM_ROOTFILE)
 	    {
-		binconf root = loadbinconf(ROOT_FILENAME);
+		binconf root = loadbinconf_singlefile(ROOT_FILENAME);
 		print_binconf_stream(stdout, root, true);
 	    } else
 	    {

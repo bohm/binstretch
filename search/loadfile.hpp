@@ -5,6 +5,8 @@
 #include <cstring>
 
 #include "common.hpp"
+#include "filetools.hpp"
+
 #include "dag/dag.hpp"
 #include "dag/partial.hpp"
 
@@ -93,6 +95,7 @@ std::tuple<int,std::string> parse_alg_vertex(const char *line)
 {
     int name = -1;
     sscanf(line, "%d", &name);
+
     // Check for optimal="", and load the content.
     std::stringstream ss;
     const char *startoptimal = strstr(line, "optimal=\"");
@@ -111,11 +114,29 @@ std::tuple<int,std::string> parse_alg_vertex(const char *line)
 
 }
 
-std::tuple<int, std::string> parse_adv_vertex(const char *line)
+std::tuple<int, std::string, binconf*> parse_adv_vertex(const char *line)
 {
     int name = -1;
+    binconf* bc_ptr = nullptr;
     sscanf(line, "%d", &name);
 
+    // Check for binconf="" and load the content.
+    std::stringstream binconf_str;
+    const char *startbinconf = strstr(line, "binconf=\"");
+    if (startbinconf != nullptr)
+    {
+	const char *after = startbinconf + 9;
+	while (after != nullptr && (*after) != '\"')
+	{
+	    binconf_str << *after;
+	    after++;
+	}
+
+
+	binconf b = loadbinconf(binconf_str);
+	bc_ptr = new binconf(b.loads, b.items, b.last_item);
+    }
+    
     // Check for heur="", and load the content.
     std::stringstream ss;
     const char *startheur = strstr(line, "heur=\"");
@@ -129,7 +150,7 @@ std::tuple<int, std::string> parse_adv_vertex(const char *line)
 	}
     }
     
-    return std::make_tuple(name, ss.str());
+    return std::make_tuple(name, ss.str(), bc_ptr);
 
 }
 
@@ -158,11 +179,12 @@ partial_dag* loadfile(const char* filename)
 	int name = -1, name_from = -1, name_to = -1, bin = -1, next_item = -1;
 	std::string heurstring;
 	std::string optimal;
+	binconf* bc_ptr;
 
 	switch(l)
 	{
 	case line_type::adversary_vertex:
-	    std::tie(name, heurstring) = parse_adv_vertex(line);
+	    std::tie(name, heurstring, bc_ptr) = parse_adv_vertex(line);
 	    if(name == -1)
 	    {
 		ERROR("Unable to parse adv. vertex line: %s\n", line);
@@ -170,7 +192,7 @@ partial_dag* loadfile(const char* filename)
 	    if (first_adversary)
 	    {
 		print_if<DEBUG>("Adding vertex with old name %d as root.\n", name);
-		pd->add_root(name, heurstring);
+		pd->add_root(name, heurstring, bc_ptr);
 		first_adversary = false;
 	    } else {
 		print_if<DEBUG>("Adding vertex with name %d.\n", name);

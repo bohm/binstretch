@@ -165,7 +165,7 @@ int queen_class::start()
     if (CUSTOM_ROOTFILE)
     {
 	qdag = new dag;
-	binconf root = loadbinconf(ROOT_FILENAME);
+	binconf root = loadbinconf_singlefile(ROOT_FILENAME);
 	root.consistency_check();
 	qdag->add_root(root);
 	sequencing(root, qdag->root);

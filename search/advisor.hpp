@@ -74,15 +74,23 @@ public:
 
 	    while(!feof(advicefin))
 	    {
-		// Using filetools functions to load the bin configuration part.
-		std::array<bin_int, BINS+1> loads = load_segment_with_loads(advicefin);
-		std::array<bin_int, S+1> items = load_segment_with_items(advicefin);
-		bin_int last_item = load_last_item_segment(advicefin);
-		binconf curbc(loads, items, last_item);
+		char linebuf[1024];
+		fgets(linebuf, 1024, advicefin);
+		std::string line(linebuf);
+		std::stringstream str_s(line);
 		
+		// Using filetools functions to load the bin configuration part.
+		std::array<bin_int, BINS+1> loads = load_segment_with_loads(str_s);
+		std::array<bin_int, S+1> items = load_segment_with_items(str_s);
+		bin_int last_item = load_last_item_segment(str_s);
+		binconf curbc(loads, items, last_item);
+
+		std::string rest;
+		std::getline(str_s, rest);
+	
 		// Load the suggestion.
 		bin_int suggestion = 0;
-		if(fscanf(advicefin, " suggestion: %" SCNd16, &suggestion) != 1)
+		if(sscanf(rest.c_str(), " suggestion: %" SCNd16, &suggestion) != 1)
 		{
 		    ERROR("Suggestion %d failed to load.\n", adv_arr.size());
 		}
