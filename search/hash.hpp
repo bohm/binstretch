@@ -162,7 +162,7 @@ void zobrist_init()
 
     for (int bl = 0; bl <= ZOBRIST_LOAD_BLOCKS - 2; bl++)
     {
-	for (int pos = 0; pos < ((R+1)^ZOBRIST_LOAD_BLOCKSIZE); pos++)
+	for (int pos = 0; pos < power<int>((R+1),ZOBRIST_LOAD_BLOCKSIZE); pos++)
 	{
 	    Zlbig[bl][pos] = loadhash_from_position(Zl, bl, pos);
 	}
@@ -170,7 +170,7 @@ void zobrist_init()
 
     // Zlbig last position
 
-    for (int pos = 0; pos < ((R+1)^ZOBRIST_LAST_BLOCKSIZE); pos++)
+    for (int pos = 0; pos < power<int>((R+1),ZOBRIST_LAST_BLOCKSIZE); pos++)
     {
 	Zlbig[ZOBRIST_LOAD_BLOCKS-1][pos] = loadhash_last_from_position(Zl, pos);
     }

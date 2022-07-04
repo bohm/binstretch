@@ -82,7 +82,7 @@ public:
 	    for (int el = 1; el <= ZOBRIST_LAST_BLOCKSIZE; el++)
 	    {
 		l_pos *= (R+1);
-		l_pos += loads[(ZOBRIST_LOAD_BLOCKS-1)*ZOBRIST_LAST_BLOCKSIZE + el];
+		l_pos += loads[(ZOBRIST_LOAD_BLOCKS-1)*ZOBRIST_LOAD_BLOCKSIZE + el];
 	    }
 	    
 	    loadhash_l ^= Zlbig[ZOBRIST_LOAD_BLOCKS-1][l_pos];
@@ -115,6 +115,17 @@ public:
 		loadhash ^= Zl[to*(R+1) + loads[from] - item]; // the old load
 		loadhash ^= Zl[to*(R+1) + loads[to]]; // the new load
 	    }
+
+	    if (loadhash != newhash())
+	    {
+		fprintf(stderr, "Hashes (%" PRIu64 ", %" PRIu64 ") do not match for loadconf [", loadhash, newhash());
+		for (int i = 1; i <= BINS; i++)
+		{
+		    fprintf(stderr, "%d ", loads[i]); 
+		}
+		fprintf(stderr, "].\n");
+		assert(loadhash == newhash());
+	    }
 	}
 
 
@@ -140,6 +151,17 @@ public:
 		
 		loadhash ^= Zl[from*(R+1) + loads[to] + item]; // the old load
 		loadhash ^= Zl[from*(R+1) + loads[from]]; // the new load
+	    }
+
+	    if (loadhash != newhash())
+	    {
+		fprintf(stderr, "Hashes (%" PRIu64 ", %" PRIu64 ") do not match for loadconf [", loadhash, newhash());
+		for (int i = 1; i <= BINS; i++)
+		{
+		    fprintf(stderr, "%d ", loads[i]); 
+		}
+		fprintf(stderr, "].\n");
+		assert(loadhash == newhash());
 	    }
 	}
 

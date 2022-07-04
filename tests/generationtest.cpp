@@ -92,6 +92,9 @@ std::pair<bool,std::string> parse_parameter_rootfile(int argc, char **argv, int 
 
 int main(int argc, char** argv)
 {
+
+    fprintf(stderr, "Zobrist load big hashes: load blocksize %d, last blocksize %d, number of blocks %d.\n",
+	    ZOBRIST_LOAD_BLOCKSIZE, ZOBRIST_LAST_BLOCKSIZE, ZOBRIST_LOAD_BLOCKS);
     for (int i = 0; i <= argc-2; i++)
     {
 	auto [advfile_flag, advice_file] = parse_parameter_advfile(argc, argv, i);
