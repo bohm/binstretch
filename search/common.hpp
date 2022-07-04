@@ -183,6 +183,8 @@ uint64_t *Zlow; // Zobrist for the lowest sendable item (monotonicity)
 uint64_t *Zlast;
 uint64_t *Zalg;
 
+uint64_t **Zlbig;
+
 typedef std::tuple<uint64_t*, uint64_t*, uint64_t*, uint64_t*> zobrist_quadruple;
 
 // thread rank idea:
@@ -319,7 +321,7 @@ void assert_with_message(const char* expression, bool evaluation, const char* me
         abort();
     }
 }
-    
+
 #ifndef NDEBUG
 #define assert_message(expr, msg) assert_with_message(#expr, expr, msg);
 #else

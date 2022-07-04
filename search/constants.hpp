@@ -170,6 +170,10 @@ const std::array<std::string, SITUATIONS> gsnames = {"GS1", "GS1MOD", "GS2", "GS
 				"GS3VARIANT", "GS4", "GS4VARIANT", "GS5", "GS6"};
 
 
+const int ZOBRIST_LOAD_BLOCKSIZE = 5;
+const int ZOBRIST_LOAD_BLOCKS = (IBINS-1)/ZOBRIST_LOAD_BLOCKSIZE + 1;
+const int ZOBRIST_LAST_BLOCKSIZE = (IBINS-1) % ZOBRIST_LOAD_BLOCKSIZE + 1;
+
 // modes for pushing into dynprog cache
 const int HEURISTIC = 0;
 const int PERMANENT = 1;
@@ -234,5 +238,20 @@ const int RECOMMENDED_MONOTONICITY = 0;
 #error "The macro constant IS needs to be passed by the compiler!"
 #define IS 3 // ditto 
 #endif
+
+// A compile-time power computation.
+// Source: https://stackoverflow.com/a/27271374
+
+template<typename T>
+constexpr T sqr(T a) {
+    return a * a;
+}
+
+template<typename T>
+constexpr T power(T a, std::size_t n) {
+    return n == 0 ? 1 : sqr(power(a, n / 2)) * (n % 2 == 0 ?  1 : a);
+}
+
+
 
 #endif // _CONSTANTS_HPP

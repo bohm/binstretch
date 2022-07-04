@@ -63,6 +63,33 @@ public:
 	}
 
 
+    uint64_t newhash()
+	{
+	    uint64_t loadhash_l = 0;
+	    for (int bl = 0; bl <= ZOBRIST_LOAD_BLOCKS - 2; bl++)
+	    {
+		int pos = 0;
+		for (int el = 1; el <= ZOBRIST_LOAD_BLOCKSIZE; el++)
+		{
+		    pos *= (R+1);
+		    pos += loads[bl*ZOBRIST_LOAD_BLOCKSIZE + el];
+		}
+		loadhash_l ^= Zlbig[bl][pos];
+	    }
+
+	    // Last block
+	    int l_pos = 0;
+	    for (int el = 1; el <= ZOBRIST_LAST_BLOCKSIZE; el++)
+	    {
+		l_pos *= (R+1);
+		l_pos += loads[(ZOBRIST_LOAD_BLOCKS-1)*ZOBRIST_LAST_BLOCKSIZE + el];
+	    }
+	    
+	    loadhash_l ^= Zlbig[ZOBRIST_LOAD_BLOCKS-1][l_pos];
+
+	    return loadhash_l;
+	}
+    
         void rehash_loads_increased_range(int item, int from, int to)
 	{
 	    assert(item >= 1); assert(from <= to); assert(from >= 1); assert(to <= BINS);
