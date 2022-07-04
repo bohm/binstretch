@@ -147,5 +147,5 @@ fi
 
 if [[ "$BUILDING_TESTS" = true ]]; then
     echo "Compiling $OUTPUT/generationtest-$BINS-$R-$S."
-    cd tests; g++ -I../search/ -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S generationtest.cpp -o ../$OUTPUT/generationtest-$BINS-$R-$S -pthread $LINKING_SUFFIX; cd ..
+    cd tests; g++ -I../search/ -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S generationtest.cpp -o ../$OUTPUT/generationtest-$BINS-$R-$S $LINKING_SUFFIX; cd ..
 fi
