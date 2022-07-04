@@ -201,6 +201,19 @@ struct measure_attr
 	    fprintf(stderr, "Dyn. prog. cache:\n");
 	    dpht_meas.print(); // caching
 	}
+
+
+    void print_generation_stats()
+	{
+	    fprintf(stderr, "Generation: Visited %" PRIu64 " adversary and %" PRIu64 " algorithmic vertices.\n",
+		    adv_vertices_visited, alg_vertices_visited);
+	}
+
+    void clear_generation_stats()
+	{
+	    adv_vertices_visited = 0;
+	    alg_vertices_visited = 0;
+	}
 };
 
 // global measurement data (actually not global, but one per process with MPI)

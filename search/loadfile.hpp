@@ -6,7 +6,6 @@
 
 #include "common.hpp"
 #include "filetools.hpp"
-
 #include "dag/dag.hpp"
 #include "dag/partial.hpp"
 

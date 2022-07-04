@@ -141,6 +141,7 @@ binconf loadbinconf(std::stringstream& str_s)
     bin_int last_item = load_last_item_segment(str_s);
 
     binconf retbc(loads, items, last_item);
+    retbc.hashinit();
     return retbc;
    
 }

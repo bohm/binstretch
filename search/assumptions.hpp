@@ -57,7 +57,10 @@ public:
 	    while(!feof(assumefin))
 	    {
 		char linebuf[1024];
-		fgets(linebuf, 1024, assumefin);
+		if (fgets(linebuf, 1024, assumefin) == nullptr)
+		{
+		    break;
+		}
 		std::string line(linebuf);
 		std::stringstream str_s(line);
 		
@@ -66,6 +69,7 @@ public:
 		std::array<bin_int, S+1> items = load_segment_with_items(str_s);
 		bin_int last_item = load_last_item_segment(str_s);
 		binconf curbc(loads, items, last_item);
+		curbc.hashinit();
 
 		std::string rest;
 		std::getline(str_s, rest);

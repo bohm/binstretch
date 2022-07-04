@@ -75,7 +75,10 @@ public:
 	    while(!feof(advicefin))
 	    {
 		char linebuf[1024];
-		fgets(linebuf, 1024, advicefin);
+		if(fgets(linebuf, 1024, advicefin) == nullptr)
+		{
+		    break;
+		}
 		std::string line(linebuf);
 		std::stringstream str_s(line);
 		
