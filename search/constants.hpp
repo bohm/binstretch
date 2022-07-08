@@ -254,4 +254,5 @@ constexpr T power(T a, std::size_t n) {
 
 
 
+
 #endif // _CONSTANTS_HPP

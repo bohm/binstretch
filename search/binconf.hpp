@@ -7,6 +7,61 @@
 #include <iostream>
 #include <sstream>
 
+
+// Helper functions that are not dependent on anything outside common.
+
+std::array<bin_int, ZOBRIST_LOAD_BLOCKSIZE> decode_position(int pos)
+{
+    std::array<bin_int, ZOBRIST_LOAD_BLOCKSIZE> ret = {0};
+    for (int i = ZOBRIST_LOAD_BLOCKSIZE-1; i >= 0 ; i--)
+    {
+	bin_int current_value = (bin_int) (pos % (R+1));
+	ret[i] = current_value;
+	pos /= (R+1);
+    }
+    return ret;
+}
+
+std::array<bin_int, ZOBRIST_LAST_BLOCKSIZE> decode_last_position(int pos)
+{
+    std::array<bin_int, ZOBRIST_LAST_BLOCKSIZE> ret = {0};
+    for (int i = ZOBRIST_LAST_BLOCKSIZE-1; i >= 0 ; i--)
+    {
+	bin_int current_value = (bin_int) (pos % (R+1));
+	ret[i] = current_value;
+	pos /= (R+1);
+    }
+    return ret;
+}
+
+uint64_t loadhash_from_position(uint64_t *zl, int blocknum, int pos)
+{
+
+    uint64_t ret = 0;
+    std::array<bin_int, ZOBRIST_LOAD_BLOCKSIZE> pos_arr = decode_position(pos);
+    for (int i = 0; i < ZOBRIST_LOAD_BLOCKSIZE; i++)
+    {
+	int bin_index = blocknum*ZOBRIST_LOAD_BLOCKSIZE + i + 1;
+	ret ^= zl[bin_index*(R+1) + pos_arr[i]];
+    }
+
+    return ret;
+}
+
+uint64_t loadhash_last_from_position(uint64_t *zl, int pos)
+{
+    uint64_t ret = 0;
+    std::array<bin_int, ZOBRIST_LAST_BLOCKSIZE> pos_arr = decode_last_position(pos);
+    for (int i = 0; i < ZOBRIST_LAST_BLOCKSIZE; i++)
+    {
+	int bin_index = (ZOBRIST_LOAD_BLOCKS-1)*ZOBRIST_LOAD_BLOCKSIZE + i + 1;
+	ret ^= zl[bin_index*(R+1) + pos_arr[i]];
+    }
+
+    return ret;
+}
+
+
 // a cut version of binconf which only uses the loads.
 class loadconf {
 public:
@@ -29,6 +84,19 @@ public:
 	}
 
 
+    uint64_t _hash_block(int start)
+	{
+	    uint64_t ret = 0;
+	    int end = std::min(BINS + 1 , start + ZOBRIST_LOAD_BLOCKSIZE);
+	    for (int i = 0; i < end; i++)
+	    {
+		fprintf(stderr, "xoring in Zl[%d*%d + %d] = %" PRIu64 ".\n", (start+i), (R+1), loads[(start+i)], Zl[(start+i)*(R+1) + loads[(start+i)]]);
+		ret ^= Zl[(start+i)*(R+1) + loads[(start+i)]];
+	    }
+
+	    return ret;
+	}
+    
 // returns new position of the newly loaded bin
     int sortloads_one_increased(int i)
 	{
@@ -63,6 +131,35 @@ public:
 	}
 
 
+    void check_position(int bl, int pos)
+	{
+	    std::array<bin_int, ZOBRIST_LOAD_BLOCKSIZE> p = decode_position(pos);
+	    for (int i = 0; i < ZOBRIST_LOAD_BLOCKSIZE; i++)
+	    {
+		if (loads[bl*ZOBRIST_LOAD_BLOCKSIZE + i + 1] != p[i])
+		{
+		    fprintf(stderr, "bl=%d, pos=%d, %d-th Load %d is different from decoded load %d.\n",
+			    bl, pos, bl*ZOBRIST_LOAD_BLOCKSIZE + i + 1, (int) loads[bl*ZOBRIST_LOAD_BLOCKSIZE + i + 1],
+			    p[i]);
+		    fprintf(stderr, "decoded loadconf: [");
+		    for (int j = 0; j < ZOBRIST_LOAD_BLOCKSIZE; j++)
+		    {
+			fprintf(stderr, "%d ", (int) p[j]);
+		    }
+		    fprintf(stderr, "].\n");
+
+		    fprintf(stderr, "The whole loadconf: [");
+		    for (int j = 1; j <= BINS; j++)
+		    {
+			fprintf(stderr, "%d ", (int) loads[j]);
+		    }
+		    fprintf(stderr, "].\n");
+	    
+		    assert(loads[bl*ZOBRIST_LOAD_BLOCKSIZE + i + 1] == p[i]);
+		}
+	    }
+	}
+    
     uint64_t newhash()
 	{
 	    uint64_t loadhash_l = 0;
@@ -74,7 +171,31 @@ public:
 		    pos *= (R+1);
 		    pos += loads[bl*ZOBRIST_LOAD_BLOCKSIZE + el];
 		}
+
+		
+		fprintf(stderr, "The %d-th pos is %d.\n", bl, pos);
+
 		loadhash_l ^= Zlbig[bl][pos];
+
+		check_position(bl, pos); // Consistency checks.
+		if (Zlbig[bl][pos] != loadhash_from_position(Zl, bl, pos))
+		{
+		    fprintf(stderr, "Zlbig[%d][%d] = %" PRIu64 " does not match the loadhash from position function %" PRIu64 ".\n",
+			    bl, pos, Zlbig[bl][pos], loadhash_from_position(Zl,bl,pos));
+		    assert(Zlbig[bl][pos] == loadhash_from_position(Zl, bl, pos));
+		}
+		if (Zlbig[bl][pos] != _hash_block(bl*ZOBRIST_LOAD_BLOCKSIZE+1))
+		{
+		    fprintf(stderr, "Zlbig[%d][%d] = %" PRIu64 " does not match the direct hash function %" PRIu64 " starting with position %d.\n",
+			    bl, pos, Zlbig[bl][pos], _hash_block(bl*ZOBRIST_LOAD_BLOCKSIZE+1), bl*ZOBRIST_LOAD_BLOCKSIZE+1);
+		    fprintf(stderr, "loadconf [");
+		    for (int i = 1; i <= BINS; i++)
+		    {
+			fprintf(stderr, "%d ", loads[i]); 
+		    }
+		    fprintf(stderr, "].\n");
+		    assert(Zlbig[bl][pos] == _hash_block(bl*ZOBRIST_LOAD_BLOCKSIZE+1));
+		}
 	    }
 
 	    // Last block
@@ -85,6 +206,7 @@ public:
 		l_pos += loads[(ZOBRIST_LOAD_BLOCKS-1)*ZOBRIST_LOAD_BLOCKSIZE + el];
 	    }
 	    
+	    fprintf(stderr, "Looking at l_pos %d.\n", l_pos);
 	    loadhash_l ^= Zlbig[ZOBRIST_LOAD_BLOCKS-1][l_pos];
 
 	    return loadhash_l;
@@ -116,16 +238,6 @@ public:
 		loadhash ^= Zl[to*(R+1) + loads[to]]; // the new load
 	    }
 
-	    if (loadhash != newhash())
-	    {
-		fprintf(stderr, "Hashes (%" PRIu64 ", %" PRIu64 ") do not match for loadconf [", loadhash, newhash());
-		for (int i = 1; i <= BINS; i++)
-		{
-		    fprintf(stderr, "%d ", loads[i]); 
-		}
-		fprintf(stderr, "].\n");
-		assert(loadhash == newhash());
-	    }
 	}
 
 
@@ -152,17 +264,6 @@ public:
 		loadhash ^= Zl[from*(R+1) + loads[to] + item]; // the old load
 		loadhash ^= Zl[from*(R+1) + loads[from]]; // the new load
 	    }
-
-	    if (loadhash != newhash())
-	    {
-		fprintf(stderr, "Hashes (%" PRIu64 ", %" PRIu64 ") do not match for loadconf [", loadhash, newhash());
-		for (int i = 1; i <= BINS; i++)
-		{
-		    fprintf(stderr, "%d ", loads[i]); 
-		}
-		fprintf(stderr, "].\n");
-		assert(loadhash == newhash());
-	    }
 	}
 
     int assign_without_hash(int item, int bin)
@@ -177,6 +278,18 @@ public:
 	    int from = sortloads_one_increased(bin);
 	    rehash_loads_increased_range(item,from,bin);
 
+	    if (loadhash != newhash())
+	    {
+		fprintf(stderr, "Hashes (%" PRIu64 ", %" PRIu64 ") do not match for loadconf [", loadhash, newhash());
+		for (int i = 1; i <= BINS; i++)
+		{
+		    fprintf(stderr, "%d ", loads[i]); 
+		}
+		fprintf(stderr, "].\n");
+		assert(loadhash == newhash());
+	    }
+
+	    
 	    // consistency check
 	    /*
 	    uint64_t testhash = 0;
@@ -207,6 +320,19 @@ public:
 	    loads[bin] -= item;
 	    int to = sortloads_one_decreased(bin);
 	    rehash_loads_decreased_range(item, bin, to);
+
+	    
+	    if (loadhash != newhash())
+	    {
+		fprintf(stderr, "Hashes (%" PRIu64 ", %" PRIu64 ") do not match for loadconf [", loadhash, newhash());
+		for (int i = 1; i <= BINS; i++)
+		{
+		    fprintf(stderr, "%d ", loads[i]); 
+		}
+		fprintf(stderr, "].\n");
+		assert(loadhash == newhash());
+	    }
+
 
 	    // consistency check
 	    /*uint64_t testhash = 0;
