@@ -2,6 +2,8 @@
 #define _BINCONF_HPP 1
 
 #include "common.hpp"
+#include "functions.hpp"
+
 #include <sstream>
 #include <string>
 #include <iostream>
@@ -90,7 +92,9 @@ public:
 	    int end = std::min(BINS + 1 , start + ZOBRIST_LOAD_BLOCKSIZE);
 	    for (int i = 0; i < end; i++)
 	    {
-		fprintf(stderr, "xoring in Zl[%d*%d + %d] = %" PRIu64 ".\n", (start+i), (R+1), loads[(start+i)], Zl[(start+i)*(R+1) + loads[(start+i)]]);
+		fprintf(stderr, "xoring in Zl[%2d*%2d + %2d] = ", (start+i), (R+1), loads[(start+i)]);
+		binary_print(stderr, Zl[(start+i)*(R+1) + loads[(start+i)]]);
+		fprintf(stderr, "\n");
 		ret ^= Zl[(start+i)*(R+1) + loads[(start+i)]];
 	    }
 
@@ -186,8 +190,13 @@ public:
 		}
 		if (Zlbig[bl][pos] != _hash_block(bl*ZOBRIST_LOAD_BLOCKSIZE+1))
 		{
-		    fprintf(stderr, "Zlbig[%d][%d] = %" PRIu64 " does not match the direct hash function %" PRIu64 " starting with position %d.\n",
-			    bl, pos, Zlbig[bl][pos], _hash_block(bl*ZOBRIST_LOAD_BLOCKSIZE+1), bl*ZOBRIST_LOAD_BLOCKSIZE+1);
+		    fprintf(stderr, "Zlbig[%d][%d] = \n", bl, pos);
+		    binary_print(stderr, Zlbig[bl][pos]);
+		    fprintf(stderr, "\n");
+		    fprintf(stderr, "does not match the direct hash function \n");
+		    binary_print(stderr, _hash_block(bl*ZOBRIST_LOAD_BLOCKSIZE+1));
+		    fprintf(stderr, "\n");
+		    fprintf(stderr, " starting with position %d.\n", bl*ZOBRIST_LOAD_BLOCKSIZE+1);
 		    fprintf(stderr, "loadconf [");
 		    for (int i = 1; i <= BINS; i++)
 		    {

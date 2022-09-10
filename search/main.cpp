@@ -6,6 +6,7 @@
 #include "net/mpi.hpp"
 
 #include "common.hpp"
+#include "functions.hpp"
 #include "binconf.hpp"
 #include "filetools.hpp"
 #include "hash.hpp"
@@ -109,6 +110,12 @@ void main_thread(int ws, int wr, int argc, char** argv)
 	    ov->start();
 	} else { // queen
 
+	    // A quick debug, erase later.
+	    // uint64_t somenumber = 8193;
+	    // fprintf(stderr, "The binary form of %" PRIu64 " is ", somenumber);
+	    // binary_print(stderr, somenumber);
+	    // fprintf(stderr, "\n");
+	    
 	    for (int i = 0; i <= argc-2; i++)
 	    {
 		auto [advfile_flag, advice_file] = parse_parameter_advfile(argc, argv, i);
