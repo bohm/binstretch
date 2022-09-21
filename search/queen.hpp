@@ -3,6 +3,9 @@
 
 #include <atomic>
 
+#include "common.hpp"
+#include "measure_structures.hpp"
+
 #include "dag/dag.hpp"
 #include "tasks.hpp"
 #include "saplings.hpp"

@@ -3,6 +3,9 @@
 // dynprog global variables and other attributes separate for each thread.
 
 #include "assumptions.hpp"
+#include "../search/thread_attr.hpp"
+#include "../dag/dag.hpp"
+
 
 template <minimax MODE> class computation
 {

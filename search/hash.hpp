@@ -9,7 +9,9 @@
 #include <thread>
 
 #include "common.hpp"
-#include "binconf.hpp"
+#include "functions.hpp"
+#include "positional.hpp"
+
 #include "thread_attr.hpp"
 
 /* As an experiment to save space, we will make the caching table
@@ -21,27 +23,6 @@ value of the item. */
 
 const uint64_t DPHT_BYTES = 16;
 const uint64_t REMOVED = std::numeric_limits<uint64_t>::max();
-
-// zeroes last bit of a number -- useful to check hashes
-inline uint64_t zero_last_bit(uint64_t n)
-{
-    return ((n >> 1) << 1);
-}
-
-uint64_t zero_last_two_bits(const uint64_t& n)
-{
-    return ((n >> 2) << 2);
-}
-
-bin_int get_last_two_bits(const uint64_t& n)
-{
-    return ((n & 3));
-}
-
-inline bool get_last_bit(uint64_t n)
-{
-    return ((n & 1) == 1);
-}
 
 const unsigned int CACHE_LOADCONF_LIMIT = 1000;
 
@@ -133,56 +114,33 @@ void zobrist_init()
 
 
     // A quick zobrist test.
-    int load1 = rand_load();
-    int load2 = rand_load();
-    int load3 = rand_load();
-    int load4 = rand_load();
-    int load5 = rand_load();
-    uint64_t hash1 = Zl[1*(R+1) + load1] ^ Zl[2*(R+1) + load2] ^ Zl[3*(R+1) + load3]
-	^ Zl[4*(R+1) + load4] ^ Zl[5*(R+1) + load5];
+    // int load1 = rand_load();
+    // int load2 = rand_load();
+    // int load3 = rand_load();
+    // int load4 = rand_load();
+    // int load5 = rand_load();
+    // uint64_t hash1 = Zl[load1] ^ Zl[1*(R+1) + load2] ^ Zl[2*(R+1) + load3]
+    // 	^ Zl[3*(R+1) + load4] ^ Zl[4*(R+1) + load5];
 
-    uint64_t hash2 = 0;
-    int pos = 0;
-    pos *= R+1;
-    pos += load1;
-    pos *= R+1;
-    pos += load2;
-    pos *= R+1;
-    pos += load3;
-    pos *= R+1;
-    pos += load4;
-    pos *= R+1;
-    pos += load5;
+    // uint64_t hash2 = 0;
+    // int pos = 0;
+    // pos *= R+1;
+    // pos += load1;
+    // pos *= R+1;
+    // pos += load2;
+    // pos *= R+1;
+    // pos += load3;
+    // pos *= R+1;
+    // pos += load4;
+    // pos *= R+1;
+    // pos += load5;
     
-    hash2 = Zlbig[0][pos];
+    // hash2 = Zlbig[0][pos];
 
-    assert(hash2 == hash1);
+    // assert(hash2 == hash1);
 	
     
 }
-
-uint64_t quicklog(uint64_t x)
-{
-    uint64_t ret = 0;
-    while(x >>= 1)
-    {
-	ret++;
-    }
-    return ret;
-}
-
-// Powering 2^X.
-uint64_t two_to(uint64_t x)
-{
-    return 1LLU << x;
-}
-
-// A math routine computing the largest power of two less than x.
-uint64_t power_of_two_below(uint64_t x)
-{
-    return two_to(quicklog(x));
-}
-
 
 void hashtable_cleanup()
 {
@@ -192,42 +150,6 @@ void hashtable_cleanup()
     delete[] Zalg;
     delete[] Zlow;
     delete[] Zlast;
-}
-
-void printBits32(unsigned int num)
-{
-   for(unsigned int bit=0;bit<(sizeof(unsigned int) * 8); bit++)
-   {
-      fprintf(stderr, "%i", num & 0x01);
-      num = num >> 1;
-   }
-   fprintf(stderr, "\n");
-}
-
-void printBits64(llu num)
-{
-   for(unsigned int bit=0;bit<(sizeof(llu) * 8); bit++)
-   {
-      fprintf(stderr, "%" PRIu64, num & 0x01);
-      num = num >> 1;
-   }
-   fprintf(stderr, "\n");
-}
-
-// template logpart
-
-template<unsigned int LOG> inline uint64_t logpart(uint64_t x)
-{
-    return x >> (64 - LOG); 
-}
-
-const auto loadlogpart = logpart<LOADLOG>;
-
-// with some memory allocated dynamically, we also need a dynamic logpart
-
-inline uint64_t logpart(uint64_t x, int log)
-{
-    return x >> (64 - log);
 }
 
 #endif // _HASH_HPP

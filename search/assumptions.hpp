@@ -1,8 +1,11 @@
 #ifndef _ASSUMPTIONS_HPP
 #define _ASSUMPTIONS_HPP 1
 
+#include <cstring>
 #include <iostream>
 #include <sstream>
+#include <algorithm>
+
 #include "common.hpp"
 #include "constants.hpp"
 bool USING_ASSUMPTIONS = false;

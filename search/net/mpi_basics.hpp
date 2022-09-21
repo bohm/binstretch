@@ -12,6 +12,7 @@
 #include <mpi.h>
 
 #include "../common.hpp"
+#include "../measure_structures.hpp"
 #include "../dag/dag.hpp"
 #include "../hash.hpp"
 #include "../tasks.hpp"

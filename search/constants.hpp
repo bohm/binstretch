@@ -18,16 +18,6 @@ typedef uint64_t llu;
 typedef signed char tiny;
 
 
-void ERROR(const char *format, ...)
-{
-    va_list argptr;
-    va_start(argptr, format);
-    vfprintf(stderr, format, argptr);
-    va_end(argptr);
-
-    abort();
-}
-
 
 // Victory states.
 // The meaning of uncertain = yet to be evaluated, not enough data, postponed (perhaps).
@@ -211,6 +201,8 @@ const int RECOMMENDED_MONOTONICITY = 40;
 const int RECOMMENDED_MONOTONICITY = 6;
 #elif IBINS == 3 && IR == 112 && IS == 82
 const int RECOMMENDED_MONOTONICITY = 8;
+#elif IBINS == 4 && IR == 19 && IS == 14
+const int RECOMMENDED_MONOTONICITY = 2;
 #elif IBINS >= 8 && IR == 19 && IS == 14
 const int RECOMMENDED_MONOTONICITY = 1;
 #elif IBINS == 6 && IR == 15 && IS == 11
@@ -238,20 +230,6 @@ const int RECOMMENDED_MONOTONICITY = 0;
 #error "The macro constant IS needs to be passed by the compiler!"
 #define IS 3 // ditto 
 #endif
-
-// A compile-time power computation.
-// Source: https://stackoverflow.com/a/27271374
-
-template<typename T>
-constexpr T sqr(T a) {
-    return a * a;
-}
-
-template<typename T>
-constexpr T power(T a, std::size_t n) {
-    return n == 0 ? 1 : sqr(power(a, n / 2)) * (n % 2 == 0 ?  1 : a);
-}
-
 
 
 

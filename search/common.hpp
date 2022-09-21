@@ -26,8 +26,8 @@
 const bool PROGRESS = true; // Whether to print progress info to stderr.
 const bool MEASURE = true; // Whether to collect and print measurements to stderr.
 const bool VERBOSE = true; // Further information about progress.
-const bool OUTPUT = false; // Whether to produce output.
-const bool REGROW = false; // Whether to regrow or just terminate after first iteration.
+const bool OUTPUT = true; // Whether to produce output.
+const bool REGROW = true; // Whether to regrow or just terminate after first iteration.
 
 // When producing output, how many times should a tree be regrown.
 // Note that REGROW_LIMIT = 0 still means a full tree will be generated.

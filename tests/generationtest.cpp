@@ -5,6 +5,10 @@
 #include <cstring>
 #include <algorithm>
 
+#define IBINS 10
+#define IR 19
+#define IS 14
+
 #include "../search/common.hpp"
 #include "../search/binconf.hpp"
 #include "../search/filetools.hpp"
