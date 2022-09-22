@@ -78,6 +78,7 @@ public:
 	    delete dpdata;
 	}
 
+    victory heuristic_visit_alg(int pres_item);
     victory adversary(adversary_vertex *adv_to_evaluate, algorithm_vertex *parent_alg);
     victory algorithm(int pres_item, algorithm_vertex *alg_to_evaluate, adversary_vertex *parent_adv);
 

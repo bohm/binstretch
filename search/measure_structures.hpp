@@ -79,6 +79,8 @@ struct measure_attr
     uint64_t largest_queue_observed = 0;
     std::array<uint64_t, BINS*S+1> dynprog_itemcount = {};
     bool overdue_printed = false;
+
+    // Minimax heuristic measurements.
     std::array<uint64_t, SITUATIONS> gshit = {};
     std::array<uint64_t, SITUATIONS> gsmiss = {};
     uint64_t gsheurhit = 0;
@@ -87,6 +89,9 @@ struct measure_attr
     uint64_t large_item_hits = 0;
     uint64_t large_item_calls = 0;
     uint64_t large_item_misses = 0;
+
+    std::atomic<uint64_t> heuristic_visit_hit = 0;
+    std::atomic<uint64_t> heuristic_visit_miss = 0 ;
 
     uint64_t five_nine_hits = 0;
     uint64_t five_nine_calls = 0;
@@ -134,6 +139,9 @@ struct measure_attr
 	    large_item_hits += other.large_item_hits;
 	    large_item_misses += other.large_item_misses;
 
+	    heuristic_visit_hit += other.heuristic_visit_hit;
+	    heuristic_visit_miss += other.heuristic_visit_miss;
+
 	    for (int i = 0; i < SITUATIONS; i++)
 	    {
 		gshit[i] += other.gshit[i];
@@ -163,7 +171,9 @@ struct measure_attr
 	    fprintf(stderr, "Dynprog calls: %" PRIu64 ".\n", dynprog_calls);
 	    fprintf(stderr, "Largest queue observed: %" PRIu64 "\n", largest_queue_observed);
 
-
+	    fprintf(stderr, "--- heuristics --- \n");
+	    double heuristic_visit_ratio = heuristic_visit_hit.load() / (double) (heuristic_visit_miss.load() + heuristic_visit_hit.load());
+	    fprintf(stderr, "Heuristic visit deeper (by alg): hit: %" PRIu64 ", miss: %" PRIu64 ", ratio %lf.\n", heuristic_visit_hit.load(), heuristic_visit_miss.load(), heuristic_visit_ratio);
 	    // gs
 	    fprintf(stderr, "Good situation info: full hits %" PRIu64 ", full misses %" PRIu64 ", specifically:\n", gsheurhit, gsheurmiss);
 	    for (int i = 0;  i < SITUATIONS; i++)

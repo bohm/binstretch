@@ -230,6 +230,28 @@ public:
 	    return sortloads_one_increased(bin);
 	}
 
+    // This function does not do any actual assignments or rehashing,
+    // instead only computes the hash "as if" the item is packed.
+    uint64_t virtual_loadhash(int item, int bin)
+	{
+	    uint64_t virtual_ret = loadhash;
+	    bin_int newload = loads[bin] + item;
+	    bin_int curbin = bin;
+	    
+	    while (curbin >= 2 && loads[curbin-1] < newload)
+	    {
+		// Virtually exchange the zobrist hash.
+		// Invariant: Zl["curbin"] is never fixed, but we fix Zl["curbin+1"].
+		virtual_ret ^= Zl[curbin*(R+1)+loads[curbin]] ^ Zl[(curbin)*(R+1)+loads[curbin-1]];
+		curbin--;
+	    }
+
+	    // Finally, fix the load of Zl["curbin"] to be the new load.
+	    virtual_ret ^= Zl[curbin*(R+1)+loads[curbin]] ^ Zl[curbin*(R+1)+newload];
+
+	    return virtual_ret;
+	}
+    
     int assign_and_rehash(int item, int bin)
 	{
 	    loads[bin] += item;
@@ -515,6 +537,17 @@ public:
     uint64_t hash_with_low() const
 	{
 	    return (loadhash ^ itemhash ^ Zlow[lowest_sendable(last_item)]);
+	}
+
+    uint64_t virtual_hash_with_low(int item, int bin)
+	{
+	    uint64_t ret = virtual_loadhash(item, bin);
+	    // hash as if item added
+	    ret ^= itemhash;
+	    ret ^= Zi[item*(MAX_ITEMS+1) + items[item]];
+	    ret ^= Zi[item*(MAX_ITEMS+1) + items[item]+1];
+
+	    return ret ^ Zlow[lowest_sendable(item)];
 	}
    
 

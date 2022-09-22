@@ -2,6 +2,7 @@
 #define _WORKER_METHODS_HPP 1
 #include "worker.hpp"
 #include "overseer.hpp"
+#include "exceptions.hpp"
 
 // Normally, this would be worker.cpp, but with the One Definition Rule, it
 // would be a mess to rewrite everything to make sure globals are not defined
@@ -77,8 +78,17 @@ victory worker::solve(const task *t, const int& task_id)
 
     // worker depth is now set to be permanently zero
     comp.prev_max_feasible = S;
-    ret = explore(&task_copy, &comp);
-    measurements.add(comp.meas);
+
+    try
+    {
+	ret = explore(&task_copy, &comp);
+	measurements.add(comp.meas);
+    } catch (computation_irrelevant &e)
+    {
+	print_if<PROGRESS>("Worked %d: finishing computation, it is irrelevant.\n", thread_rank + tid);
+	ret = victory::irrelevant;
+    }
+    
     assert(ret != victory::uncertain); // Might be victory for alg, adv or irrelevant.
     return ret;
 }

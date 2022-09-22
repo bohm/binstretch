@@ -2,13 +2,13 @@
 #include <cstdio>
 #include <cstdlib>
 
-#define IBINS 7
+#define IBINS 6
 #define IR 19
 #define IS 14
 
 #include "common.hpp"
 
-#define PREDEFINED_FILENAME "/comp/bs/iterative/experiments/7bins-basicroot.txt"
+#define PREDEFINED_FILENAME "/comp/bs/iterative/experiments/6bins-basicroot.txt"
 
 #include "binconf.hpp"
 #include "filetools.hpp"
@@ -41,6 +41,11 @@ int main(void)
     worker_count = 1;
     dpc = new guar_cache(dplog);
     stc = new state_cache(conflog, worker_count);
+
+    // A hack: we init tstatus manually.
+    tstatus = new std::atomic<task_status>[1];
+    tstatus[0] = task_status::available;
+    
     
     CUSTOM_ROOTFILE = true;
 
@@ -55,7 +60,8 @@ int main(void)
     computation<minimax::exploring> comp;
     //tat.last_item = t->last_item;
     computation_root = NULL; // we do not run GENERATE or EXPAND on the workers currently
-
+    comp.task_id = 0;
+    
     // We create a copy of the sapling's bin configuration
     // which will be used as in-place memory for the algorithm.
     binconf task_copy;
