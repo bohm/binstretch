@@ -353,6 +353,33 @@ int gs4variant(const binconf *b, measure_attr *meas)
     return 1;
 }
 
+
+int gsff(const binconf *b, measure_attr *meas)
+{
+    const int ABOVE_HALF = (R-1)/2 + 1;
+    int ffguarantee = 0;
+    for (int bin = 1; bin <= BINS-1; bin++) // All except the last bin.
+    {
+	if (b->loads[bin] > ABOVE_HALF)
+	{
+	    ffguarantee += b->loads[bin];
+	} else
+	{
+	    ffguarantee += (BINS-1-bin) * ABOVE_HALF;
+	    break;
+	}
+    }
+
+    if (BINS*S - ffguarantee <= (R-1))
+    {
+	MEASURE_ONLY(meas->gshit[GSFF]++);
+	return 1;
+    }
+    
+    MEASURE_ONLY(meas->gsmiss[GSFF]++);
+    return -1;
+}
+
 int testgs(const binconf *b, measure_attr *meas)
 {
     // Always test GS1, it is applicable even when we aim at a ratio below 4/3.
@@ -426,6 +453,13 @@ int testgs(const binconf *b, measure_attr *meas)
 	    return 1;
 	}
 
+	// Currently doesn't help as written.
+	/*
+	if ( gsff(b, meas) == 1)
+	{
+	    return 1;
+	}
+	*/
 
 	// temporarily disabling again
 	/*

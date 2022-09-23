@@ -143,7 +143,7 @@ const maybebool MB_FEASIBLE = 1;
 const maybebool MB_NOT_CACHED = 2;
 
 // aliases for measurements of good situations
-const int SITUATIONS = 10;
+const int SITUATIONS = 11;
 
 const int GS1 = 0;
 const int GS1MOD = 1;
@@ -155,9 +155,10 @@ const int GS4 = 6;
 const int GS4VARIANT = 7;
 const int GS5 = 8;
 const int GS6 = 9;
+const int GSFF = 10;
 
 const std::array<std::string, SITUATIONS> gsnames = {"GS1", "GS1MOD", "GS2", "GS2VARIANT", "GS3",
-				"GS3VARIANT", "GS4", "GS4VARIANT", "GS5", "GS6"};
+    "GS3VARIANT", "GS4", "GS4VARIANT", "GS5", "GS6", "GSFF"};
 
 
 const int ZOBRIST_LOAD_BLOCKSIZE = 5;
