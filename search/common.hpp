@@ -115,6 +115,7 @@ const bool FIVE_NINE_ACTIVE = true;
 const bool FIVE_NINE_ACTIVE_EVERYWHERE = true;
 
 const bool USING_HEURISTIC_VISITS = true;
+const bool USING_HEURISTIC_KNOWNSUM = true;
 
 // batching constants
 const int BATCH_SIZE = 50;

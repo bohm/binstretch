@@ -3,6 +3,7 @@
 
 #include "worker.hpp"
 #include "overseer.hpp"
+#include "heur_alg_knownsum.hpp"
 
 // Normally, this would be overseer.cpp, but with the One Definition Rule, it
 // would be a mess to rewrite everything to make sure globals are not defined
@@ -143,7 +144,12 @@ void overseer::start()
     // conf_el::parallel_init(&ht, ht_size, worker_count); // Init worker cache in parallel.
     dpc = new guar_cache(dplog);
     stc = new state_cache(conflog, worker_count);
-    
+
+    // Initialize the known sum of processing times heuristic, if using it.
+    if (USING_HEURISTIC_KNOWNSUM)
+    {
+	initialize_knownsum();
+    }
     // dpht_el::parallel_init(&dpht, dpht_size, worker_count);
 
     comm.sync_up(); // Sync before any rounds start.

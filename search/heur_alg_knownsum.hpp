@@ -1,17 +1,23 @@
+#ifndef _HEUR_ALG_KNOWNSUM
+#define _HEUR_ALG_KNOWNSUM
+
+// Algorithmic heuristic: computing the full DP table for the problem
+// of known sum of completion times.
+
+// This idea originally appears in [Lhomme, Romane, Catusse, Brauner '22],
+// https://arxiv.org/abs/2207.04931.
+
 #include <cstdio>
 #include <cstdlib>
 #include <unordered_map>
 
-#define IBINS 4
-#define IR 19
-#define IS 14
-
 #include "common.hpp"
-
 #include "binconf.hpp"
-#include "filetools.hpp"
-#include "server_properties.hpp"
 #include "hash.hpp"
+
+
+std::unordered_map<uint64_t, int> knownsum_ub; // A global variable storing all the computed
+// heuristics. Content is pair (loadhash, upperbound). 
 
 void print_loadconf_stream(FILE* stream, const loadconf& b, bool newline = true)
 {
@@ -84,21 +90,16 @@ bool decrease(loadconf* lc)
     }
 }
 
-int main(void)
+void initialize_knownsum()
 {
-
-    // Init zobrist.
-    zobrist_init();
-
     loadconf iterated_lc = create_full_loadconf();
-    uint64_t full_loadconfs = 0;
-    uint64_t normal_loadconfs = 0;
+    uint64_t winning_loadconfs = 0;
+    uint64_t partial_loadconfs = 0;
 
 
     std::unordered_map<uint64_t, int> knownsum_ub;
    
     do {
-	int upper_bound = 0;
 	if (iterated_lc.loadsum() < S*BINS)
 	{
 	    int start_item = std::min((int) S, S * BINS - iterated_lc.loadsum() );
@@ -147,23 +148,44 @@ int main(void)
 	    // If the item iterator went down at least once, we can store it into the cache.
 	    if (item < S)
 	    {
-		fprintf(stderr, "Inserting conf into the cache: ");
-		print_loadconf_stream(stderr, iterated_lc, false);
-		fprintf(stderr, "with item upper bound %d (and total load %d).\n",
-			item,iterated_lc.loadsum());
+		// fprintf(stderr, "Inserting conf into the cache: ");
+		// print_loadconf_stream(stderr, iterated_lc, false);
+		// fprintf(stderr, "with item upper bound %d (and total load %d).\n",
+		//	item,iterated_lc.loadsum());
 
+		if (MEASURE)
+		{
+		    if (item == 0)
+		    {
+			winning_loadconfs++;
+		    } else
+		    {
+			partial_loadconfs++;
+		    }
+		}
 		knownsum_ub.insert({iterated_lc.loadhash, item});
 	    }
 	}
 	else
 	{
-	    fprintf(stderr, "Conf is automatically good because it is too large: ");
-	    print_loadconf_stream(stderr, iterated_lc, true);
+	    // fprintf(stderr, "Conf is automatically good because it is too large: ");
+	    // print_loadconf_stream(stderr, iterated_lc, true);
 	}
 	    
     } while (decrease(&iterated_lc));
-
-    fprintf(stderr, "Natural threshold: %d.\n", (int) S*BINS - (R-1));
-
-    return 0;
 }
+
+int query_knownsum_heur(uint64_t loadhash)
+{
+
+    auto search = knownsum_ub.find(loadhash);
+
+    if (search == knownsum_ub.end())
+    {
+	return -1;
+    } else
+    {
+	return search->second;
+    }
+}
+#endif
