@@ -2,7 +2,7 @@
 #include <cstdio>
 #include <cstdlib>
 
-#define IBINS 6
+#define IBINS 10
 #define IR 19
 #define IS 14
 
