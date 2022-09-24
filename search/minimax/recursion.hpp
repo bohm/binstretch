@@ -245,10 +245,16 @@ template<minimax MODE> victory computation<MODE>::adversary(adversary_vertex *ad
 	int knownsum_response = query_knownsum_heur(bstate.loadhash);
 	if (knownsum_response == 0)
 	{
+	    MEASURE_ONLY(meas.knownsum_full_hit++);
 	    return victory::alg;
 	} else if (knownsum_response != -1)
 	{
+	    MEASURE_ONLY(meas.knownsum_partial_hit++);
 	    maximum_feasible = std::min(maximum_feasible, knownsum_response);
+	} else
+	{
+	    MEASURE_ONLY(meas.knownsum_miss++);
+
 	}
     }
     

@@ -90,8 +90,12 @@ struct measure_attr
     uint64_t large_item_calls = 0;
     uint64_t large_item_misses = 0;
 
+    std::atomic<uint64_t> knownsum_full_hit = 0;
+    std::atomic<uint64_t> knownsum_partial_hit = 0;
+    std::atomic<uint64_t> knownsum_miss = 0;
+
     std::atomic<uint64_t> heuristic_visit_hit = 0;
-    std::atomic<uint64_t> heuristic_visit_miss = 0 ;
+    std::atomic<uint64_t> heuristic_visit_miss = 0;
 
     uint64_t five_nine_hits = 0;
     uint64_t five_nine_calls = 0;
@@ -135,6 +139,11 @@ struct measure_attr
 
 	    gsheurhit += other.gsheurhit;
 	    gsheurmiss += other.gsheurmiss;
+
+	    knownsum_full_hit += other.knownsum_full_hit;
+	    knownsum_partial_hit += other.knownsum_partial_hit;
+ 	    knownsum_miss += other.knownsum_miss;
+   
 	    //    uint64_t tub = 0;
 	    large_item_hits += other.large_item_hits;
 	    large_item_misses += other.large_item_misses;
@@ -174,6 +183,9 @@ struct measure_attr
 	    fprintf(stderr, "--- heuristics --- \n");
 	    double heuristic_visit_ratio = heuristic_visit_hit.load() / (double) (heuristic_visit_miss.load() + heuristic_visit_hit.load());
 	    fprintf(stderr, "Heuristic visit deeper (by alg): hit: %" PRIu64 ", miss: %" PRIu64 ", ratio %lf.\n", heuristic_visit_hit.load(), heuristic_visit_miss.load(), heuristic_visit_ratio);
+
+	    fprintf(stderr, "Heuristic using known sum of processing times: %" PRIu64 " full hits, %" PRIu64 " partials, %" PRIu64 " misses.\n",
+		    knownsum_full_hit.load(), knownsum_partial_hit.load(), knownsum_miss.load());
 	    // gs
 	    fprintf(stderr, "Good situation info: full hits %" PRIu64 ", full misses %" PRIu64 ", specifically:\n", gsheurhit, gsheurmiss);
 	    for (int i = 0;  i < SITUATIONS; i++)
