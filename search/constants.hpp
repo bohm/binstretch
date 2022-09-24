@@ -18,16 +18,6 @@ typedef uint64_t llu;
 typedef signed char tiny;
 
 
-void ERROR(const char *format, ...)
-{
-    va_list argptr;
-    va_start(argptr, format);
-    vfprintf(stderr, format, argptr);
-    va_end(argptr);
-
-    abort();
-}
-
 
 // Victory states.
 // The meaning of uncertain = yet to be evaluated, not enough data, postponed (perhaps).
@@ -153,7 +143,7 @@ const maybebool MB_FEASIBLE = 1;
 const maybebool MB_NOT_CACHED = 2;
 
 // aliases for measurements of good situations
-const int SITUATIONS = 10;
+const int SITUATIONS = 11;
 
 const int GS1 = 0;
 const int GS1MOD = 1;
@@ -165,10 +155,15 @@ const int GS4 = 6;
 const int GS4VARIANT = 7;
 const int GS5 = 8;
 const int GS6 = 9;
+const int GSFF = 10;
 
 const std::array<std::string, SITUATIONS> gsnames = {"GS1", "GS1MOD", "GS2", "GS2VARIANT", "GS3",
-				"GS3VARIANT", "GS4", "GS4VARIANT", "GS5", "GS6"};
+    "GS3VARIANT", "GS4", "GS4VARIANT", "GS5", "GS6", "GSFF"};
 
+
+const int ZOBRIST_LOAD_BLOCKSIZE = 5;
+const int ZOBRIST_LOAD_BLOCKS = (IBINS-1)/ZOBRIST_LOAD_BLOCKSIZE + 1;
+const int ZOBRIST_LAST_BLOCKSIZE = (IBINS-1) % ZOBRIST_LOAD_BLOCKSIZE + 1;
 
 // modes for pushing into dynprog cache
 const int HEURISTIC = 0;
@@ -207,6 +202,8 @@ const int RECOMMENDED_MONOTONICITY = 40;
 const int RECOMMENDED_MONOTONICITY = 6;
 #elif IBINS == 3 && IR == 112 && IS == 82
 const int RECOMMENDED_MONOTONICITY = 8;
+#elif IBINS == 4 && IR == 19 && IS == 14
+const int RECOMMENDED_MONOTONICITY = 2;
 #elif IBINS >= 8 && IR == 19 && IS == 14
 const int RECOMMENDED_MONOTONICITY = 1;
 #elif IBINS == 6 && IR == 15 && IS == 11
@@ -234,5 +231,7 @@ const int RECOMMENDED_MONOTONICITY = 0;
 #error "The macro constant IS needs to be passed by the compiler!"
 #define IS 3 // ditto 
 #endif
+
+
 
 #endif // _CONSTANTS_HPP

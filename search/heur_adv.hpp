@@ -243,12 +243,12 @@ template<minimax MODE> std::pair<victory, heuristic_strategy*> adversary_heurist
     if (LARGE_ITEM_ACTIVE && (MODE == minimax::generating || LARGE_ITEM_ACTIVE_EVERYWHERE))
     {
 	
-	meas->large_item_calls++;
+	MEASURE_ONLY(meas->large_item_calls++);
 
 	auto [success, heurloadconf] = large_item_heuristic(*b, dpdata);
 	if (success)
 	{
-	    meas->large_item_hits++;
+	    MEASURE_ONLY(meas->large_item_hits++);
 
 	    if (MODE == minimax::generating)
 	    {
@@ -278,10 +278,10 @@ template<minimax MODE> std::pair<victory, heuristic_strategy*> adversary_heurist
     {
 
 	auto [fnh, fives_to_send] = five_nine_heuristic(b, dpdata, meas);
-	meas->five_nine_calls++;
+	MEASURE_ONLY(meas->five_nine_calls++);
 	if (fnh)
 	{
-	    meas->five_nine_hits++;
+	    MEASURE_ONLY(meas->five_nine_hits++);
 	    if(MODE == minimax::generating)
 	    {
 		// Build strategy.

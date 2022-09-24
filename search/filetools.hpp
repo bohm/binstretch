@@ -2,6 +2,9 @@
 #define _FILETOOLS_HPP 1
 
 #include <ctime>
+#include <iostream>
+#include <sstream>
+
 #include "common.hpp"
 
 void folder_checks()
@@ -65,51 +68,85 @@ std::string build_output_filename(std::tm* timestamp)
 // a full loadfile takes too long.
 
 
-std::array<bin_int, BINS+1> load_segment_with_loads(FILE* fin)
+std::array<bin_int, BINS+1> load_segment_with_loads(std::stringstream& str_s)
 {
     std::array<bin_int, BINS+1> ret = {};
-    
-    assert(fscanf(fin, "[") == 0);
+
+    char c = 0;
+    bin_int load = -1;
+    str_s.get(c);
+    assert(c == '[');
     for (int i = 1; i <= BINS; i++)
     {
-	if (fscanf(fin, "%" SCNd16, &(ret[i])) != 1)
+	str_s >> load;
+	if (load < 0 || load >= R)
 	{
-	    ERROR("Could not scan the %d-th item from the loads segment.\n", i);
+	    ERROR("The %d-th load from the loads list is out of bounds.", i);
 	}
-
+	ret[i] = load;
+	load = -1;
     }
-    assert(fscanf(fin, "]") == 0);
+
+    str_s.get(c);
+    assert(c == ']');
     return ret;
 }
 
-std::array<bin_int, S+1> load_segment_with_items(FILE* fin)
+std::array<bin_int, S+1> load_segment_with_items(std::stringstream& str_s)
 {
     std::array<bin_int, S+1> ret = {};
-    
-    assert(fscanf(fin, " (") == 0);
+
+    char c = 0;
+    bin_int item_size = -1;
+    str_s.get(c);
+    assert(c == ' ');
+    str_s.get(c);
+
+    assert(c == '(');
+   
     for (int j = 1; j <= S; j++)
     {
-	if (fscanf(fin, "%" SCNd16, &(ret[j])) != 1)
+	str_s >> item_size;
+	if (item_size < 0 || item_size > BINS*S)
 	{
-	    ERROR("Could not scan the %d-th item from the items segment.\n", j);
+	    ERROR("The %d-th item from the items segment is out of bounds.\n", j);
 	}
+
+	ret[j] = item_size;
+	item_size = -1;
     }
- 
-    assert(fscanf(fin, ")") == 0);
+    
+    str_s.get(c);
+    assert(c == ')');
+
     return ret;
 }
 
-bin_int load_last_item_segment(FILE *fin)
+bin_int load_last_item_segment(std::stringstream& str_s)
 {
-    bin_int last_item = 0;
-    if(fscanf(fin, "%" SCNd16, &last_item) != 1)
+    bin_int last_item = -1;
+    str_s >> last_item;
+
+    if (last_item < 0 || last_item > BINS*S)
     {
-	    ERROR("Could not scan the last item field from the input file.\n");
+	ERROR("Could not scan the last item field from the input file.\n");
     }
     return last_item;
 }
 
-binconf loadbinconf(const char* filename)
+binconf loadbinconf(std::stringstream& str_s)
+{
+    std::array<bin_int, BINS+1> loads = load_segment_with_loads(str_s);
+    std::array<bin_int, S+1> items = load_segment_with_items(str_s);
+    bin_int last_item = load_last_item_segment(str_s);
+
+    binconf retbc(loads, items, last_item);
+    retbc.hashinit();
+    return retbc;
+   
+}
+
+binconf loadbinconf_singlefile(const char* filename)
 {
     FILE* fin = fopen(filename, "r");
     if (fin == NULL)
@@ -117,16 +154,13 @@ binconf loadbinconf(const char* filename)
 	ERROR("Unable to open file %s\n", filename);
     }
 
-    std::array<bin_int, BINS+1> loads = load_segment_with_loads(fin);
-    std::array<bin_int, S+1> items = load_segment_with_items(fin);
-    bin_int last_item = load_last_item_segment(fin);
-    // fprintf(stderr, "Loadbinconf: Loaded last item %d.\n", (int) last_item);
-
+    char linebuf[1024];
+    fgets(linebuf, 1024, fin);
     fclose(fin);
+    std::string line(linebuf);
+    std::stringstream str_s(line);
 
-    binconf retbc(loads, items, last_item);
-    return retbc;
+    return loadbinconf(str_s);
 }
-
 
 #endif // _FILETOOLS_HPP

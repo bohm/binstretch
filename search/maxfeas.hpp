@@ -80,11 +80,11 @@ std::tuple<bin_int, bin_int, bool> improve_bounds_binary(binconf *b, bin_int lb,
 // uses onlinefit, bestfit and dynprog
 // initial_ub -- upper bound from above (previously maximum feasible item)
 // cannot_send_less -- a "lower" bound on what can be sent
-// (even though smaller items fit, the alg possibly must avoid them due to monotonicity)
+// (Even though smaller items fit, the adversary possibly must avoid them due to monotonicity.)
 
 template <minimax MODE> bin_int maximum_feasible(binconf *b, const int depth, const bin_int cannot_send_less, bin_int initial_ub, computation<MODE> *comp)
 {
-    MEASURE_ONLY(comp->meas.maximum_feasible_counter++);
+    MEASURE_ONLY(comp->meas.maxfeas_calls++);
     print_if<DEBUG>("Starting dynprog maximization of configuration:\n");
     print_binconf<DEBUG>(b);
     print_if<DEBUG>("\n"); 
@@ -104,6 +104,7 @@ template <minimax MODE> bin_int maximum_feasible(binconf *b, const int depth, co
  
     if(cannot_send_less > ub)
     {
+	MEASURE_ONLY(comp->meas.maxfeas_infeasibles++);
 	comp->maxfeas_return_point = 0;
 	return MAX_INFEASIBLE;
     }

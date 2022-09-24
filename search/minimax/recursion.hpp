@@ -12,6 +12,7 @@
 #include "binconf.hpp"
 #include "optconf.hpp"
 #include "thread_attr.hpp"
+#include "exceptions.hpp"
 #include "minimax/computation.hpp"
 #include "dag/dag.hpp"
 // #include "tree_print.hpp"
@@ -30,22 +31,110 @@
 // #include "strategies/abstract.hpp"
 // #include "strategies/heuristical.hpp"
 
-victory check_messages(int task_id)
+// victory check_messages(int task_id)
+void check_messages(int task_id)
 {
     // check_root_solved();
     // check_termination();
     // fetch_irrelevant_tasks();
     if (root_solved)
     {
-	return victory::irrelevant;
+	// return victory::irrelevant;
+	throw computation_irrelevant();
     }
 
     if (tstatus[task_id].load() == task_status::pruned)
     {
 	//print_if<true>("Worker %d works on an irrelevant thread.\n", world_rank);
-	return victory::irrelevant;
+	// return victory::irrelevant;
+	throw computation_irrelevant();
+
     }
-    return victory::uncertain;
+//    return victory::uncertain;
+}
+
+// Idea: The minimax algorithm normally behaves like a DFS, choosing
+// one uncertain path and following it. However, since the sheer size
+// of the cache, it might be smarter to just quickly visit all lower
+// vertices and check them in the cache.  If any of the vertices is
+// victory::alg (quite possible) or all are victory::adv (unlikely),
+// we can return immediately.
+
+template <minimax MODE> victory computation<MODE>::heuristic_visit_alg(int pres_item)
+{
+    victory ret = victory::adv;
+    bool position_solved = false;
+    algorithm_notes notes; // Potentially turn off notes for now, they are not used.
+
+    
+    // Repeating the code from the algorithm() section.
+    bin_int i = 1;
+    while (i <= BINS && !position_solved)
+    {
+	// Skip a step where two bins have the same load.
+	if (i > 1 && bstate.loads[i] == bstate.loads[i-1])
+	{
+	    i++; continue;
+	}
+
+	if ((bstate.loads[i] + pres_item < R))
+	{
+	    /*
+	    uint64_t check = bstate.virtual_hash_with_low(pres_item, i);
+	    uint64_t virtual_loadhash_component = bstate.virtual_loadhash(pres_item, i);
+	    uint64_t virtual_itemhash_component = bstate.itemhash;
+	    virtual_itemhash_component ^= Zi[pres_item*(MAX_ITEMS+1) + bstate.items[pres_item]];
+	    virtual_itemhash_component ^= Zi[pres_item*(MAX_ITEMS+1) + bstate.items[pres_item]+1];
+	    uint64_t virtual_lastitem_component = Zlow[lowest_sendable(pres_item)];
+	    */
+
+	    uint64_t statehash_if_descending = bstate.virtual_hash_with_low(pres_item, i);
+	    // Equivalent but hopefully faster to: 
+	    // algorithm_descend<MODE>(this, notes, pres_item, i);
+
+	    /*
+	    if( check != bstate.statehash())
+	    {
+		uint64_t actual_loadhash_component = bstate.loadhash;
+		uint64_t actual_itemhash_component = bstate.itemhash;
+		uint64_t actual_lastitem_component = Zlow[lowest_sendable(pres_item)];
+		fprintf(stderr, "Virtual hash components: (%" PRIu64 ", %" PRIu64 ", %" PRIu64 ").\n",
+			virtual_loadhash_component, virtual_itemhash_component, virtual_lastitem_component);
+		fprintf(stderr, "Actual hash components: (%" PRIu64 ", %" PRIu64 ", %" PRIu64 ").\n",
+			actual_loadhash_component, actual_itemhash_component, actual_lastitem_component);
+		
+		assert(check == bstate.statehash());
+	    }
+	    */
+	    
+	    // Heuristic visit begins.
+
+	    // In principle, other quick heuristics make sense here.
+	    // We should avoid running them twice, ideally.
+	    // For now, we only do state cache lookup.
+	    auto [found, value] = stc->lookup(statehash_if_descending);
+	    
+	    if (found)
+	    {
+		if (value == 1)
+		{
+		    ret = victory::alg;
+		    position_solved = true;
+		} // else, it is victory::adv, and we just continue.
+	    } else
+	    {
+		// At least one uncertainty happened, we set the outcome to uncertain.
+		ret = victory::uncertain;
+	    }
+
+	    // Heuristic visit ends.
+	    // algorithm_ascend<MODE>(this, notes, pres_item);
+	}
+
+	i++;
+    }
+
+    return ret;
 }
 
 
@@ -72,6 +161,7 @@ victory check_messages(int task_id)
 
 #define GEN_ONLY(x) if (MODE == minimax::generating) {x;}
 #define EXP_ONLY(x) if (MODE == minimax::exploring) {x;}
+
 
 template<minimax MODE> victory computation<MODE>::adversary(adversary_vertex *adv_to_evaluate,
 							    algorithm_vertex *parent_alg)
@@ -100,7 +190,7 @@ template<minimax MODE> victory computation<MODE>::adversary(adversary_vertex *ad
 	    return adv_to_evaluate->win;
 	}
 	adv_to_evaluate->visited = true;
-	GEN_ONLY(meas.adv_vertices_visited++); // For performance measurement only.
+	MEASURE_ONLY(meas.adv_vertices_visited++); // For performance measurement only.
 	
 	// We do not proceed further with expandable or finished vertices. The expandable ones need to be visited
 	// again, but the single one being expanded will be relabeled as "expanding".
@@ -273,21 +363,13 @@ template<minimax MODE> victory computation<MODE>::adversary(adversary_vertex *ad
 	}
     }
 
-    // if you are exploring, check the global terminate flag every 100th iteration
+    // If you are exploring, check the global terminate flags every 1000th iteration.
     if (EXPLORING)
     {
 	this->iterations++;
-	if (this->iterations % 100 == 0)
+	if (this->iterations % 1000 == 0)
 	{
-	    if (MEASURE)
-	    {
-		victory recommendation = check_messages(this->task_id);
-		if (recommendation == victory::irrelevant)
-		{
-		    //fprintf(stderr, "We got advice to terminate.\n");
-		    return recommendation;
-		}
-	    }
+	    check_messages(this->task_id);
 	}
     }
 
@@ -425,7 +507,7 @@ template<minimax MODE> victory computation<MODE>::algorithm(int pres_item, algor
 	    return alg_to_evaluate->win;
 	}
 	alg_to_evaluate->visited = true;
-	GEN_ONLY(meas.alg_vertices_visited++); // For performance measurement only.
+	MEASURE_ONLY(meas.alg_vertices_visited++); // For performance measurement only.
 	
 	// Any vertex which is touched by generation becomes temporarily a non-leaf.
 	// In principle, it might become a leaf again, if say the task function decides -- but
@@ -447,7 +529,8 @@ template<minimax MODE> victory computation<MODE>::algorithm(int pres_item, algor
 	}
 
     }
- 
+
+    // Apply good situations.
     if (gsheuristic(&bstate, pres_item, &(this->meas)) == 1)
     {
 	if (GENERATING)
@@ -460,6 +543,23 @@ template<minimax MODE> victory computation<MODE>::algorithm(int pres_item, algor
 	return victory::alg;
     }
 
+    // Try the new heuristic visit one level below for a cached winning move.
+
+    if (EXPLORING && USING_HEURISTIC_VISITS)
+    {
+	victory quick_check_below = heuristic_visit_alg(pres_item);
+	if (quick_check_below != victory::uncertain)
+	{
+	    MEASURE_ONLY(meas.heuristic_visit_hit++);
+	    // TODO: measure success of this strategy.
+	    return quick_check_below;
+	}
+	else
+	{
+	    MEASURE_ONLY(meas.heuristic_visit_miss++);
+	}
+    }
+    
     if (GENERATING)
     {
 	if (alg_to_evaluate->state == vert_state::fixed)

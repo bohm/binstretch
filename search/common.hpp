@@ -24,7 +24,7 @@
 #include "constants.hpp" // Non-changeable system constants.
 
 const bool PROGRESS = true; // Whether to print progress info to stderr.
-const bool MEASURE = true; // Whether to collect and print measurements to stderr.
+const bool MEASURE = false; // Whether to collect and print measurements to stderr.
 const bool VERBOSE = true; // Further information about progress.
 const bool OUTPUT = false; // Whether to produce output.
 const bool REGROW = false; // Whether to regrow or just terminate after first iteration.
@@ -112,8 +112,9 @@ const bool ADVERSARY_HEURISTICS = true;
 const bool LARGE_ITEM_ACTIVE = true;
 const bool LARGE_ITEM_ACTIVE_EVERYWHERE = false;
 const bool FIVE_NINE_ACTIVE = true;
-const bool FIVE_NINE_ACTIVE_EVERYWHERE = false;
+const bool FIVE_NINE_ACTIVE_EVERYWHERE = true;
 
+const bool USING_HEURISTIC_VISITS = true;
 
 // batching constants
 const int BATCH_SIZE = 50;
@@ -182,6 +183,8 @@ uint64_t *Zl; // Zobrist table for loads
 uint64_t *Zlow; // Zobrist for the lowest sendable item (monotonicity)
 uint64_t *Zlast;
 uint64_t *Zalg;
+
+uint64_t **Zlbig;
 
 typedef std::tuple<uint64_t*, uint64_t*, uint64_t*, uint64_t*> zobrist_quadruple;
 
@@ -319,7 +322,7 @@ void assert_with_message(const char* expression, bool evaluation, const char* me
         abort();
     }
 }
-    
+
 #ifndef NDEBUG
 #define assert_message(expr, msg) assert_with_message(#expr, expr, msg);
 #else

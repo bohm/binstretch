@@ -290,15 +290,15 @@ void overseer::start()
 	    {
 		threads[w].join();
 		print_if<DEBUG>("Worker %d joined back.\n", w);
-		collected_meas.add(wrkr[w]->measurements);
+		ov_meas.add(wrkr[w]->measurements);
 		delete wrkr[w];
 	    }
 	    wrkr.clear();
 
 	    // Before transmitting measurements, add the atomically collected
 	    // cache measurements to the whole meas collection.
-	    collected_meas.state_meas.add(stc->meas);
-	    collected_meas.dpht_meas.add(dpc->meas);
+	    ov_meas.state_meas.add(stc->meas);
+	    ov_meas.dpht_meas.add(dpc->meas);
 
 	    MEASURE_ONLY(stc->analysis());
 	    MEASURE_ONLY(print_if<true>("Overseer %d: State cache size: %" PRIu64
@@ -313,7 +313,7 @@ void overseer::start()
 				     dpc->meas.empty_positions));
 							
     
-	    comm.transmit_measurements(collected_meas);
+	    comm.transmit_measurements(ov_meas);
 	    delete dpc;
 	    delete stc;
 	    delete[] finished_tasks;

@@ -92,6 +92,7 @@ public:
 
     // ID of root.
     int root_name = -1;
+    binconf root_binconf;
 
     std::vector<adversary_partial> v_adv;
     std::vector<algorithm_partial> v_alg;
@@ -113,10 +114,17 @@ public:
 	    adv_by_name.insert({name, id});
 	}
 
-    void add_root(uint64_t name, std::string heurstring = "")
+    void add_root(uint64_t name, std::string heurstring = "", binconf* bc_ptr = nullptr)
 	{
 	    root_name = name;
 	    add_adv_vertex(name, heurstring);
+	    if (bc_ptr != nullptr)
+	    {
+		root_binconf.loads = bc_ptr->loads;
+		root_binconf.items = bc_ptr->items;
+		root_binconf.last_item = bc_ptr->last_item;
+		delete bc_ptr;
+	    }
 	}
 
     void add_alg_vertex(uint64_t name, std::string optimal = "")
@@ -148,7 +156,7 @@ public:
   
     void populate_binconfs(adversary_partial& v, binconf b);
     void populate_binconfs(algorithm_partial& v, binconf b);
-    void populate_binconfs(binconf rb);
+    void populate_binconfs();
 
     dag* finalize();
 
@@ -306,13 +314,15 @@ void partial_dag::populate_binconfs(algorithm_partial& v, binconf b)
     }
 }
 
-void partial_dag::populate_binconfs(binconf rb)
+void partial_dag::populate_binconfs()
 {
     assert(root_name != -1);
     assert(edges_present && next_items_present && !binconfs_present);
+    
+    root_binconf.hashinit();
     clear_visited();
     adversary_partial &root = v_adv[ adv_by_name.at(root_name) ];
-    populate_binconfs(root, rb);
+    populate_binconfs(root, root_binconf);
     binconfs_present = true;
 }
 

@@ -2,7 +2,7 @@
 
 usage()
 {
-	echo "usage: ./build.sh M T G [-odir output-dir] [--search/--painter/--rooster/--kibbitzer/--minitools] [--debug] [--older]"
+	echo "usage: ./build.sh M T G [-odir output-dir] [--search/--painter/--rooster/--kibbitzer/--minitools/--tests] [--debug] [--older]"
 	echo "where M: the number of bins/machines (e.g. 6)"
 	echo "      T: the allowed load of bins (e.g. 19)"
 	echo "      G: the optimal maximum load of all bins (e.g. 14)"
@@ -26,6 +26,7 @@ BUILDING_PAINTER=true
 BUILDING_KIBBITZER=true
 BUILDING_SEARCH=true
 BUILDING_MINITOOLS=true
+BUILDING_TESTS=true
 CPP_STANDARD="c++17"
 LINKING_SUFFIX=""
 OPTFLAG="-O3"
@@ -47,6 +48,7 @@ while (( "$#" )); do
 	    BUILDING_PAINTER=false
 	    BUILDING_KIBBITZER=false
 	    BUILDING_MINITOOLS=false
+	    BUILDING_TESTS=false
 	    shift
 	    ;;
 	--painter)
@@ -54,7 +56,7 @@ while (( "$#" )); do
 	    BUILDING_ROOSTER=false
 	    BUILDING_KIBBITZER=false
 	    BUILDING_MINITOOLS=false
-
+	    BUILDING_TESTS=false
 	    shift
 	    ;;
 	--rooster)
@@ -62,6 +64,7 @@ while (( "$#" )); do
 	    BUILDING_PAINTER=false
 	    BUILDING_KIBBITZER=false
 	    BUILDING_MINITOOLS=false
+	    BUILDING_TESTS=false
 	    shift
 	    ;;
 	--kibbitzer)
@@ -69,6 +72,7 @@ while (( "$#" )); do
 	    BUILDING_PAINTER=false
 	    BUILDING_ROOSTER=false
 	    BUILDING_MINITOOLS=false
+	    BUILDING_TESTS=false
 	    shift
 	    ;;
 	--minitools)
@@ -76,9 +80,18 @@ while (( "$#" )); do
 	    BUILDING_PAINTER=false
 	    BUILDING_ROOSTER=false
 	    BUILDING_KIBBITZER=false
+	    BUILDING_TESTS=false
 	    shift
 	    ;;
-
+	--tests)
+	    BUILDING_SEARCH=false
+	    BUILDING_PAINTER=false
+	    BUILDING_ROOSTER=false
+	    BUILDING_KIBBITZER=false
+	    BUILDING_MINITOOLS=false
+	    shift
+	    ;;
+    
 	--older)
 	    LINKING_SUFFIX="-lstdc++fs"
 	    shift
@@ -132,4 +145,7 @@ if [[ "$BUILDING_MINITOOLS" = true ]]; then
 	cd minitools; g++ -I../search/ -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S listsaplings.cpp -o ../$OUTPUT/listsaplings-$BINS-$R-$S -pthread $LINKING_SUFFIX; cd ..
 fi
 
-
+if [[ "$BUILDING_TESTS" = true ]]; then
+    echo "Compiling $OUTPUT/generationtest-$BINS-$R-$S."
+    cd tests; g++ -I../search/ -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S generationtest.cpp -o ../$OUTPUT/generationtest-$BINS-$R-$S $LINKING_SUFFIX; cd ..
+fi

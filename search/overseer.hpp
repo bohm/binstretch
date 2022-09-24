@@ -2,6 +2,7 @@
 #define _OVERSEER_HPP 1
 
 #include "common.hpp"
+#include "measure_structures.hpp"
 #include "dag/dag.hpp"
 #include "thread_attr.hpp"
 #include "tasks.hpp"
@@ -27,7 +28,7 @@ public:
     
     std::atomic<bool> final_round;
 
-    measure_attr collected_meas;
+    // measure_attr collected_meas;
 
     overseer() {};
     void start();
@@ -47,5 +48,9 @@ public:
 // A global variable hosting the local overseer.
 
 overseer* ov;
+
+// A global variable, defined elsewhere, for performance measurements which are common to the
+// whole overseer.
+// measure_attr ov_meas;
 
 #endif // _OVERSEER_HPP 

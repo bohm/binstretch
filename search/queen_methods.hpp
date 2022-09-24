@@ -10,8 +10,6 @@
 #include "saplings.hpp"
 #include "savefile.hpp"
 #include "performance_timer.hpp"
-#include "sapling_manager.hpp"
-#include "cleanup.hpp"
 #include "queen.hpp"
 /*
 
@@ -165,7 +163,7 @@ int queen_class::start()
     if (CUSTOM_ROOTFILE)
     {
 	qdag = new dag;
-	binconf root = loadbinconf(ROOT_FILENAME);
+	binconf root = loadbinconf_singlefile(ROOT_FILENAME);
 	root.consistency_check();
 	qdag->add_root(root);
 	sequencing(root, qdag->root);
@@ -260,6 +258,9 @@ int queen_class::start()
 
 	updater_result = generate<minimax::generating>(job, &comp);
 	mark_tasks(qdag, job);
+
+	MEASURE_ONLY(comp.meas.print_generation_stats());
+	MEASURE_ONLY(comp.meas.clear_generation_stats());
 
 	perf_timer.generation_phase_end();
 
