@@ -23,14 +23,14 @@ void compute_next_moves_fixed(std::vector<int> &cands, adversary_vertex *fixed_v
 
 // We also return maximum feasible value that was computed.
 template <minimax MODE> int compute_next_moves_genstrat(std::vector<int> &cands, binconf *b,
-							int depth, computation<MODE> *comp)
+							int depth, int feasibility_ub, computation<MODE> *comp)
 {
 
     // Idea: start with monotonicity 0 (non-decreasing), and move towards S (full generality).
     int lower_bound = lowest_sendable(b->last_item);
 
     // finds the maximum feasible item that can be added using dyn. prog.
-    int maxfeas = maximum_feasible<MODE>(b, depth, lower_bound, comp->prev_max_feasible, comp);
+    int maxfeas = maximum_feasible<MODE>(b, depth, lower_bound, feasibility_ub, comp);
  
     int stepcounter = 0;
     for (int item_size = gen_strategy_start(maxfeas, (int) b->last_item);
@@ -49,13 +49,13 @@ template <minimax MODE> int compute_next_moves_genstrat(std::vector<int> &cands,
 // A slight hack: we have two separate strategies for exploration (where heuristics are turned
 // off) and generation (where heuristics are turned on)
 template <minimax MODE> int compute_next_moves_expstrat(std::vector<int> &cands, binconf *b,
-							int depth, computation<MODE> *comp)
+							int depth, int feasibility_ub, computation<MODE> *comp)
 {
     // Idea: start with monotonicity 0 (non-decreasing), and move towards S (full generality).
     int lower_bound = lowest_sendable(b->last_item);
 
     // finds the maximum feasible item that can be added using dyn. prog.
-    int maxfeas = maximum_feasible<MODE>(b, depth, lower_bound, comp->prev_max_feasible, comp);
+    int maxfeas = maximum_feasible<MODE>(b, depth, lower_bound, feasibility_ub, comp);
  
     int stepcounter = 0;
     for (int item_size = exp_strategy_start(maxfeas, (int) b->last_item);

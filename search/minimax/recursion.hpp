@@ -23,6 +23,7 @@
 #include "dynprog/algo.hpp"
 #include "maxfeas.hpp"
 #include "heur_adv.hpp"
+#include "heur_alg_knownsum.hpp"
 #include "gs.hpp"
 #include "tasks.hpp"
 #include "strategy.hpp"
@@ -172,10 +173,8 @@ template<minimax MODE> victory computation<MODE>::adversary(adversary_vertex *ad
     victory win = victory::alg;
     bool switch_to_heuristic = false;
     adversary_notes notes;
-    // maximum_feasible is either overwritten or used as a guaranteed upper bound
-    // in later computations. Therefore, we initialize it to S. It should not be
-    // relevant in some branches (such as in the heuristical regime).
-    int maximum_feasible = S;
+
+    int maximum_feasible = this->prev_max_feasible;
     
     GEN_ONLY(print_if<DEBUG>("GEN: "));
     EXP_ONLY(print_if<DEBUG>("EXP: "));
@@ -235,6 +234,30 @@ template<minimax MODE> victory computation<MODE>::adversary(adversary_vertex *ad
 	    }
 	}
     }
+
+    // We test the algorithm-side heuristic coming from computing the DP table
+    // for scheduling with known sums of processing times.
+    // Currently we only use it in exploration, but there is no real reason to
+    // avoid it in generation. It only needs to be integrated well into the generation
+    // mechanisms.
+    if (EXPLORING && USING_HEURISTIC_KNOWNSUM)
+    {
+	int knownsum_response = query_knownsum_heur(bstate.loadhash);
+	if (knownsum_response == 0)
+	{
+	    MEASURE_ONLY(meas.knownsum_full_hit++);
+	    return victory::alg;
+	} else if (knownsum_response != -1)
+	{
+	    MEASURE_ONLY(meas.knownsum_partial_hit++);
+	    maximum_feasible = std::min(maximum_feasible, knownsum_response);
+	} else
+	{
+	    MEASURE_ONLY(meas.knownsum_miss++);
+
+	}
+    }
+    
     
     // Turn off adversary heuristics if convenient (e.g. for machine verification).
     // We also do not need to compute heuristics further if we are already following
@@ -404,10 +427,10 @@ template<minimax MODE> victory computation<MODE>::adversary(adversary_vertex *ad
 	compute_next_moves_heur(candidate_moves, &bstate, this->current_strategy);
     } else if (GENERATING)
     {
-	maximum_feasible = compute_next_moves_genstrat<MODE>(candidate_moves, &bstate, itemdepth, this);
+	maximum_feasible = compute_next_moves_genstrat<MODE>(candidate_moves, &bstate, itemdepth, maximum_feasible, this);
     } else
     {
-	maximum_feasible = compute_next_moves_expstrat<MODE>(candidate_moves, &bstate, itemdepth, this);
+	maximum_feasible = compute_next_moves_expstrat<MODE>(candidate_moves, &bstate, itemdepth, maximum_feasible, this);
     }
 
     // print_if<DEBUG>("Trying player zero choices, with maxload starting at %d\n", maximum_feasible);
