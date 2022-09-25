@@ -24,7 +24,7 @@
 #include "constants.hpp" // Non-changeable system constants.
 
 const bool PROGRESS = true; // Whether to print progress info to stderr.
-const bool MEASURE = true; // Whether to collect and print measurements to stderr.
+const bool MEASURE = false; // Whether to collect and print measurements to stderr.
 const bool VERBOSE = true; // Further information about progress.
 const bool OUTPUT = false; // Whether to produce output.
 const bool REGROW = false; // Whether to regrow or just terminate after first iteration.
@@ -114,7 +114,7 @@ const bool LARGE_ITEM_ACTIVE_EVERYWHERE = false;
 const bool FIVE_NINE_ACTIVE = true;
 const bool FIVE_NINE_ACTIVE_EVERYWHERE = true;
 
-const bool USING_HEURISTIC_VISITS = true;
+const bool USING_HEURISTIC_VISITS = false;
 const bool USING_HEURISTIC_KNOWNSUM = true;
 
 // batching constants

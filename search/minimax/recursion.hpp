@@ -131,6 +131,8 @@ template <minimax MODE> victory computation<MODE>::heuristic_visit_alg(int pres_
 	    // In addition, try the query to the known sum heuristic and if there
 	    // is a winning move, go there.
 
+	    if (USING_HEURISTIC_KNOWNSUM)
+	    {
 	    if (!position_solved)
 	    {
 		int knownsum_response = query_knownsum_heur(statehash_if_descending);
@@ -139,6 +141,7 @@ template <minimax MODE> victory computation<MODE>::heuristic_visit_alg(int pres_
 		    ret = victory::alg;
 		    position_solved = true;
 		} // No need for else { ret = victory::uncertain;} here.
+	    }
 	    }
 	    // Heuristic visit ends.
 	    // algorithm_ascend<MODE>(this, notes, pres_item);
