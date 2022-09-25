@@ -97,8 +97,6 @@ void initialize_knownsum()
     uint64_t partial_loadconfs = 0;
 
 
-    std::unordered_map<uint64_t, int> knownsum_ub;
-   
     do {
 	if (iterated_lc.loadsum() < S*BINS)
 	{

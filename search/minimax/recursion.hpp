@@ -175,6 +175,7 @@ template<minimax MODE> victory computation<MODE>::adversary(adversary_vertex *ad
     adversary_notes notes;
 
     int maximum_feasible = this->prev_max_feasible;
+    int heuristical_ub = S;
     
     GEN_ONLY(print_if<DEBUG>("GEN: "));
     EXP_ONLY(print_if<DEBUG>("EXP: "));
@@ -250,7 +251,7 @@ template<minimax MODE> victory computation<MODE>::adversary(adversary_vertex *ad
 	} else if (knownsum_response != -1)
 	{
 	    MEASURE_ONLY(meas.knownsum_partial_hit++);
-	    maximum_feasible = std::min(maximum_feasible, knownsum_response);
+	    heuristical_ub = knownsum_response;
 	} else
 	{
 	    MEASURE_ONLY(meas.knownsum_miss++);
@@ -427,10 +428,10 @@ template<minimax MODE> victory computation<MODE>::adversary(adversary_vertex *ad
 	compute_next_moves_heur(candidate_moves, &bstate, this->current_strategy);
     } else if (GENERATING)
     {
-	maximum_feasible = compute_next_moves_genstrat<MODE>(candidate_moves, &bstate, itemdepth, maximum_feasible, this);
+	maximum_feasible = compute_next_moves_genstrat<MODE>(candidate_moves, &bstate, itemdepth, heuristical_ub, this);
     } else
     {
-	maximum_feasible = compute_next_moves_expstrat<MODE>(candidate_moves, &bstate, itemdepth, maximum_feasible, this);
+	maximum_feasible = compute_next_moves_expstrat<MODE>(candidate_moves, &bstate, itemdepth, heuristical_ub, this);
     }
 
     // print_if<DEBUG>("Trying player zero choices, with maxload starting at %d\n", maximum_feasible);
