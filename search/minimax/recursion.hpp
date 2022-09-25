@@ -128,6 +128,18 @@ template <minimax MODE> victory computation<MODE>::heuristic_visit_alg(int pres_
 		ret = victory::uncertain;
 	    }
 
+	    // In addition, try the query to the known sum heuristic and if there
+	    // is a winning move, go there.
+
+	    if (!position_solved)
+	    {
+		int knownsum_response = query_knownsum_heur(statehash_if_descending);
+		if (knownsum_response == 0)
+		{
+		    ret = victory::alg;
+		    position_solved = true;
+		} // No need for else { ret = victory::uncertain;} here.
+	    }
 	    // Heuristic visit ends.
 	    // algorithm_ascend<MODE>(this, notes, pres_item);
 	}
@@ -554,19 +566,7 @@ template<minimax MODE> victory computation<MODE>::algorithm(int pres_item, algor
 
     }
 
-    // Apply good situations.
-    if (gsheuristic(&bstate, pres_item, &(this->meas)) == 1)
-    {
-	if (GENERATING)
-	{
-	    alg_to_evaluate->win = victory::alg;
-	    // A possible todo for much later: mark vertex as winning for adversary
-	    // and the heuristic with which it is winning.
-	    alg_to_evaluate->leaf = leaf_type::heuristical;
-	}
-	return victory::alg;
-    }
-
+    
     // Try the new heuristic visit one level below for a cached winning move.
 
     if (EXPLORING && USING_HEURISTIC_VISITS)
@@ -583,7 +583,20 @@ template<minimax MODE> victory computation<MODE>::algorithm(int pres_item, algor
 	    MEASURE_ONLY(meas.heuristic_visit_miss++);
 	}
     }
-    
+ 
+    // Apply good situations.
+    if (gsheuristic(&bstate, pres_item, &(this->meas)) == 1)
+    {
+	if (GENERATING)
+	{
+	    alg_to_evaluate->win = victory::alg;
+	    // A possible todo for much later: mark vertex as winning for adversary
+	    // and the heuristic with which it is winning.
+	    alg_to_evaluate->leaf = leaf_type::heuristical;
+	}
+	return victory::alg;
+    }
+   
     if (GENERATING)
     {
 	if (alg_to_evaluate->state == vert_state::fixed)
