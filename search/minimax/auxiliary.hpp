@@ -49,20 +49,23 @@ template <minimax MODE> int compute_next_moves_genstrat(std::vector<int> &cands,
 // A slight hack: we have two separate strategies for exploration (where heuristics are turned
 // off) and generation (where heuristics are turned on)
 template <minimax MODE> int compute_next_moves_expstrat(std::vector<int> &cands, binconf *b,
-							int depth, int feasibility_ub, computation<MODE> *comp)
+							int depth, int heuristical_ub, computation<MODE> *comp)
 {
     // Idea: start with monotonicity 0 (non-decreasing), and move towards S (full generality).
     int lower_bound = lowest_sendable(b->last_item);
 
     // finds the maximum feasible item that can be added using dyn. prog.
-    int maxfeas = maximum_feasible<MODE>(b, depth, lower_bound, feasibility_ub, comp);
+    int maxfeas = maximum_feasible<MODE>(b, depth, lower_bound, comp->prev_max_feasible, comp);
+
+    // Hack: After computing the "old" maximum feasible, update with the heuristical upper-bound.
+    int max_move = std::min(maxfeas, heuristical_ub);
  
     int stepcounter = 0;
-    for (int item_size = exp_strategy_start(maxfeas, (int) b->last_item);
-	 !exp_strategy_end(maxfeas, lower_bound, stepcounter, item_size);
-	 exp_strategy_step(maxfeas, lower_bound, stepcounter, item_size))
+    for (int item_size = exp_strategy_start(max_move, (int) b->last_item);
+	 !exp_strategy_end(max_move, lower_bound, stepcounter, item_size);
+	 exp_strategy_step(max_move, lower_bound, stepcounter, item_size))
     {
-	if (!exp_strategy_skip(maxfeas, lower_bound, stepcounter, item_size))
+	if (!exp_strategy_skip(max_move, lower_bound, stepcounter, item_size))
 	{
 	    cands.push_back(item_size);
 	}

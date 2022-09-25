@@ -149,6 +149,8 @@ void overseer::start()
     if (USING_HEURISTIC_KNOWNSUM)
     {
 	initialize_knownsum();
+	print_if<PROGRESS>("Heuristic with known processing times initialized with %zu elements.",
+			   knownsum_ub.size());
     }
     // dpht_el::parallel_init(&dpht, dpht_size, worker_count);
 
