@@ -152,6 +152,11 @@ void overseer::start()
 	print_if<PROGRESS>("Heuristic with known processing times initialized with %zu elements.",
 			   knownsum_ub.size());
     }
+
+    if (USING_HEURISTIC_WEIGHTSUM)
+    {
+	init_weight_bounds();
+    }
     // dpht_el::parallel_init(&dpht, dpht_size, worker_count);
 
     comm.sync_up(); // Sync before any rounds start.

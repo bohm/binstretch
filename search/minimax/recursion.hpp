@@ -133,15 +133,15 @@ template <minimax MODE> victory computation<MODE>::heuristic_visit_alg(int pres_
 
 	    if (USING_HEURISTIC_KNOWNSUM)
 	    {
-	    if (!position_solved)
-	    {
-		int knownsum_response = query_knownsum_heur(statehash_if_descending);
-		if (knownsum_response == 0)
+		if (!position_solved)
 		{
-		    ret = victory::alg;
-		    position_solved = true;
-		} // No need for else { ret = victory::uncertain;} here.
-	    }
+		    int knownsum_response = query_knownsum_heur(statehash_if_descending);
+		    if (knownsum_response == 0)
+		    {
+			ret = victory::alg;
+			position_solved = true;
+		    } // No need for else { ret = victory::uncertain;} here.
+		}
 	    }
 	    // Heuristic visit ends.
 	    // algorithm_ascend<MODE>(this, notes, pres_item);
@@ -273,6 +273,24 @@ template<minimax MODE> victory computation<MODE>::adversary(adversary_vertex *ad
 
 	}
     }
+
+    // Same as above, but an enhanced heuristic.
+    if (EXPLORING && USING_HEURISTIC_WEIGHTSUM)
+    {
+	int weightsum_response = query_weightsum_heur(bstate.loadhash, bstate_weight);
+	if (weightsum_response == 0)
+	{
+	    return victory::alg;
+	} else if (weightsum_response != -1)
+	{
+	    heuristical_ub = weightsum_response;
+	} else
+	{
+	    // MEASURE_ONLY(meas.knownsum_miss++);
+	}
+    }
+
+   
     
     
     // Turn off adversary heuristics if convenient (e.g. for machine verification).
@@ -408,6 +426,12 @@ template<minimax MODE> victory computation<MODE>::adversary(adversary_vertex *ad
 	this->iterations++;
 	if (this->iterations % 1000 == 0)
 	{
+	
+	    // print_if<DEBUG>("Explore: Adversary considering binconf of weight %d (true %d) ",
+	    //                  bstate_weight, weight(&bstate));
+	    // print_binconf<DEBUG>(&bstate);
+	    
+     
 	    check_messages(this->task_id);
 	}
     }
@@ -729,6 +753,7 @@ template<minimax MODE> victory computation<MODE>::algorithm(int pres_item, algor
 template <minimax MODE> victory explore(binconf *b, computation<MODE> *comp)
 {
     b->hashinit();
+
     binconf root_copy = *b;
     
     onlineloads_init(comp->ol, b);
@@ -742,6 +767,12 @@ template <minimax MODE> victory explore(binconf *b, computation<MODE> *comp)
     comp->explore_roothash = b->hash_with_last();
     comp->explore_root = &root_copy;
     comp->bstate = *b;
+
+    if (USING_HEURISTIC_WEIGHTSUM)
+    {
+	comp->bstate_weight = weight(&(comp->bstate));
+    }
+
     victory ret = comp->adversary(NULL, NULL);
     assert(ret != victory::uncertain);
     return ret;
@@ -752,6 +783,10 @@ template <minimax MODE> victory generate(sapling start_sapling, computation<MODE
 {
     duplicate(&(comp->bstate), &start_sapling.root->bc);
     comp->bstate.hashinit();
+    if (USING_HEURISTIC_WEIGHTSUM)
+    {
+	comp->bstate_weight = weight(&(comp->bstate));
+    }
 
     if (start_sapling.expansion)
     {

@@ -26,6 +26,10 @@ public:
 
     // Call depth -- number of recursive calls (above the current one).
     int calldepth = 0;
+
+    // The current weight of the instance. We only touch it if USING_HEURISTIC_WEIGHTSUM is true.
+    // Mild TODO: In the future, move it to the algorithm_notes section perhaps?
+    int bstate_weight = 0;
     
     // dynamic programming data
     dynprog_data *dpdata;

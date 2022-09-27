@@ -205,6 +205,11 @@ template <minimax MODE> void algorithm_descend(computation<MODE> *comp, algorith
     notes.previously_last_item = comp->bstate.last_item;
     notes.bc_new_load_position = comp->bstate.assign_and_rehash(item, target_bin);
     notes.ol_new_load_position = onlineloads_assign(comp->ol, item);
+    
+    if (USING_HEURISTIC_WEIGHTSUM)
+    {
+	comp->bstate_weight += itemweight(item);
+    }
 }
 
 template <minimax MODE> void algorithm_ascend(computation<MODE> *comp, const algorithm_notes &notes, int item)
@@ -216,6 +221,12 @@ template <minimax MODE> void algorithm_ascend(computation<MODE> *comp, const alg
     // care of that.
 
     onlineloads_unassign(comp->ol, item, notes.ol_new_load_position);
+
+    if (USING_HEURISTIC_WEIGHTSUM)
+    {
+	comp->bstate_weight -= itemweight(item);
+    }
+
 }
 
 #endif // AUX_MINIMAX_HPP
