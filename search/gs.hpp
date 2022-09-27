@@ -385,9 +385,33 @@ int testgs(const binconf *b, measure_attr *meas)
     // Always test GS1, it is applicable even when we aim at a ratio below 4/3.
     if(gs1(b, meas) == 1)
     {
+	/*
+	if (!knownsum_ub.empty())
+	{
+	    print_if<true>("The following binconf hits GS1:\n");
+	    print_binconf<true>(b);
+	    print_if<true>("The loadsum query of this state is %d.\n", query_knownsum_heur(b->loadhash));
+	}
+	*/
 
-	print_if<DEBUG>("The following binconf hits GS1:\n");
-	print_binconf<DEBUG>(b);
+	/*
+	if (b->loads[1] == 18 &&
+		b->loads[2] == 14 &&
+		b->loads[3] == 14 &&
+		b->loads[4] == 14 &&
+		b->loads[5] == 11 &&
+		b->loads[6] == 11 &&
+		b->loads[7] == 0)
+	{
+	    fprintf(stderr, "Considering the wrongly judged position.\n");
+	    print_binconf<true>(b);
+	    print_if<true>("The loadsum query of this state, with loadhash %" PRIu64 ", is %d.\n",
+			   b->loadhash, query_knownsum_heur(b->loadhash));
+	    fprintf(stderr, "Debug recomputation of loadhash: %" PRIu64 ".\n", b->recompute_loadhash());
+
+	}
+	*/
+
 	return 1;
     }
 

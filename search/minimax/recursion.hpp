@@ -67,6 +67,11 @@ template <minimax MODE> victory computation<MODE>::heuristic_visit_alg(int pres_
     bool position_solved = false;
     algorithm_notes notes; // Potentially turn off notes for now, they are not used.
 
+    int upcoming_weight = 0;
+    if (USING_HEURISTIC_WEIGHTSUM)
+    {
+	upcoming_weight = bstate_weight + itemweight(pres_item); // Weight in the next adversary state.
+    }
     
     // Repeating the code from the algorithm() section.
     bin_int i = 1;
@@ -90,6 +95,8 @@ template <minimax MODE> victory computation<MODE>::heuristic_visit_alg(int pres_
 	    */
 
 	    uint64_t statehash_if_descending = bstate.virtual_hash_with_low(pres_item, i);
+	    uint64_t loadhash_if_descending = bstate.virtual_loadhash(pres_item, i);
+    
 	    // Equivalent but hopefully faster to: 
 	    // algorithm_descend<MODE>(this, notes, pres_item, i);
 
@@ -135,7 +142,7 @@ template <minimax MODE> victory computation<MODE>::heuristic_visit_alg(int pres_
 	    {
 		if (!position_solved)
 		{
-		    int knownsum_response = query_knownsum_heur(statehash_if_descending);
+		    int knownsum_response = query_knownsum_heur(loadhash_if_descending);
 		    if (knownsum_response == 0)
 		    {
 			ret = victory::alg;
@@ -143,6 +150,22 @@ template <minimax MODE> victory computation<MODE>::heuristic_visit_alg(int pres_
 		    } // No need for else { ret = victory::uncertain;} here.
 		}
 	    }
+
+	    // Same as above, but an enhanced heuristic.
+	    if (USING_HEURISTIC_WEIGHTSUM)
+	    {
+		if (!position_solved)
+		{
+		    int weightsum_response = query_weightsum_heur(loadhash_if_descending, upcoming_weight);
+		    if (weightsum_response == 0)
+		    {
+			return victory::alg;
+			position_solved = true;
+		    }
+		}
+	    }
+
+
 	    // Heuristic visit ends.
 	    // algorithm_ascend<MODE>(this, notes, pres_item);
 	}
@@ -610,20 +633,24 @@ template<minimax MODE> victory computation<MODE>::algorithm(int pres_item, algor
 	    MEASURE_ONLY(meas.heuristic_visit_miss++);
 	}
     }
- 
+
     // Apply good situations.
-    if (gsheuristic(&bstate, pres_item, &(this->meas)) == 1)
+
+    if (USING_HEURISTIC_GS)
     {
-	if (GENERATING)
+	if (gsheuristic(&bstate, pres_item, &(this->meas)) == 1)
 	{
-	    alg_to_evaluate->win = victory::alg;
-	    // A possible todo for much later: mark vertex as winning for adversary
-	    // and the heuristic with which it is winning.
-	    alg_to_evaluate->leaf = leaf_type::heuristical;
+	    if (GENERATING)
+	    {
+		alg_to_evaluate->win = victory::alg;
+		// A possible todo for much later: mark vertex as winning for adversary
+		// and the heuristic with which it is winning.
+		alg_to_evaluate->leaf = leaf_type::heuristical;
+	    }
+	    return victory::alg;
 	}
-	return victory::alg;
     }
-   
+
     if (GENERATING)
     {
 	if (alg_to_evaluate->state == vert_state::fixed)

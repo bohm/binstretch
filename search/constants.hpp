@@ -211,7 +211,7 @@ const int RECOMMENDED_MONOTONICITY = 3;
 #elif IBINS >= 7 && IR == 15 && IS == 11
 const int RECOMMENDED_MONOTONICITY = 5;
 #else
-const int RECOMMENDED_MONOTONICITY = 0;
+const int RECOMMENDED_MONOTONICITY = IS-1;
 #endif
 
 // Sanity check for definition of the variables that should be passed

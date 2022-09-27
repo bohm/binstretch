@@ -97,11 +97,31 @@ void initialize_knownsum()
     uint64_t partial_loadconfs = 0;
 
 
+// bool debug_position = false; // Erase later.
+    
     do {
+	if (BINS == 7)
+	{
+	    /* debug_position = false;
+	    if (iterated_lc.loads[1] == 18 &&
+		iterated_lc.loads[2] == 14 &&
+		iterated_lc.loads[3] == 14 &&
+		iterated_lc.loads[4] == 14 &&
+		iterated_lc.loads[5] == 11 &&
+		iterated_lc.loads[6] == 11 &&
+		iterated_lc.loads[7] == 0)
+	    {
+		fprintf(stderr, "Considering the wrongly judged position.\n");
+		debug_position = true;
+	    }
+	    */
+	}
+	
 	if (iterated_lc.loadsum() < S*BINS)
 	{
 	    int start_item = std::min((int) S, S * BINS - iterated_lc.loadsum() );
 	    int item = start_item;
+
 	    for (; item >= 1; item--)
 	    {
 		bool good_move_found = false;
@@ -208,7 +228,7 @@ std::array<int, 15> fourteen_weights = {0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4
 
 int fourteen_largest_with_weight(int weight)
 {
-    if (weight == 0) { return 2; }
+    if (weight <= 0) { return 2; }
     if (weight == 1) { return 5; }
     if (weight == 2) { return 8; }
     if (weight == 3) { return 11; }
@@ -331,6 +351,7 @@ void init_weight_bounds()
     for (int i = MAX_TOTAL_WEIGHT; i >= 0; i--)
     {
 	init_weight_layer(i);
+	print_if<PROGRESS>("Overseer: Processed layer %d.\n", i);
     }
 }
 

@@ -34,6 +34,18 @@ public:
 	    }
 	}
 
+    // A helper function that gets called mainly for debugging.
+    uint64_t recompute_loadhash() const
+	{
+	    uint64_t ret=0;
+	    
+	    for(int i=1; i<=BINS; i++)
+	    {
+		ret ^= Zl[i*(R+1) + loads[i]];
+	    }
+	    return ret;
+	}
+
 
     uint64_t _hash_block(int start)
 	{

@@ -97,7 +97,7 @@ while (( "$#" )); do
 	    shift
 	    ;;
 	--debug)
-	    OPTFLAG="-g3"
+	    OPTFLAG="-O3 -g"
 	    shift
 	    ;;
 	*) # unsupported flags
