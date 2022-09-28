@@ -155,7 +155,12 @@ binconf loadbinconf_singlefile(const char* filename)
     }
 
     char linebuf[1024];
-    fgets(linebuf, 1024, fin);
+    char* retptr = fgets(linebuf, 1024, fin);
+    if (retptr == nullptr)
+    {
+	ERROR("File %s found, but a line could not be loaded.\n", filename);
+    }
+    
     fclose(fin);
     std::string line(linebuf);
     std::stringstream str_s(line);

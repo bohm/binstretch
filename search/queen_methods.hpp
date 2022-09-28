@@ -15,10 +15,13 @@
 
 Message sequence:
 
-1. Monotonicity sent.
+(1. Monotonicity sent.)
 2. Root solved/unsolved after generation.
 3. Synchronizing task list.
 4. Sending/receiving tasks.
+
+// 2022-06-17: We currently do not switch monotonicity for specific subtrees.
+// It could make sense to do it on a sapling-by-sapling basis, again through some external advice.
 
  */
 
@@ -127,7 +130,6 @@ int queen_class::start()
 {
     int sapling_no = 0;
     int ret = 0;
-    bool output_useful = false; // Set to true when it is clear output will be printed.
     performance_timer perf_timer;
     uint64_t sapling_counter = 0;
     
@@ -176,8 +178,6 @@ int queen_class::start()
 
     sapling_manager sap_man(qdag);
 
-    int regrow_threshold = 0;
-    int last_regrow_threshold = 0;
     // update_and_count_saplings(qdag); // Leave only uncertain saplings.
 
     cleanup_after_adv_win(qdag, true);
@@ -191,13 +191,11 @@ int queen_class::start()
 
 
 	job.mark_in_progress();
-	regrow_threshold = job.regrow_level;
 
 	print_if<PROGRESS>("Queen: Sapling count: %ld, current sapling of regrow level %d:\n", sapling_counter, job.regrow_level);
 	print_binconf<PROGRESS>(job.root->bc);
 
 
-	bool lower_bound_complete = false;
 	computation_root = job.root;
 
 	if (computation_root->win != victory::uncertain)
@@ -221,7 +219,6 @@ int queen_class::start()
 	}
 	*/
 	
-	monotonicity = FIRST_PASS;
 	task_depth = TASK_DEPTH_INIT + job.regrow_level * TASK_DEPTH_STEP;
 	task_load = TASK_LOAD_INIT + job.regrow_level * TASK_LOAD_STEP;
 
@@ -240,9 +237,6 @@ int queen_class::start()
 	{
 	    comp.assumer = assumer;
 	}
-
-	// 2022-06-17: We currently do not switch monotonicity for specific subtrees.
-	// It could make sense to do it on a sapling-by-sapling basis, again through some external advice.
 
 
 	clear_task_structures();
@@ -277,7 +271,6 @@ int queen_class::start()
 	    print_if<VERBOSE>("Queen: Completed lower bound in the generation phase.\n");
 	    if (computation_root->win == victory::adv)
 	    {
-		lower_bound_complete = true;
 		winning_saplings++;
 	    } else if (computation_root->win == victory::alg)
 	    {
@@ -293,8 +286,6 @@ int queen_class::start()
 	    print_if<COMM_DEBUG>("Queen: Starting the round.\n");
 	    clear_batches();
 	    comm.round_start_and_finality(false);
-	    // Queen sends the current monotonicity to the workers.
-	    comm.bcast_send_monotonicity(monotonicity);
 
 	    collect_tasks(computation_root);
 	    init_tstatus(tstatus_temporary); tstatus_temporary.clear();

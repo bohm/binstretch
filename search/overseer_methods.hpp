@@ -20,7 +20,6 @@ void overseer::cleanup()
 	for (int p = 0; p < worker_count; p++) { finished_tasks[p].clear(); }
 	comm.ignore_additional_signals();
 
-	// clear caches, as monotonicity invalidates some situations
 	root_solved.store(false);
     }
 
@@ -106,7 +105,6 @@ void overseer::process_finished_tasks()
 
 void overseer::start()
 {
-    int monotonicity_last_round;
 
     std::string machine_name = comm.machine_name();
     print_if<PROGRESS>("Overseer reporting for duty: %s, rank %d out of %d instances\n",
@@ -183,23 +181,6 @@ void overseer::start()
 
 	if (!final_round)
 	{
-	    print_if<COMM_DEBUG>("Overseer %d waits for monotonicity.\n", world_rank);
-	    monotonicity_last_round = monotonicity;
-	    monotonicity = comm.bcast_recv_monotonicity();
-	    if(monotonicity > monotonicity_last_round)
-	    {
-		print_if<COMM_DEBUG>("Overseer %d received increased monotonicity: %d.\n", world_rank, monotonicity);
-		// stc->clear_cache_of_infeasible(worker_count);
-		stc->clear_cache(worker_count);
-
-	    } else if (monotonicity < monotonicity_last_round)
-	    {
-		print_if<COMM_DEBUG>("Overseer %d received decreased monotonicity: %d.\n", world_rank, monotonicity);
-		stc->clear_cache(worker_count);
-
-	    }
-
-
             // receive (new) task array
 	    
 	    // Attention: this potentially writes the same variable it reads in the local communication model.

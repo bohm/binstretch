@@ -138,8 +138,8 @@ public:
     void bcast_send_uint64_array(int root_sender, uint64_t* array, int length);
     std::pair<int, uint64_t*> bcast_recv_uint64_array(int root_sender);
 
-    void bcast_send_monotonicity(int m);
-    int bcast_recv_monotonicity();
+    // void bcast_send_monotonicity(int m);
+    // int bcast_recv_monotonicity();
     void bcast_send_tcount(int tc);
     int bcast_recv_tcount();
     flat_task bcast_recv_flat_task();
@@ -387,6 +387,7 @@ void communicator::compute_thread_ranks()
     }
 }
 
+/*
 // We create these overloads to imbue more meaning into the queen/overseer code.
 void communicator::bcast_send_monotonicity(int m)
 {
@@ -403,6 +404,7 @@ int communicator::bcast_recv_monotonicity()
     // MPI_Bcast(&m, 1, MPI_INT, QUEEN, MPI_COMM_WORLD);
     // return m;
 }
+*/
 
 void communicator::bcast_send_tcount(int tc)
 {
@@ -418,14 +420,14 @@ int communicator::bcast_recv_tcount()
 
 void communicator::bcast_send_flat_task(flat_task& ft)
 {
-    MPI_Bcast(ft.shorts, BINS+S+6, MPI_INT, QUEEN, MPI_COMM_WORLD);
+    MPI_Bcast(ft.shorts, BINS+S+6, MPI_BIN_INT, QUEEN, MPI_COMM_WORLD);
     MPI_Bcast(ft.longs, 2, MPI_UNSIGNED_LONG, QUEEN, MPI_COMM_WORLD);
 }
 
 flat_task communicator::bcast_recv_flat_task()
 {
     flat_task ret;
-    MPI_Bcast(ret.shorts, BINS+S+6, MPI_INT, QUEEN, MPI_COMM_WORLD);
+    MPI_Bcast(ret.shorts, BINS+S+6, MPI_BIN_INT, QUEEN, MPI_COMM_WORLD);
     MPI_Bcast(ret.longs, 2, MPI_UNSIGNED_LONG, QUEEN, MPI_COMM_WORLD);
     return ret;
 }

@@ -54,11 +54,14 @@ const long double TASKLOG_THRESHOLD = 60.0; // in seconds
 #define DYNPROG_MAX dynprog_max_direct // choices: dynprog_max_direct, dynprog_max_with_lih
 
 // Use this type for values of loads and items.
-// Reasonable settings are either int8_t or int16_t, depending on whether a bin can contain more
+// Reasonable settings are int8_t, int16_t or int (depending in part on whether a bin can contain more
 // than 127 items or not. We allow it to go negative for signalling -1/-2.
+
 //typedef int16_t bin_int;
+//#define MPI_BIN_INT MPI_SHORT
 
 typedef int bin_int;
+#define MPI_BIN_INT MPI_INT
 
 const bin_int S = IS;
 const bin_int R = IR;
@@ -78,10 +81,10 @@ const std::vector<bin_int> INITIAL_LOADS = {};
 const std::vector<bin_int> INITIAL_ITEMS = {};
 
 
-// Monotonicity of the first pass. Can be between 0 (fully-monotonic lower bound) and S-1 (full generality).
-// const int FIRST_PASS = RECOMMENDED_MONOTONICITY;
-const int FIRST_PASS = 0; // A non-decreasing instance.
-// const int FIRST_PASS = S-1; // Full monotonicity.
+// Monotonicity limiting the adversarial instance.
+const bin_int monotonicity = RECOMMENDED_MONOTONICITY;
+// const bin_int monotonicity = 0; // A non-decreasing instance.
+// const bin_int monotonicity = S-1; // Full generality.
 
 // constants used for good situations
 const int RMOD = (R-1);
@@ -283,10 +286,6 @@ char ROOT_FILENAME[256];
 bool CUSTOM_ROOTFILE = false;
 bool USING_ADVISOR = false;
 
-
-// monotonicity 0: monotonely non-decreasing lower bound
-// monotonicity S: equivalent to full generality lower bound
-int monotonicity; 
 
 uint64_t global_vertex_counter = 0;
 uint64_t global_edge_counter = 0;
