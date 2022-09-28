@@ -56,7 +56,9 @@ const long double TASKLOG_THRESHOLD = 60.0; // in seconds
 // Use this type for values of loads and items.
 // Reasonable settings are either int8_t or int16_t, depending on whether a bin can contain more
 // than 127 items or not. We allow it to go negative for signalling -1/-2.
-typedef int16_t bin_int;
+//typedef int16_t bin_int;
+
+typedef int bin_int;
 
 const bin_int S = IS;
 const bin_int R = IR;
