@@ -46,9 +46,7 @@ victory sequencing(binconf& root, adversary_vertex* root_vertex)
     {
 	simple_advis.load_advice_file(ADVICE_FILENAME);
 	advice_file_found = true;
-    } else
-    {
-	print_if<PROGRESS>("Not using any advice file.\n");
+	print_if<PROGRESS>("Loaded advice file %s.\n", ADVICE_FILENAME);
     }
 
     if (USING_ASSUMPTIONS && fs::exists(ASSUMPTIONS_FILENAME))

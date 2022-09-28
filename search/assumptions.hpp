@@ -5,6 +5,7 @@
 #include <iostream>
 #include <sstream>
 #include <algorithm>
+#include <unordered_map>
 
 #include "common.hpp"
 #include "constants.hpp"
@@ -22,8 +23,8 @@ class assumptions
 {
 
     std::vector<assumption_unit> assume_arr;
-    std::map<uint64_t, int> position_map; // Currently used only for debugging purposes.
-    std::map<uint64_t, victory> victory_map;
+    std::unordered_map<uint64_t, int> position_map; // Currently used only for debugging purposes.
+    std::unordered_map<uint64_t, victory> victory_map;
     
 public:
     // Check that all hashes of the array appear once.
