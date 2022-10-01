@@ -120,7 +120,7 @@ template <minimax MODE> victory computation<MODE>::heuristic_visit_alg(int pres_
 	    // In principle, other quick heuristics make sense here.
 	    // We should avoid running them twice, ideally.
 	    // For now, we only do state cache lookup.
-	    auto [found, value] = stc->lookup(statehash_if_descending);
+	    auto [found, value] = adv_cache->lookup(statehash_if_descending);
 	    
 	    if (found)
 	    {
@@ -465,7 +465,7 @@ template<minimax MODE> victory computation<MODE>::adversary(adversary_vertex *ad
     if (EXPLORING && !DISABLE_CACHE)
     {
 
-	auto [found, value] = stc->lookup(bstate.statehash());
+	auto [found, value] = adv_cache->lookup(bstate.statehash());
 	
 	if (found)
 	{
@@ -544,10 +544,10 @@ template<minimax MODE> victory computation<MODE>::adversary(adversary_vertex *ad
 	// TODO: Make this cleaner.
 	if (win == victory::adv)
 	{
-	    stcache_encache(&bstate, (uint64_t) 0);
+	    adv_cache_encache(&bstate, (uint64_t) 0);
 	} else if (win == victory::alg)
 	{
-	    stcache_encache(&bstate, (uint64_t) 1);
+	    adv_cache_encache(&bstate, (uint64_t) 1);
 	}
 	
     }

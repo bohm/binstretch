@@ -123,12 +123,12 @@ public:
 
     conf_el access(uint64_t pos)
 	{
-	    return ht[pos].load(std::memory_order_acquire); 
+	    return ht[pos].load(std::memory_order_relaxed);
 	}
 
     void store(uint64_t pos, const conf_el & e)
 	{
-	    ht[pos].store(e, std::memory_order_release);
+	    ht[pos].store(e, std::memory_order_relaxed);
 	}
 
     uint64_t size()
@@ -301,17 +301,18 @@ void state_cache::analysis()
 
 
 
-state_cache *stc = NULL;
+state_cache *adv_cache = NULL;
+state_cache *alg_cache = NULL;
 
 // One wrapper for transition purposes.
 
-void stcache_encache(const binconf *d, uint64_t posvalue)
+void adv_cache_encache(const binconf *d, uint64_t posvalue)
 {
     uint64_t bchash = d->statehash();
     assert(posvalue >= 0 && posvalue <= 1);
     conf_el new_item;
     new_item.set(bchash, posvalue);
-    stc->insert(new_item, bchash);
+    adv_cache->insert(new_item, bchash);
 }
 
 #endif // _CACHE_STATE_HPP

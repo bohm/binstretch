@@ -141,7 +141,7 @@ void overseer::start()
 
     // conf_el::parallel_init(&ht, ht_size, worker_count); // Init worker cache in parallel.
     dpc = new guar_cache(dplog);
-    stc = new state_cache(conflog, worker_count);
+    adv_cache = new state_cache(conflog, worker_count);
 
     // Initialize the known sum of processing times heuristic, if using it.
     if (USING_HEURISTIC_KNOWNSUM)
@@ -291,14 +291,14 @@ void overseer::start()
 
 	    // Before transmitting measurements, add the atomically collected
 	    // cache measurements to the whole meas collection.
-	    ov_meas.state_meas.add(stc->meas);
+	    ov_meas.state_meas.add(adv_cache->meas);
 	    ov_meas.dpht_meas.add(dpc->meas);
 
-	    MEASURE_ONLY(stc->analysis());
+	    MEASURE_ONLY(adv_cache->analysis());
 	    MEASURE_ONLY(print_if<true>("Overseer %d: State cache size: %" PRIu64
 				     ", filled elements: %" PRIu64 " and empty: %" PRIu64 ".\n",
-				     world_rank, stc->size(), stc->meas.filled_positions,
-				     stc->meas.empty_positions));
+				     world_rank, adv_cache->size(), adv_cache->meas.filled_positions,
+				     adv_cache->meas.empty_positions));
 
 	    MEASURE_ONLY(dpc->analysis());
 	    MEASURE_ONLY(print_if<true>("Overseer %d: d.p. cache size: %" PRIu64
@@ -309,7 +309,7 @@ void overseer::start()
     
 	    comm.transmit_measurements(ov_meas);
 	    delete dpc;
-	    delete stc;
+	    delete adv_cache;
 	    delete[] finished_tasks;
 	    comm.round_end();
 	    break;
