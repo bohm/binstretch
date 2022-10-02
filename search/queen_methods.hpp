@@ -141,7 +141,7 @@ int queen_class::start()
     perf_timer.queen_start();
 
     zobrist_init();
-    comm.bcast_send_zobrist(zobrist_quadruple(Zi, Zl, Zlow, Zlast));
+    comm.bcast_send_zobrist(zobrist_quintuple(Zi, Zl, Zlow, Zlast, Zalg));
 
     comm.compute_thread_ranks();
     // init_running_lows();

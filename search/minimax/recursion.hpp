@@ -85,36 +85,12 @@ template <minimax MODE> victory computation<MODE>::heuristic_visit_alg(int pres_
 
 	if ((bstate.loads[i] + pres_item < R))
 	{
-	    /*
-	    uint64_t check = bstate.virtual_hash_with_low(pres_item, i);
-	    uint64_t virtual_loadhash_component = bstate.virtual_loadhash(pres_item, i);
-	    uint64_t virtual_itemhash_component = bstate.itemhash;
-	    virtual_itemhash_component ^= Zi[pres_item*(MAX_ITEMS+1) + bstate.items[pres_item]];
-	    virtual_itemhash_component ^= Zi[pres_item*(MAX_ITEMS+1) + bstate.items[pres_item]+1];
-	    uint64_t virtual_lastitem_component = Zlow[lowest_sendable(pres_item)];
-	    */
-
 	    uint64_t statehash_if_descending = bstate.virtual_hash_with_low(pres_item, i);
 	    uint64_t loadhash_if_descending = bstate.virtual_loadhash(pres_item, i);
     
 	    // Equivalent but hopefully faster to: 
 	    // algorithm_descend<MODE>(this, notes, pres_item, i);
 
-	    /*
-	    if( check != bstate.statehash())
-	    {
-		uint64_t actual_loadhash_component = bstate.loadhash;
-		uint64_t actual_itemhash_component = bstate.itemhash;
-		uint64_t actual_lastitem_component = Zlow[lowest_sendable(pres_item)];
-		fprintf(stderr, "Virtual hash components: (%" PRIu64 ", %" PRIu64 ", %" PRIu64 ").\n",
-			virtual_loadhash_component, virtual_itemhash_component, virtual_lastitem_component);
-		fprintf(stderr, "Actual hash components: (%" PRIu64 ", %" PRIu64 ", %" PRIu64 ").\n",
-			actual_loadhash_component, actual_itemhash_component, actual_lastitem_component);
-		
-		assert(check == bstate.statehash());
-	    }
-	    */
-	    
 	    // Heuristic visit begins.
 
 	    // In principle, other quick heuristics make sense here.
@@ -175,8 +151,6 @@ template <minimax MODE> victory computation<MODE>::heuristic_visit_alg(int pres_
 
     return ret;
 }
-
-
 
 /* return values: 0: player 1 cannot pack the sequence starting with binconf b
  * 1: player 1 can pack all possible sequences starting with b.
@@ -544,10 +518,10 @@ template<minimax MODE> victory computation<MODE>::adversary(adversary_vertex *ad
 	// TODO: Make this cleaner.
 	if (win == victory::adv)
 	{
-	    adv_cache_encache(&bstate, (uint64_t) 0);
+	    adv_cache_encache_adv_win(&bstate);
 	} else if (win == victory::alg)
 	{
-	    adv_cache_encache(&bstate, (uint64_t) 1);
+	    adv_cache_encache_alg_win(&bstate);
 	}
 	
     }
@@ -616,6 +590,7 @@ template<minimax MODE> victory computation<MODE>::algorithm(int pres_item, algor
 
     }
 
+ 
     
     // Try the new heuristic visit one level below for a cached winning move.
 
@@ -743,7 +718,9 @@ template<minimax MODE> victory computation<MODE>::algorithm(int pres_item, algor
 
 		    alg_to_evaluate->win = victory::alg;
 		}
+
 		return victory::alg;
+		
 	    } else if (below == victory::adv)
 	    {
 		// nothing needs to be currently done, the edge is already created
@@ -771,6 +748,8 @@ template<minimax MODE> victory computation<MODE>::algorithm(int pres_item, algor
 	    alg_to_evaluate->leaf = leaf_type::trueleaf;
 	}
     }
+
+
     return win;
 }
 

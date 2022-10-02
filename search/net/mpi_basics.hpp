@@ -147,8 +147,8 @@ public:
 
 
 
-    void bcast_send_zobrist(zobrist_quadruple zq);
-    zobrist_quadruple bcast_recv_and_allocate_zobrist();
+    void bcast_send_zobrist(zobrist_quintuple zq);
+    zobrist_quintuple bcast_recv_and_allocate_zobrist();
 
     void send_number_of_workers(int num_workers);
     std::pair<int,int> learn_worker_rank();
@@ -243,38 +243,41 @@ std::pair<int, uint64_t*> communicator::bcast_recv_uint64_array(int root_sender)
 
 // Zobrist arrays are global (because workers need frequent access to them),
 // but when synchronizing them we do so without accessing the global arrays.
-void communicator::bcast_send_zobrist(zobrist_quadruple zq)
+void communicator::bcast_send_zobrist(zobrist_quintuple zq)
 {
-    auto& [zi, zl, zlow, zlast] = zq;
-    assert(zi != NULL && zl != NULL && zlow != NULL && zlast != NULL);
+    auto& [zi, zl, zlow, zlast, zalg] = zq;
+    assert(zi != NULL && zl != NULL && zlow != NULL && zlast != NULL && zalg != NULL);
     bcast_send_uint64_array(QUEEN, zi, (MAX_ITEMS+1)*(S+1));
     bcast_send_uint64_array(QUEEN, zl, (BINS+1)*(R+1));
     bcast_send_uint64_array(QUEEN, zlow, (S+1));
     bcast_send_uint64_array(QUEEN, zlast, (S+1));
-
-    print_if<COMM_DEBUG>("Queen Zi[1], Zl[1], Zlow[1], Zlast[1]: %" PRIu64
-			 ", %" PRIu64 ", %" PRIu64 ", %" PRIu64 ".\n",
-			 zi[1], zl[1], zlow[1], zlast[1]);
+    bcast_send_uint64_array(QUEEN, zalg, (S+1));
+    
+    print_if<COMM_DEBUG>("Queen Zi[1], Zl[1], Zlow[1], Zlast[1], Zalg[1]: %" PRIu64
+			 ", %" PRIu64 ", %" PRIu64 ", %" PRIu64 ", %" PRIu64 ".\n",
+			 zi[1], zl[1], zlow[1], zlast[1], zalg[1]);
 
 }
 
-zobrist_quadruple communicator::bcast_recv_and_allocate_zobrist()
+zobrist_quintuple communicator::bcast_recv_and_allocate_zobrist()
 {
     auto [zi_len, zi] = bcast_recv_uint64_array(QUEEN);
     auto [zl_len, zl] = bcast_recv_uint64_array(QUEEN);
     auto [zlow_len, zlow] = bcast_recv_uint64_array(QUEEN);
     auto [zlast_len, zlast] = bcast_recv_uint64_array(QUEEN);
+    auto [zalg_len, zalg] = bcast_recv_uint64_array(QUEEN);
 
     assert(zi_len == (S+1)*(MAX_ITEMS+1));
     assert(zl_len == (BINS+1)*(R+1));
     assert(zlow_len == S+1);
     assert(zlast_len == S+1);
-    
-    print_if<COMM_DEBUG>("Process %d Zi[1], Zl[1], Zlow[1], Zlast[1]: %" PRIu64
-			 ", %" PRIu64 ", %" PRIu64 ", %" PRIu64 ".\n",
-			 world_rank, zi[1], zl[1], zlow[1], zlast[1]);
+    assert(zalg_len == S+1);
+   
+    print_if<COMM_DEBUG>("Process %d Zi[1], Zl[1], Zlow[1], Zlast[1], Zalg[1]: %" PRIu64
+			 ", %" PRIu64 ", %" PRIu64 ", %" PRIu64 ", %" PRIu64 ".\n",
+			 world_rank, zi[1], zl[1], zlow[1], zlast[1], zalg[1]);
 
-    return zobrist_quadruple(zi, zl, zlow, zlast);
+    return zobrist_quintuple(zi, zl, zlow, zlast, zalg);
 }
 
 /* Communication states:

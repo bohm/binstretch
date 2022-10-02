@@ -80,7 +80,7 @@ public:
 	    }
 	}
     
-    state_cache(uint64_t logbytes, int threads)
+    state_cache(uint64_t logbytes, int threads, std::string descriptor = "")
 	{
 	    assert(logbytes >= 0 && logbytes <= 64);
 
@@ -89,8 +89,8 @@ public:
 
 	    htsize = power_of_two_below(bytes / sizeof(conf_el));
 	    logsize = quicklog(htsize);
-	    print_if<PROGRESS>("Given %llu logbytes (%llu MBs) and el. size %zu, set state cache (64-bit hashes) to %llu els (logsize %llu).\n",
-			    logbytes, bytes/megabyte, sizeof(conf_el), htsize, logsize);
+	    print_if<PROGRESS>("Given %llu logbytes (%llu MBs) and el. size %zu, creating %s state cache (64-bit hashes) to %llu els (logsize %llu).\n",
+			       logbytes, bytes/megabyte, sizeof(conf_el), descriptor.c_str(), htsize, logsize);
 
 
 	    ht = new std::atomic<conf_el>[htsize];
@@ -300,18 +300,34 @@ void state_cache::analysis()
 
 
 
+// Global pointer to the adversary position cache.
 
 state_cache *adv_cache = NULL;
-state_cache *alg_cache = NULL;
 
-// One wrapper for transition purposes.
+// Algorithmic positional cache is less useful in the following sense:
+// unlike the adversary position cache, every algorithmic vertex has
+// indegree 1 -- you can only reach it from a very specific position
+// with a unique item to be sent.
 
-void adv_cache_encache(const binconf *d, uint64_t posvalue)
+// It is still possible to visit an algorithmic vertex twice, but
+// adversarial vertices have larger indegrees and the cache makes thus
+// much more sense.
+
+// state_cache *alg_cache = NULL;
+
+void adv_cache_encache_adv_win(const binconf *d)
 {
     uint64_t bchash = d->statehash();
-    assert(posvalue >= 0 && posvalue <= 1);
     conf_el new_item;
-    new_item.set(bchash, posvalue);
+    new_item.set(bchash, 0);
+    adv_cache->insert(new_item, bchash);
+}
+
+void adv_cache_encache_alg_win(const binconf *d)
+{
+    uint64_t bchash = d->statehash();
+    conf_el new_item;
+    new_item.set(bchash, 1);
     adv_cache->insert(new_item, bchash);
 }
 

@@ -42,6 +42,8 @@ bin_int rand_load()
     return rb;
 }
 
+typedef std::tuple<uint64_t*, uint64_t*, uint64_t*, uint64_t*, uint64_t*> zobrist_quintuple;
+
 // Initializes the Zobrist hash table.
 // Adding Zl[i][0] and Zi[i][0] enables us to "unhash" zero.
 

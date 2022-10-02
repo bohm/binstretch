@@ -197,7 +197,6 @@ uint64_t *Zalg;
 
 uint64_t **Zlbig;
 
-typedef std::tuple<uint64_t*, uint64_t*, uint64_t*, uint64_t*> zobrist_quadruple;
 
 // thread rank idea:
 // if worker has thread rank 3 and reported thread count 5, it is assigned worker ranks 3,4,5,6,7.

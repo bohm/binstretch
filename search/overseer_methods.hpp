@@ -130,8 +130,8 @@ void overseer::start()
 
     print_if<VERBOSE>("Overseer %d at server %s: conflog %d, dplog %d, worker_count %d\n",
 		world_rank, machine_name.c_str(), conflog, dplog, worker_count);
-    zobrist_quadruple zq = comm.bcast_recv_and_allocate_zobrist();
-    std::tie(Zi, Zl, Zlow, Zlast) = zq;
+    zobrist_quintuple zq = comm.bcast_recv_and_allocate_zobrist();
+    std::tie(Zi, Zl, Zlow, Zlast, Zalg) = zq;
 		      
     // compute_thread_ranks();
     comm.send_number_of_workers(worker_count);
@@ -141,7 +141,9 @@ void overseer::start()
 
     // conf_el::parallel_init(&ht, ht_size, worker_count); // Init worker cache in parallel.
     dpc = new guar_cache(dplog);
-    adv_cache = new state_cache(conflog, worker_count);
+
+    // Initialize the adversary position (state) cache.
+    adv_cache = new state_cache(conflog, worker_count, "adversarial");
 
     // Initialize the known sum of processing times heuristic, if using it.
     if (USING_HEURISTIC_KNOWNSUM)
@@ -295,7 +297,7 @@ void overseer::start()
 	    ov_meas.dpht_meas.add(dpc->meas);
 
 	    MEASURE_ONLY(adv_cache->analysis());
-	    MEASURE_ONLY(print_if<true>("Overseer %d: State cache size: %" PRIu64
+	    MEASURE_ONLY(print_if<true>("Overseer %d: Adversarial state cache size: %" PRIu64
 				     ", filled elements: %" PRIu64 " and empty: %" PRIu64 ".\n",
 				     world_rank, adv_cache->size(), adv_cache->meas.filled_positions,
 				     adv_cache->meas.empty_positions));
