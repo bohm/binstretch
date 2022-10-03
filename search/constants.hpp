@@ -191,6 +191,11 @@ const int TASK_RECEIVED = 1;
 #define STRATEGY_BOUNDED 2
 #define STRATEGY_BASIC_LIMIT 3
 
+// Medium TODO: This weighting only works for 19/14. It is strongly discouraged to run
+// FURTHER_MEASURE = true or USING_HEUR_WEIGHTSUM = true for other ratios.
+
+const int MAX_WEIGHT = 4;
+const int MAX_TOTAL_WEIGHT = MAX_WEIGHT * IBINS;
 
 // Plugging in some common monotonicity values.
 

@@ -119,6 +119,19 @@ template <minimax MODE> victory computation<MODE>::heuristic_visit_alg(int pres_
 		if (!position_solved)
 		{
 		    int knownsum_response = query_knownsum_heur(loadhash_if_descending);
+
+		    if (FURTHER_MEASURE)
+		    {
+			int wght = weight(&bstate) + itemweight(pres_item);
+			if (knownsum_response == 0)
+			{
+			    meas.kns_visit_hit_by_weight[wght]++; 
+			} else
+			{
+			    meas.kns_visit_miss_by_weight[wght]++; 
+			}
+		    }
+		    
 		    if (knownsum_response == 0)
 		    {
 			ret = victory::alg;
@@ -133,6 +146,18 @@ template <minimax MODE> victory computation<MODE>::heuristic_visit_alg(int pres_
 		if (!position_solved)
 		{
 		    int weightsum_response = query_weightsum_heur(loadhash_if_descending, upcoming_weight);
+		    if (FURTHER_MEASURE)
+		    {
+			// Note: we are reusing the kns array for measurements in the weightsum case.
+			if (weightsum_response == 0)
+			{
+			    meas.kns_visit_hit_by_weight[upcoming_weight]++; 
+			} else
+			{
+			    meas.kns_visit_miss_by_weight[upcoming_weight]++; 
+			}
+		    }
+	
 		    if (weightsum_response == 0)
 		    {
 			return victory::alg;
@@ -256,6 +281,25 @@ template<minimax MODE> victory computation<MODE>::adversary(adversary_vertex *ad
     if (EXPLORING && USING_HEURISTIC_KNOWNSUM)
     {
 	int knownsum_response = query_knownsum_heur(bstate.loadhash);
+
+	// We first perform measurements, if needed.
+	if (FURTHER_MEASURE)
+	{
+	    int wght = weight(&bstate);
+	    if (knownsum_response == 0)
+	    {
+		meas.kns_full_hit_by_weight[wght]++; 
+	    } else if (knownsum_response != -1)
+	    {
+		
+		meas.kns_partial_hit_by_weight[wght]++;
+	    } else
+	    {
+		meas.kns_miss_by_weight[wght]++; 
+	    }
+	}
+
+	// Now we parse the output proper.
 	if (knownsum_response == 0)
 	{
 	    MEASURE_ONLY(meas.knownsum_full_hit++);
@@ -275,6 +319,25 @@ template<minimax MODE> victory computation<MODE>::adversary(adversary_vertex *ad
     if (EXPLORING && USING_HEURISTIC_WEIGHTSUM)
     {
 	int weightsum_response = query_weightsum_heur(bstate.loadhash, bstate_weight);
+
+	// We first perform measurements, if needed.
+	if (FURTHER_MEASURE)
+	{
+	    if (weightsum_response == 0)
+	    {
+		meas.kns_full_hit_by_weight[bstate_weight]++; 
+	    } else if (weightsum_response != -1)
+	    {
+		
+		meas.kns_partial_hit_by_weight[bstate_weight]++;
+	    } else
+	    {
+		meas.kns_miss_by_weight[bstate_weight]++; 
+	    }
+	}
+
+
+
 	if (weightsum_response == 0)
 	{
 	    return victory::alg;

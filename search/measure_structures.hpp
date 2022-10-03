@@ -90,12 +90,19 @@ struct measure_attr
     uint64_t large_item_calls = 0;
     uint64_t large_item_misses = 0;
 
-    std::atomic<uint64_t> knownsum_full_hit = 0;
-    std::atomic<uint64_t> knownsum_partial_hit = 0;
-    std::atomic<uint64_t> knownsum_miss = 0;
+    uint64_t knownsum_full_hit = 0;
+    uint64_t knownsum_partial_hit = 0;
+    uint64_t knownsum_miss = 0;
 
-    std::atomic<uint64_t> heuristic_visit_hit = 0;
-    std::atomic<uint64_t> heuristic_visit_miss = 0;
+    // Deeper known sum measurements, only used with FURTHER_MEASURE.
+    std::array<uint64_t, MAX_TOTAL_WEIGHT+1> kns_full_hit_by_weight = {0};
+    std::array<uint64_t, MAX_TOTAL_WEIGHT+1> kns_partial_hit_by_weight = {0};
+    std::array<uint64_t, MAX_TOTAL_WEIGHT+1> kns_miss_by_weight = {0};
+    std::array<uint64_t, MAX_TOTAL_WEIGHT+1> kns_visit_hit_by_weight = {0};
+    std::array<uint64_t, MAX_TOTAL_WEIGHT+1> kns_visit_miss_by_weight = {0};
+ 
+    uint64_t heuristic_visit_hit = 0;
+    uint64_t heuristic_visit_miss = 0;
 
     uint64_t five_nine_hits = 0;
     uint64_t five_nine_calls = 0;
@@ -143,6 +150,18 @@ struct measure_attr
 	    knownsum_full_hit += other.knownsum_full_hit;
 	    knownsum_partial_hit += other.knownsum_partial_hit;
  	    knownsum_miss += other.knownsum_miss;
+
+	    if (FURTHER_MEASURE)
+	    {
+		for (int i = 0; i <= MAX_TOTAL_WEIGHT; i++)
+		{
+		    kns_full_hit_by_weight[i] += other.kns_full_hit_by_weight[i];
+		    kns_partial_hit_by_weight[i] += other.kns_partial_hit_by_weight[i];
+		    kns_miss_by_weight[i] += other.kns_miss_by_weight[i];
+		    kns_visit_hit_by_weight[i] += other.kns_visit_hit_by_weight[i];
+ 		    kns_visit_miss_by_weight[i] += other.kns_visit_miss_by_weight[i];
+		}
+	    }
    
 	    //    uint64_t tub = 0;
 	    large_item_hits += other.large_item_hits;
@@ -181,11 +200,30 @@ struct measure_attr
 	    fprintf(stderr, "Largest queue observed: %" PRIu64 "\n", largest_queue_observed);
 
 	    fprintf(stderr, "--- heuristics --- \n");
-	    double heuristic_visit_ratio = heuristic_visit_hit.load() / (double) (heuristic_visit_miss.load() + heuristic_visit_hit.load());
-	    fprintf(stderr, "Heuristic visit deeper (by alg): hit: %" PRIu64 ", miss: %" PRIu64 ", ratio %lf.\n", heuristic_visit_hit.load(), heuristic_visit_miss.load(), heuristic_visit_ratio);
+	    double heuristic_visit_ratio = heuristic_visit_hit / (double) (heuristic_visit_miss + heuristic_visit_hit);
+	    fprintf(stderr, "Heuristic visit deeper (by alg): hit: %" PRIu64 ", miss: %" PRIu64 ", ratio %lf.\n", heuristic_visit_hit, heuristic_visit_miss, heuristic_visit_ratio);
 
 	    fprintf(stderr, "Heuristic using known sum of processing times: %" PRIu64 " full hits, %" PRIu64 " partials, %" PRIu64 " misses.\n",
-		    knownsum_full_hit.load(), knownsum_partial_hit.load(), knownsum_miss.load());
+		    knownsum_full_hit, knownsum_partial_hit, knownsum_miss);
+
+	    if (FURTHER_MEASURE)
+	    {
+		for (int i = 0; i <= MAX_TOTAL_WEIGHT; i++)
+		{
+		    fprintf(stderr, "Weight layer %d: known sum at the start of adversary: %" PRIu64 " full hits, %" PRIu64 " partials, %" PRIu64 " misses.\n",
+			    i, kns_full_hit_by_weight[i], kns_partial_hit_by_weight[i], kns_miss_by_weight[i]);
+		}
+	    }
+
+	    if (FURTHER_MEASURE)
+	    {
+		for (int i = 0; i <= MAX_TOTAL_WEIGHT; i++)
+		{
+		    fprintf(stderr, "Weight layer %d: known sum during heuristic visits: %" PRIu64 " hits, %" PRIu64 " misses.\n",
+			    i, kns_visit_hit_by_weight[i], kns_visit_miss_by_weight[i]);
+		}
+	    }
+
 	    // gs
 	    fprintf(stderr, "Good situation info: full hits %" PRIu64 ", full misses %" PRIu64 ", specifically:\n", gsheurhit, gsheurmiss);
 	    for (int i = 0;  i < SITUATIONS; i++)

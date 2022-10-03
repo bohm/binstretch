@@ -23,11 +23,12 @@
 
 #include "constants.hpp" // Non-changeable system constants.
 
-const bool PROGRESS = true; // Whether to print progress info to stderr.
-const bool MEASURE = false; // Whether to collect and print measurements to stderr.
-const bool VERBOSE = true; // Further information about progress.
-const bool OUTPUT = false; // Whether to produce output.
-const bool REGROW = false; // Whether to regrow or just terminate after first iteration.
+constexpr bool PROGRESS = true; // Whether to print progress info to stderr.
+constexpr bool VERBOSE = true; // Further information about progress.
+constexpr bool OUTPUT = false; // Whether to produce output.
+constexpr bool REGROW = false; // Whether to regrow or just terminate after first iteration.
+constexpr bool MEASURE = false; // Whether to collect and print measurements to stderr.
+constexpr bool FURTHER_MEASURE = false; // Whether to collect more detailed data that is not needed often.
 
 // When producing output, how many times should a tree be regrown.
 // Note that REGROW_LIMIT = 0 still means a full tree will be generated.
