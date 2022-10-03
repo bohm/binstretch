@@ -229,4 +229,49 @@ template <minimax MODE> void algorithm_ascend(computation<MODE> *comp, const alg
 
 }
 
+template <minimax MODE> void computation<MODE>::simple_fill_moves_alg(int pres_item)
+{
+    int next_uncertain_position = 0;
+    for (int i = 1; i <= BINS; i++)
+    {
+	// simply skip a step where two bins have the same load
+	// any such bins are sequential if we assume loads are sorted (and they should be)
+	if (i > 1 && bstate.loads[i] == bstate.loads[i-1])
+	{
+	    continue;
+	} else if ((bstate.loads[i] + pres_item < R))
+	{
+	    alg_uncertain_moves[calldepth][next_uncertain_position++] = i;
+	} // else b->loads[i] + pres_item >= R, so a good situation for the adversary
+    }
+
+    // Classic C-style trick: instead of zeroing, set the last position to be 0.
+    if (next_uncertain_position < BINS)
+    {
+	alg_uncertain_moves[calldepth][next_uncertain_position] = 0;
+    }
+
+    /*
+    for(; next_uncertain_position < BINS; next_uncertain_position++)
+    {
+	alg_uncertain_moves[calldepth][next_uncertain_position] = 0;
+	}
+    */
+}
+
+template <minimax MODE> void computation<MODE>::print_uncertain_moves()
+{
+
+    fprintf(stderr, "{");
+    for (int i = 0; i <= BINS; i++)
+    {
+	if (i != 0)
+	{
+	    fprintf(stderr, " ");
+	}
+	fprintf(stderr, "%d", alg_uncertain_moves[calldepth][i]);
+    }
+
+    fprintf(stderr, "}");
+}
 #endif // AUX_MINIMAX_HPP

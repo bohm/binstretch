@@ -179,7 +179,7 @@ const bool DISABLE_DP_CACHE = false;
 // system constants and global variables (no need to change)
 
 // maximum number of items
-const bin_int MAX_ITEMS = S*BINS;
+constexpr bin_int MAX_ITEMS = S*BINS;
 
 char outfile[50];
 // MPI-related globals

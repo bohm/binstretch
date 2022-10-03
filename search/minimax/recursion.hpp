@@ -68,6 +68,8 @@ template <minimax MODE> victory computation<MODE>::heuristic_visit_alg(int pres_
     algorithm_notes notes; // Potentially turn off notes for now, they are not used.
 
     int upcoming_weight = 0;
+    int next_uncertain_position = 0;
+    
     if (USING_HEURISTIC_WEIGHTSUM)
     {
 	upcoming_weight = bstate_weight + itemweight(pres_item); // Weight in the next adversary state.
@@ -87,6 +89,7 @@ template <minimax MODE> victory computation<MODE>::heuristic_visit_alg(int pres_
 	{
 	    uint64_t statehash_if_descending = bstate.virtual_hash_with_low(pres_item, i);
 	    uint64_t loadhash_if_descending = bstate.virtual_loadhash(pres_item, i);
+	    bool result_known = false;
     
 	    // Equivalent but hopefully faster to: 
 	    // algorithm_descend<MODE>(this, notes, pres_item, i);
@@ -102,13 +105,15 @@ template <minimax MODE> victory computation<MODE>::heuristic_visit_alg(int pres_
 	    {
 		if (value == 1)
 		{
-		    ret = victory::alg;
+
 		    position_solved = true;
-		} // else, it is victory::adv, and we just continue.
-	    } else
-	    {
-		// At least one uncertainty happened, we set the outcome to uncertain.
-		ret = victory::uncertain;
+		    result_known = true;
+		    ret = victory::alg;
+		}
+		else
+		{
+		    result_known = true; // But position not yet solved.
+		}// else, it is victory::adv, and we just continue.
 	    }
 
 	    // In addition, try the query to the known sum heuristic and if there
@@ -116,7 +121,7 @@ template <minimax MODE> victory computation<MODE>::heuristic_visit_alg(int pres_
 
 	    if (USING_HEURISTIC_KNOWNSUM)
 	    {
-		if (!position_solved)
+		if (!result_known)
 		{
 		    int knownsum_response = query_knownsum_heur(loadhash_if_descending);
 
@@ -136,6 +141,7 @@ template <minimax MODE> victory computation<MODE>::heuristic_visit_alg(int pres_
 		    {
 			ret = victory::alg;
 			position_solved = true;
+			result_known = true;
 		    } // No need for else { ret = victory::uncertain;} here.
 		}
 	    }
@@ -143,7 +149,7 @@ template <minimax MODE> victory computation<MODE>::heuristic_visit_alg(int pres_
 	    // Same as above, but an enhanced heuristic.
 	    if (USING_HEURISTIC_WEIGHTSUM)
 	    {
-		if (!position_solved)
+		if (!result_known)
 		{
 		    int weightsum_response = query_weightsum_heur(loadhash_if_descending, upcoming_weight);
 		    if (FURTHER_MEASURE)
@@ -160,12 +166,20 @@ template <minimax MODE> victory computation<MODE>::heuristic_visit_alg(int pres_
 	
 		    if (weightsum_response == 0)
 		    {
-			return victory::alg;
+			ret = victory::alg;
+			result_known = true;
 			position_solved = true;
 		    }
 		}
 	    }
 
+	    if (!result_known)
+	    {
+		// At least one uncertainty happened, we set the outcome to uncertain.
+		ret = victory::uncertain;
+		// Store the fact that we still need to recurse on placing the item into bin i.
+		alg_uncertain_moves[calldepth][next_uncertain_position++] = i;
+	    }
 
 	    // Heuristic visit ends.
 	    // algorithm_ascend<MODE>(this, notes, pres_item);
@@ -174,6 +188,13 @@ template <minimax MODE> victory computation<MODE>::heuristic_visit_alg(int pres_
 	i++;
     }
 
+    // A classic C-style trick: instead of zeroing, set the last position to be 0.
+
+    if (!position_solved && next_uncertain_position < BINS)
+    {
+	alg_uncertain_moves[calldepth][next_uncertain_position] = 0;
+
+    }
     return ret;
 }
 
@@ -653,12 +674,14 @@ template<minimax MODE> victory computation<MODE>::algorithm(int pres_item, algor
 
     }
 
- 
-    
+
     // Try the new heuristic visit one level below for a cached winning move.
 
     if (EXPLORING && USING_HEURISTIC_VISITS)
     {
+	// Classic C-style trick: we do not zero the array of uncertain moves, and instead set the last element to be zero.
+	// std::fill(alg_uncertain_moves[calldepth].begin(), alg_uncertain_moves[calldepth].end(), 0);
+	
 	victory quick_check_below = heuristic_visit_alg(pres_item);
 	if (quick_check_below != victory::uncertain)
 	{
@@ -670,6 +693,10 @@ template<minimax MODE> victory computation<MODE>::algorithm(int pres_item, algor
 	{
 	    MEASURE_ONLY(meas.heuristic_visit_miss++);
 	}
+    } else
+    {
+	// Fill the array of uncertain moves implicitly -- by all moves.
+	simple_fill_moves_alg(pres_item);
     }
 
     // Apply good situations.
@@ -730,76 +757,81 @@ template<minimax MODE> victory computation<MODE>::algorithm(int pres_item, algor
     win = victory::adv;
     below = victory::adv;
     
-    bin_int i = 1;
-    while(i <= BINS)
+    // while(i <= BINS)
+
+    int uncertain_pos = 0;
+    bin_int i = alg_uncertain_moves[calldepth][uncertain_pos++];
+    /*if (i == 0)
     {
-	// simply skip a step where two bins have the same load
-	// any such bins are sequential if we assume loads are sorted (and they should be)
-	if (i > 1 && bstate.loads[i] == bstate.loads[i-1])
+	fprintf(stderr, "Trouble with alg_uncertain_moves on binconf:");
+	print_binconf_stream(stderr, &bstate, false);
+	fprintf(stderr, " presented item %d.\n", pres_item);
+	print_uncertain_moves();
+    }
+    */
+    
+    while(i != 0 && uncertain_pos < BINS)
+    {
+
+	// Editing binconf in place -- undoing changes later by calling ascend.
+	algorithm_descend(this, notes, pres_item, i);
+
+	// Initialize the adversary's next vertex in the tree.
+	if (GENERATING)
 	{
-	    i++; continue;
+	    std::tie(upcoming_adv, connecting_outedge) =
+		attach_matching_vertex(qdag, alg_to_evaluate, &bstate, i);
 	}
 
-	if ((bstate.loads[i] + pres_item < R))
-	{
-	    // Editing binconf in place -- undoing changes later by calling ascend.
-	    algorithm_descend(this, notes, pres_item, i);
+	below = adversary(upcoming_adv, alg_to_evaluate);
+	algorithm_ascend(this, notes, pres_item);
 
-	    // Initialize the adversary's next vertex in the tree.
+	print_if<DEBUG>("Alg packs into bin %d, the new configuration is:", i);
+	print_binconf<DEBUG>(&bstate);
+	print_if<DEBUG>("Resulting in: ");
+	print_if<DEBUG>("%d", static_cast<int>(below));
+	print_if<DEBUG>(".\n");
+
+	// send signal that we should terminate immediately upwards
+	if (below == victory::irrelevant)
+	{
+	    return below;
+	}
+
+	if (below == victory::alg)
+	{
 	    if (GENERATING)
 	    {
-		std::tie(upcoming_adv, connecting_outedge) =
-		    attach_matching_vertex(qdag, alg_to_evaluate, &bstate, i);
-	    }
-	    
-	    below = adversary(upcoming_adv, alg_to_evaluate);
-	    algorithm_ascend(this, notes, pres_item);
-	    
-	    print_if<DEBUG>("Alg packs into bin %d, the new configuration is:", i);
-	    print_binconf<DEBUG>(&bstate);
-	    print_if<DEBUG>("Resulting in: ");
-	    print_if<DEBUG>("%d", static_cast<int>(below));
-	    print_if<DEBUG>(".\n");
-	    
-	    // send signal that we should terminate immediately upwards
-	    if (below == victory::irrelevant)
-	    {
-		return below;
-	    }
-		
-	    if (below == victory::alg)
-	    {
-		if (GENERATING)
-		{
-		    // Delete all edges from the current algorithmic vertex
-		    // which should also delete the deeper adversary vertex.
-		    
-		    // Does not delete the algorithm vertex itself,
-		    // because we created it on a higher level of recursion.
-		    qdag->remove_outedges<minimax::generating>(alg_to_evaluate);
-		    // assert(current_algorithm == NULL); // sanity check
+		// Delete all edges from the current algorithmic vertex
+		// which should also delete the deeper adversary vertex.
 
-		    alg_to_evaluate->win = victory::alg;
-		}
+		// Does not delete the algorithm vertex itself,
+		// because we created it on a higher level of recursion.
+		qdag->remove_outedges<minimax::generating>(alg_to_evaluate);
+		// assert(current_algorithm == NULL); // sanity check
 
-		return victory::alg;
-		
-	    } else if (below == victory::adv)
-	    {
-		// nothing needs to be currently done, the edge is already created
-	    } else if (below == victory::uncertain)
-	    {
- 		assert(GENERATING); // should not happen during anything else but minimax::generating
-		// insert analyzed_vertex into algorithm's "next" list
-		if (win == victory::adv)
-		{
-		    win = victory::uncertain;
-		}
+		alg_to_evaluate->win = victory::alg;
 	    }
-	} // else b->loads[i] + pres_item >= R, so a good situation for the adversary
-	i++;
+
+	    return victory::alg;
+
+	} else if (below == victory::adv)
+	{
+	    // nothing needs to be currently done, the edge is already created
+	} else if (below == victory::uncertain)
+	{
+	    assert(GENERATING); // should not happen during anything else but minimax::generating
+	    // insert analyzed_vertex into algorithm's "next" list
+	    if (win == victory::adv)
+	    {
+		win = victory::uncertain;
+	    }
+	}
+
+	// Switch to the next uncertain move.
+	i = alg_uncertain_moves[calldepth][uncertain_pos++];
     }
-
+    
     // r is now 0 or POSTPONED, depending on the circumstances
     if (MODE == minimax::generating)
     {

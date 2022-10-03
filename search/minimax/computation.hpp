@@ -59,7 +59,18 @@ public:
     bool evaluation = true;
 
     assumptions assumer; // An assumptions cache.
-    
+
+
+    // Potentially too much optimization, but:
+    // When using heuristic visits, we can store an array (for a position of ALG)
+    // of moves which still need to be solved recursively.
+    // Of course, if the heuristic visit heuristic returns victory::alg, we do not need this, only when faced with
+    // uncertain positions (and some victory::adv).
+
+    // To save time allocating this array, we allocate it at construction time, essentially.
+    // We only need to memset it inside algorithm().
+
+    std::array< std::array< bin_int, BINS+1>, MAX_ITEMS> alg_uncertain_moves;
 
     // --- measure attributes ---
     measure_attr meas; // measurements for one computation
@@ -86,6 +97,8 @@ public:
     victory adversary(adversary_vertex *adv_to_evaluate, algorithm_vertex *parent_alg);
     victory algorithm(int pres_item, algorithm_vertex *alg_to_evaluate, adversary_vertex *parent_adv);
 
+    void simple_fill_moves_alg(int pres_item);
+    void print_uncertain_moves(); // A debug function.
     /*
     victory sequencing_adversary(unsigned int depth, adversary_vertex *adv_to_evaluate,
 				 algorithm_vertex *parent_alg, const std::vector<bint_int>& seq);
