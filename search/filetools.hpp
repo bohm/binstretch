@@ -6,6 +6,8 @@
 #include <sstream>
 
 #include "common.hpp"
+#include "functions.hpp"
+#include "binconf.hpp"
 
 void folder_checks()
 {
@@ -167,5 +169,68 @@ binconf loadbinconf_singlefile(const char* filename)
 
     return loadbinconf(str_s);
 }
+
+
+class debug_logger
+{
+public:
+    FILE* logfile;
+
+    void init_logfile(std::string filename)
+	{
+	    std::string path = LOG_DIR + "/" + filename;
+	    logfile = fopen(path.c_str(), "a");
+	    // fprintf(stderr, "File %s open for writing.\n", path.c_str());
+	    if(logfile == nullptr)
+	    {
+		ERROR("File %s not possible to be opened.\n", path.c_str());
+	    }
+	}
+    debug_logger(std::string filename)
+	{
+	    init_logfile(filename);
+	}
+
+    debug_logger(int worker_id)
+	{
+	    init_logfile(std::string("workerlog") + std::to_string(worker_id) + std::string(".txt"));
+	}
+
+    void log_binconf(const binconf* b)
+	{
+	    print_binconf_stream(logfile, b, true);
+	}
+
+
+    void log_loadconf(const loadconf* b)
+	{
+	    print_loadconf_stream(logfile, b, true);
+	}
+
+    void log_loadconf(const loadconf *b, std::string s)
+	{
+	    print_loadconf_stream(logfile, b, false);
+	    fprintf(logfile, " %s\n", s.c_str());
+	}
+
+    void log_binconf_with_move(binconf *b, bin_int pres_item, int target_bin)
+	{
+	    binconf copy(b->loads, b->items, b->last_item);
+	    copy.assign_item(pres_item, target_bin);
+	    print_binconf_stream(logfile, &copy, true);
+	}
+    
+    void log_loadconf_with_move(binconf *b, bin_int pres_item, int target_bin)
+	{
+	    loadconf copy(*b, pres_item, target_bin);
+	    print_loadconf_stream(logfile, &copy, true);
+	}
+    ~debug_logger()
+	{
+	    fclose(logfile);
+	}
+};
+
+thread_local debug_logger* dlog = nullptr;
 
 #endif // _FILETOOLS_HPP

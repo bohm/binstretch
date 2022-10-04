@@ -65,6 +65,12 @@ victory worker::solve(const task *t, const int& task_id)
     victory ret = victory::uncertain;
 
     computation<minimax::exploring> comp;
+
+    if (FURTHER_MEASURE)
+    {
+	dlog = new debug_logger(tid);
+    }
+ 
     //tat.last_item = t->last_item;
     comp.task_id = task_id;
     computation_root = NULL; // we do not run GENERATE or EXPAND on the workers currently
@@ -88,7 +94,8 @@ victory worker::solve(const task *t, const int& task_id)
 	print_if<PROGRESS>("Worked %d: finishing computation, it is irrelevant.\n", thread_rank + tid);
 	ret = victory::irrelevant;
     }
-    
+
+    delete dlog;
     assert(ret != victory::uncertain); // Might be victory for alg, adv or irrelevant.
     return ret;
 }
@@ -103,6 +110,7 @@ void worker::start()
 
     //printf("Worker reporting for duty: %s, rank %d out of %d instances\n",
     //	   processor_name, thread_rank + tid, thread_rank_size);
+
 
     int current_task_id;
     std::unique_lock<std::mutex> lk(worker_needed);

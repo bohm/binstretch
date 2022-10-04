@@ -674,6 +674,28 @@ void print_binconf_stream(FILE* stream, const binconf* b, bool newline = true)
     print_binconf_stream(stream, *b, newline);
 }
 
+void print_loadconf_stream(FILE* stream, const loadconf* b, bool newline = true)
+{
+    bool first = true;
+    for (int i=1; i<=BINS; i++)
+    {
+	if(first)
+	{
+	    first = false;
+	    fprintf(stream, "[%d", b->loads[i]);
+	} else {
+	    fprintf(stream, " %d", b->loads[i]);
+	}
+    }
+    fprintf(stream, "] ");
+
+    if(newline)
+    {
+	fprintf(stream, "\n");
+    }
+}
+
+
 template <bool MODE> void print_binconf(const binconf &b, bool newline = true)
 {
     if (MODE)

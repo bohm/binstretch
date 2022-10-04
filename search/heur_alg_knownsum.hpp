@@ -17,28 +17,11 @@
 
 
 std::unordered_map<uint64_t, int> knownsum_ub; // A global variable storing all the computed
+
+// Debug/Analytics.
+debug_logger *weight_dlog = nullptr;
+
 // heuristics. Content is pair (loadhash, upperbound). 
-
-void print_loadconf_stream(FILE* stream, const loadconf& b, bool newline = true)
-{
-    bool first = true;
-    for (int i=1; i<=BINS; i++)
-    {
-	if(first)
-	{
-	    first = false;
-	    fprintf(stream, "[%d", b.loads[i]);
-	} else {
-	    fprintf(stream, " %d", b.loads[i]);
-	}
-    }
-    fprintf(stream, "] ");
-
-    if(newline)
-    {
-	fprintf(stream, "\n");
-    }
-}
 
 // Create a full load configuration, which means the largest
 // possible we can represent in memory. This is slightly
@@ -96,7 +79,6 @@ void initialize_knownsum()
     uint64_t winning_loadconfs = 0;
     uint64_t partial_loadconfs = 0;
     uint64_t losing_loadconfs = 0;
-
 
 // bool debug_position = false; // Erase later.
     
@@ -170,7 +152,7 @@ void initialize_knownsum()
 		if (DEBUG)
 		{
 		    fprintf(stderr, "Inserting conf into the cache: ");
-		    print_loadconf_stream(stderr, iterated_lc, false);
+		    print_loadconf_stream(stderr, &iterated_lc, false);
 		    fprintf(stderr, "with item upper bound %d (and total load %d).\n",
 			item,iterated_lc.loadsum());
 		}
@@ -191,7 +173,7 @@ void initialize_knownsum()
 		if (DEBUG)
 		{
 		    fprintf(stderr, "Even sending %d is a losing move for the conf ", S);
-		    print_loadconf_stream(stderr, iterated_lc, false);
+		    print_loadconf_stream(stderr, &iterated_lc, false);
 		    fprintf(stderr, "(with total load %d).\n",
 			iterated_lc.loadsum());
 		}
@@ -202,7 +184,7 @@ void initialize_knownsum()
 	    if (DEBUG)
 	    {
 		fprintf(stderr, "Conf is automatically good because it is too large: ");
-		print_loadconf_stream(stderr, iterated_lc, true);
+		print_loadconf_stream(stderr, &iterated_lc, true);
 	    }
 
 	    MEASURE_ONLY(losing_loadconfs++);
@@ -210,10 +192,8 @@ void initialize_knownsum()
 	    
     } while (decrease(&iterated_lc));
 
-    print_if<MEASURE>("Full and partial results loaded into weightsum: (%" PRIu64 ", %" PRIu64 ").\n",
-		      winning_loadconfs, partial_loadconfs);
-    print_if<MEASURE>("Fully losing loadconfs: %" PRIu64 ".\n", losing_loadconfs);
-
+    print_if<MEASURE>("(Full, partial) results loaded into weightsum: (%" PRIu64 ", %" PRIu64 ") and %" PRIu64 " losing.\n",
+		      winning_loadconfs, partial_loadconfs, losing_loadconfs);
 }
 
 int query_knownsum_heur(uint64_t loadhash)
@@ -277,7 +257,8 @@ void init_weight_layer(int layer)
     loadconf iterated_lc = create_full_loadconf();
     uint64_t winning_loadconfs = 0;
     uint64_t partial_loadconfs = 0;
-
+    uint64_t losing_loadconfs = 0;
+    
     int remaining_weight = MAX_TOTAL_WEIGHT - layer;
     int sendable_ub = fourteen_largest_with_weight(remaining_weight); // Make sure sendable_ub is always at most S.
     do {
@@ -330,12 +311,14 @@ void init_weight_layer(int layer)
 	    // If the item iterator went down at least once, we can store it into the cache.
 	    if (item < S)
 	    {
-		if (DEBUG)
+		if (DEBUG && layer == 20)
 		{
+		    /*
 		    fprintf(stderr, "Layer %d: Inserting conf into the cache: ", layer);
-		    print_loadconf_stream(stderr, iterated_lc, false);
+		    print_loadconf_stream(stderr, &iterated_lc, false);
 		    fprintf(stderr, "with item upper bound %d (and total load %d).\n",
 			    item,iterated_lc.loadsum());
+		    */
 		}
 
 		
@@ -347,44 +330,68 @@ void init_weight_layer(int layer)
 		    } else
 		    {
 			partial_loadconfs++;
+			if (FURTHER_MEASURE && weight_dlog != nullptr && layer == 20)
+			{
+			    weight_dlog->log_loadconf(&(iterated_lc), std::to_string(item));
+			}
+
 		    }
 		}
 		weight_knownsum_ub[layer].insert({iterated_lc.loadhash, item});
 	    }
 	    else
 	    {
+		/*
 		if (DEBUG)
 		{
 		    fprintf(stderr, "Layer %d: Even sending %d is a losing move for the conf ", layer, S);
-		    print_loadconf_stream(stderr, iterated_lc, false);
+		    print_loadconf_stream(stderr, &iterated_lc, false);
 		    fprintf(stderr, "(with total load %d).\n",
 			iterated_lc.loadsum());
 		}
-	    }
+		*/
 
+		MEASURE_ONLY(losing_loadconfs++);
+		if (FURTHER_MEASURE && weight_dlog != nullptr && layer == 20)
+		{
+		    weight_dlog->log_loadconf(&(iterated_lc));
+		}
+	    }
 	}
 	else
 	{
-	    if (DEBUG)
+	    if (DEBUG && layer == 20)
 	    {
-		fprintf(stderr, "Layer %d: Conf is automatically good because it is too large: ", layer);
-		print_loadconf_stream(stderr, iterated_lc, true);
+		// fprintf(stderr, "Layer %d: Conf is automatically good because it is too large: ", layer);
+		// print_loadconf_stream(stderr, &iterated_lc, true);
+
+
 	    }
 	}
 	    
     } while (decrease(&iterated_lc));
 
-
-    print_if<MEASURE>("Full and partial results loaded into layer %d: (%" PRIu64 ", %" PRIu64 ").\n",
-		      layer, winning_loadconfs, partial_loadconfs);
+    print_if<MEASURE>("Layer %d: (Full, partial) results loaded into weightsum: (%" PRIu64 ", %" PRIu64 ") and %" PRIu64 " losing.\n",
+		      layer, winning_loadconfs, partial_loadconfs, losing_loadconfs);
 }
+
 
 void init_weight_bounds()
 {
+    // Potentially remove this measurement later.
+    if (FURTHER_MEASURE)
+    {
+	weight_dlog = new debug_logger(std::string("unresolved_loads_weight_20.txt"));
+    }
     for (int i = MAX_TOTAL_WEIGHT; i >= 0; i--)
     {
 	init_weight_layer(i);
 	print_if<PROGRESS>("Overseer: Processed layer %d.\n", i);
+    }
+
+    if (FURTHER_MEASURE)
+    {
+	delete weight_dlog;
     }
 }
 

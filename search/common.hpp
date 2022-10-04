@@ -122,11 +122,7 @@ const bool USING_HEURISTIC_GS = false;
 
 // Currently too slow to be worth it (only a few second improvement), but I am not giving up
 // just yet.
-#if IR == 19 && IS == 14
-const bool USING_HEURISTIC_WEIGHTSUM = false;
-#else
-const bool USING_HEURISTIC_WEIGHTSUM = false;
-#endif
+constexpr bool USING_HEURISTIC_WEIGHTSUM = (IR == 19) && (IS == 14) && (!USING_HEURISTIC_KNOWNSUM);
 
 // batching constants
 const int BATCH_SIZE = 50;

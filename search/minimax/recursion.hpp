@@ -130,7 +130,7 @@ template <minimax MODE> victory computation<MODE>::heuristic_visit_alg(int pres_
 			int wght = weight(&bstate) + itemweight(pres_item);
 			if (knownsum_response == 0)
 			{
-			    meas.kns_visit_hit_by_weight[wght]++; 
+			    meas.kns_visit_hit_by_weight[wght]++;
 			} else
 			{
 			    meas.kns_visit_miss_by_weight[wght]++; 
@@ -142,7 +142,22 @@ template <minimax MODE> victory computation<MODE>::heuristic_visit_alg(int pres_
 			ret = victory::alg;
 			position_solved = true;
 			result_known = true;
-		    } // No need for else { ret = victory::uncertain;} here.
+		    }
+			// An experimental heuristic based on monotonicity.
+			// In principle, weightsum or knownsum gives us an upper bound on an item that can be sent.
+			// If the lowest sendable item is above that, then we win.
+		    else if (knownsum_response > 0 && lowest_sendable(pres_item) > knownsum_response)
+		    {
+			ret = victory::alg;
+			position_solved = true;
+			result_known = true;
+		    } else
+		    {
+			// Position truly unknown.
+		    }
+			
+
+// No need for else { ret = victory::uncertain;} here.
 		}
 	    }
 
@@ -161,6 +176,11 @@ template <minimax MODE> victory computation<MODE>::heuristic_visit_alg(int pres_
 			} else
 			{
 			    meas.kns_visit_miss_by_weight[upcoming_weight]++; 
+			    if (upcoming_weight == 20)
+			    {
+				dlog->log_binconf_with_move(&bstate, pres_item, i);
+			    }
+
 			}
 		    }
 	
@@ -169,6 +189,21 @@ template <minimax MODE> victory computation<MODE>::heuristic_visit_alg(int pres_
 			ret = victory::alg;
 			result_known = true;
 			position_solved = true;
+		    }
+
+		    // An experimental heuristic based on monotonicity.
+		    // In principle, weightsum or knownsum gives us an upper bound on an item that can be sent.
+		    // If the lowest sendable item is above that, then we win.
+
+		    else if (weightsum_response > 0 && lowest_sendable(pres_item) > weightsum_response)
+		    {
+			ret = victory::alg;
+			position_solved = true;
+			result_known = true;
+
+		    } else
+		    {
+			// Position truly unknown.
 		    }
 		}
 	    }
@@ -353,7 +388,8 @@ template<minimax MODE> victory computation<MODE>::adversary(adversary_vertex *ad
 		meas.kns_partial_hit_by_weight[bstate_weight]++;
 	    } else
 	    {
-		meas.kns_miss_by_weight[bstate_weight]++; 
+		meas.kns_miss_by_weight[bstate_weight]++;
+
 	    }
 	}
 
