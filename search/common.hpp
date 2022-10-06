@@ -90,6 +90,7 @@ const bin_int monotonicity = RECOMMENDED_MONOTONICITY;
 // constants used for good situations
 const int RMOD = (R-1);
 const int ALPHA = (RMOD-S);
+constexpr bin_int LOWEST_SENDABLE_LIMIT = S - monotonicity;
 
 // Dplog, conflog -- bitwise length of indices of hash tables and lock tables.
 // ht_size = 2^conflog, dpht_size = 2^dplog.
@@ -117,12 +118,14 @@ const bool FIVE_NINE_ACTIVE = true;
 const bool FIVE_NINE_ACTIVE_EVERYWHERE = true;
 
 const bool USING_HEURISTIC_VISITS = true;
-const bool USING_HEURISTIC_KNOWNSUM = true; // Recommend turning off when WEIGHTSUM is true.
+const bool USING_HEURISTIC_KNOWNSUM = false; // Recommend turning off when WEIGHTSUM is true.
 const bool USING_HEURISTIC_GS = false;
+constexpr bool USING_KNOWNSUM_LOWSEND = true;
 
 // Currently too slow to be worth it (only a few second improvement), but I am not giving up
 // just yet.
-constexpr bool USING_HEURISTIC_WEIGHTSUM = (IR == 19) && (IS == 14) && (!USING_HEURISTIC_KNOWNSUM);
+// constexpr bool USING_HEURISTIC_WEIGHTSUM = (IR == 19) && (IS == 14) && (!USING_HEURISTIC_KNOWNSUM);
+constexpr bool USING_HEURISTIC_WEIGHTSUM = false;
 
 // batching constants
 const int BATCH_SIZE = 50;

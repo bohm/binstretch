@@ -34,7 +34,8 @@ uint64_t quick_falling_factorial(uint64_t n, uint64_t k)
 int main(void)
 {
     zobrist_init();
-    // initialize_knownsum();
-    init_weight_bounds();
+    initialize_knownsum();
+    // init_weight_bounds();
+    init_knownsum_with_lowest_sendable();
     return 0;
 }

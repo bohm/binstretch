@@ -145,7 +145,7 @@ template <minimax MODE> victory computation<MODE>::heuristic_visit_alg(int pres_
 		    }
 			// An experimental heuristic based on monotonicity.
 			// In principle, weightsum or knownsum gives us an upper bound on an item that can be sent.
-			// If the lowest sendable item is above that, then we win.
+			// If the lowest sendable item is above that, then the algorithm wins.
 		    else if (knownsum_response > 0 && lowest_sendable(pres_item) > knownsum_response)
 		    {
 			ret = victory::alg;
@@ -158,6 +158,25 @@ template <minimax MODE> victory computation<MODE>::heuristic_visit_alg(int pres_
 			
 
 // No need for else { ret = victory::uncertain;} here.
+		}
+	    }
+
+	    // Same as above, but we use monotonicity to strengthen the known sum table.
+	    if (USING_KNOWNSUM_LOWSEND)
+	    {
+		if (!result_known)
+		{
+		    int knownsum_response = query_knownsum_lowest_sendable(loadhash_if_descending, pres_item);
+
+		    if (knownsum_response == 0)
+		    {
+			ret = victory::alg;
+			result_known = true;
+			position_solved = true;
+		    } else
+		    {
+			// Position truly unknown.
+		    }
 		}
 	    }
 
@@ -193,7 +212,7 @@ template <minimax MODE> victory computation<MODE>::heuristic_visit_alg(int pres_
 
 		    // An experimental heuristic based on monotonicity.
 		    // In principle, weightsum or knownsum gives us an upper bound on an item that can be sent.
-		    // If the lowest sendable item is above that, then we win.
+		    // If the lowest sendable item is above that, then the algorithm wins.
 
 		    else if (weightsum_response > 0 && lowest_sendable(pres_item) > weightsum_response)
 		    {
@@ -407,7 +426,24 @@ template<minimax MODE> victory computation<MODE>::adversary(adversary_vertex *ad
 	}
     }
 
-   
+    // One more knownsum-type heuristic.
+    if (EXPLORING && USING_KNOWNSUM_LOWSEND)
+    {
+	int knownsum_response = query_knownsum_lowest_sendable(bstate.loadhash, bstate.last_item);
+
+	if (knownsum_response == 0)
+	{
+	    return victory::alg;
+	} else if (knownsum_response != -1)
+	{
+	    heuristical_ub = knownsum_response;
+	} else
+	{
+	    // MEASURE_ONLY(meas.knownsum_miss++);
+	}
+    }
+
+  
     
     
     // Turn off adversary heuristics if convenient (e.g. for machine verification).

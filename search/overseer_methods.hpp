@@ -157,6 +157,11 @@ void overseer::start()
     {
 	init_weight_bounds();
     }
+
+    if (USING_KNOWNSUM_LOWSEND)
+    {
+	init_knownsum_with_lowest_sendable();
+    }
     // dpht_el::parallel_init(&dpht, dpht_size, worker_count);
 
     comm.sync_up(); // Sync before any rounds start.
