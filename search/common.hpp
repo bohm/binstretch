@@ -117,8 +117,8 @@ const bool LARGE_ITEM_ACTIVE_EVERYWHERE = false;
 const bool FIVE_NINE_ACTIVE = true;
 const bool FIVE_NINE_ACTIVE_EVERYWHERE = true;
 
-const bool USING_HEURISTIC_VISITS = false;
-const bool USING_HEURISTIC_KNOWNSUM = false; // Recommend turning off when WEIGHTSUM is true.
+const bool USING_HEURISTIC_VISITS = true;
+const bool USING_HEURISTIC_KNOWNSUM = true; // Recommend turning off when WEIGHTSUM is true.
 const bool USING_HEURISTIC_GS = false;
 constexpr bool USING_KNOWNSUM_LOWSEND = false;
 

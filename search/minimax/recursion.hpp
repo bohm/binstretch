@@ -842,7 +842,7 @@ template<minimax MODE> victory computation<MODE>::algorithm(int pres_item, algor
     }
     */
     
-    while(i != 0 && uncertain_pos < BINS)
+    while(i != 0 && uncertain_pos <= BINS)
     {
 
 	// Editing binconf in place -- undoing changes later by calling ascend.
