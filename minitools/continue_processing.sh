@@ -2,12 +2,10 @@
 # The same as process saplings, but does not edit temporarylist, instead only reads a list generated
 # elsewhere (continuedlist-$BINS-$R-$S.txt).
 
-BINS=11
+BINS=12
 R=19
 S=14
-ROOT_STRING="--root ./experiments/11bins-v1-problem-2-root.txt"
-ADVICE_STRING="--advice ./experiments/11bins-v1-problem-2-advice.txt"
-ASSUME_STRING="--assume ./experiments/assumptions-11-19-14.txt"
+ASSUME_STRING="--assume ./experiments/unsorted-assume-12-19-14.txt"
 TIME_SUFFIX=`date +"%Y-%m-%d %T"`
 
 while read line; do

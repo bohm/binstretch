@@ -25,8 +25,8 @@
 
 constexpr bool PROGRESS = true; // Whether to print progress info to stderr.
 constexpr bool VERBOSE = true; // Further information about progress.
-constexpr bool OUTPUT = false; // Whether to produce output.
-constexpr bool REGROW = false; // Whether to regrow or just terminate after first iteration.
+constexpr bool OUTPUT = true; // Whether to produce output.
+constexpr bool REGROW = true; // Whether to regrow or just terminate after first iteration.
 constexpr bool MEASURE = false; // Whether to collect and print measurements to stderr.
 constexpr bool FURTHER_MEASURE = false; // Whether to collect more detailed data that is not needed often.
 
@@ -110,17 +110,17 @@ const unsigned int LOADLOG = 12;
 const bool PRINT_HEURISTICS_IN_FULL = true;
 
 // Heuristic constants:
-const bool ADVERSARY_HEURISTICS = true;
+const bool ADVERSARY_HEURISTICS = false;
 // const bool EXPAND_HEURISTICS = true; // We now always expand heuristics.
 const bool LARGE_ITEM_ACTIVE = true;
 const bool LARGE_ITEM_ACTIVE_EVERYWHERE = false;
 const bool FIVE_NINE_ACTIVE = true;
 const bool FIVE_NINE_ACTIVE_EVERYWHERE = true;
 
-const bool USING_HEURISTIC_VISITS = true;
+const bool USING_HEURISTIC_VISITS = false;
 const bool USING_HEURISTIC_KNOWNSUM = false; // Recommend turning off when WEIGHTSUM is true.
 const bool USING_HEURISTIC_GS = false;
-constexpr bool USING_KNOWNSUM_LOWSEND = true;
+constexpr bool USING_KNOWNSUM_LOWSEND = false;
 
 // Currently too slow to be worth it (only a few second improvement), but I am not giving up
 // just yet.
