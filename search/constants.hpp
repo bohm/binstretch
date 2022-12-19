@@ -194,8 +194,11 @@ const int TASK_RECEIVED = 1;
 // Medium TODO: This weighting only works for 19/14. It is strongly discouraged to run
 // FURTHER_MEASURE = true or USING_HEUR_WEIGHTSUM = true for other ratios.
 
-const int MAX_WEIGHT = 4;
-const int MAX_TOTAL_WEIGHT = MAX_WEIGHT * IBINS;
+#define ITEMWEIGHT quintile_weight
+#define LARGEST_WITH_WEIGHT quintile_largest_with_weight
+constexpr int MAX_WEIGHT = 4;
+constexpr int MAX_TOTAL_WEIGHT = MAX_WEIGHT * IBINS;
+
 
 // Plugging in some common monotonicity values.
 
