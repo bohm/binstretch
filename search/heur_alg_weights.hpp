@@ -22,20 +22,70 @@ int fourteen_largest_with_weight(int weight)
     return 14;
 }
 
-// The logic here is that I want to partition the interval [0,S] (S+1) els into 5 parts.
-// Note also that the lowest group has size 0, and the largest has size 4.
-constexpr int Q = (S+1) / 5;
-
+// The logic here is that I want to partition the interval [0,S] into 5 parts.
+// The thresholds of the sizes are [0, S/5], [S/5+1, 2S/5], and so on.
+// Note also that the lowest group has weight 0, and the largest has weight 4.
 int quintile_weight(int itemsize)
 {
-    return std::max(0, itemsize / Q);
+    int proposed_weight = (itemsize * 5) / S;
+    if ((itemsize * 5) % S == 0)
+    {
+	proposed_weight--;
+    }
+    return std::max(0, proposed_weight);
 }
 
 int quintile_largest_with_weight(int weight)
 {
-    return std::max(0, weight*Q - 1);
+    if (weight >= MAX_WEIGHT)
+    {
+	return S;
+    }
+
+    int first_above = (weight+1)*S / 5;
+
+    if ( ((weight+1)*S) % 5 != 0)
+    {
+	first_above++;
+    }
+    
+    if (quintile_weight(first_above - 1) != weight)
+    {
+	fprintf(stderr, "With weight = %d, the first above is %d the quintile weight of first_above - 1 is %d",
+		weight, first_above, quintile_weight(first_above-1));
+	assert(quintile_weight(first_above - 1) == weight);
+    }
+    return std::max(0, first_above - 1);
 }
 
+
+// A debugging function.
+void print_weight_table()
+{
+    fprintf(stderr, "Weight table:\n");
+    for (int i = 0; i <= S; i++)
+    {
+	fprintf(stderr, "%03d ", i);
+    }
+    fprintf(stderr, "\n");
+    for (int i = 0; i <= S; i++)
+    {
+	fprintf(stderr, "%03d ", ITEMWEIGHT(i));
+    }
+    fprintf(stderr, "\n");
+}
+
+// Also for debug.
+
+void print_largest_with_weight()
+{
+    fprintf(stderr, "Largest with weight ");
+    for(int i = 0; i <= MAX_WEIGHT; i++)
+    {
+	fprintf(stderr, "%03d: %03d, ", i, LARGEST_WITH_WEIGHT(i));
+    }
+    fprintf(stderr, "\n");
+}
 
 int weight(const binconf* b)
 {

@@ -13,3 +13,6 @@
 /algorithm/x64/Release
 *.psess
 *.vspx
+*.cpp~
+*.hpp~
+experiments/*
