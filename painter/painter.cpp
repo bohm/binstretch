@@ -508,8 +508,8 @@ int main(int argc, char **argv)
     partial_dag *d = loadfile(infile.c_str());
     d->populate_edgesets();
     d->populate_next_items();
-    binconf empty; empty.hashinit();
-    d->populate_binconfs(empty);
+    d->root_binconf.hashinit(); // This assumes root bc is either filled or at least exists.
+    d->populate_binconfs();
     // assign the dag into the global pointer
     canvas = d->finalize();
 
