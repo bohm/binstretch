@@ -246,10 +246,7 @@ template <minimax MODE> void computation<MODE>::simple_fill_moves_alg(int pres_i
     }
 
     // Classic C-style trick: instead of zeroing, set the last position to be 0.
-    if (next_uncertain_position < BINS)
-    {
-	alg_uncertain_moves[calldepth][next_uncertain_position] = 0;
-    }
+    alg_uncertain_moves[calldepth][next_uncertain_position] = 0;
 
     /*
     for(; next_uncertain_position < BINS; next_uncertain_position++)

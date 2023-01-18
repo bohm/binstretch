@@ -842,9 +842,11 @@ template<minimax MODE> victory computation<MODE>::algorithm(int pres_item, algor
     }
     */
     
-    while(i != 0 && uncertain_pos <= BINS)
+    while(i != 0)
     {
-
+	// assert(uncertain_pos <= BINS); // Can be checked to make sure, but
+	// with zero-termination, should be implicitly true.
+	
 	// Editing binconf in place -- undoing changes later by calling ascend.
 	algorithm_descend(this, notes, pres_item, i);
 
