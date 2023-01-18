@@ -208,7 +208,7 @@ template <minimax MODE> void algorithm_descend(computation<MODE> *comp, algorith
     
     if (USING_HEURISTIC_WEIGHTSUM)
     {
-	comp->bstate_weight += itemweight(item);
+	comp->bstate_weight += ITEMWEIGHT(item);
     }
 }
 
@@ -224,7 +224,7 @@ template <minimax MODE> void algorithm_ascend(computation<MODE> *comp, const alg
 
     if (USING_HEURISTIC_WEIGHTSUM)
     {
-	comp->bstate_weight -= itemweight(item);
+	comp->bstate_weight -= ITEMWEIGHT(item);
     }
 
 }

@@ -24,6 +24,7 @@
 #include "maxfeas.hpp"
 #include "heur_adv.hpp"
 #include "heur_alg_knownsum.hpp"
+#include "heur_alg_weights.hpp"
 #include "gs.hpp"
 #include "tasks.hpp"
 #include "strategy.hpp"
@@ -72,7 +73,7 @@ template <minimax MODE> victory computation<MODE>::heuristic_visit_alg(int pres_
     
     if (USING_HEURISTIC_WEIGHTSUM)
     {
-	upcoming_weight = bstate_weight + itemweight(pres_item); // Weight in the next adversary state.
+	upcoming_weight = bstate_weight + ITEMWEIGHT(pres_item); // Weight in the next adversary state.
     }
     
     // Repeating the code from the algorithm() section.
@@ -127,7 +128,7 @@ template <minimax MODE> victory computation<MODE>::heuristic_visit_alg(int pres_
 
 		    if (FURTHER_MEASURE)
 		    {
-			int wght = weight(&bstate) + itemweight(pres_item);
+			int wght = weight(&bstate) + ITEMWEIGHT(pres_item);
 			if (knownsum_response == 0)
 			{
 			    meas.kns_visit_hit_by_weight[wght]++;
