@@ -193,7 +193,7 @@ void initialize_knownsum()
 	    
     } while (decrease(&iterated_lc));
 
-    print_if<MEASURE>("(Full, partial) results loaded into weightsum: (%" PRIu64 ", %" PRIu64 ") and %" PRIu64 " losing.\n",
+    print_if<MEASURE>("(Full, partial) results loaded into knownsum: (%" PRIu64 ", %" PRIu64 ") and %" PRIu64 " losing.\n",
 		      winning_loadconfs, partial_loadconfs, losing_loadconfs);
 }
 
