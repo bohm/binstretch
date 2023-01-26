@@ -374,7 +374,7 @@ template<minimax MODE> victory computation<MODE>::adversary(adversary_vertex *ad
     }
 
     // Same as above, but an enhanced heuristic.
-    if (EXPLORING && USING_HEURISTIC_WEIGHTSUM)
+    if (USING_HEURISTIC_WEIGHTSUM)
     {
 	bool alg_winning_heuristically = weight_heurs->query_alg_winning(bstate.loadhash,
 									 bstate_weight_array);

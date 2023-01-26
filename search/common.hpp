@@ -125,6 +125,8 @@ constexpr bool USING_KNOWNSUM_LOWSEND = false;
 // Currently too slow to be worth it (only a few second improvement), but I am not giving up just yet.
 constexpr bool USING_HEURISTIC_WEIGHTSUM = true && (!USING_HEURISTIC_KNOWNSUM) && (!USING_KNOWNSUM_LOWSEND);
 
+#define WEIGHT_HEURISTICS weight_heuristics<scale_halves, scale_thirds>
+
 // batching constants
 const int BATCH_SIZE = 50;
 const int BATCH_THRESHOLD = BATCH_SIZE / 2;

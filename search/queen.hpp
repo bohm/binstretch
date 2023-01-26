@@ -11,6 +11,9 @@
 #include "saplings.hpp"
 #include "sapling_manager.hpp"
 #include "cleanup.hpp"
+#include "weights/weight_heuristics.hpp"
+#include "weights/scale_halves.hpp"
+#include "weights/scale_thirds.hpp"
 // Queen global variables and declarations.
 
 std::atomic<bool> debug_print_requested(false);
@@ -27,6 +30,8 @@ public:
     std::atomic<bool> updater_running = false;
     char root_binconf_file[256];
     bool load_root_binconf = false;
+
+    WEIGHT_HEURISTICS* weight_heurs = nullptr;
     queen_class(int argc, char **argv);
     void updater(sapling job);
     int start();
