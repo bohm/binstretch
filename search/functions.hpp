@@ -126,4 +126,31 @@ inline uint64_t logpart(uint64_t x, int log)
 }
 
 
+// printing an array of constant size in a reasonable way
+
+template <int NUM> void int_array_print(FILE *stream,
+					std::array<int, NUM>& arr,
+					bool trailing_newline = false)
+{
+    fprintf(stream, "[");
+    for (int i =0; i < NUM; i++)
+    {
+	fprintf(stream, "%d", arr[i]);
+	if (i < NUM-1)
+	{
+	    fprintf(stream, " ");
+	}
+    }
+    fprintf(stream, "]");
+    if (trailing_newline)
+    {
+	fprintf(stream, "\n");
+    }
+}
+
+template <int NUM> void int_array_print(std::array<int, NUM>& arr,
+					bool trailing_newline = false)
+{
+    int_array_print<NUM>(stderr, arr, trailing_newline); 
+}
 #endif

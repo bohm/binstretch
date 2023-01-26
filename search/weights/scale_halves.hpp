@@ -9,6 +9,7 @@ public:
     static constexpr int max_weight_per_bin = 1; 
     static constexpr int max_total_weight = BINS;
     static constexpr int half_opt = S/2;
+    static constexpr const char * name = "scale_halves";
 
     static int itemweight(int itemsize)
 	{
