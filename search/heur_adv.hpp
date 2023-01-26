@@ -14,6 +14,8 @@
 #include "dynprog/algo.hpp"
 #include "dynprog/wrappers.hpp"
 
+#include "dag/dag.hpp"
+
 // Adversarial heuristics: algorithms for recognition.
 
 
@@ -59,6 +61,17 @@ int check_loadconf_vectors(const std::vector<loadconf> &va, const std::vector<lo
 int dynprog_and_check_vectors(const binconf &b, const std::vector<loadconf> &v, dynprog_data *dpdata)
 {
     return check_loadconf_vectors( dynprog(b, dpdata), v);
+}
+
+void print_lih_choices(const binconf &b, std::vector<loadconf> choices)
+{
+    fprintf(stderr, "For binconf ");
+    print_binconf_stream(stderr, b, false);
+    fprintf(stderr, " we suggest the following LIH choices:\n");
+    for (loadconf choice: choices)
+    {
+	fprintf(stderr, " %s\n", choice.print().c_str());
+    }
 }
 
 // Build load configurations (essentially sequences of items) which work for the LI heuristic.
