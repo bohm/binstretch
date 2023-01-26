@@ -75,6 +75,10 @@ victory worker::solve(const task *t, const int& task_id)
     comp.task_id = task_id;
     computation_root = NULL; // we do not run GENERATE or EXPAND on the workers currently
 
+    if (USING_HEURISTIC_WEIGHTSUM)
+    {
+	comp.weight_heurs = ov->weight_heurs;
+    }
     // We create a copy of the sapling's bin configuration
     // which will be used as in-place memory for the algorithm.
     binconf task_copy;

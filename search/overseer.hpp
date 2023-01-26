@@ -22,6 +22,8 @@ public:
     // A semiatomic queue of finished tasks.
     semiatomic_q* finished_tasks;
 
+    weight_heuristics<scale_halves, scale_thirds>* weight_heurs = nullptr;
+
     // An index to the overseer tasklist that shows the next available task.
     // Will be accessed concurrently.
     std::atomic<unsigned int> next_task;

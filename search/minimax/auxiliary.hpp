@@ -208,7 +208,7 @@ template <minimax MODE> void algorithm_descend(computation<MODE> *comp, algorith
     
     if (USING_HEURISTIC_WEIGHTSUM)
     {
-	comp->bstate_weight += ITEMWEIGHT(item);
+	comp->weight_heurs->increase_weights(comp->bstate_weight_array, item);
     }
 }
 
@@ -224,9 +224,8 @@ template <minimax MODE> void algorithm_ascend(computation<MODE> *comp, const alg
 
     if (USING_HEURISTIC_WEIGHTSUM)
     {
-	comp->bstate_weight -= ITEMWEIGHT(item);
+	comp->weight_heurs->decrease_weights(comp->bstate_weight_array, item);
     }
-
 }
 
 template <minimax MODE> void computation<MODE>::simple_fill_moves_alg(int pres_item)

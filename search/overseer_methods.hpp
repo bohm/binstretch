@@ -155,7 +155,8 @@ void overseer::start()
 
     if (USING_HEURISTIC_WEIGHTSUM)
     {
-	init_weight_bounds();
+        weight_heurs = new weight_heuristics<scale_halves, scale_thirds>;
+	weight_heurs->init_weight_bounds();
     }
 
     if (USING_KNOWNSUM_LOWSEND)
@@ -322,5 +323,12 @@ void overseer::start()
 	    break;
 	}
     }
+
+    if (USING_HEURISTIC_WEIGHTSUM)
+    {
+        delete weight_heurs;
+    }
+
+
 }
 #endif // OVERSEER_METHODS

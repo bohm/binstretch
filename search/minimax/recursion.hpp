@@ -68,12 +68,12 @@ template <minimax MODE> victory computation<MODE>::heuristic_visit_alg(int pres_
     bool position_solved = false;
     algorithm_notes notes; // Potentially turn off notes for now, they are not used.
 
-    int upcoming_weight = 0;
     int next_uncertain_position = 0;
     
     if (USING_HEURISTIC_WEIGHTSUM)
     {
-	upcoming_weight = bstate_weight + ITEMWEIGHT(pres_item); // Weight in the next adversary state.
+        weight_heurs->increase_weights(bstate_weight_array, pres_item);
+	// Weight in the next adversary state.
     }
     
     // Repeating the code from the algorithm() section.
@@ -181,49 +181,23 @@ template <minimax MODE> victory computation<MODE>::heuristic_visit_alg(int pres_
 		}
 	    }
 
-	    // Same as above, but an enhanced heuristic.
+	    // A heuristic using weights.
+	    // Since it only returns a bool now, we do not use the lowest sendable heuristic.
 	    if (USING_HEURISTIC_WEIGHTSUM)
 	    {
 		if (!result_known)
 		{
-		    int weightsum_response = query_weightsum_heur(loadhash_if_descending, upcoming_weight);
-		    if (FURTHER_MEASURE)
-		    {
-			// Note: we are reusing the kns array for measurements in the weightsum case.
-			if (weightsum_response == 0)
-			{
-			    meas.kns_visit_hit_by_weight[upcoming_weight]++; 
-			} else
-			{
-			    meas.kns_visit_miss_by_weight[upcoming_weight]++; 
-			    if (upcoming_weight == 20)
-			    {
-				dlog->log_binconf_with_move(&bstate, pres_item, i);
-			    }
 
-			}
-		    }
-	
-		    if (weightsum_response == 0)
+		    bool alg_winning_query = weight_heurs->query_alg_winning(loadhash_if_descending,
+									 bstate_weight_array);
+		    if (alg_winning_query)
 		    {
 			ret = victory::alg;
 			result_known = true;
 			position_solved = true;
-		    }
-
-		    // An experimental heuristic based on monotonicity.
-		    // In principle, weightsum or knownsum gives us an upper bound on an item that can be sent.
-		    // If the lowest sendable item is above that, then the algorithm wins.
-
-		    else if (weightsum_response > 0 && lowest_sendable(pres_item) > weightsum_response)
-		    {
-			ret = victory::alg;
-			position_solved = true;
-			result_known = true;
-
 		    } else
 		    {
-			// Position truly unknown.
+			// Position currently unknown.
 		    }
 		}
 	    }
@@ -250,6 +224,14 @@ template <minimax MODE> victory computation<MODE>::heuristic_visit_alg(int pres_
 	alg_uncertain_moves[calldepth][next_uncertain_position] = 0;
 
     }
+
+    if (USING_HEURISTIC_WEIGHTSUM)
+    {
+	// Reset weight to be as before.
+        weight_heurs->decrease_weights(bstate_weight_array, pres_item);
+    }
+
+    
     return ret;
 }
 
@@ -394,33 +376,11 @@ template<minimax MODE> victory computation<MODE>::adversary(adversary_vertex *ad
     // Same as above, but an enhanced heuristic.
     if (EXPLORING && USING_HEURISTIC_WEIGHTSUM)
     {
-	int weightsum_response = query_weightsum_heur(bstate.loadhash, bstate_weight);
-
-	// We first perform measurements, if needed.
-	if (FURTHER_MEASURE)
-	{
-	    if (weightsum_response == 0)
-	    {
-		meas.kns_full_hit_by_weight[bstate_weight]++; 
-	    } else if (weightsum_response != -1)
-	    {
-		
-		meas.kns_partial_hit_by_weight[bstate_weight]++;
-	    } else
-	    {
-		meas.kns_miss_by_weight[bstate_weight]++;
-
-	    }
-	}
-
-
-
-	if (weightsum_response == 0)
+	bool alg_winning_heuristically = weight_heurs->query_alg_winning(bstate.loadhash,
+									 bstate_weight_array);
+	if (alg_winning_heuristically)
 	{
 	    return victory::alg;
-	} else if (weightsum_response != -1)
-	{
-	    heuristical_ub = weightsum_response;
 	} else
 	{
 	    // MEASURE_ONLY(meas.knownsum_miss++);
@@ -946,7 +906,7 @@ template <minimax MODE> victory explore(binconf *b, computation<MODE> *comp)
 
     if (USING_HEURISTIC_WEIGHTSUM)
     {
-	comp->bstate_weight = weight(&(comp->bstate));
+	comp->bstate_weight_array = {};
     }
 
     victory ret = comp->adversary(NULL, NULL);
@@ -961,7 +921,8 @@ template <minimax MODE> victory generate(sapling start_sapling, computation<MODE
     comp->bstate.hashinit();
     if (USING_HEURISTIC_WEIGHTSUM)
     {
-	comp->bstate_weight = weight(&(comp->bstate));
+	comp->bstate_weight_array = {};
+
     }
 
     if (start_sapling.expansion)

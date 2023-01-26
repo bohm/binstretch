@@ -5,7 +5,9 @@
 #include "assumptions.hpp"
 #include "../search/thread_attr.hpp"
 #include "../dag/dag.hpp"
-
+#include "../search/weights/weight_heuristics.hpp"
+#include "../search/weights/scale_halves.hpp"
+#include "../search/weights/scale_thirds.hpp"
 
 template <minimax MODE> class computation
 {
@@ -29,11 +31,14 @@ public:
 
     // The current weight of the instance. We only touch it if USING_HEURISTIC_WEIGHTSUM is true.
     // Mild TODO: In the future, move it to the algorithm_notes section perhaps?
-    int bstate_weight = 0;
+    // Bigger TODO: 
+    std::array<int, 2> bstate_weight_array = {};
     
     // dynamic programming data
     dynprog_data *dpdata;
 
+    // Pointer to the object holding weight heuristical data.
+    weight_heuristics<scale_halves, scale_thirds>* weight_heurs = nullptr;
     optconf oc;
     loadconf ol;
     int task_id;

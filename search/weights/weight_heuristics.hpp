@@ -3,6 +3,7 @@
 #include "common.hpp"
 #include "binconf.hpp"
 #include "functions.hpp"
+#include "heur_alg_knownsum.hpp"
 #include <algorithm>
 
 template<class SCALE> class weight_heuristic
