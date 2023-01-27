@@ -326,6 +326,15 @@ public:
 			MEASURE_ONLY(losing_loadconfs++);
 		    }
 		}
+		else
+		{
+		    // Position is winning, as there are no moves left.
+		    if (iterated_lc.loads[1] <= R-1)
+		    {
+			alg_winning_positions[layer].insert(iterated_lc.loadhash);
+		    }
+			
+		}
 	    } while (decrease(&iterated_lc));
 
 	    print_if<MEASURE>("Layer %d: Winning positions: %" PRIu64 " and %" PRIu64 " losing.\n",
