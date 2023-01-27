@@ -38,7 +38,7 @@ public:
     dynprog_data *dpdata;
 
     // Pointer to the object holding weight heuristical data.
-    weight_heuristics<scale_halves, scale_thirds>* weight_heurs = nullptr;
+    WEIGHT_HEURISTICS* weight_heurs = nullptr;
     optconf oc;
     loadconf ol;
     int task_id;

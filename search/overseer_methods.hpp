@@ -155,7 +155,7 @@ void overseer::start()
 
     if (USING_HEURISTIC_WEIGHTSUM)
     {
-        weight_heurs = new weight_heuristics<scale_halves, scale_thirds>;
+        weight_heurs = new WEIGHT_HEURISTICS;
 	weight_heurs->init_weight_bounds();
     }
 

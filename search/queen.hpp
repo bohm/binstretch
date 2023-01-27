@@ -14,6 +14,8 @@
 #include "weights/weight_heuristics.hpp"
 #include "weights/scale_halves.hpp"
 #include "weights/scale_thirds.hpp"
+#include "weights/scale_quarters.hpp"
+
 // Queen global variables and declarations.
 
 std::atomic<bool> debug_print_requested(false);

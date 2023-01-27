@@ -35,9 +35,9 @@ constexpr bool FURTHER_MEASURE = false; // Whether to collect more detailed data
 // const int REGROW_LIMIT = 65535;
 const int REGROW_LIMIT = 3;
 
-const int TASK_LOAD_INIT = 8; // A bound on total load of a configuration before we split it into a task.
+const int TASK_LOAD_INIT = 12; // A bound on total load of a configuration before we split it into a task.
 const int TASK_LOAD_STEP = 6; // The amount by which the load can increase when regrowing the tree.
-const int TASK_DEPTH_INIT = 5; //The maximum depth of a vertex in the tree before it is made into a task.
+const int TASK_DEPTH_INIT = 6; //The maximum depth of a vertex in the tree before it is made into a task.
 const int TASK_DEPTH_STEP = 2; // The amount by which the depth is increased when regrowing.
 
 // const int TASK_LOAD_INIT = 0;
@@ -125,7 +125,7 @@ constexpr bool USING_KNOWNSUM_LOWSEND = false;
 // Currently too slow to be worth it (only a few second improvement), but I am not giving up just yet.
 constexpr bool USING_HEURISTIC_WEIGHTSUM = true && (!USING_HEURISTIC_KNOWNSUM) && (!USING_KNOWNSUM_LOWSEND);
 
-#define WEIGHT_HEURISTICS weight_heuristics<scale_halves, scale_thirds>
+#define WEIGHT_HEURISTICS weight_heuristics<scale_thirds, scale_quarters>
 
 // batching constants
 const int BATCH_SIZE = 50;
