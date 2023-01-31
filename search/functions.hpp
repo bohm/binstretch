@@ -128,8 +128,8 @@ inline uint64_t logpart(uint64_t x, int log)
 
 // printing an array of constant size in a reasonable way
 
-template <int NUM> void int_array_print(FILE *stream,
-					std::array<int, NUM>& arr,
+template <int NUM> void print_int_array(FILE *stream,
+					const std::array<int, NUM>& arr,
 					bool trailing_newline = false)
 {
     fprintf(stream, "[");
@@ -148,9 +148,9 @@ template <int NUM> void int_array_print(FILE *stream,
     }
 }
 
-template <int NUM> void int_array_print(std::array<int, NUM>& arr,
+template <int NUM> void print_int_array(const std::array<int, NUM>& arr,
 					bool trailing_newline = false)
 {
-    int_array_print<NUM>(stderr, arr, trailing_newline); 
+    print_int_array<NUM>(stderr, arr, trailing_newline); 
 }
 #endif

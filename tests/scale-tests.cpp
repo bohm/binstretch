@@ -2,9 +2,9 @@
 #include <cstdlib>
 #include <unordered_map>
 
-#define IBINS 4
-#define IR 57
-#define IS 42
+#define IBINS 3
+#define IR 56
+#define IS 41
 
 #include "common.hpp"
 
@@ -50,7 +50,7 @@ template <class... SCALES> void single_items_winning(weight_heuristics<SCALES...
 	{
 	    print_loadconf_stream(stderr, &empty, false);
 	    fprintf(stderr, " is winning, weight array:");
-	    int_array_print<SCALE_NUM>(weight_array, true);
+	    print_int_array<SCALE_NUM>(weight_array, true);
 	}
     }
 }
@@ -69,7 +69,7 @@ template <class... SCALES> void knownsum_backtrack(weight_heuristics<SCALES...>&
 	fprintf(stderr, "Depth %d loadconf: ", depth);
 	print_loadconf_stream(stderr, &lc, false);
 	fprintf(stderr, "with weight profile ");
-	int_array_print<SCALE_NUM>(weights, false);
+	print_int_array<SCALE_NUM>(weights, false);
 	fprintf(stderr, " is winning for Algorithm.\n");
     }
     else
@@ -77,7 +77,7 @@ template <class... SCALES> void knownsum_backtrack(weight_heuristics<SCALES...>&
 	fprintf(stderr, "Depth %d loadconf: ", depth);
 	print_loadconf_stream(stderr, &lc, false);
 	fprintf(stderr, "with weight profile ");
-	int_array_print<SCALE_NUM>(weights, false);
+	print_int_array<SCALE_NUM>(weights, false);
 	fprintf(stderr, " is losing for Algorithm. This is because ");
 
 	int losing_item = -1;
@@ -162,9 +162,6 @@ int main(void)
     print_weight_information<scale_quarters>();
   
   
-    weight_heuristic<scale_halves> heur;
-    fprintf(stderr, "%lu\n", heur.winning_moves.size());
-
     weight_heuristics<scale_halves, scale_quintiles> heurs;
     fprintf(stderr, "%d\n", heurs.TOTAL_LAYERS);
     std::array<int, 2> weight_test = {0,0};
@@ -198,7 +195,7 @@ int main(void)
     int flat_test = heurs.flatten_index(non_flat);
 
     std::array<int, 2> unpacked = heurs.unpack_index(flat_test);
-    fprintf(stderr, "unpack_index(%d) = (%d, %d).\n", flat_test, unpacked[0], unpacked[1]);
+    fprintf(stderr, "unpack_index(%d) = (%cd, %d).\n", flat_test, unpacked[0], unpacked[1]);
    
     fprintf(stderr, "Largest sendable tests:\n");
     std::array<int, 2> t = {0,0};
@@ -240,7 +237,7 @@ int main(void)
     // quintiles_only.init_weight_bounds();
 
     two_heurs.init_weight_bounds();
-    three_heurs.init_weight_bounds();
+    // three_heurs.init_weight_bounds();
 
     // thirds_and_quarters.init_weight_bounds();
  
@@ -259,9 +256,9 @@ int main(void)
     // fprintf(stderr, "Thirds and quarters winning moves from [0 0 0 0]:\n");
     // single_items_winning<scale_thirds, scale_quarters>(thirds_and_quarters);
     // fprintf(stderr, "---\n");
-    fprintf(stderr, "Halves, thirds and quarters winning moves from [0 0 0 0]:\n");
-    single_items_winning<scale_halves, scale_thirds, scale_quarters>(three_heurs);
-    fprintf(stderr, "---\n");
+    // fprintf(stderr, "Halves, thirds and quarters winning moves from [0 0 0 0]:\n");
+    // single_items_winning<scale_halves, scale_thirds, scale_quarters>(three_heurs);
+    // fprintf(stderr, "---\n");
 
     // Chasing a bug.
     // loadconf lc; lc.hashinit();

@@ -1,5 +1,4 @@
-#ifndef _HEUR_ALG_KNOWNSUM
-#define _HEUR_ALG_KNOWNSUM
+#pragma once
 
 // Algorithmic heuristic: computing the full DP table for the problem
 // of known sum of completion times.
@@ -14,7 +13,7 @@
 #include "common.hpp"
 #include "binconf.hpp"
 #include "hash.hpp"
-
+#include "filetools.hpp"
 
 std::unordered_map<uint64_t, int> knownsum_ub; // A global variable storing all the computed
 
@@ -219,9 +218,6 @@ std::array<std::unordered_map<uint64_t, int>, LOWEST_SENDABLE_LIMIT+1> knownsum_
 void init_lowest_sendable_layer()
 {
     loadconf iterated_lc = create_full_loadconf();
-    uint64_t winning_loadconfs = 0;
-    uint64_t partial_loadconfs = 0;
-    uint64_t losing_loadconfs = 0;
 
     do {
 	// The last layer of the DP has to happen here, because the DP queries can be to both higher and lower
@@ -372,4 +368,3 @@ int query_knownsum_lowest_sendable(uint64_t loadhash, bin_int last_item)
 	return search->second;
     }
 }
-#endif

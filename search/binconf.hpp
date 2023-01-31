@@ -244,7 +244,7 @@ public:
 
     // This function does not do any actual assignments or rehashing,
     // instead only computes the hash "as if" the item is packed.
-    uint64_t virtual_loadhash(int item, int bin)
+    uint64_t virtual_loadhash(int item, int bin) const
 	{
 	    uint64_t virtual_ret = loadhash;
 	    bin_int newload = loads[bin] + item;

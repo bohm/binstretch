@@ -159,6 +159,13 @@ void overseer::start()
 	weight_heurs->init_weight_bounds();
     }
 
+    if (USING_MINIBINSTRETCHING)
+    {
+	mbs = new minibs<MINIBS_SCALE>();
+	mbs->init_knownsum_layer();
+	mbs->init_all_layers();
+    }
+
     if (USING_KNOWNSUM_LOWSEND)
     {
 	init_knownsum_with_lowest_sendable();
@@ -327,6 +334,11 @@ void overseer::start()
     if (USING_HEURISTIC_WEIGHTSUM)
     {
         delete weight_heurs;
+    }
+
+    if (USING_MINIBINSTRETCHING)
+    {
+	delete mbs;
     }
 
 

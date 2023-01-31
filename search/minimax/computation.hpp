@@ -8,6 +8,7 @@
 #include "../search/weights/weight_heuristics.hpp"
 #include "../search/weights/scale_halves.hpp"
 #include "../search/weights/scale_thirds.hpp"
+#include "minibs.hpp"
 
 template <minimax MODE> class computation
 {
@@ -29,16 +30,20 @@ public:
     // Call depth -- number of recursive calls (above the current one).
     int calldepth = 0;
 
-    // The current weight of the instance. We only touch it if USING_HEURISTIC_WEIGHTSUM is true.
-    // Mild TODO: In the future, move it to the algorithm_notes section perhaps?
-    // Bigger TODO: 
-    std::array<int, 2> bstate_weight_array = {};
-    
+   
     // dynamic programming data
     dynprog_data *dpdata;
 
     // Pointer to the object holding weight heuristical data.
     WEIGHT_HEURISTICS* weight_heurs = nullptr;
+    // The current weight of the instance. We only touch it if USING_HEURISTIC_WEIGHTSUM is true.
+    // Mild TODO: In the future, move it to the algorithm_notes section perhaps?
+    // Bigger TODO: 
+    std::array<int, WEIGHT_HEURISTICS::NUM> bstate_weight_array = {};
+
+    minibs<MINIBS_SCALE> *mbs = nullptr;
+    itemconfig<MINIBS_SCALE> *scaled_items = nullptr;
+ 
     optconf oc;
     loadconf ol;
     int task_id;
@@ -91,11 +96,19 @@ public:
     computation()
 	{
 	    dpdata = new dynprog_data;
+	    if (USING_MINIBINSTRETCHING)
+	    {
+		scaled_items = new itemconfig<MINIBS_SCALE>();
+	    }
 	}
 
     ~computation()
 	{
 	    delete dpdata;
+	    if (USING_MINIBINSTRETCHING)
+	    {
+		delete scaled_items;
+	    }
 	}
 
     victory heuristic_visit_alg(int pres_item);

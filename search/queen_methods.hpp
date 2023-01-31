@@ -159,6 +159,14 @@ int queen_class::start()
 	weight_heurs->init_weight_bounds();
     }
 
+    if (USING_MINIBINSTRETCHING)
+    {
+	mbs = new minibs<MINIBS_SCALE>();
+	mbs->init_knownsum_layer();
+	mbs->init_all_layers();
+    }
+
+
 
     comm.sync_up(); // Sync before any rounds start.
 
@@ -248,6 +256,11 @@ int queen_class::start()
 	if (USING_HEURISTIC_WEIGHTSUM)
 	{
 	    comp.weight_heurs = weight_heurs;
+	}
+
+	if (USING_MINIBINSTRETCHING)
+	{
+	    comp.mbs = mbs;
 	}
 
 
@@ -475,6 +488,13 @@ int queen_class::start()
     {
 	delete weight_heurs;
     }
+
+    if (USING_MINIBINSTRETCHING)
+    {
+	delete mbs;
+    }
+
+
     // Print measurements and clean up.
     MEASURE_ONLY(g_meas.print());
     // delete_running_lows(); happens upon comm destruction.

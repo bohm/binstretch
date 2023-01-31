@@ -79,6 +79,12 @@ victory worker::solve(const task *t, const int& task_id)
     {
 	comp.weight_heurs = ov->weight_heurs;
     }
+
+    if (USING_MINIBINSTRETCHING)
+    {
+	comp.mbs = ov->mbs;
+    }
+    
     // We create a copy of the sapling's bin configuration
     // which will be used as in-place memory for the algorithm.
     binconf task_copy;

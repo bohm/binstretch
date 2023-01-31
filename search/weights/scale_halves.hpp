@@ -26,6 +26,13 @@ public:
 	    return weightsum;
 	}
 
+    static int smallest_with_weight(int weight)
+	{
+	    if (weight >= 1)
+	    {
+		return S/2 + 1;
+	    }
+	}
     static int largest_with_weight(int weight)
 	{
 	    if (weight >= 1)

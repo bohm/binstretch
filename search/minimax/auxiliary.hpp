@@ -197,6 +197,7 @@ struct algorithm_notes
     int ol_new_load_position = 0;
 };
 
+
 template <minimax MODE> void algorithm_descend(computation<MODE> *comp, algorithm_notes &notes,
 		       int item, int target_bin)
 {
@@ -209,6 +210,15 @@ template <minimax MODE> void algorithm_descend(computation<MODE> *comp, algorith
     if (USING_HEURISTIC_WEIGHTSUM)
     {
 	comp->weight_heurs->increase_weights(comp->bstate_weight_array, item);
+    }
+
+    if (USING_MINIBINSTRETCHING)
+    {
+        int shrunk_item = comp->mbs->shrink_item(item);
+	if (shrunk_item > 0)
+	{
+	    comp->scaled_items->increase(shrunk_item);
+	}
     }
 }
 
@@ -226,6 +236,16 @@ template <minimax MODE> void algorithm_ascend(computation<MODE> *comp, const alg
     {
 	comp->weight_heurs->decrease_weights(comp->bstate_weight_array, item);
     }
+
+    if (USING_MINIBINSTRETCHING)
+    {
+        int shrunk_item = comp->mbs->shrink_item(item);
+	if (shrunk_item > 0)
+	{
+	    comp->scaled_items->decrease(shrunk_item);
+	}
+    }
+
 }
 
 template <minimax MODE> void computation<MODE>::simple_fill_moves_alg(int pres_item)

@@ -69,7 +69,23 @@ template <minimax MODE> victory computation<MODE>::heuristic_visit_alg(int pres_
     algorithm_notes notes; // Potentially turn off notes for now, they are not used.
 
     int next_uncertain_position = 0;
-    
+
+    uint64_t next_layer_hash = 0;
+    int shrunk_itemtype = 0;
+
+    if (USING_MINIBINSTRETCHING)
+    {
+	shrunk_itemtype = mbs->shrink_item(pres_item);
+	if (shrunk_itemtype == 0)
+	{
+	    next_layer_hash = scaled_items->itemhash;
+	}
+	else
+	{
+	    next_layer_hash = scaled_items->virtual_increase(shrunk_itemtype);
+	}
+    }
+	
     if (USING_HEURISTIC_WEIGHTSUM)
     {
         weight_heurs->increase_weights(bstate_weight_array, pres_item);
@@ -198,6 +214,23 @@ template <minimax MODE> victory computation<MODE>::heuristic_visit_alg(int pres_
 		    } else
 		    {
 			// Position currently unknown.
+		    }
+		}
+	    }
+
+	    if (USING_MINIBINSTRETCHING)
+	    {
+		if (!result_known)
+		{
+		    int next_item_layer = mbs->feasible_map[next_layer_hash];
+		    bool alg_mbs_query = mbs->query_itemconf_winning(bstate, next_item_layer,
+								     pres_item, i);
+
+		    if (alg_mbs_query)
+		    {
+			ret = victory::alg;
+			result_known = true;
+			position_solved = true;
 		    }
 		}
 	    }
@@ -387,6 +420,14 @@ template<minimax MODE> victory computation<MODE>::adversary(adversary_vertex *ad
 	}
     }
 
+    if (USING_MINIBINSTRETCHING)
+    {
+	bool alg_winning_heuristically = mbs->query_itemconf_winning(bstate, *scaled_items);
+	if (alg_winning_heuristically)
+	{
+	    return victory::alg;
+	}
+    }
     // One more knownsum-type heuristic.
     if (EXPLORING && USING_KNOWNSUM_LOWSEND)
     {
@@ -909,6 +950,11 @@ template <minimax MODE> victory explore(binconf *b, computation<MODE> *comp)
 	comp->bstate_weight_array = {};
     }
 
+    if (USING_MINIBINSTRETCHING)
+    {
+	comp->scaled_items->initialize(comp->bstate);
+    }
+	
     victory ret = comp->adversary(NULL, NULL);
     assert(ret != victory::uncertain);
     return ret;
@@ -925,6 +971,11 @@ template <minimax MODE> victory generate(sapling start_sapling, computation<MODE
 
     }
 
+    if (USING_MINIBINSTRETCHING)
+    {
+	comp->scaled_items->initialize(comp->bstate);
+    }
+	
     if (start_sapling.expansion)
     {
 	comp->evaluation = false;

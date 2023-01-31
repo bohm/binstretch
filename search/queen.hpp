@@ -15,6 +15,7 @@
 #include "weights/scale_halves.hpp"
 #include "weights/scale_thirds.hpp"
 #include "weights/scale_quarters.hpp"
+#include "minibs.hpp"
 
 // Queen global variables and declarations.
 
@@ -34,6 +35,8 @@ public:
     bool load_root_binconf = false;
 
     WEIGHT_HEURISTICS* weight_heurs = nullptr;
+    minibs<MINIBS_SCALE>* mbs = nullptr;
+
     queen_class(int argc, char **argv);
     void updater(sapling job);
     int start();

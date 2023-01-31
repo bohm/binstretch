@@ -23,6 +23,7 @@ public:
     semiatomic_q* finished_tasks;
 
     WEIGHT_HEURISTICS* weight_heurs = nullptr;
+    minibs<MINIBS_SCALE>* mbs = nullptr;
 
     // An index to the overseer tasklist that shows the next available task.
     // Will be accessed concurrently.
