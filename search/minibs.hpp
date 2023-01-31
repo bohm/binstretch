@@ -273,6 +273,21 @@ public:
 
     static constexpr int LAYERS_UB = upper_bound_layers();
 
+    
+    static int itemsum(const std::array<int, DENOMINATOR> &items)
+	{
+	    int ret = 0;
+	    for (int i = 1; i < DENOMINATOR; i++)
+	    {
+		ret += items[i] * i;
+	    }
+	    return ret;
+	}
+
+    static bool feasibility_plausible(const std::array<int, DENOMINATOR> &items)
+	{
+	    return itemsum(items) <= BINS * (DENOMINATOR-1);
+	}
     // Non-static section.
 
     std::vector<std::array<int, DENOMINATOR> > all_itemconfs;
@@ -347,14 +362,31 @@ public:
 	    }
 	}
     
-    void compute_itemconfs()
+    void compute_feasible_itemconfs()
 	{
 	    std::array<int, DENOMINATOR> itemconf = create_max_itemconf();
 	    do
 	    {
-		// fprintf(stderr, "Pushing back itemconf: ");
-		// print_int_array<DENOMINATOR>(itemconf, true);
-		all_itemconfs.push_back(itemconf);
+		bool feasible = false;
+
+		if (no_items(itemconf))
+		{
+		    feasible = true;
+		} else
+		{
+		    if (feasibility_plausible(itemconf))
+			{
+			    feasible = mdp.compute_feasibility(itemconf);
+			}
+		}
+		
+		if (feasible)
+		{
+		    itemconfig<DENOMINATOR> feasible_itemconf(itemconf);
+		    long unsigned int feasible_itemconf_index = feasible_itemconfs.size();
+		    feasible_itemconfs.push_back(feasible_itemconf);
+		    feasible_map[feasible_itemconf.itemhash] = feasible_itemconf_index;
+		}
 	    } while (decrease_itemconf(itemconf));
 	}
 
@@ -720,34 +752,11 @@ public:
     minibs()
 	{
 	    fprintf(stderr, "Minibs<%d>: There will be %d item sizes tracked.\n",DENOM, DENOM - 1);
-	    print_int_array<DENOM>(ITEMS_PER_TYPE, true);
-	    compute_itemconfs();
-	    fprintf(stderr, "Minibs<%d>: Generated %lu itemconfs.\n", DENOM, all_itemconfs.size());
-	    for (auto& itemconf: all_itemconfs)
-	    {
-		bool feasible = false;
+	    fprintf(stderr, "Minibs<%d>: There is at most %d itemconfs, including infeasible ones.\n", DENOM, LAYERS_UB);
 
-		if (no_items(itemconf))
-		{
-		    feasible = true;
-		} else
-		{
-		    feasible = mdp.compute_feasibility(itemconf);
-		}
-		
-		// print_int_array<DENOMINATOR>(itemconf, false);
-		if (feasible)
-		{
-		    // fprintf(stderr, ": true\n");
-		    itemconfig<DENOMINATOR> feasible_itemconf(itemconf);
-		    long unsigned int feasible_itemconf_index = feasible_itemconfs.size();
-		    feasible_itemconfs.push_back(feasible_itemconf);
-		    feasible_map[feasible_itemconf.itemhash] = feasible_itemconf_index;
-		}
-		else{
-		    // fprintf(stderr, ": false\n");
-		}
-	    }
+	    print_int_array<DENOM>(ITEMS_PER_TYPE, true);
+	    compute_feasible_itemconfs();
+	    fprintf(stderr, "Minibs<%d>: Generated %lu itemconfs.\n", DENOM, all_itemconfs.size());
 
 	    all_itemconfs.clear(); // The set of all item configurations is no longer needed.
 

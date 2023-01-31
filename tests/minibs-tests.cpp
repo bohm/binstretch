@@ -7,8 +7,8 @@
 #include <cstdint>
 
 #define IBINS 3
-#define IR 97
-#define IS 71
+#define IR 41
+#define IS 30
 
 
 #include "minibs.hpp"
@@ -62,6 +62,32 @@ void maximum_feasible_tests()
     fprintf(stderr, "For itemconf ");
     ic.print(stderr, false);
     fprintf(stderr, "we can send %d or lower.\n", mf);
+}
+
+template <int DENOMINATOR> void topmost_layer_info(const minibs<DENOMINATOR>& mb)
+{
+    int topmost_counter = 0;
+
+    for (const auto& ic: mb.feasible_itemconfs)
+    {
+	bool no_increase_possible = true;
+	for (int itemtype = 1; itemtype < DENOMINATOR; itemtype++)
+	{
+	    if (mb.feasible_map.contains(ic.virtual_increase(itemtype)))
+	    {
+		no_increase_possible = false;
+		break;
+	    }
+	}
+
+	if (no_increase_possible)
+	{
+	    topmost_counter++;
+	}
+    }
+
+    fprintf(stderr, "Minibs<%d>: %d item configurations which have no feasible increase.\n",
+	    DENOMINATOR, topmost_counter);
 }
 
 template <int DENOMINATOR> void knownsum_tests(const minibs<DENOMINATOR>& mb)
@@ -245,16 +271,16 @@ int main(void)
 {
     zobrist_init();
 
-    constexpr int TESTSIZE = 6;
+    constexpr int TESTSIZE = 12;
     maximum_feasible_tests();
     
     minibs<TESTSIZE> mb;
-    mb.init_knownsum_layer();
-    mb.init_all_layers();
+    // mb.init_knownsum_layer();
+    // mb.init_all_layers();
 
 
-    knownsum_tests<TESTSIZE>(mb);
-    consistency_tests<TESTSIZE>(mb);
+    // knownsum_tests<TESTSIZE>(mb);
+    // consistency_tests<TESTSIZE>(mb);
 
     fprintf(stderr, "There will be %d amounts of item categories.\n", mb.DENOM - 1);
 
@@ -266,6 +292,7 @@ int main(void)
 
     fprintf(stderr, "----\n");
 
+    topmost_layer_info<TESTSIZE>(mb);
 
     print_int_array<mb.DENOM>(mb.ITEMS_PER_TYPE, true);
 
@@ -273,20 +300,6 @@ int main(void)
     // mb.init_all_layers();
 
 
-    loadconf empty;
-    empty.hashinit();
-    empty.assign_and_rehash(33, 1);
-    itemconfig<TESTSIZE> ic;
-    ic.hashinit();
-    int downscaled_item = mb.shrink_item(33);
-    // fprintf(stderr, "Shrunk item %d to scaled size %d.\n", 33, downscaled_item);
-    if (downscaled_item > 0)
-    {
-	ic.increase(downscaled_item);
-    }
-
-    // itemconfig_backtrack<6>(mb, empty, ic, 0);
-	
     single_items_winning<TESTSIZE>(mb);
     return 0;
 }
