@@ -169,14 +169,6 @@ const int ZOBRIST_LAST_BLOCKSIZE = (IBINS-1) % ZOBRIST_LOAD_BLOCKSIZE + 1;
 const int HEURISTIC = 0;
 const int PERMANENT = 1;
 
-// queen's world_rank
-const int QUEEN = 0;
-// a test for queen being the only process working
-#define QUEEN_ONLY (world_size == 1)
-#define BEING_OVERSEER (world_rank != QUEEN)
-#define BEING_QUEEN (world_rank == QUEEN)
-
-
 // bitsize of queen's dpcache
 const unsigned int QUEEN_DPLOG = 26;
 
@@ -218,8 +210,8 @@ const int RECOMMENDED_MONOTONICITY = 20; // ALG wins 10.
 const int RECOMMENDED_MONOTONICITY = 10; 
 #elif IBINS == 3 && IR == 153 && IS == 112
 const int RECOMMENDED_MONOTONICITY = 8;
-#elif IBINS == 3 && IR == 164 && IS == 120
-const int RECOMMENDED_MONOTONICITY = 8;
+// #elif IBINS == 3 && IR == 164 && IS == 120
+// const int RECOMMENDED_MONOTONICITY = 8;
 #elif IBINS == 3 && IR == 194 && IS == 142
 const int RECOMMENDED_MONOTONICITY = 8;
 

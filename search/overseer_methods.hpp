@@ -38,7 +38,7 @@ bool overseer::all_workers_waiting()
 // Actively polls until all workers are waiting.
 void overseer::sleep_until_all_workers_waiting()
 {
-    print_if<COMM_DEBUG>("Overseer %d sleeping until all workers are waiting.\n", world_rank);
+    print_if<COMM_DEBUG>("Overseer %d sleeping until all workers are waiting.\n", multiprocess::world_rank);
     while (true)
     {
 	if (all_workers_waiting())
@@ -47,13 +47,13 @@ void overseer::sleep_until_all_workers_waiting()
 	}
 	std::this_thread::sleep_for(std::chrono::milliseconds(TICK_SLEEP));
     }
-    print_if<COMM_DEBUG>("Overseer %d wakes up.\n", world_rank);
+    print_if<COMM_DEBUG>("Overseer %d wakes up.\n", multiprocess::world_rank);
 }
 
 // Actively polls until all workers are ready.
 void overseer::sleep_until_all_workers_ready()
 {
-    print_if<COMM_DEBUG>("Overseer %d sleeping until all workers are ready.\n", world_rank);
+    print_if<COMM_DEBUG>("Overseer %d sleeping until all workers are ready.\n", multiprocess::world_rank);
     
     while (true)
     {
@@ -75,7 +75,7 @@ void overseer::sleep_until_all_workers_ready()
 		std::this_thread::sleep_for(std::chrono::milliseconds(TICK_SLEEP));
 	}
     }
-    print_if<COMM_DEBUG>("Overseer %d wakes up.\n", world_rank);
+    print_if<COMM_DEBUG>("Overseer %d wakes up.\n", multiprocess::world_rank);
     
 }
 
@@ -108,9 +108,9 @@ void overseer::start()
 
     std::string machine_name = comm.machine_name();
     print_if<PROGRESS>("Overseer reporting for duty: %s, rank %d out of %d instances\n",
-	   machine_name.c_str(), world_rank, world_size);
+	   machine_name.c_str(), multiprocess::world_rank, multiprocess::world_size);
 
-    comm.deferred_construction(world_size);
+    comm.deferred_construction();
     // DEBUG
     // fprintf(stderr, "Overseer sleeping for 15 seconds so gdb can be attached.\n");
     // std::this_thread::sleep_for(std::chrono::seconds(15));
@@ -129,9 +129,8 @@ void overseer::start()
     worker_count = std::get<2>(settings);
 
     print_if<VERBOSE>("Overseer %d at server %s: conflog %d, dplog %d, worker_count %d\n",
-		world_rank, machine_name.c_str(), conflog, dplog, worker_count);
-    zobrist_quintuple zq = comm.bcast_recv_and_allocate_zobrist();
-    std::tie(Zi, Zl, Zlow, Zlast, Zalg) = zq;
+		multiprocess::world_rank, machine_name.c_str(), conflog, dplog, worker_count);
+    comm.bcast_recv_and_assign_zobrist();
 		      
     // compute_thread_ranks();
     comm.send_number_of_workers(worker_count);
@@ -172,7 +171,7 @@ void overseer::start()
     }
     // dpht_el::parallel_init(&dpht, dpht_size, worker_count);
 
-    comm.sync_up(); // Sync before any rounds start.
+    comm.sync_after_initialization(); // Sync before any rounds start.
     bool batch_requested = false;
     root_solved.store(false);
     final_round.store(false); 
@@ -190,7 +189,7 @@ void overseer::start()
 
     while(true)
     {
-	print_if<COMM_DEBUG>("Overseer %d: waiting for round start.\n", world_rank);
+	print_if<COMM_DEBUG>("Overseer %d: waiting for round start.\n", multiprocess::world_rank);
 	// Listen for the start of the round.
 	final_round.store(comm.round_start_and_finality());
 
@@ -210,12 +209,14 @@ void overseer::start()
 		tarray[i].load(transport);
 	    }
 
-  	    auto [tstatus_len, tstatus_transport_copy] = comm.bcast_recv_int_array(QUEEN);
+	    int* tstatus_transport_copy = nullptr;
+	    comm.bcast_recv_allocate_tstatus_transport(&tstatus_transport_copy);
 	    for (int i = 0; i < tcount; i++)
 	    {
 		tstatus[i].store(static_cast<task_status>(tstatus_transport_copy[i]));
 	    }
-	    delete[] tstatus_transport_copy;
+
+	    comm.delete_tstatus_transport(&tstatus_transport_copy);
 
 	    print_if<COMM_DEBUG>("Tarray + tstatus initialized.\n");
 
@@ -245,7 +246,7 @@ void overseer::start()
 		comm.check_root_solved();
 		if (root_solved)
 		{
-		    print_if<PROGRESS>("Overseer %d (on %s): Received root solved, ending round.\n", world_rank, machine_name.c_str());
+		    print_if<PROGRESS>("Overseer %d (on %s): Received root solved, ending round.\n", multiprocess::world_rank, machine_name.c_str());
 
 		    sleep_until_all_workers_waiting();
 		    break;
@@ -260,7 +261,7 @@ void overseer::start()
 		// if (!batch_requested && next_task.load() >= BATCH_SIZE)
 		if (!batch_requested && this->running_low())
 		{
-		    print_if<TASK_DEBUG>("Overseer %d (on %s): Requesting a new batch (next_task: %u, tasklist: %u). \n", world_rank, machine_name.c_str(), next_task.load(), tasks.size());
+		    print_if<TASK_DEBUG>("Overseer %d (on %s): Requesting a new batch (next_task: %u, tasklist: %u). \n", multiprocess::world_rank, machine_name.c_str(), next_task.load(), tasks.size());
 
 		    comm.request_new_batch();
 		    batch_requested = true;
@@ -290,9 +291,9 @@ void overseer::start()
 
 	    } // End of one round for an overseer.
 	    cleanup();
-	    comm.round_end(); 
+	    comm.sync_after_round_end(); 
 	} else { // final_round == true
-	    print_if<COMM_DEBUG>("Overseer %d: received final round, terminating.\n", world_rank);
+	    print_if<COMM_DEBUG>("Overseer %d: received final round, terminating.\n", multiprocess::world_rank);
 	    worker_needed_cv.notify_all();
 
 	    for (int w = 0; w < worker_count; w++)
@@ -312,13 +313,13 @@ void overseer::start()
 	    MEASURE_ONLY(adv_cache->analysis());
 	    MEASURE_ONLY(print_if<true>("Overseer %d: Adversarial state cache size: %" PRIu64
 				     ", filled elements: %" PRIu64 " and empty: %" PRIu64 ".\n",
-				     world_rank, adv_cache->size(), adv_cache->meas.filled_positions,
+				     multiprocess::world_rank, adv_cache->size(), adv_cache->meas.filled_positions,
 				     adv_cache->meas.empty_positions));
 
 	    MEASURE_ONLY(dpc->analysis());
 	    MEASURE_ONLY(print_if<true>("Overseer %d: d.p. cache size: %" PRIu64
 				     ", filled elements: %" PRIu64 " and empty: %" PRIu64 ".\n",
-				     world_rank, dpc->size(), dpc->meas.filled_positions,
+				     multiprocess::world_rank, dpc->size(), dpc->meas.filled_positions,
 				     dpc->meas.empty_positions));
 							
     
@@ -326,7 +327,7 @@ void overseer::start()
 	    delete dpc;
 	    delete adv_cache;
 	    delete[] finished_tasks;
-	    comm.round_end();
+	    comm.sync_after_round_end();
 	    break;
 	}
     }

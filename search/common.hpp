@@ -184,9 +184,6 @@ const bool DISABLE_DP_CACHE = false;
 constexpr bin_int MAX_ITEMS = S*BINS;
 
 char outfile[50];
-// MPI-related globals
-int world_size = 0;
-int world_rank = 0;
 
 std::atomic<bool> root_solved{false};
 std::atomic<bool> termination_signal{false};

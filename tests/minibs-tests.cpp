@@ -6,9 +6,9 @@
 #include <unordered_map>
 #include <cstdint>
 
-#define IBINS 3
-#define IR 41
-#define IS 30
+#define IBINS 10
+#define IR 19
+#define IS 14
 
 
 #include "minibs.hpp"
@@ -271,12 +271,12 @@ int main(void)
 {
     zobrist_init();
 
-    constexpr int TESTSIZE = 12;
+    constexpr int TESTSIZE = 6;
     maximum_feasible_tests();
     
     minibs<TESTSIZE> mb;
-    // mb.init_knownsum_layer();
-    // mb.init_all_layers();
+    mb.init_knownsum_layer();
+    mb.init_all_layers();
 
 
     // knownsum_tests<TESTSIZE>(mb);

@@ -5,6 +5,7 @@
 #include "updater.hpp"
 #include "minimax/sequencing.hpp"
 #include "tasks.hpp"
+#include "net/batches.hpp"
 #include "server_properties.hpp"
 // #include "loadfile.hpp"
 #include "saplings.hpp"
@@ -133,11 +134,7 @@ int queen_class::start()
     performance_timer perf_timer;
     uint64_t sapling_counter = 0;
     
-    comm.deferred_construction(world_size);
-    std::string machine_name = comm.machine_name();
-    print_if<PROGRESS>("Queen: reporting for duty: %s, rank %d out of %d instances\n",
-	    machine_name.c_str(), world_rank, world_size);
-
+    comm.deferred_construction();
     perf_timer.queen_start();
 
     zobrist_init();
@@ -145,7 +142,7 @@ int queen_class::start()
 
     comm.compute_thread_ranks();
     // init_running_lows();
-    init_batches();
+    batches batching(multiprocess::overseer_count());
     
     // std::tuple<unsigned int, unsigned int, unsigned int> settings = server_properties(processor_name);
     // out of the settings, queen does not spawn workers or use ht, only dpht
@@ -168,7 +165,7 @@ int queen_class::start()
 
 
 
-    comm.sync_up(); // Sync before any rounds start.
+    comm.sync_after_initialization(); // Sync before any rounds start.
 
     assumptions assumer;
     if (USING_ASSUMPTIONS && fs::exists(ASSUMPTIONS_FILENAME))
@@ -309,7 +306,7 @@ int queen_class::start()
 	    
 	    // Queen needs to start the round.
 	    print_if<COMM_DEBUG>("Queen: Starting the round.\n");
-	    clear_batches();
+	    batching.clear();
 	    comm.round_start_and_finality(false);
 
 	    collect_tasks(computation_root);
@@ -345,8 +342,8 @@ int queen_class::start()
 	    {
 		tstatus_transport_copy[i] = static_cast<int>(tstatus[i].load());
 	    }
-	    // After "de-atomizing" it, use a generic array broadcast.
-	    comm.bcast_send_int_array(QUEEN, tstatus_transport_copy, tcount);
+	    // After "de-atomizing" it, pass it to all overseers.
+	    comm.bcast_send_tstatus_transport(tstatus_transport_copy, tcount);
 	    delete[] tstatus_transport_copy;
 
 	    print_if<PROGRESS>("Queen: Tasks synchronized.\n");
@@ -365,13 +362,14 @@ int queen_class::start()
 		comm.collect_runlows(); // collect_running_lows();
 
 		// We wish to have the loop here, so that net/ is independent on compose_batch().
-		for (int overseer = 1; overseer < world_size; overseer++)
+		for (int overseer = 1; overseer <= multiprocess::overseer_count(); overseer++)
 		{
 		    if (comm.is_running_low(overseer))
 		    {
 			//check_batch_finished(overseer);
-			compose_batch(batches[overseer]);
-			comm.send_batch(batches[overseer], overseer);
+			batching.compose_batch(overseer, taskpointer, tcount,
+			    tstatus);
+			comm.send_batch(batching.b[overseer], overseer);
 			comm.satisfied_runlow(overseer);
 		    }
 		}
@@ -390,7 +388,7 @@ int queen_class::start()
 	    // collect remaining, unnecessary solutions
 	    destroy_tarray();
 	    destroy_tstatus();
-	    comm.round_end();
+	    comm.sync_after_round_end();
 	    comm.ignore_additional_solutions();
 	}
 	// --- END PARALLEL PHASE ---
@@ -455,7 +453,7 @@ int queen_class::start()
     print_if<COMM_DEBUG>("Queen: starting final round.\n");
     comm.round_start_and_finality(true);
     comm.receive_measurements();
-    comm.round_end();
+    comm.sync_after_round_end();
 
     // Global post-evaluation checks belong here.
     if (ret == 0)
@@ -500,8 +498,7 @@ int queen_class::start()
     // delete_running_lows(); happens upon comm destruction.
 
     delete dpc;
-    delete_batches();
-
+    
     delete qdag;
     return ret;
 }
