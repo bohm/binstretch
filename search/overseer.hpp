@@ -14,7 +14,7 @@ class overseer
 public:
 
     std::vector<worker*> wrkr; // array of worker pointers.
-    
+    std::vector<worker_flags*> w_flags; // array of overseer-worker communication flags.
     std::array<int, BATCH_SIZE> upcoming_batch;
 
     // A list of tasks assigned to an overseer.

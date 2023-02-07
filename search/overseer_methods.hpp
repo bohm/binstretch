@@ -20,7 +20,11 @@ void overseer::cleanup()
 	for (int p = 0; p < worker_count; p++) { finished_tasks[p].clear(); }
 	comm.ignore_additional_signals();
 
-	root_solved.store(false);
+	// root_solved.store(false);
+	for (worker_flags *f : w_flags)
+	{
+	    f->root_solved = false;
+	}
     }
 
 bool overseer::all_workers_waiting()
@@ -106,7 +110,7 @@ void overseer::process_finished_tasks()
 void overseer::start()
 {
 
-    std::string machine_name = comm.machine_name();
+    std::string machine_name = gethost();
     print_if<PROGRESS>("Overseer reporting for duty: %s, rank %d out of %d instances\n",
 	   machine_name.c_str(), multiprocess::world_rank, multiprocess::world_size);
 
@@ -173,7 +177,7 @@ void overseer::start()
 
     comm.sync_after_initialization(); // Sync before any rounds start.
     bool batch_requested = false;
-    root_solved.store(false);
+    // root_solved.store(false);
     final_round.store(false); 
 
     // Spawn solver processes. We set them to be active but they immediately
@@ -181,7 +185,8 @@ void overseer::start()
     for (int i = 0; i < worker_count; i++)
     {
 	wrkr.push_back( new worker(i));
-	threads[i] = std::thread(&worker::start, wrkr[i]);
+	w_flags.push_back(new worker_flags());
+	threads[i] = std::thread(&worker::start, wrkr[i], w_flags[i]);
     }
 
     // Make sure all the worker processes are set up and waiting for the next round.
@@ -243,8 +248,8 @@ void overseer::start()
 	    // Processing loop for an overseer.
 	    while(true)
 	    {
-		comm.check_root_solved();
-		if (root_solved)
+		bool r_solved = comm.check_root_solved(w_flags);
+		if (r_solved)
 		{
 		    print_if<PROGRESS>("Overseer %d (on %s): Received root solved, ending round.\n", multiprocess::world_rank, machine_name.c_str());
 
@@ -263,7 +268,7 @@ void overseer::start()
 		{
 		    print_if<TASK_DEBUG>("Overseer %d (on %s): Requesting a new batch (next_task: %u, tasklist: %u). \n", multiprocess::world_rank, machine_name.c_str(), next_task.load(), tasks.size());
 
-		    comm.request_new_batch();
+		    comm.request_new_batch(multiprocess::world_rank);
 		    batch_requested = true;
 		}
 
@@ -302,6 +307,7 @@ void overseer::start()
 		print_if<DEBUG>("Worker %d joined back.\n", w);
 		ov_meas.add(wrkr[w]->measurements);
 		delete wrkr[w];
+		delete w_flags[w];
 	    }
 	    wrkr.clear();
 

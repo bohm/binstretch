@@ -34,12 +34,11 @@
 // #include "strategies/heuristical.hpp"
 
 // victory check_messages(int task_id)
-void check_messages(int task_id)
+template <minimax MODE> void computation<MODE>::check_messages(int task_id)
 {
-    // check_root_solved();
     // check_termination();
     // fetch_irrelevant_tasks();
-    if (root_solved)
+    if (this->flags != nullptr && this->flags->root_solved)
     {
 	// return victory::irrelevant;
 	throw computation_irrelevant();

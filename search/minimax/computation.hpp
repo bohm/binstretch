@@ -16,6 +16,10 @@ public:
     // --- persistent thread attributes ---
     int monotonicity = 0;
 
+    // A signal from outside of the computation that the solution to the full process
+    // has been found.
+    worker_flags *flags = nullptr;
+
     // --- minimax computation attributes ---
 
     // The bin configuration representing the current state of the game. This
@@ -111,6 +115,7 @@ public:
 	    }
 	}
 
+    void check_messages(int task_id);
     victory heuristic_visit_alg(int pres_item);
     victory adversary(adversary_vertex *adv_to_evaluate, algorithm_vertex *parent_alg);
     victory algorithm(int pres_item, algorithm_vertex *alg_to_evaluate, adversary_vertex *parent_adv);

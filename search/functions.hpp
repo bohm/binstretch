@@ -3,6 +3,27 @@
 
 // Small helper functions that do not need to be adjusted often.
 
+// A Windows/Linux inclusion:
+
+#ifdef _WIN32
+#include <winsock.h>
+#else
+#include <unistd.h>
+#endif
+
+#include <string>
+
+std::string gethost()
+{
+
+    char buf[0x100];
+    if( gethostname(buf, sizeof(buf)) == 0 )
+    {
+	return std::string(buf);
+    }
+
+    return std::string();
+}
 
 // A fprintf(stderr) version of the #error macro.
 void ERROR(const char *format, ...)

@@ -37,8 +37,7 @@ private:
     synchronizer<COMMUNICATING_THREADS> initialization_end;
     synchronizer<COMMUNICATING_THREADS> round_end;
 
-    // Running low -- a non-blocking signal (from the single overseer to the queen).
-    std::atomic<bool> running_low;
+    std::array<std::atomic<bool>, COMMUNICATING_THREADS> running_low;
     
     // Root solved -- a non-blocking signal.
     std::atomic<bool> root_solved_signal;
@@ -93,7 +92,7 @@ public:
     void ignore_additional_signals();
     void check_root_solved();
     void send_solution_pair(int ftask_id, int solution);
-    void request_new_batch();
+    void request_new_batch(int overseer_id);
     bool try_receiving_batch(std::array<int, BATCH_SIZE>& upcoming_batch);
 
     // Located in: net/local/qcomm.hpp

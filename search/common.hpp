@@ -21,7 +21,8 @@
 #define __STDC_FORMAT_MACROS
 #include <inttypes.h>
 
-#include "constants.hpp" // Non-changeable system constants.
+#include "constants.hpp" // Non-changeable system constants and recommendations.
+#include "small_classes.hpp" // Small classes and enum classes.
 
 constexpr bool PROGRESS = true; // Whether to print progress info to stderr.
 constexpr bool VERBOSE = true; // Further information about progress.
@@ -185,7 +186,6 @@ constexpr bin_int MAX_ITEMS = S*BINS;
 
 char outfile[50];
 
-std::atomic<bool> root_solved{false};
 std::atomic<bool> termination_signal{false};
 
 bool generating_tasks;

@@ -74,20 +74,12 @@ private:
 
 public:
     
-    std::string machine_name()
-	{
-	    int name_len = 0;
-	    char processor_name[MPI_MAX_PROCESSOR_NAME];
-	    MPI_Get_processor_name(processor_name, &name_len);
-	    return std::string(processor_name);
-	}
-    
     void deferred_construction()
 	{
 	    running_low = new bool[multiprocess::world_size];
 	    workers_per_overseer = new int[multiprocess::world_size];
 
-	    std::string name = machine_name();
+	    std::string name = gethost();
 	    print_if<PROGRESS>("Queen: reporting for duty: %s, rank %d out of %d instances\n",
 			       name.c_str(), multiprocess::world_rank,
 			       multiprocess::world_size);
@@ -160,9 +152,9 @@ public:
 
     // mpi_ocomm.hpp
     void ignore_additional_signals();
-    void check_root_solved();
+    bool check_root_solved(std::vector<worker_flags*>& w_flags);
     void send_solution_pair(int ftask_id, int solution);
-    void request_new_batch();
+    void request_new_batch(int _);
     bool try_receiving_batch(std::array<int, BATCH_SIZE>& upcoming_batch);
 
     // mpi_qcomm.hpp
