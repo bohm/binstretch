@@ -33,27 +33,6 @@
 // #include "strategies/abstract.hpp"
 // #include "strategies/heuristical.hpp"
 
-// victory check_messages(int task_id)
-template <minimax MODE> void computation<MODE>::check_messages(int task_id)
-{
-    // check_termination();
-    // fetch_irrelevant_tasks();
-    if (this->flags != nullptr && this->flags->root_solved)
-    {
-	// return victory::irrelevant;
-	throw computation_irrelevant();
-    }
-
-    if (tstatus[task_id].load() == task_status::pruned)
-    {
-	//print_if<true>("Worker %d works on an irrelevant thread.\n", world_rank);
-	// return victory::irrelevant;
-	throw computation_irrelevant();
-
-    }
-//    return victory::uncertain;
-}
-
 // Idea: The minimax algorithm normally behaves like a DFS, choosing
 // one uncertain path and following it. However, since the sheer size
 // of the cache, it might be smarter to just quickly visit all lower
@@ -290,6 +269,12 @@ template <minimax MODE> victory computation<MODE>::heuristic_visit_alg(int pres_
 #define GEN_ONLY(x) if (MODE == minimax::generating) {x;}
 #define EXP_ONLY(x) if (MODE == minimax::exploring) {x;}
 
+
+// TODO: not complete (and I am not sure it is worth completing).
+template<minimax MODE> victory computation<MODE>::minimax()
+{
+    return victory::uncertain;
+}
 
 template<minimax MODE> victory computation<MODE>::adversary(adversary_vertex *adv_to_evaluate,
 							    algorithm_vertex *parent_alg)
@@ -964,6 +949,7 @@ template <minimax MODE> victory generate(sapling start_sapling, computation<MODE
 {
     duplicate(&(comp->bstate), &start_sapling.root->bc);
     comp->bstate.hashinit();
+    comp->itemdepth = comp->bstate.itemcount_explicit();
     if (USING_HEURISTIC_WEIGHTSUM)
     {
 	comp->bstate_weight_array = {};

@@ -1,5 +1,4 @@
-#ifndef _OVERSEER_HPP
-#define _OVERSEER_HPP 1
+#pragma once
 
 #include "common.hpp"
 #include "measure_structures.hpp"
@@ -55,5 +54,3 @@ overseer* ov;
 // A global variable, defined elsewhere, for performance measurements which are common to the
 // whole overseer.
 // measure_attr ov_meas;
-
-#endif // _OVERSEER_HPP 
