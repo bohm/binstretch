@@ -751,18 +751,10 @@ public:
     minibs()
 	{
 	    fprintf(stderr, "Minibs<%d>: There will be %d item sizes tracked.\n",DENOM, DENOM - 1);
-<<<<<<< HEAD
-	    fprintf(stderr, "Minibs<%d>: There is at most %lu itemconfs, including infeasible ones.\n", DENOM, LAYERS_UB);
-
-	    print_int_array<DENOM>(ITEMS_PER_TYPE, true);
-	    compute_feasible_itemconfs();
-	    fprintf(stderr, "Minibs<%d>: %lu itemconfs are feasible.\n", DENOM, feasible_itemconfs.size());
-=======
 	    fprintf(stderr, "Minibs<%d>: There is at most %" PRIu64 " itemconfs, including infeasible ones.\n", DENOM, LAYERS_UB);
 
 	    print_int_array<DENOM>(ITEMS_PER_TYPE, true);
 	    compute_feasible_itemconfs();
 	    fprintf(stderr, "Minibs<%d>: %zu itemconfs are feasible.\n", DENOM, feasible_itemconfs.size());
->>>>>>> 4e6d983ffeac657e039bcb3b7f48767a1a431c29
 	}
 };
