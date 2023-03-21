@@ -191,7 +191,7 @@ void fix_and_remove_tasks_rec(dag *d, algorithm_vertex *v)
     } else
     {
 	v->print(stderr, true);
-	ERROR("An algorithmic vertex was %s, neither fresh, fixed nor finished.", state_name(v->state).c_str());
+	ERRORPRINT("An algorithmic vertex was %s, neither fresh, fixed nor finished.", state_name(v->state).c_str());
     }
 
     for (alg_outedge *e : v->out)

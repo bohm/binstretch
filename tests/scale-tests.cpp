@@ -2,9 +2,9 @@
 #include <cstdlib>
 #include <unordered_map>
 
-#define IBINS 3
-#define IR 56
-#define IS 41
+#define IBINS 9
+#define IR 19
+#define IS 14
 
 #include "common.hpp"
 
@@ -226,9 +226,9 @@ int main(void)
     // weight_heuristics<scale_halves> halves_only;
     // weight_heuristics<scale_quintiles> quintiles_only;
 
-    weight_heuristics<scale_thirds> thirds_only;
+    // weight_heuristics<scale_thirds> thirds_only;
     weight_heuristics<scale_halves, scale_thirds> two_heurs;
-    weight_heuristics<scale_halves, scale_thirds, scale_quarters> three_heurs;
+    // weight_heuristics<scale_halves, scale_thirds, scale_quarters> three_heurs;
 
     // weight_heuristics<scale_thirds, scale_quarters> thirds_and_quarters;
 

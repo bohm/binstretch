@@ -84,6 +84,8 @@ constexpr int MAX_TOTAL_WEIGHT = MAX_WEIGHT * IBINS;
 const int RECOMMENDED_MONOTONICITY = 5;
 #elif IBINS == 3 && IR == 56 && IS == 41
 const int RECOMMENDED_MONOTONICITY = 40;
+#elif IBINS == 3 && IR == 72 && IS == 53
+const int RECOMMENDED_MONOTONICITY = 6; // Works, but of course better fractions are also lower bounds.
 #elif IBINS == 3 && IR == 86 && IS == 63
 const int RECOMMENDED_MONOTONICITY = 6;
 #elif IBINS == 3 && IR == 112 && IS == 82
@@ -104,7 +106,9 @@ const int RECOMMENDED_MONOTONICITY = 15;
 #elif IBINS == 4 && IR == 19 && IS == 14
 const int RECOMMENDED_MONOTONICITY = 2;
 #elif IBINS == 4 && IR == 72 && IS == 53
-const int RECOMMENDED_MONOTONICITY = 15;
+const int RECOMMENDED_MONOTONICITY = 6;
+// #elif IBINS == 4 && IR == 60 && IS == 44
+// const int RECOMMENDED_MONOTONICITY = 43;
 #elif IBINS >= 8 && IR == 19 && IS == 14
 const int RECOMMENDED_MONOTONICITY = 1;
 #elif IBINS == 6 && IR == 15 && IS == 11

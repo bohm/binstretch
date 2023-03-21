@@ -1,17 +1,15 @@
 #include <cstdio>
-#include <numeric>
 #include <array>
 #include <vector>
-#include <cstring>
 #include <unordered_map>
 #include <cstdint>
 
-#define IBINS 10
+#define IBINS 5
 #define IR 19
 #define IS 14
 
 
-#include "minibs.hpp"
+#include "../search/minibs.hpp"
 
 template <int DENOMINATOR> void single_items_winning(minibs<DENOMINATOR> &mb)
 {
@@ -271,16 +269,16 @@ int main(void)
 {
     zobrist_init();
 
-    constexpr int TESTSIZE = 6;
+    constexpr int TEST_SIZE = 6;
     maximum_feasible_tests();
     
-    minibs<TESTSIZE> mb;
+    minibs<TEST_SIZE> mb;
     mb.init_knownsum_layer();
     mb.init_all_layers();
 
 
-    // knownsum_tests<TESTSIZE>(mb);
-    // consistency_tests<TESTSIZE>(mb);
+    // knownsum_tests<TEST_SIZE>(mb);
+    // consistency_tests<TEST_SIZE>(mb);
 
     fprintf(stderr, "There will be %d amounts of item categories.\n", mb.DENOM - 1);
 
@@ -292,14 +290,11 @@ int main(void)
 
     fprintf(stderr, "----\n");
 
-    topmost_layer_info<TESTSIZE>(mb);
+    topmost_layer_info<TEST_SIZE>(mb);
 
     print_int_array<mb.DENOM>(mb.ITEMS_PER_TYPE, true);
 
-    // mb.init_knownsum_layer();
-    // mb.init_all_layers();
 
-
-    single_items_winning<TESTSIZE>(mb);
+    single_items_winning<TEST_SIZE>(mb);
     return 0;
 }

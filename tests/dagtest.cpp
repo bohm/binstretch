@@ -1,15 +1,14 @@
 // Set constants for testing which are usually set at build time by the user.
-#define _BINS 3
-#define _R  4
-#define _S  3
-#define _I_S {}
+#define IBINS 3
+#define IR  4
+#define IS  3
 
-#include "../common.hpp"
-#include "../hash.hpp"
-#include "../binconf.hpp"
-#include "../dag/dag.hpp"
-#include "../dag/partial.hpp"
-#include "../savefile.hpp"
+#include "../search/common.hpp"
+#include "../search/hash.hpp"
+#include "../search/binconf.hpp"
+#include "../search/dag/dag.hpp"
+#include "../search/dag/partial.hpp"
+#include "../search/savefile.hpp"
 
 int main(void)
 {

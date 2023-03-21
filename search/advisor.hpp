@@ -69,7 +69,7 @@ public:
 	    FILE* advicefin = fopen(filename, "r");
 	    if (advicefin == NULL)
 	    {
-		ERROR("Unable to open file %s\n", filename);
+		ERRORPRINT("Unable to open file %s\n", filename);
 	    }
 
 	    while(!feof(advicefin))
@@ -95,7 +95,7 @@ public:
 		bin_int suggestion = 0;
 		if(sscanf(rest.c_str(), " suggestion: %d", &suggestion) != 1)
 		{
-		    ERROR("Suggestion %d failed to load.\n", adv_arr.size());
+		    ERRORPRINT("Suggestion %d failed to load.\n", adv_arr.size());
 		}
 
 		curbc.consistency_check();
