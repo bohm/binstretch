@@ -3,6 +3,26 @@
 
 // Auxiliary functions that make the minimax code cleaner.
 
+template <minimax MODE> void computation<MODE>::check_messages(int task_id)
+{
+    // check_termination();
+    // fetch_irrelevant_tasks();
+    if (this->flags != nullptr && this->flags->root_solved)
+    {
+	// return victory::irrelevant;
+	throw computation_irrelevant();
+    }
+
+    if (tstatus[task_id].load() == task_status::pruned)
+    {
+	//print_if<true>("Worker %d works on an irrelevant thread.\n", world_rank);
+	// return victory::irrelevant;
+	throw computation_irrelevant();
+
+    }
+}
+
+
 // Computes moves that adversary wishes to make. There may be a strategy
 // involved or we may be in a heuristic situation, where we know what to do.
 

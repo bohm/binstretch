@@ -18,123 +18,8 @@ typedef uint64_t llu;
 typedef signed char tiny;
 
 
-
-// Victory states.
-// The meaning of uncertain = yet to be evaluated, not enough data, postponed (perhaps).
-// The maaning of irrelevant = no longer important, can be freely passed above, computation is over.
-
-enum class victory {uncertain, alg, adv, irrelevant};
-
-void print(FILE *stream, const victory& win)
-{
-    switch(win)
-    {
-    case victory::uncertain:
-	fprintf(stream, "uncertain"); break;
-    case victory::adv:
-	fprintf(stream, "adv wins"); break;
-    case victory::alg:
-	fprintf(stream, "alg wins"); break;
-    case victory::irrelevant:
-	fprintf(stream, "irrelevant"); break;
-    }
-}
-
-template <bool PARAM> void print(FILE *stream, const victory& win)
-{
-    if (PARAM)
-    {
-	print(stream, win);
-    }
-}
-
 // Output types are no longer used.
 // enum class output_type {tree, dag, coq};
-
-// Types of adversarial heuristics.
-// enum class heuristic {simple, large_item, five_nine };
-enum class heuristic {large_item, five_nine };
-
-void print(FILE *stream, const heuristic& type)
-{
-    switch(type)
-    {
-//     case heuristic::simple:
-// 	fprintf(stream, "simple"); break;
-    case heuristic::large_item:
-	fprintf(stream, "large item"); break;
-    case heuristic::five_nine:
-	fprintf(stream, "five/nine"); break;
-    }
-}
-
-template <bool PARAM> void print(FILE *stream, const heuristic& type)
-{
-    if (PARAM)
-    {
-	print(stream, type);
-    }
-}
-
-
-
-// Minimax states.
-enum class minimax {generating, exploring, updating};
-// States of a task.
-enum class task_status {available, batched, pruned, alg_win, adv_win, irrelevant};
-
-enum class updater_states {postponed, terminating, overdue, irrelevant};
-
-// States of a vertex in a currently evaluating minimax graph.
-enum class vert_state {fresh, finished, expandable, expanding, fixed};
-
-std::string state_name(vert_state st)
-{
-    switch (st)
-    {
-    case vert_state::fresh:
-	return "fresh";
-	break;
-    case vert_state::finished:
-	return "finished";
-	break;
-    case vert_state::expandable:
-	return "expandable";
-	break;
-    case vert_state::expanding:
-	return "expanding";
-	break;
-    default:
-    case vert_state::fixed:
-	return "fixed";
-	break;
-    }
-}
-
-enum class leaf_type {nonleaf, heuristical, trueleaf, boundary, assumption};
-
-std::string leaf_type_name(leaf_type lt)
-{
-    switch (lt)
-    {
-    case leaf_type::heuristical:
-	return "heuristical";
-	break;
-    case leaf_type::trueleaf:
-	return "trueleaf";
-	break;
-    case leaf_type::boundary:
-	return "boundary";
-	break;
-    case leaf_type::assumption:
-	return "assumption";
-	break;
-    default:
-    case leaf_type::nonleaf:
-	return "nonleaf";
-	break;
-    }
-}
 
 typedef int8_t maybebool;
 
@@ -168,14 +53,6 @@ const int ZOBRIST_LAST_BLOCKSIZE = (IBINS-1) % ZOBRIST_LOAD_BLOCKSIZE + 1;
 // modes for pushing into dynprog cache
 const int HEURISTIC = 0;
 const int PERMANENT = 1;
-
-// queen's world_rank
-const int QUEEN = 0;
-// a test for queen being the only process working
-#define QUEEN_ONLY (world_size == 1)
-#define BEING_OVERSEER (world_rank != QUEEN)
-#define BEING_QUEEN (world_rank == QUEEN)
-
 
 // bitsize of queen's dpcache
 const unsigned int QUEEN_DPLOG = 26;
@@ -221,9 +98,12 @@ const int RECOMMENDED_MONOTONICITY = 10;
 #elif IBINS == 3 && IR == 153 && IS == 112
 const int RECOMMENDED_MONOTONICITY = 8;
 #elif IBINS == 3 && IR == 164 && IS == 120
-const int RECOMMENDED_MONOTONICITY = 8;
+const int RECOMMENDED_MONOTONICITY = 15;
 #elif IBINS == 3 && IR == 194 && IS == 142
-const int RECOMMENDED_MONOTONICITY = 8;
+const int RECOMMENDED_MONOTONICITY = 15;
+#elif IBINS == 3 && IR == 205 && IS == 150
+const int RECOMMENDED_MONOTONICITY = 15;
+
 
 
 #elif IBINS == 4 && IR == 19 && IS == 14

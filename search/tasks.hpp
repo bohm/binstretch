@@ -230,10 +230,10 @@ void destroy_tstatus()
 {
     delete[] tstatus; tstatus = NULL;
 
-    if (BEING_QUEEN)
-    {
-	tstatus_temporary.clear();
-    }
+    // if (BEING_QUEEN)
+    // {
+    tstatus_temporary.clear();
+    // }
 }
 
 // builds an inverse task map after all tasks are inserted into the task array.
@@ -488,86 +488,6 @@ victory completion_check(uint64_t hash)
     }
 
     return victory::uncertain;
-}
-
-// -- batching --
-int taskpointer = 0;
-int (*batches)[BATCH_SIZE]; // the queen stores the last batch sent out to each overseer, for debugging purposes
-
-void init_batches()
-{
-    batches = new int[world_size+1][BATCH_SIZE]; 
-}
-
-void clear_batches()
-{
-    for (int i = 0; i <= world_size; i++)
-    {
-	for (int j = 0; j < BATCH_SIZE; j++)
-	{
-	    batches[i][j] = -1;
-	}
-    }
-}
-
-
-void delete_batches()
-{
-    delete batches;
-    batches = NULL;
-}
-
-void check_batch_finished(int overseer)
-{
-/*
-    for (int t = 0; t < BATCH_SIZE; t++)
-    {
-	if (batches[overseer][t] == -1)
-	{
-	    continue;
-	}
-
-	int task_status = tstatus[batches[overseer][t]].load();
-
-	if (task_status == TASK_PRUNED || task_status == 0 || task_status == 1)
-	{
-	    continue;
-	} else
-	{
-	    print_if<true>("Task status of task %d sent in batch position %d to overseer %d is %d even though overseer asks for a new batch.\n",
-			batches[overseer][t], t, overseer, task_status );
-            assert(task_status == TASK_PRUNED || task_status == 0 || task_status == 1);
-	}
-
-    }
-*/
-}
-
-void compose_batch(int *batch)
-{
-    int i = 0;
-    while(i < BATCH_SIZE)
-    {
-	if (taskpointer >= tcount)
-	{
-	    // no more tasks to send out
-	    batch[i] = NO_MORE_TASKS;
-	} else
-	{
-	    task_status status = tstatus[taskpointer].load(std::memory_order_acquire);
-	    if (status == task_status::available)
-	    {
-		print_if<TASK_DEBUG>("Added task %d into the next batch.\n", taskpointer);
-		batch[i] = taskpointer++;
-	    } else {
-		print_if<TASK_DEBUG>("Task %d has status %d, skipping.\n", taskpointer, status);
-		taskpointer++;
-		continue;
-	    }
-	}
-	assert(batch[i] >= -1 && batch[i] < tcount);
-	i++;
-    }
 }
 
 /* void mark_task_as_expanadable(adversary_vertex *v, int regrow_level)

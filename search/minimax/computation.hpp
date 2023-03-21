@@ -13,8 +13,13 @@
 template <minimax MODE> class computation
 {
 public:
+    constexpr static unsigned int MAX_RECURSION_DEPTH = MAX_ITEMS; // Potentially improve the upper bound here.
     // --- persistent thread attributes ---
     int monotonicity = 0;
+
+    // A signal from outside of the computation that the solution to the full process
+    // has been found.
+    worker_flags *flags = nullptr;
 
     // --- minimax computation attributes ---
 
@@ -111,7 +116,16 @@ public:
 	    }
 	}
 
+    void check_messages(int task_id);
     victory heuristic_visit_alg(int pres_item);
+
+    // An experimental unroll of the recursion.
+    std::array<int, MAX_RECURSION_DEPTH> unpacked_items = {};
+    std::array<adversary_vertex *, MAX_RECURSION_DEPTH> adv_to_evaluate;
+    std::array<adversary_vertex *, MAX_RECURSION_DEPTH> alg_to_evaluate;
+    victory minimax();
+
+    // The non-unrolled version.
     victory adversary(adversary_vertex *adv_to_evaluate, algorithm_vertex *parent_alg);
     victory algorithm(int pres_item, algorithm_vertex *alg_to_evaluate, adversary_vertex *parent_adv);
 

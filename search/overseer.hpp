@@ -1,5 +1,4 @@
-#ifndef _OVERSEER_HPP
-#define _OVERSEER_HPP 1
+#pragma once
 
 #include "common.hpp"
 #include "measure_structures.hpp"
@@ -14,7 +13,7 @@ class overseer
 public:
 
     std::vector<worker*> wrkr; // array of worker pointers.
-    
+    std::vector<worker_flags*> w_flags; // array of overseer-worker communication flags.
     std::array<int, BATCH_SIZE> upcoming_batch;
 
     // A list of tasks assigned to an overseer.
@@ -55,5 +54,3 @@ overseer* ov;
 // A global variable, defined elsewhere, for performance measurements which are common to the
 // whole overseer.
 // measure_attr ov_meas;
-
-#endif // _OVERSEER_HPP 

@@ -1,11 +1,32 @@
-#ifndef _FUNCTIONS_HPP
-#define _FUNCTIONS_HPP
+#pragma once
 
 // Small helper functions that do not need to be adjusted often.
 
+// A Windows/Linux inclusion:
+
+#ifdef _WIN32
+#define NOMINMAX
+#include <winsock.h>
+#else
+#include <unistd.h>
+#endif
+
+#include <string>
+
+std::string gethost()
+{
+
+    char buf[0x100];
+    if( gethostname(buf, sizeof(buf)) == 0 )
+    {
+	return std::string(buf);
+    }
+
+    return std::string();
+}
 
 // A fprintf(stderr) version of the #error macro.
-void ERROR(const char *format, ...)
+void ERRORPRINT(const char *format, ...)
 {
     va_list argptr;
     va_start(argptr, format);
@@ -153,4 +174,3 @@ template <int NUM> void print_int_array(const std::array<int, NUM>& arr,
 {
     print_int_array<NUM>(stderr, arr, trailing_newline); 
 }
-#endif

@@ -18,7 +18,7 @@ int worker::get_task()
 
     while (true)
     {
-	if (root_solved)
+	if (flags != nullptr && flags->root_solved)
 	{
 	    return -2; // Should be irrelevant, we check for root_solved immediately afterwards.
 	}
@@ -72,6 +72,7 @@ victory worker::solve(const task *t, const int& task_id)
     }
  
     //tat.last_item = t->last_item;
+    comp.flags = this->flags;
     comp.task_id = task_id;
     computation_root = NULL; // we do not run GENERATE or EXPAND on the workers currently
 
@@ -113,8 +114,10 @@ victory worker::solve(const task *t, const int& task_id)
 // Selects new tasks until they run out.
 // It assumes tarray, tstatus etc are constructed (by the networking thread).
 // Terminates with root_solved.
-void worker::start()
+void worker::start(worker_flags *assigned_flags)
 {
+
+    this->flags = assigned_flags;
     task current_task;
     std::chrono::time_point<std::chrono::system_clock>	processing_start, processing_end;
 
@@ -145,12 +148,12 @@ void worker::start()
 
 	// no_more_tasks = false;
 
-	while(!root_solved)
+	while(!flags->root_solved)
 	{
 	    current_task_id = get_task(); // this will actively wait for a task, if necessary
 	    // print_if<true>("Worker %d processing task %d.\n", thread_rank + tid, current_task_id);
 
-	    if (root_solved)
+	    if (flags->root_solved)
 	    {
 		print_if<TASK_DEBUG>("Worker %d: root solved, breaking.\n", thread_rank + tid);
 		break;

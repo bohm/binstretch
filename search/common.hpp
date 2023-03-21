@@ -21,24 +21,25 @@
 #define __STDC_FORMAT_MACROS
 #include <inttypes.h>
 
-#include "constants.hpp" // Non-changeable system constants.
+#include "constants.hpp" // Non-changeable system constants and recommendations.
+#include "small_classes.hpp" // Small classes and enum classes.
 
 constexpr bool PROGRESS = true; // Whether to print progress info to stderr.
 constexpr bool VERBOSE = true; // Further information about progress.
-constexpr bool OUTPUT = false; // Whether to produce output.
-constexpr bool REGROW = false; // Whether to regrow or just terminate after first iteration.
+constexpr bool OUTPUT = true; // Whether to produce output.
+constexpr bool REGROW = true; // Whether to regrow or just terminate after first iteration.
 constexpr bool MEASURE = false; // Whether to collect and print measurements to stderr.
 constexpr bool FURTHER_MEASURE = false; // Whether to collect more detailed data that is not needed often.
 
 // When producing output, how many times should a tree be regrown.
 // Note that REGROW_LIMIT = 0 still means a full tree will be generated.
 // const int REGROW_LIMIT = 65535;
-const int REGROW_LIMIT = 3;
+const int REGROW_LIMIT = 2;
 
 const int TASK_LOAD_INIT = 10; // A bound on total load of a configuration before we split it into a task.
-const int TASK_LOAD_STEP = 6; // The amount by which the load can increase when regrowing the tree.
+const int TASK_LOAD_STEP = 10; // The amount by which the load can increase when regrowing the tree.
 const int TASK_DEPTH_INIT = 5; //The maximum depth of a vertex in the tree before it is made into a task.
-const int TASK_DEPTH_STEP = 2; // The amount by which the depth is increased when regrowing.
+const int TASK_DEPTH_STEP = 1; // The amount by which the depth is increased when regrowing.
 
 // const int TASK_LOAD_INIT = 0;
 // const int TASK_DEPTH_INIT = 1;
@@ -128,7 +129,7 @@ constexpr bool USING_HEURISTIC_WEIGHTSUM = false && (!USING_HEURISTIC_KNOWNSUM) 
 #define WEIGHT_HEURISTICS weight_heuristics<scale_halves, scale_thirds>
 
 constexpr bool USING_MINIBINSTRETCHING = true;
-constexpr int MINIBS_SCALE = 6;
+constexpr int MINIBS_SCALE = 12;
 
 // batching constants
 const int BATCH_SIZE = 50;
@@ -184,11 +185,7 @@ const bool DISABLE_DP_CACHE = false;
 constexpr bin_int MAX_ITEMS = S*BINS;
 
 char outfile[50];
-// MPI-related globals
-int world_size = 0;
-int world_rank = 0;
 
-std::atomic<bool> root_solved{false};
 std::atomic<bool> termination_signal{false};
 
 bool generating_tasks;

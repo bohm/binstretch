@@ -1,5 +1,4 @@
-#ifndef _FILETOOLS_HPP
-#define _FILETOOLS_HPP 1
+#pragma once
 
 #include <ctime>
 #include <iostream>
@@ -83,7 +82,7 @@ std::array<bin_int, BINS+1> load_segment_with_loads(std::stringstream& str_s)
 	str_s >> load;
 	if (load < 0 || load >= R)
 	{
-	    ERROR("The %d-th load from the loads list is out of bounds.", i);
+	    ERRORPRINT("The %d-th load from the loads list is out of bounds.", i);
 	}
 	ret[i] = load;
 	load = -1;
@@ -111,7 +110,7 @@ std::array<bin_int, S+1> load_segment_with_items(std::stringstream& str_s)
 	str_s >> item_size;
 	if (item_size < 0 || item_size > BINS*S)
 	{
-	    ERROR("The %d-th item from the items segment is out of bounds.\n", j);
+	    ERRORPRINT("The %d-th item from the items segment is out of bounds.\n", j);
 	}
 
 	ret[j] = item_size;
@@ -131,7 +130,7 @@ bin_int load_last_item_segment(std::stringstream& str_s)
 
     if (last_item < 0 || last_item > BINS*S)
     {
-	ERROR("Could not scan the last item field from the input file.\n");
+	ERRORPRINT("Could not scan the last item field from the input file.\n");
     }
     return last_item;
 }
@@ -153,14 +152,14 @@ binconf loadbinconf_singlefile(const char* filename)
     FILE* fin = fopen(filename, "r");
     if (fin == NULL)
     {
-	ERROR("Unable to open file %s\n", filename);
+	ERRORPRINT("Unable to open file %s\n", filename);
     }
 
     char linebuf[1024];
     char* retptr = fgets(linebuf, 1024, fin);
     if (retptr == nullptr)
     {
-	ERROR("File %s found, but a line could not be loaded.\n", filename);
+	ERRORPRINT("File %s found, but a line could not be loaded.\n", filename);
     }
     
     fclose(fin);
@@ -183,7 +182,7 @@ public:
 	    // fprintf(stderr, "File %s open for writing.\n", path.c_str());
 	    if(logfile == nullptr)
 	    {
-		ERROR("File %s not possible to be opened.\n", path.c_str());
+		ERRORPRINT("File %s not possible to be opened.\n", path.c_str());
 	    }
 	}
     debug_logger(std::string filename)
@@ -232,5 +231,3 @@ public:
 };
 
 thread_local debug_logger* dlog = nullptr;
-
-#endif // _FILETOOLS_HPP

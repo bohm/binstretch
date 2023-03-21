@@ -556,7 +556,7 @@ public:
 		}
 	    } while (decrease(&iterated_lc));
 
-	    fprintf(stderr, "Knownsum layer: Winning positions: %" PRIu64 " and %" PRIu64 " losing, elements in cache %ld\n",
+	    fprintf(stderr, "Knownsum layer: Winning positions: %" PRIu64 " and %" PRIu64 " losing, elements in cache %zu\n",
 		    winning_loadconfs, losing_loadconfs, alg_knownsum_winning.size());
 
 	}
@@ -755,6 +755,6 @@ public:
 
 	    print_int_array<DENOM>(ITEMS_PER_TYPE, true);
 	    compute_feasible_itemconfs();
-	    fprintf(stderr, "Minibs<%d>: %lu itemconfs are feasible.\n", DENOM, feasible_itemconfs.size());
+	    fprintf(stderr, "Minibs<%d>: %zu itemconfs are feasible.\n", DENOM, feasible_itemconfs.size());
 	}
 };
