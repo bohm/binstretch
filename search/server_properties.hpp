@@ -15,7 +15,7 @@ std::tuple<unsigned int, unsigned int, unsigned int> server_properties(const cha
 	// return std::make_tuple(25, 25, 8); // A debug setup.
 
     } else if ( (strcmp(server_name, "nasturcja") == 0) ){
-        return std::make_tuple(35, 34, 40);
+        return std::make_tuple(34, 34, 40);
     } else {
 	return std::make_tuple(31, 31, 4);
     }

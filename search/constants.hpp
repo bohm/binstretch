@@ -79,6 +79,7 @@ constexpr int MAX_TOTAL_WEIGHT = MAX_WEIGHT * IBINS;
 
 // Plugging in some common monotonicity values.
 
+// 3 bins:
 #if IBINS == 3 && IR == 45 && IS == 33
 const int RECOMMENDED_MONOTONICITY = 5;
 #elif IBINS == 3 && IR == 56 && IS == 41
@@ -91,8 +92,6 @@ const int RECOMMENDED_MONOTONICITY = 8;
 const int RECOMMENDED_MONOTONICITY = IS-1;
 #elif IBINS == 3 && IR == 138 && IS == 101
 const int RECOMMENDED_MONOTONICITY = 20; // ALG wins 10.
-#elif IBINS == 3 && IR == 149 && IS == 109
-const int RECOMMENDED_MONOTONICITY = 10; 
 #elif IBINS == 3 && IR == 153 && IS == 112
 const int RECOMMENDED_MONOTONICITY = 8;
 #elif IBINS == 3 && IR == 164 && IS == 120
@@ -101,13 +100,11 @@ const int RECOMMENDED_MONOTONICITY = 15;
 const int RECOMMENDED_MONOTONICITY = 15;
 #elif IBINS == 3 && IR == 205 && IS == 150
 const int RECOMMENDED_MONOTONICITY = 15;
-
-
-
+// 4 bins:
 #elif IBINS == 4 && IR == 19 && IS == 14
 const int RECOMMENDED_MONOTONICITY = 2;
-// #elif IBINS == 4 && IR == 60 && IS == 44
-// const int RECOMMENDED_MONOTONICITY = 43;
+#elif IBINS == 4 && IR == 72 && IS == 53
+const int RECOMMENDED_MONOTONICITY = 15;
 #elif IBINS >= 8 && IR == 19 && IS == 14
 const int RECOMMENDED_MONOTONICITY = 1;
 #elif IBINS == 6 && IR == 15 && IS == 11
