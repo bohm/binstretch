@@ -260,9 +260,9 @@ public:
 
     static constexpr std::array<int, DENOMINATOR> ITEMS_PER_TYPE = max_items_per_type();
     
-    static constexpr int upper_bound_layers()
+    static constexpr uint64_t upper_bound_layers()
 	{
-	    int ret = 1;
+	    uint64_t ret = 1;
 	    for (int i = 1; i < DENOMINATOR; i++)
 	    {
 		ret *= (ITEMS_PER_TYPE[i]+1);
@@ -271,7 +271,7 @@ public:
 	    return ret;
 	}
 
-    static constexpr int LAYERS_UB = upper_bound_layers();
+    static constexpr uint64_t LAYERS_UB = upper_bound_layers();
 
     
     static int itemsum(const std::array<int, DENOMINATOR> &items)
@@ -290,7 +290,6 @@ public:
 	}
     // Non-static section.
 
-    std::vector<std::array<int, DENOMINATOR> > all_itemconfs;
     std::vector< itemconfig<DENOMINATOR> > feasible_itemconfs;
 
     std::unordered_map<uint64_t, long unsigned int> feasible_map;
@@ -598,7 +597,7 @@ public:
 	
 	    if (PROGRESS)
 	    {
-		fprintf(stderr, "Processing itemconf layer %lu, corresponding to:", layer_index);
+		fprintf(stderr, "Processing itemconf layer %lu / %lu , corresponding to: ", layer_index, feasible_itemconfs.size() );
 		layer.print();
 	    }
     	    
@@ -752,17 +751,10 @@ public:
     minibs()
 	{
 	    fprintf(stderr, "Minibs<%d>: There will be %d item sizes tracked.\n",DENOM, DENOM - 1);
-	    fprintf(stderr, "Minibs<%d>: There is at most %d itemconfs, including infeasible ones.\n", DENOM, LAYERS_UB);
+	    fprintf(stderr, "Minibs<%d>: There is at most %" PRIu64 " itemconfs, including infeasible ones.\n", DENOM, LAYERS_UB);
 
 	    print_int_array<DENOM>(ITEMS_PER_TYPE, true);
 	    compute_feasible_itemconfs();
-	    fprintf(stderr, "Minibs<%d>: Generated %lu itemconfs.\n", DENOM, all_itemconfs.size());
-
-	    all_itemconfs.clear(); // The set of all item configurations is no longer needed.
-
 	    fprintf(stderr, "Minibs<%d>: %lu itemconfs are feasible.\n", DENOM, feasible_itemconfs.size());
-
-	    fprintf(stderr, "Minibs<%d>: %d possible item configurations.\n",
-		    DENOM, LAYERS_UB);
 	}
 };
