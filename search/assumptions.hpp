@@ -55,7 +55,7 @@ public:
 	    FILE* assumefin = fopen(filename, "r");
 	    if (assumefin == NULL)
 	    {
-		ERROR("Unable to open file %s\n", filename);
+		ERRORPRINT("Unable to open file %s\n", filename);
 	    }
 
 	    while(!feof(assumefin))
@@ -81,7 +81,7 @@ public:
 		char textual_assumption[30];
 		if(sscanf(rest.c_str(), " assumption: %s\n", textual_assumption) != 1)
 		{
-		    ERROR("Assumption %d failed to load.\n", assume_arr.size());
+		    ERRORPRINT("Assumption %d failed to load.\n", assume_arr.size());
 		}
 
 		curbc.consistency_check();
@@ -95,7 +95,7 @@ public:
 		    asu.win = victory::alg;
 		} else
 		{
-		    ERROR("Assumption %d failed to load.\n", assume_arr.size());
+		    ERRORPRINT("Assumption %d failed to load.\n", assume_arr.size());
 		}
 		
 		assume_arr.push_back(asu);
