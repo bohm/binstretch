@@ -1,41 +1,33 @@
-#define IR 19
-#define IS 14
-#define IBINS 8
+#define IR 411
+#define IS 300
+#define IBINS 3
 
 #include "common.hpp"
 #include "filetools.hpp"
 #include "heur_alg_knownsum.hpp"
 
-/*
-uint64_t quick_factorial(uint64_t x)
+void single_items_winning()
 {
-    // We do not expect negative factorials.
-    if (x <= 1)
+    for (int item = 1; item <= S; item++)
     {
-	return 1;
-    } else
-    {
-	return x * quick_factorial(x-1);
+	loadconf empty;
+	empty.hashinit();
+	empty.assign_and_rehash(item, 1);
+        int response = query_knownsum_heur(empty.loadhash);
+	if (response == 0)
+	{
+	    print_loadconf_stream(stderr, &empty, false);
+	    fprintf(stderr, " is winning the knownsum game.\n");
+	}
     }
 }
 
-uint64_t quick_falling_factorial(uint64_t n, uint64_t k)
-{
-    if (k <= 0)
-    {
-	return 1;
-    } else
-    {
-	return n*quick_falling_factorial(n-1,k-1);
-    }
-}
-*/
 
 int main(void)
 {
     zobrist_init();
     initialize_knownsum();
+    single_items_winning();
     // init_weight_bounds();
-    init_knownsum_with_lowest_sendable();
     return 0;
 }
