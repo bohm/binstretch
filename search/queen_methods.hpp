@@ -297,6 +297,8 @@ int queen_class::start()
 	    } else if (computation_root->win == victory::alg)
 	    {
 		losing_saplings++;
+		losing_binconf = job.root->bc;
+		ret = 1;
 		break;
 	    }
 	// --- END GENERATION PHASE ---
