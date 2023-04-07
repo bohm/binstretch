@@ -106,9 +106,17 @@ void consistency_checker::consistency_traversal_rec(adversary_vertex *adv_v)
 	assert(adv_v->heur_strategy == nullptr);
     }
 
-    // In the tree at any certain point, there should be only adversary-winning positions.
-
-    VERTEX_ASSERT(d, adv_v, (adv_v->win == victory::adv || adv_v->win == victory::uncertain));
+    // In the tree at any certain point, there should be only adversary-winning positions,
+    // with one exception -- the root is solved and it is winning for ALG.
+    if(adv_v == d->root && adv_v->win == victory::alg)
+    {
+	assert(adv_v->in.size() == 0);
+	return;
+    }
+    else
+    {
+	VERTEX_ASSERT(d, adv_v, (adv_v->win == victory::adv || adv_v->win == victory::uncertain));
+    }
 
     // if (adv_v->win == victory::adv)
     // {
