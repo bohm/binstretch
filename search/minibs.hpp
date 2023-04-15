@@ -1,4 +1,5 @@
 #pragma once
+#include <cstring>
 
 #include "common.hpp"
 #include "binconf.hpp"
