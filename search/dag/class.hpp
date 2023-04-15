@@ -5,7 +5,7 @@
 #include <cstdlib>
 #include <cassert>
 #include <cstdint>
-#include <map>
+#include <unordered_map>
 #include <list>
 #include <atomic>
 #include <chrono>
@@ -41,12 +41,12 @@ public:
     uint64_t edge_counter = 0;
 
     // Mapping based on state hashes.
-    std::map<uint64_t, adversary_vertex*> adv_by_hash;
-    std::map<uint64_t, algorithm_vertex*> alg_by_hash;
+    std::unordered_map<uint64_t, adversary_vertex*> adv_by_hash;
+    std::unordered_map<uint64_t, algorithm_vertex*> alg_by_hash;
 
     // Mapping based on internal IDs.
-    std::map<uint64_t, adversary_vertex*> adv_by_id;
-    std::map<uint64_t, algorithm_vertex*> alg_by_id;
+    std::unordered_map<uint64_t, adversary_vertex*> adv_by_id;
+    std::unordered_map<uint64_t, algorithm_vertex*> alg_by_id;
 
     adversary_vertex* root = NULL;
     

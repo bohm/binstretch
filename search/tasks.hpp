@@ -329,7 +329,7 @@ void reverse_tarray_tstatus()
 
 
 
-bool possible_task_advanced(adversary_vertex *v, int largest_item, int current_depth)
+bool possible_task_advanced(adversary_vertex *v, int largest_item, int calldepth)
 {
     int target_depth = 0;
     if (largest_item >= S/4)
@@ -342,7 +342,7 @@ bool possible_task_advanced(adversary_vertex *v, int largest_item, int current_d
 	target_depth = task_depth + 3;
     }
 
-    if (current_depth >= target_depth)
+    if (calldepth >= target_depth)
     {
 	return true;
     } else {
@@ -359,9 +359,9 @@ bool possible_task_size(adversary_vertex *v)
     return false;
 }
 
-bool possible_task_depth(adversary_vertex *v, int largest_item, int current_depth)
+bool possible_task_depth(adversary_vertex *v, int largest_item, int calldepth)
 {
-    if (current_depth >= task_depth)
+    if (calldepth >= task_depth)
     {
 	return true;
     }
@@ -369,28 +369,42 @@ bool possible_task_depth(adversary_vertex *v, int largest_item, int current_dept
     return false;
 }
 
-bool possible_task_mixed(adversary_vertex *v, int largest_item, int current_depth)
+bool possible_task_mixed(adversary_vertex *v, int largest_item, int calldepth)
 {
 
     if (v->bc.totalload() - computation_root->bc.totalload() >= task_load)
     {
+	if (TASK_DEBUG)
+	{
+	    fprintf(stderr, "Task selected because of load %d being at least %d: ",
+		    v->bc.totalload() - computation_root->bc.totalload(), task_load);
+	    v->print(stderr, true);
+	}
+	
 	return true;
-    } else if (current_depth >= task_depth)
+    } else if (calldepth >= task_depth)
     {
+	if (TASK_DEBUG)
+	{
+	    fprintf(stderr, "Task selected because of depth %d being at least %d: ",
+		    calldepth, task_depth);
+	    v->print(stderr, true);
+	}
+	
 	return true;
     } else {
 	return false;
     }
 }
 
-bool possible_task_mixed2(adversary_vertex *v, int largest_item, int current_depth)
+bool possible_task_mixed2(adversary_vertex *v, int largest_item, int calldepth)
 {
-    if (largest_item >= S/2 && current_depth >= 2)
+    if (largest_item >= S/2 && calldepth >= 2)
     {
 	return true;
     }
 
-    if (current_depth >= task_depth)
+    if (calldepth >= task_depth)
     {
 	return true;
     }
