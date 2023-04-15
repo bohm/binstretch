@@ -1,5 +1,4 @@
-#ifndef _COMMON_HPP
-#define _COMMON_HPP 1
+#pragma once
 
 //#define NDEBUG  // turns off all asserts
 #include <cstdio>
@@ -38,7 +37,7 @@ const int REGROW_LIMIT = 2;
 
 const int TASK_LOAD_INIT = 10; // A bound on total load of a configuration before we split it into a task.
 const int TASK_LOAD_STEP = 10; // The amount by which the load can increase when regrowing the tree.
-const int TASK_DEPTH_INIT = 8; //The maximum depth of a vertex in the tree before it is made into a task.
+const int TASK_DEPTH_INIT = 10; //The maximum depth of a vertex in the tree before it is made into a task.
 const int TASK_DEPTH_STEP = 2; // The amount by which the depth is increased when regrowing.
 
 // const int TASK_LOAD_INIT = 0;
@@ -129,7 +128,7 @@ constexpr bool USING_HEURISTIC_WEIGHTSUM = false && (!USING_HEURISTIC_KNOWNSUM) 
 #define WEIGHT_HEURISTICS weight_heuristics<scale_halves, scale_thirds>
 
 constexpr bool USING_MINIBINSTRETCHING = true;
-constexpr int MINIBS_SCALE = 6;
+constexpr int MINIBS_SCALE = 9;
 
 // batching constants
 const int BATCH_SIZE = 50;
@@ -337,5 +336,3 @@ void assert_with_message(const char* expression, bool evaluation, const char* me
 
 #define MEASURE_ONLY(x) if (MEASURE) {x;}
 #define REGROW_ONLY(x) if (REGROW) {x;}
-
-#endif // _COMMON_HPP
