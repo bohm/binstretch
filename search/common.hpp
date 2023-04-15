@@ -38,8 +38,8 @@ const int REGROW_LIMIT = 2;
 
 const int TASK_LOAD_INIT = 10; // A bound on total load of a configuration before we split it into a task.
 const int TASK_LOAD_STEP = 10; // The amount by which the load can increase when regrowing the tree.
-const int TASK_DEPTH_INIT = 5; //The maximum depth of a vertex in the tree before it is made into a task.
-const int TASK_DEPTH_STEP = 1; // The amount by which the depth is increased when regrowing.
+const int TASK_DEPTH_INIT = 8; //The maximum depth of a vertex in the tree before it is made into a task.
+const int TASK_DEPTH_STEP = 2; // The amount by which the depth is increased when regrowing.
 
 // const int TASK_LOAD_INIT = 0;
 // const int TASK_DEPTH_INIT = 1;
@@ -167,11 +167,11 @@ const std::string LOG_DIR = "./logs";
 // ------------------------------------------------
 // debug constants
 
-const bool DEBUG = false;
-const bool COMM_DEBUG = false; // Network debug messages.
-const bool TASK_DEBUG = false; // Debugging creation of tasks, batching, etc.
-const bool GRAPH_DEBUG = false; // Debugging the DAG creation and adding/removing edges.
-const bool PARSING_DEBUG = false; // Debugging loading and saving a file.
+constexpr bool DEBUG = false;
+constexpr bool COMM_DEBUG = false; // Network debug messages.
+constexpr bool TASK_DEBUG = false; // Debugging creation of tasks, batching, etc.
+constexpr bool GRAPH_DEBUG = false; // Debugging the DAG creation and adding/removing edges.
+constexpr bool PARSING_DEBUG = false; // Debugging loading and saving a file.
 
 // completely disable dynamic programming or binconf cache
 // (useful to debug soundness of cache algs)

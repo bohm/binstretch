@@ -526,7 +526,7 @@ template<minimax MODE> victory computation<MODE>::adversary(adversary_vertex *ad
 
 	// we now do creation of tasks only until the REGROW_LIMIT is reached
 	if (!this->heuristic_regime && this->regrow_level <= REGROW_LIMIT
-	    && POSSIBLE_TASK(adv_to_evaluate, this->largest_since_computation_root, itemdepth)
+	    && POSSIBLE_TASK(adv_to_evaluate, this->largest_since_computation_root, calldepth)
 	    && adv_to_evaluate->out.empty())
 	{
 	    if (DEBUG)
