@@ -54,20 +54,6 @@ const long double TASKLOG_THRESHOLD = 60.0; // in seconds
 
 #define DYNPROG_MAX dynprog_max_direct // choices: dynprog_max_direct, dynprog_max_with_lih
 
-// Use this type for values of loads and items.
-// Reasonable settings are int8_t, int16_t or int (depending in part on whether a bin can contain more
-// than 127 items or not. We allow it to go negative for signalling -1/-2.
-
-//typedef int16_t bin_int;
-//#define MPI_BIN_INT MPI_SHORT
-
-typedef int bin_int;
-#define MPI_BIN_INT MPI_INT
-
-const bin_int S = IS;
-const bin_int R = IR;
-const bin_int BINS = IBINS;
-
 // If you want to generate a specific lower bound, you can create an initial bin configuration here.
 // You can also insert an initial sequence here.
 //const std::vector<bin_int> INITIAL_LOADS = {4,4,0};
@@ -179,9 +165,6 @@ const bool DISABLE_DP_CACHE = false;
 
 // ------------------------------------------------
 // system constants and global variables (no need to change)
-
-// maximum number of items
-constexpr bin_int MAX_ITEMS = S*BINS;
 
 char outfile[50];
 

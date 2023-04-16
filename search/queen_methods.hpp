@@ -161,6 +161,9 @@ int queen_class::start()
 	mbs = new minibs<MINIBS_SCALE>();
 	mbs->init_knownsum_layer();
 	mbs->init_all_layers();
+	// Note: the next command is not executed by the overseer, as we wish to backup
+	// the calculations only by one process, and not have two write to a file at the same time.
+	mbs->backup_calculations();
     }
 
 

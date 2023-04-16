@@ -1,6 +1,26 @@
 #ifndef _CONSTANTS_HPP
 #define _CONSTANTS_HPP 1
-// System constants that do not need to be modified.
+
+// System constants that do not need to be modified often.
+
+// Sanity check for definition of the variables that should be passed
+// by the build script.
+
+#ifndef IBINS
+#error "The macro constant IBINS needs to be passed by the compiler!"
+#define IBINS 2 // This line is a hack to make G++ spit out only the error above.
+#endif
+
+#ifndef IR
+#error "The macro constant IR needs to be passed by the compiler!"
+#define IR 4 // ditto
+#endif
+
+#ifndef IS
+#error "The macro constant IS needs to be passed by the compiler!"
+#define IS 3 // ditto 
+#endif
+
 
 // To have the code buildable on Ubuntu 18.04, we include this
 // compiler-dependent hack.
@@ -12,7 +32,19 @@ namespace fs = std::filesystem;
 namespace fs = std::experimental::filesystem;
 #endif
 
+// Use this type for values of loads and items.
+// Reasonable settings are int8_t, int16_t or int (depending in part on whether a bin can contain more
+// than 127 items or not. We allow it to go negative for signalling -1/-2.
 
+//typedef int16_t bin_int;
+//#define MPI_BIN_INT MPI_SHORT
+
+typedef int bin_int;
+#define MPI_BIN_INT MPI_INT
+
+constexpr bin_int S = IS;
+constexpr bin_int R = IR;
+constexpr bin_int BINS = IBINS;
 
 typedef uint64_t llu;
 typedef signed char tiny;
@@ -73,9 +105,15 @@ const int TASK_RECEIVED = 1;
 
 #define ITEMWEIGHT quintile_weight
 #define LARGEST_WITH_WEIGHT quintile_largest_with_weight
+
+// maximum number of items
+constexpr bin_int MAX_ITEMS = S*BINS;
+
 constexpr int MAX_WEIGHT = 4;
 constexpr int MAX_TOTAL_WEIGHT = MAX_WEIGHT * IBINS;
 
+constexpr int ZI_SIZE = (S+1)*(MAX_ITEMS+1);
+constexpr int ZL_SIZE = (BINS+1)*(R+1);
 
 // Plugging in some common monotonicity values.
 
@@ -118,25 +156,6 @@ const int RECOMMENDED_MONOTONICITY = 5;
 #else
 const int RECOMMENDED_MONOTONICITY = IS-1;
 #endif
-
-// Sanity check for definition of the variables that should be passed
-// by the build script.
-
-#ifndef IBINS
-#error "The macro constant IBINS needs to be passed by the compiler!"
-#define IBINS 2 // This line is a hack to make G++ spit out only the error above.
-#endif
-
-#ifndef IR
-#error "The macro constant IR needs to be passed by the compiler!"
-#define IR 4 // ditto
-#endif
-
-#ifndef IS
-#error "The macro constant IS needs to be passed by the compiler!"
-#define IS 3 // ditto 
-#endif
-
 
 
 #endif // _CONSTANTS_HPP

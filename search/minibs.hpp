@@ -8,6 +8,7 @@
 #include "thread_attr.hpp"
 #include "cache/loadconf.hpp"
 #include "heur_alg_knownsum.hpp"
+#include "binary_storage.hpp"
 
 template <int DENOMINATOR> class itemconfig
 {
@@ -722,7 +723,23 @@ public:
 
 	}
 
+    // The init is now able to recover data from previous computations.
     void init_all_layers()
+	{
+
+	    binary_storage bstore;
+	    if (bstore.storage_exists())
+	    {
+		bstore.restore(alg_winning_positions);
+		print_if<PROGRESS>("Minibs<%d>: Init complete via restoration.\n", MINIBS_SCALE);
+	    } else
+	    {
+		print_if<PROGRESS>("Minibs<%d>: Initialization must happen from scratch.\n", MINIBS_SCALE);
+		init_from_scratch();
+	    }
+	}
+    
+    void init_from_scratch()
 	{
 	    for (long unsigned int i = 0; i < feasible_itemconfs.size(); i++)
 	    {
@@ -746,6 +763,16 @@ public:
 		// print_if<PROGRESS>("Overseer: Processed itemconf layer %d.\n", i);
 		print_if<PROGRESS>("Size of the layer %d cache: %lu.\n", i,
 		 		   alg_winning_positions[i].size());
+	    }
+	}
+
+    inline void backup_calculations()
+	{
+	    binary_storage bstore;
+	    if (!bstore.storage_exists())
+	    {
+		print_if<PROGRESS>("Queen: Backing up Minibs<%d> calculations.\n", MINIBS_SCALE);
+		bstore.backup(alg_winning_positions);
 	    }
 	}
     

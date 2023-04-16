@@ -52,9 +52,9 @@ void zobrist_init()
     // seeded, non-random
     srand(182371293);
     // Zi generates item hashes.
-    Zi = new uint64_t[(S+1)*(MAX_ITEMS+1)];
+    Zi = new uint64_t[ZI_SIZE];
     // Zl generates load hashes.
-    Zl = new uint64_t[(BINS+1)*(R+1)];
+    Zl = new uint64_t[ZL_SIZE];
     // Zalg generates "next item" hashes for the output graph.
     Zalg = new uint64_t[S+1];
     // Zlast represents "last item" hashes for monotonicity purposes.
