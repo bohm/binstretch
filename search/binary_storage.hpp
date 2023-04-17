@@ -195,19 +195,15 @@ public:
 	{
 	    open_for_reading();
 	    bool check = check_signature();
-	    if (check)
+	    if (!check)
 	    {
-		fprintf(stderr, "Signature check passed.\n");
-	    }
-	    else
-	    {
-		fprintf(stderr, "Error: Signature check failed!\n");
+		ERRORPRINT("Error: Signature check failed!\n");
 	    }
 
 	    check = check_zobrist_table();
-	    if (check)
+	    if (!check)
 	    {
-		fprintf(stderr, "Zobrist table matches.\n");
+		ERRORPRINT("Error: The Zobrist table do not match!\n");
 	    }
 
 	    read_set_system(out_system);

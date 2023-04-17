@@ -156,18 +156,6 @@ int queen_class::start()
 	weight_heurs->init_weight_bounds();
     }
 
-    if (USING_MINIBINSTRETCHING)
-    {
-	mbs = new minibs<MINIBS_SCALE>();
-	mbs->init_knownsum_layer();
-	mbs->init_all_layers();
-	// Note: the next command is not executed by the overseer, as we wish to backup
-	// the calculations only by one process, and not have two write to a file at the same time.
-	mbs->backup_calculations();
-    }
-
-
-
     comm.sync_after_initialization(); // Sync before any rounds start.
 
     assumptions assumer;
@@ -260,6 +248,18 @@ int queen_class::start()
 
 	if (USING_MINIBINSTRETCHING)
 	{
+	    // The minibinstretching allocation happens here, so that the memory
+	    // can be freed as soon as possible.
+
+	    print_if<PROGRESS>("Queen: allocating minibinstretching cache.\n");
+
+
+	    mbs = new minibs<MINIBS_SCALE>();
+	    mbs->init_knownsum_layer();
+	    mbs->init_all_layers();
+	    // Note: the next command is not executed by the overseer, as we wish to backup
+	    // the calculations only by one process, and not have two write to a file at the same time.
+	    mbs->backup_calculations();
 	    comp.mbs = mbs;
 	}
 
@@ -280,6 +280,12 @@ int queen_class::start()
 
 	MEASURE_ONLY(comp.meas.print_generation_stats());
 	MEASURE_ONLY(comp.meas.clear_generation_stats());
+
+	if (USING_MINIBINSTRETCHING)
+	{
+	    print_if<PROGRESS>("Queen: freeing minibinstretching cache.\n");
+	    delete comp.mbs;
+	}
 
 	perf_timer.generation_phase_end();
 
@@ -491,12 +497,6 @@ int queen_class::start()
     {
 	delete weight_heurs;
     }
-
-    if (USING_MINIBINSTRETCHING)
-    {
-	delete mbs;
-    }
-
 
     // Print measurements and clean up.
     MEASURE_ONLY(g_meas.print());

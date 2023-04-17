@@ -114,7 +114,7 @@ constexpr bool USING_HEURISTIC_WEIGHTSUM = false && (!USING_HEURISTIC_KNOWNSUM) 
 #define WEIGHT_HEURISTICS weight_heuristics<scale_halves, scale_thirds>
 
 constexpr bool USING_MINIBINSTRETCHING = true;
-constexpr int MINIBS_SCALE = 9;
+constexpr int MINIBS_SCALE = 12;
 
 // batching constants
 const int BATCH_SIZE = 50;
