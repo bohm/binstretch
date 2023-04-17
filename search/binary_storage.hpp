@@ -5,7 +5,7 @@
 #include "common.hpp"
 #include <filesystem>
 
-class binary_storage
+template <int DENOMINATOR> class binary_storage
 {
 public:
 
@@ -13,7 +13,7 @@ public:
     FILE *storage_file = nullptr;
     binary_storage()
 	{
-	    sprintf(storage_file_path, "./cache/minibs-%d-%d-%d-scale-%d.bin", BINS, R, S, MINIBS_SCALE);
+	    sprintf(storage_file_path, "./cache/minibs-%d-%d-%d-scale-%d.bin", BINS, R, S, DENOMINATOR);
 	}
 
     bool storage_exists()
@@ -44,7 +44,7 @@ public:
 	    fread(&read_r, sizeof(int), 1, storage_file);
 	    fread(&read_s, sizeof(int), 1, storage_file);
 	    fread(&read_scale, sizeof(int), 1, storage_file);
-	    if (read_bins != BINS || read_r != R || read_s != S || read_scale != MINIBS_SCALE)
+	    if (read_bins != BINS || read_r != R || read_s != S || read_scale != DENOMINATOR)
 	    {
 		fprintf(stderr, "Reading the storage of results: signature verification failed.\n");
 		fprintf(stderr, "Signature read: %d %d %d %d", read_bins, read_r, read_s, read_scale);
@@ -57,10 +57,12 @@ public:
 
     void write_signature()
 	{
+	    constexpr int D = DENOMINATOR;
 	    fwrite(&BINS, sizeof(int), 1, storage_file);
 	    fwrite(&R, sizeof(int), 1, storage_file);
 	    fwrite(&S, sizeof(int), 1, storage_file);
-	    fwrite(&MINIBS_SCALE, sizeof(int), 1, storage_file);
+	    
+	    fwrite(&D, sizeof(int), 1, storage_file);
 	}
 
     void write_zobrist_table()

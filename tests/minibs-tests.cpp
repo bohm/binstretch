@@ -4,12 +4,63 @@
 #include <unordered_map>
 #include <cstdint>
 
-#define IBINS 5
-#define IR 19
-#define IS 14
+#define IBINS 3
+#define IR 411
+#define IS 300
 
+constexpr int TEST_SCALE = 9;
 
-#include "../search/minibs.hpp"
+#include "minibs.hpp"
+
+template <int DENOMINATOR> void sand_winning(minibs<DENOMINATOR> &mb)
+{
+    constexpr int GS2BOUND = S - 2*ALPHA;
+    itemconfig<DENOMINATOR> ic;
+    ic.hashinit();
+
+    for (int sand = 1; sand < GS2BOUND; sand++)
+    {
+	loadconf lc;
+	lc.hashinit();
+	lc.assign_and_rehash(sand, 1);
+        bool alg_winning = mb.query_itemconf_winning(lc, ic);
+
+	if (alg_winning)
+	{
+	    print_loadconf_stream(stderr, &lc, false);
+	    fprintf(stderr, " of sand is winning for ALG with ratio %d/%d.\n", RMOD, S);
+	}
+    }
+}
+
+// How many positions are winning if one "measurable" item arrives. That means
+// item of size at least 1/DENOMINATOR + 1.
+template <int DENOMINATOR> void one_measurable_item_winning(minibs<DENOMINATOR> &mb)
+{
+    constexpr int GS2BOUND = S - 2*ALPHA;
+    itemconfig<DENOMINATOR> ic;
+    ic.hashinit();
+
+    int smallest_measurable = mb.grow_item(1);
+    ic.increase(1);
+
+    // we start measuring from 1/DENOMINATOR + 1, otherwise it makes no sense.
+    for (int sand = smallest_measurable; sand < GS2BOUND; sand++)
+    {
+	loadconf lc;
+	lc.hashinit();
+	lc.assign_and_rehash(sand, 1);
+        bool alg_winning = mb.query_itemconf_winning(lc, ic);
+
+	if (alg_winning)
+	{
+	    print_loadconf_stream(stderr, &lc, false);
+	    fprintf(stderr, " with an item of size at least %d is winning for ALG with ratio %d/%d.\n",
+		    smallest_measurable, RMOD, S);
+	}
+    }
+}
+
 
 template <int DENOMINATOR> void single_items_winning(minibs<DENOMINATOR> &mb)
 {
@@ -269,17 +320,26 @@ int main(void)
 {
     zobrist_init();
 
-    constexpr int TEST_SIZE = 6;
-    maximum_feasible_tests();
+    // maximum_feasible_tests();
     
-    minibs<TEST_SIZE> mb;
+    minibs<TEST_SCALE> mb;
     mb.init_knownsum_layer();
     mb.init_all_layers();
+
+    binary_storage<TEST_SCALE> bstore;
+
+    if (!bstore.storage_exists())
+    {
+	bstore.backup(mb.alg_winning_positions);
+    }
+
+
 
 
     // knownsum_tests<TEST_SIZE>(mb);
     // consistency_tests<TEST_SIZE>(mb);
 
+    /*
     fprintf(stderr, "There will be %d amounts of item categories.\n", mb.DENOM - 1);
 
     for(auto& ic: mb.feasible_itemconfs)
@@ -288,13 +348,16 @@ int main(void)
 	assert( mb.feasible_itemconfs[mb.feasible_map[ic.itemhash]] == ic);
     }
 
+    */
+    
     fprintf(stderr, "----\n");
 
-    topmost_layer_info<TEST_SIZE>(mb);
+    // topmost_layer_info<TEST_SIZE>(mb);
+    // print_int_array<mb.DENOM>(mb.ITEMS_PER_TYPE, true);
 
-    print_int_array<mb.DENOM>(mb.ITEMS_PER_TYPE, true);
-
-
-    single_items_winning<TEST_SIZE>(mb);
+    fprintf(stderr, "Sand winning positions:\n");
+    sand_winning<TEST_SCALE>(mb);
+    fprintf(stderr, "Single measurable item winning:\n");
+    one_measurable_item_winning<TEST_SCALE>(mb);
     return 0;
 }

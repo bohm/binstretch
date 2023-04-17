@@ -727,14 +727,14 @@ public:
     void init_all_layers()
 	{
 
-	    binary_storage bstore;
+	    binary_storage<DENOMINATOR> bstore;
 	    if (bstore.storage_exists())
 	    {
 		bstore.restore(alg_winning_positions);
-		print_if<PROGRESS>("Minibs<%d>: Init complete via restoration.\n", MINIBS_SCALE);
+		print_if<PROGRESS>("Minibs<%d>: Init complete via restoration.\n", DENOMINATOR);
 	    } else
 	    {
-		print_if<PROGRESS>("Minibs<%d>: Initialization must happen from scratch.\n", MINIBS_SCALE);
+		print_if<PROGRESS>("Minibs<%d>: Initialization must happen from scratch.\n", DENOMINATOR);
 		init_from_scratch();
 	    }
 	}
@@ -768,7 +768,7 @@ public:
 
     inline void backup_calculations()
 	{
-	    binary_storage bstore;
+	    binary_storage<DENOMINATOR> bstore;
 	    if (!bstore.storage_exists())
 	    {
 		print_if<PROGRESS>("Queen: Backing up Minibs<%d> calculations.\n", MINIBS_SCALE);
