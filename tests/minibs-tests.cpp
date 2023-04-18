@@ -5,16 +5,20 @@
 #include <cstdint>
 
 #define IBINS 3
-#define IR 411
-#define IS 300
-
-constexpr int TEST_SCALE = 9;
+#define IR 329
+#define IS 240
 
 #include "minibs.hpp"
 
-template <int DENOMINATOR> void sand_winning(minibs<DENOMINATOR> &mb)
+constexpr int TEST_SCALE = 9;
+constexpr int GS2BOUND = S - 2*ALPHA;
+
+// Computes the winning sand positions (for ALG with ratio R-1/S).
+// Stores the winning position into the provided unordered_set.
+// This is useful for some later tests.
+
+template <int DENOMINATOR> void sand_winning(minibs<DENOMINATOR> &mb, std::unordered_set<int>& sand_winning)
 {
-    constexpr int GS2BOUND = S - 2*ALPHA;
     itemconfig<DENOMINATOR> ic;
     ic.hashinit();
 
@@ -23,19 +27,28 @@ template <int DENOMINATOR> void sand_winning(minibs<DENOMINATOR> &mb)
 	loadconf lc;
 	lc.hashinit();
 	lc.assign_and_rehash(sand, 1);
-        bool alg_winning = mb.query_itemconf_winning(lc, ic);
-
-	if (alg_winning)
+	bool alg_winning_via_knownsum = mb.query_knownsum_layer(lc);
+	if (alg_winning_via_knownsum)
 	{
 	    print_loadconf_stream(stderr, &lc, false);
-	    fprintf(stderr, " of sand is winning for ALG with ratio %d/%d.\n", RMOD, S);
+	    fprintf(stderr, " of sand is winning for ALG with ratio %d/%d (through knownsum).\n", RMOD, S);
+	    sand_winning.insert(sand);
+	} else
+	{
+	    bool alg_winning = mb.query_itemconf_winning(lc, ic);
+	    if (alg_winning)
+	    {
+		print_loadconf_stream(stderr, &lc, false);
+		fprintf(stderr, " of sand is winning for ALG with ratio %d/%d (through minibinstretching).\n", RMOD, S);
+		sand_winning.insert(sand);
+	    }
 	}
     }
 }
 
 // How many positions are winning if one "measurable" item arrives. That means
 // item of size at least 1/DENOMINATOR + 1.
-template <int DENOMINATOR> void one_measurable_item_winning(minibs<DENOMINATOR> &mb)
+template <int DENOMINATOR> void one_measurable_item_winning(minibs<DENOMINATOR> &mb, std::unordered_set<int>& sand_winning)
 {
     constexpr int GS2BOUND = S - 2*ALPHA;
     itemconfig<DENOMINATOR> ic;
@@ -47,6 +60,11 @@ template <int DENOMINATOR> void one_measurable_item_winning(minibs<DENOMINATOR> 
     // we start measuring from 1/DENOMINATOR + 1, otherwise it makes no sense.
     for (int sand = smallest_measurable; sand < GS2BOUND; sand++)
     {
+	if (sand_winning.contains(sand))
+	{
+	    continue;
+	}
+	
 	loadconf lc;
 	lc.hashinit();
 	lc.assign_and_rehash(sand, 1);
@@ -62,10 +80,15 @@ template <int DENOMINATOR> void one_measurable_item_winning(minibs<DENOMINATOR> 
 }
 
 
-template <int DENOMINATOR> void single_items_winning(minibs<DENOMINATOR> &mb)
+template <int DENOMINATOR> void single_items_winning(minibs<DENOMINATOR> &mb, std::unordered_set<int>& sand_winning)
 {
-    for (int item = 1; item <= S; item++)
+    for (int item = 1; item < GS2BOUND; item++)
     {
+	if (sand_winning.contains(item))
+	{
+	    continue;
+	}
+	
 	loadconf empty;
 	empty.hashinit();
 	empty.assign_and_rehash(item, 1);
@@ -81,9 +104,9 @@ template <int DENOMINATOR> void single_items_winning(minibs<DENOMINATOR> &mb)
         bool alg_winning = mb.query_itemconf_winning(empty, ic);
 	if (alg_winning)
 	{
+	    fprintf(stderr, "A single item packing: ");
 	    print_loadconf_stream(stderr, &empty, false);
-	    fprintf(stderr, " is winning, itemconf array: ");
-	    ic.print();
+	    fprintf(stderr, " (item scale %d) is winning for ALG with ratio %d/%d.\n", downscaled_item, RMOD, S);
 	} else
 	{
 	    // print_loadconf_stream(stderr, &empty, false);
@@ -355,9 +378,13 @@ int main(void)
     // topmost_layer_info<TEST_SIZE>(mb);
     // print_int_array<mb.DENOM>(mb.ITEMS_PER_TYPE, true);
 
-    fprintf(stderr, "Sand winning positions:\n");
-    sand_winning<TEST_SCALE>(mb);
-    fprintf(stderr, "Single measurable item winning:\n");
-    one_measurable_item_winning<TEST_SCALE>(mb);
+    std::unordered_set<int> sand_winning_for_alg;
+    fprintf(stderr, "Sand winning positions (interval [1,%d]):\n", GS2BOUND);
+    sand_winning<TEST_SCALE>(mb, sand_winning_for_alg);
+    fprintf(stderr, "Single measurable item winning (interval [1,%d], ignoring sand wins):\n", GS2BOUND);
+    one_measurable_item_winning<TEST_SCALE>(mb, sand_winning_for_alg);
+    fprintf(stderr, "Single items winning (interval [1,%d], ignoring sand wins):\n", GS2BOUND);
+    single_items_winning<TEST_SCALE>(mb, sand_winning_for_alg);
+
     return 0;
 }
