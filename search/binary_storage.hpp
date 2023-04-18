@@ -41,10 +41,17 @@ public:
     bool check_signature()
 	{
 	    int read_bins = 0, read_r = 0, read_s = 0, read_scale = 0;
-	    fread(&read_bins, sizeof(int), 1, storage_file);
-	    fread(&read_r, sizeof(int), 1, storage_file);
-	    fread(&read_s, sizeof(int), 1, storage_file);
-	    fread(&read_scale, sizeof(int), 1, storage_file);
+	    int succ_read_bins = 0, succ_read_r = 0, succ_read_s = 0, succ_read_scale = 0;
+	    succ_read_bins = fread(&read_bins, sizeof(int), 1, storage_file);
+	    succ_read_r = fread(&read_r, sizeof(int), 1, storage_file);
+	    succ_read_s = fread(&read_s, sizeof(int), 1, storage_file);
+	    succ_read_scale = fread(&read_scale, sizeof(int), 1, storage_file);
+
+	    if (succ_read_bins != 1 || succ_read_r != 1 || succ_read_s != 1 || succ_read_scale != 1)
+	    {
+		ERRORPRINT("Binary_storage read %d %d %d %d: Signature reading failed.\n", BINS, R, S, DENOMINATOR);
+	    }
+	    
 	    if (read_bins != BINS || read_r != R || read_s != S || read_scale != DENOMINATOR)
 	    {
 		fprintf(stderr, "Reading the storage of results: signature verification failed.\n");
@@ -77,8 +84,14 @@ public:
 	    bool ret = true;
 	    uint64_t* read_zi = new uint64_t[ZI_SIZE];
     	    uint64_t* read_zl = new uint64_t[ZL_SIZE];
-	    fread(read_zi, sizeof(uint64_t), ZI_SIZE, storage_file);
-	    fread(read_zl, sizeof(uint64_t), ZL_SIZE, storage_file);
+	    int succ_read_zi = 0, succ_read_zl = 0;
+	    succ_read_zi = fread(read_zi, sizeof(uint64_t), ZI_SIZE, storage_file);
+	    succ_read_zl = fread(read_zl, sizeof(uint64_t), ZL_SIZE, storage_file);
+
+	    if (succ_read_zi != ZI_SIZE || succ_read_zl != ZL_SIZE)
+	    {
+		ERRORPRINT("Binary_storage read %d %d %d %d: Zobrist table read failed.\n", BINS, R, S, DENOMINATOR);
+	    }
 	    for (int i = 0; i < ZI_SIZE; i++)
 	    {
 		if (Zi[i] != read_zi[i])
@@ -113,8 +126,12 @@ public:
     void read_delimeter()
 	{
 	    int del = 0;
-	    fread(&del, sizeof(int), 1, storage_file);
-	    assert(del == -1);
+	    int del_read = 0;
+	    del_read = fread(&del, sizeof(int), 1, storage_file);
+	    if (del != -1 || del_read != 1)
+	    {
+		ERRORPRINT("Binary storage error: missing delimeter.\n");
+	    }
 	}
     
     void write_number_of_sets(unsigned int nos)
@@ -125,7 +142,12 @@ public:
     unsigned int read_number_of_sets()
 	{
 	    unsigned int nos = 0;
-	    fread(&nos, sizeof(unsigned int), 1, storage_file);
+	    int nos_read = 0;
+	    nos_read = fread(&nos, sizeof(unsigned int), 1, storage_file);
+	    if (nos_read != 1)
+	    {
+		ERRORPRINT("Binary storage error: failed to read the number of sets.\n");
+	    }
 	    return nos;
 	}
  
@@ -136,8 +158,14 @@ public:
 
     unsigned int read_set_size()
 	{
-	    int set_size = 0;
-	    fread(&set_size, sizeof(unsigned int), 1, storage_file);
+	    int set_size = 0, set_size_read = 0;
+	    set_size_read = fread(&set_size, sizeof(unsigned int), 1, storage_file);
+
+	    if (set_size_read != 1)
+	    {
+		ERRORPRINT("Binary storage error: failed to read the set size.\n");
+	    }
+
 	    return set_size;
 	}
 
@@ -161,8 +189,15 @@ public:
 	    out_set.clear();
 	    unsigned int set_size = read_set_size();
 	    out_set.reserve(set_size);
+	    size_t set_read = 0;
 	    uint64_t* set_as_array = new uint64_t[set_size];
- 	    fread(set_as_array, sizeof(uint64_t), set_size, storage_file);
+ 	    set_read = fread(set_as_array, sizeof(uint64_t), set_size, storage_file);
+
+	    if (set_read != set_size)
+	    {
+		ERRORPRINT("Binary storage error: failed to read one of the sets.\n");
+	    }
+	    
 	    for (unsigned int i = 0; i < set_size; i++)
 	    {
 		out_set.insert(set_as_array[i]);
