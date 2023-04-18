@@ -1,6 +1,8 @@
 #ifndef _QUEEN_METHODS_HPP
 #define _QUEEN_METHODS_HPP 1
 
+#include <malloc.h>
+
 #include "common.hpp"
 #include "updater.hpp"
 #include "minimax/sequencing.hpp"
@@ -285,6 +287,7 @@ int queen_class::start()
 	{
 	    print_if<PROGRESS>("Queen: freeing minibinstretching cache.\n");
 	    delete comp.mbs;
+	    malloc_trim(0);
 	}
 
 	perf_timer.generation_phase_end();

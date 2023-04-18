@@ -3,6 +3,7 @@
 // Allows for recovery of some precomputed cache tables, primarily minibinstretching.
 
 #include "common.hpp"
+#include "functions.hpp"
 #include <filesystem>
 
 template <int DENOMINATOR> class binary_storage
@@ -159,6 +160,7 @@ public:
 	{
 	    out_set.clear();
 	    unsigned int set_size = read_set_size();
+	    out_set.reserve(set_size);
 	    uint64_t* set_as_array = new uint64_t[set_size];
  	    fread(set_as_array, sizeof(uint64_t), set_size, storage_file);
 	    for (unsigned int i = 0; i < set_size; i++)
