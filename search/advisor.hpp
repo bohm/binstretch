@@ -84,7 +84,7 @@ public:
 		
 		// Using filetools functions to load the bin configuration part.
 		std::array<bin_int, BINS+1> loads = load_segment_with_loads(str_s);
-		std::array<bin_int, S+1> items = load_segment_with_items(str_s);
+		std::array<bin_int, S+1> items = load_segment_with_items<S>(str_s);
 		bin_int last_item = load_last_item_segment(str_s);
 		binconf curbc(loads, items, last_item);
 

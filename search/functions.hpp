@@ -151,9 +151,16 @@ inline uint64_t logpart(uint64_t x, int log)
 
 template <int NUM> void print_int_array(FILE *stream,
 					const std::array<int, NUM>& arr,
-					bool trailing_newline = false)
+					bool trailing_newline = false, bool square_brackets = true)
 {
-    fprintf(stream, "[");
+    if (square_brackets)
+    {
+	fprintf(stream, "[");
+    } else
+    {
+	fprintf(stream, "(");
+    }
+    
     for (int i =0; i < NUM; i++)
     {
 	fprintf(stream, "%d", arr[i]);
@@ -162,7 +169,15 @@ template <int NUM> void print_int_array(FILE *stream,
 	    fprintf(stream, " ");
 	}
     }
-    fprintf(stream, "]");
+
+    if (square_brackets)
+    {
+	fprintf(stream, "]");
+    } else
+    {
+	fprintf(stream, ")");
+    }
+ 
     if (trailing_newline)
     {
 	fprintf(stream, "\n");

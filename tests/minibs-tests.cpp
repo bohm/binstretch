@@ -5,12 +5,12 @@
 #include <cstdint>
 
 #define IBINS 3
-#define IR 329
-#define IS 240
+#define IR 247
+#define IS 180
 
 #include "minibs.hpp"
 
-constexpr int TEST_SCALE = 9;
+constexpr int TEST_SCALE = 3;
 constexpr int GS2BOUND = S - 2*ALPHA;
 
 // Computes the winning sand positions (for ALG with ratio R-1/S).

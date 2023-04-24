@@ -348,6 +348,12 @@ public:
     loadconf()
 	{
 	}
+
+    loadconf(std::array<bin_int, BINS+1>& loadarray)
+	{
+	    loads = loadarray;
+	    hashinit();
+	}
     
     loadconf(const loadconf& old, bin_int new_item, int bin)
 	{
@@ -358,9 +364,15 @@ public:
 
     void print(FILE *stream) const
 	{
+	    fprintf(stream, "[");
 	    for (int i=1; i<=BINS; i++) {
-		fprintf(stream, "%d-", loads[i]);
+		fprintf(stream, "%d", loads[i]);
+		if (i != BINS)
+		{
+		    fprintf(stream, " ");
+		}
 	    }
+	    fprintf(stream, "]");
 	}
 
     // print comma separated loads as a string (currently used for heuristics)

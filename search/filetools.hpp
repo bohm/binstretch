@@ -93,9 +93,9 @@ std::array<bin_int, BINS+1> load_segment_with_loads(std::stringstream& str_s)
     return ret;
 }
 
-std::array<bin_int, S+1> load_segment_with_items(std::stringstream& str_s)
+template <int SCALE> std::array<bin_int, SCALE+1> load_segment_with_items(std::stringstream& str_s)
 {
-    std::array<bin_int, S+1> ret = {};
+    std::array<bin_int, SCALE+1> ret = {};
 
     char c = 0;
     bin_int item_size = -1;
@@ -105,10 +105,10 @@ std::array<bin_int, S+1> load_segment_with_items(std::stringstream& str_s)
 
     assert(c == '(');
    
-    for (int j = 1; j <= S; j++)
+    for (int j = 1; j <= SCALE; j++)
     {
 	str_s >> item_size;
-	if (item_size < 0 || item_size > BINS*S)
+	if (item_size < 0 || item_size > BINS*SCALE)
 	{
 	    ERRORPRINT("The %d-th item from the items segment (value %d) is out of bounds.\n", j, item_size);
 	}
@@ -138,7 +138,7 @@ bin_int load_last_item_segment(std::stringstream& str_s)
 binconf loadbinconf(std::stringstream& str_s)
 {
     std::array<bin_int, BINS+1> loads = load_segment_with_loads(str_s);
-    std::array<bin_int, S+1> items = load_segment_with_items(str_s);
+    std::array<bin_int, S+1> items = load_segment_with_items<S>(str_s);
     bin_int last_item = load_last_item_segment(str_s);
 
     binconf retbc(loads, items, last_item);
