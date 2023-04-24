@@ -771,7 +771,7 @@ public:
 	    binary_storage<DENOMINATOR> bstore;
 	    if (!bstore.storage_exists())
 	    {
-		print_if<PROGRESS>("Queen: Backing up Minibs<%d> calculations.\n", MINIBS_SCALE);
+		print_if<PROGRESS>("Queen: Backing up Minibs<%d> calculations.\n", DENOMINATOR);
 		bstore.backup(alg_winning_positions);
 	    }
 	}

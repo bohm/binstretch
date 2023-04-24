@@ -3,7 +3,7 @@
 
 // Auxiliary functions that make the minimax code cleaner.
 
-template <minimax MODE> void computation<MODE>::check_messages(int task_id)
+template <minimax MODE, int MINIBS_SCALE> void computation<MODE, MINIBS_SCALE>::check_messages(int task_id)
 {
     // check_termination();
     // fetch_irrelevant_tasks();
@@ -42,8 +42,9 @@ void compute_next_moves_fixed(std::vector<int> &cands, adversary_vertex *fixed_v
 }
 
 // We also return maximum feasible value that was computed.
-template <minimax MODE> int compute_next_moves_genstrat(std::vector<int> &cands, binconf *b,
-							int depth, int feasibility_ub, computation<MODE> *comp)
+template <minimax MODE, int MINIBS_SCALE> int compute_next_moves_genstrat(std::vector<int> &cands,
+		binconf *b,
+		int depth, int feasibility_ub, computation<MODE, MINIBS_SCALE> *comp)
 {
 
     // Idea: start with monotonicity 0 (non-decreasing), and move towards S (full generality).
@@ -68,14 +69,15 @@ template <minimax MODE> int compute_next_moves_genstrat(std::vector<int> &cands,
 
 // A slight hack: we have two separate strategies for exploration (where heuristics are turned
 // off) and generation (where heuristics are turned on)
-template <minimax MODE> int compute_next_moves_expstrat(std::vector<int> &cands, binconf *b,
-							int depth, int heuristical_ub, computation<MODE> *comp)
+template <minimax MODE, int MINIBS_SCALE> int compute_next_moves_expstrat(std::vector<int> &cands,
+		binconf *b,
+		int depth, int heuristical_ub, computation<MODE, MINIBS_SCALE> *comp)
 {
     // Idea: start with monotonicity 0 (non-decreasing), and move towards S (full generality).
     int lower_bound = lowest_sendable(b->last_item);
 
     // finds the maximum feasible item that can be added using dyn. prog.
-    int maxfeas = maximum_feasible<MODE>(b, depth, lower_bound, comp->prev_max_feasible, comp);
+    int maxfeas = maximum_feasible<MODE, MINIBS_SCALE>(b, depth, lower_bound, comp->prev_max_feasible, comp);
 
     // Hack: After computing the "old" maximum feasible, update with the heuristical upper-bound.
     int max_move = std::min(maxfeas, heuristical_ub);
@@ -183,7 +185,7 @@ struct adversary_notes
     int old_max_feasible = 0;
 };
 
-template<minimax MODE> void adversary_descend(computation<MODE> *comp, adversary_notes &notes, int next_item, int maximum_feasible)
+template<minimax MODE, int MINIBS_SCALE> void adversary_descend(computation<MODE, MINIBS_SCALE> *comp, adversary_notes &notes, int next_item, int maximum_feasible)
 {
     comp->calldepth++;
     notes.old_largest = comp->largest_since_computation_root;
@@ -198,7 +200,7 @@ template<minimax MODE> void adversary_descend(computation<MODE> *comp, adversary
     
 }
 
-template <minimax MODE> void adversary_ascend(computation<MODE> *comp, const adversary_notes &notes)
+template <minimax MODE, int MINIBS_SCALE> void adversary_ascend(computation<MODE, MINIBS_SCALE> *comp, const adversary_notes &notes)
 {
     comp->calldepth--;
     comp->largest_since_computation_root = notes.old_largest;
@@ -218,8 +220,8 @@ struct algorithm_notes
 };
 
 
-template <minimax MODE> void algorithm_descend(computation<MODE> *comp, algorithm_notes &notes,
-		       int item, int target_bin)
+template <minimax MODE, int MINIBS_SCALE> void algorithm_descend(computation<MODE, MINIBS_SCALE> *comp,
+		algorithm_notes &notes, int item, int target_bin)
 {
     comp->calldepth++;
     comp->itemdepth++;
@@ -242,7 +244,8 @@ template <minimax MODE> void algorithm_descend(computation<MODE> *comp, algorith
     }
 }
 
-template <minimax MODE> void algorithm_ascend(computation<MODE> *comp, const algorithm_notes &notes, int item)
+template <minimax MODE, int MINIBS_SCALE> void algorithm_ascend(computation<MODE, MINIBS_SCALE> *comp,
+		const algorithm_notes &notes, int item)
 {
     comp->calldepth--;
     comp->itemdepth--;
@@ -268,7 +271,7 @@ template <minimax MODE> void algorithm_ascend(computation<MODE> *comp, const alg
 
 }
 
-template <minimax MODE> void computation<MODE>::simple_fill_moves_alg(int pres_item)
+template <minimax MODE, int MINIBS_SCALE> void computation<MODE, MINIBS_SCALE>::simple_fill_moves_alg(int pres_item)
 {
     int next_uncertain_position = 0;
     for (int i = 1; i <= BINS; i++)
@@ -295,7 +298,7 @@ template <minimax MODE> void computation<MODE>::simple_fill_moves_alg(int pres_i
     */
 }
 
-template <minimax MODE> void computation<MODE>::print_uncertain_moves()
+template <minimax MODE, int MINIBS_SCALE> void computation<MODE, MINIBS_SCALE>::print_uncertain_moves()
 {
 
     fprintf(stderr, "{");

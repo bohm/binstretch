@@ -82,7 +82,7 @@ std::tuple<bin_int, bin_int, bool> improve_bounds_binary(binconf *b, bin_int lb,
 // cannot_send_less -- a "lower" bound on what can be sent
 // (Even though smaller items fit, the adversary possibly must avoid them due to monotonicity.)
 
-template <minimax MODE> bin_int maximum_feasible(binconf *b, const int depth, const bin_int cannot_send_less, bin_int initial_ub, computation<MODE> *comp)
+template <minimax MODE, int MINIBS_SCALE> bin_int maximum_feasible(binconf *b, const int depth, const bin_int cannot_send_less, bin_int initial_ub, computation<MODE, MINIBS_SCALE> *comp)
 {
     MEASURE_ONLY(comp->meas.maxfeas_calls++);
     print_if<DEBUG>("Starting dynprog maximization of configuration:\n");

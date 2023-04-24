@@ -10,7 +10,7 @@
 #include "../search/weights/scale_thirds.hpp"
 #include "minibs.hpp"
 
-template <minimax MODE> class computation
+template <minimax MODE, int MINIBS_SCALE> class computation
 {
 public:
     constexpr static unsigned int MAX_RECURSION_DEPTH = MAX_ITEMS; // Potentially improve the upper bound here.

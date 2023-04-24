@@ -64,7 +64,7 @@ victory worker::solve(const task *t, const int& task_id)
 {
     victory ret = victory::uncertain;
 
-    computation<minimax::exploring> comp;
+    computation<minimax::exploring, MINIBS_SCALE_WORKER> comp;
 
     if (FURTHER_MEASURE)
     {

@@ -33,12 +33,12 @@ constexpr bool FURTHER_MEASURE = false; // Whether to collect more detailed data
 // When producing output, how many times should a tree be regrown.
 // Note that REGROW_LIMIT = 0 still means a full tree will be generated.
 // const int REGROW_LIMIT = 65535;
-const int REGROW_LIMIT = 2;
+const int REGROW_LIMIT = 3;
 
-const int TASK_LOAD_INIT = 10; // A bound on total load of a configuration before we split it into a task.
-const int TASK_LOAD_STEP = 10; // The amount by which the load can increase when regrowing the tree.
+const int TASK_LOAD_INIT = 15; // A bound on total load of a configuration before we split it into a task.
+const int TASK_LOAD_STEP = 0; // The amount by which the load can increase when regrowing the tree.
 const int TASK_DEPTH_INIT = 10; //The maximum depth of a vertex in the tree before it is made into a task.
-const int TASK_DEPTH_STEP = 2; // The amount by which the depth is increased when regrowing.
+const int TASK_DEPTH_STEP = 0; // The amount by which the depth is increased when regrowing.
 
 // const int TASK_LOAD_INIT = 0;
 // const int TASK_DEPTH_INIT = 1;
@@ -114,7 +114,8 @@ constexpr bool USING_HEURISTIC_WEIGHTSUM = false && (!USING_HEURISTIC_KNOWNSUM) 
 #define WEIGHT_HEURISTICS weight_heuristics<scale_halves, scale_thirds>
 
 constexpr bool USING_MINIBINSTRETCHING = true;
-constexpr int MINIBS_SCALE = 12;
+constexpr int MINIBS_SCALE_QUEEN = 12; // Minibinstretching scale for the DAG generation phase.
+constexpr int MINIBS_SCALE_WORKER = 12; // Minibinstretching scale for the exploration phase.
 
 // batching constants
 const int BATCH_SIZE = 50;

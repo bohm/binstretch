@@ -20,7 +20,7 @@ bool color = true;
 bool shortheur = false;
 
 // TODO: Make this option togglable via command flags. Priority: low.
-bool FULL_BIN_CONFIGURATION = true;
+bool FULL_BIN_CONFIGURATION = false;
 
 // Overall histogram for items.
 std::array<int,S+1> ITEM_HIST = {0};

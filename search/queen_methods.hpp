@@ -235,7 +235,7 @@ int queen_class::start()
 	fclose(flog);
 	*/
 
-	computation<minimax::generating> comp;
+	computation<minimax::generating, MINIBS_SCALE_QUEEN> comp;
 	comp.regrow_level = job.regrow_level;
 
 	if (USING_ASSUMPTIONS)
@@ -253,10 +253,10 @@ int queen_class::start()
 	    // The minibinstretching allocation happens here, so that the memory
 	    // can be freed as soon as possible.
 
-	    print_if<PROGRESS>("Queen: allocating minibinstretching cache.\n");
+	    print_if<PROGRESS>("Queen: allocating cache minibs<%d>.\n", MINIBS_SCALE_QUEEN);
 
 
-	    mbs = new minibs<MINIBS_SCALE>();
+	    mbs = new minibs<MINIBS_SCALE_QUEEN>();
 	    mbs->init_knownsum_layer();
 	    mbs->init_all_layers();
 	    // Note: the next command is not executed by the overseer, as we wish to backup

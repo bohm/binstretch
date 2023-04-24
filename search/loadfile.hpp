@@ -71,7 +71,7 @@ void parse_command(const char* line)
 	// expected and harmless
 	return;
     } else {
-	ERROR("Parsed an unrecognizable command: %s.\n", line);
+	ERRORPRINT("Parsed an unrecognizable command: %s.\n", line);
 	return;
     }
 }
@@ -131,7 +131,7 @@ std::tuple<int, std::string, binconf*> parse_adv_vertex(const char *line)
 	    after++;
 	}
 
-
+	fprintf(stderr, "Loading binconf %s.\n", binconf_str.str().c_str());
 	binconf b = loadbinconf(binconf_str);
 	bc_ptr = new binconf(b.loads, b.items, b.last_item);
     }
@@ -159,21 +159,21 @@ std::tuple<int, std::string, binconf*> parse_adv_vertex(const char *line)
 partial_dag* loadfile(const char* filename)
 {
 
-    char line[256];
+    char line[1024] = {0};
 
     partial_dag *pd = new partial_dag;
     
     FILE* fin = fopen(filename, "r");
     if (fin == NULL)
     {
-	ERROR("Unable to open file %s\n", filename);
+	ERRORPRINT("Unable to open file %s\n", filename);
     }
 
     bool first_adversary = true;
     
     while(!feof(fin))
     {
-	std::ignore = fgets(line, 255, fin);
+	std::ignore = fgets(line, 1024, fin);
 	line_type l = recognize(line);
 	int name = -1, name_from = -1, name_to = -1, bin = -1, next_item = -1;
 	std::string heurstring;
@@ -186,7 +186,7 @@ partial_dag* loadfile(const char* filename)
 	    std::tie(name, heurstring, bc_ptr) = parse_adv_vertex(line);
 	    if(name == -1)
 	    {
-		ERROR("Unable to parse adv. vertex line: %s\n", line);
+		ERRORPRINT("Unable to parse adv. vertex line: %s\n", line);
 	    }
 	    if (first_adversary)
 	    {
@@ -202,7 +202,7 @@ partial_dag* loadfile(const char* filename)
 	    std::tie(name, optimal) = parse_alg_vertex(line);
 	    if(name == -1)
 	    {
-		ERROR("Unable to parse alg. vertex line: %s\n", line);
+		ERRORPRINT("Unable to parse alg. vertex line: %s\n", line);
 	    }
 	    
 	    pd->add_alg_vertex(name, optimal);
@@ -212,7 +212,7 @@ partial_dag* loadfile(const char* filename)
 	    std::tie(name_from, name_to, next_item) = parse_adv_outedge(line);
 	    if (name_from == -1 || name_to == -1 || next_item == -1)
 	    {
-		ERROR("Unable to parse adversary outedge line: %s\n", line);
+		ERRORPRINT("Unable to parse adversary outedge line: %s\n", line);
 	    }
 	    pd->add_adv_outedge(name_from, name_to, next_item);
 	    break;
@@ -220,7 +220,7 @@ partial_dag* loadfile(const char* filename)
 	    std::tie(name_from, name_to, bin) = parse_alg_outedge(line);
 	    if (name_from == -1 || name_to == -1 || bin == -1)
 	    {
-		ERROR("Unable to parse algorithm outedge line: %s\n", line);
+		ERRORPRINT("Unable to parse algorithm outedge line: %s\n", line);
 	    }
 	    pd->add_alg_outedge(name_from, name_to, bin);
 	    break;

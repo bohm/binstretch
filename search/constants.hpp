@@ -136,10 +136,19 @@ const int RECOMMENDED_MONOTONICITY = 20; // ALG wins 10.
 const int RECOMMENDED_MONOTONICITY = 8;
 #elif IBINS == 3 && IR == 164 && IS == 120
 const int RECOMMENDED_MONOTONICITY = 15;
+#elif IBINS == 3 && IR == 175 && IS == 128
+const int RECOMMENDED_MONOTONICITY = 25;
+#elif IBINS == 3 && IR == 190 && IS == 139
+const int RECOMMENDED_MONOTONICITY = 25;
 #elif IBINS == 3 && IR == 194 && IS == 142
 const int RECOMMENDED_MONOTONICITY = 15;
 #elif IBINS == 3 && IR == 205 && IS == 150
 const int RECOMMENDED_MONOTONICITY = 15;
+#elif IBINS == 3 && IR == 329 && IS == 240 // For some specific configurations.
+const int RECOMMENDED_MONOTONICITY = 35;
+#elif IBINS == 3 && IR == 411 && IS == 300
+const int RECOMMENDED_MONOTONICITY = 15;
+
 // 4 bins:
 #elif IBINS == 4 && IR == 19 && IS == 14
 const int RECOMMENDED_MONOTONICITY = 2;

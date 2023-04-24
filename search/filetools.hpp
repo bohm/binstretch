@@ -110,7 +110,7 @@ std::array<bin_int, S+1> load_segment_with_items(std::stringstream& str_s)
 	str_s >> item_size;
 	if (item_size < 0 || item_size > BINS*S)
 	{
-	    ERRORPRINT("The %d-th item from the items segment is out of bounds.\n", j);
+	    ERRORPRINT("The %d-th item from the items segment (value %d) is out of bounds.\n", j, item_size);
 	}
 
 	ret[j] = item_size;

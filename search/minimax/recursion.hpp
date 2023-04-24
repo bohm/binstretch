@@ -40,7 +40,7 @@
 // victory::alg (quite possible) or all are victory::adv (unlikely),
 // we can return immediately.
 
-template <minimax MODE> victory computation<MODE>::heuristic_visit_alg(int pres_item)
+template <minimax MODE, int MINIBS_SCALE> victory computation<MODE, MINIBS_SCALE>::heuristic_visit_alg(int pres_item)
 {
     victory ret = victory::adv;
     bool position_solved = false;
@@ -271,13 +271,14 @@ template <minimax MODE> victory computation<MODE>::heuristic_visit_alg(int pres_
 
 
 // TODO: not complete (and I am not sure it is worth completing).
-template<minimax MODE> victory computation<MODE>::minimax()
+template<minimax MODE, int MINIBS_SCALE> victory computation<MODE, MINIBS_SCALE>::minimax()
 {
     return victory::uncertain;
 }
 
-template<minimax MODE> victory computation<MODE>::adversary(adversary_vertex *adv_to_evaluate,
-							    algorithm_vertex *parent_alg)
+template<minimax MODE, int MINIBS_SCALE> victory computation<MODE, MINIBS_SCALE>::adversary(
+		adversary_vertex *adv_to_evaluate,
+	    	algorithm_vertex *parent_alg)
 {
     algorithm_vertex *upcoming_alg = NULL;
     adv_outedge *new_edge = NULL;
@@ -606,10 +607,10 @@ template<minimax MODE> victory computation<MODE>::adversary(adversary_vertex *ad
 	compute_next_moves_heur(candidate_moves, &bstate, this->current_strategy);
     } else if (GENERATING)
     {
-	maximum_feasible = compute_next_moves_genstrat<MODE>(candidate_moves, &bstate, itemdepth, heuristical_ub, this);
+	maximum_feasible = compute_next_moves_genstrat<MODE, MINIBS_SCALE>(candidate_moves, &bstate, itemdepth, heuristical_ub, this);
     } else
     {
-	maximum_feasible = compute_next_moves_expstrat<MODE>(candidate_moves, &bstate, itemdepth, heuristical_ub, this);
+	maximum_feasible = compute_next_moves_expstrat<MODE, MINIBS_SCALE>(candidate_moves, &bstate, itemdepth, heuristical_ub, this);
     }
 
     // print_if<DEBUG>("Trying player zero choices, with maxload starting at %d\n", maximum_feasible);
@@ -623,9 +624,9 @@ template<minimax MODE> victory computation<MODE>::adversary(adversary_vertex *ad
 	    std::tie(upcoming_alg, new_edge) = attach_matching_vertex(qdag, adv_to_evaluate, item_size);
 	}
 
-	adversary_descend<MODE>(this, notes, item_size, maximum_feasible);
+	adversary_descend<MODE, MINIBS_SCALE>(this, notes, item_size, maximum_feasible);
 	below = algorithm(item_size, upcoming_alg, adv_to_evaluate);
-	adversary_ascend<MODE>(this, notes);
+	adversary_ascend<MODE, MINIBS_SCALE>(this, notes);
 	
 	// send signal that we should terminate immediately upwards
 	if (below == victory::irrelevant)
@@ -686,7 +687,7 @@ template<minimax MODE> victory computation<MODE>::adversary(adversary_vertex *ad
     return win;
 }
 
-template<minimax MODE> victory computation<MODE>::algorithm(int pres_item, algorithm_vertex *alg_to_evaluate,
+template<minimax MODE, int MINIBS_SCALE> victory computation<MODE, MINIBS_SCALE>::algorithm(int pres_item, algorithm_vertex *alg_to_evaluate,
 							    adversary_vertex *parent_adv)
 {
     adversary_vertex *upcoming_adv = nullptr;
@@ -784,9 +785,9 @@ template<minimax MODE> victory computation<MODE>::algorithm(int pres_item, algor
 		upcoming_adv = (*it)->to;
 		bin_int target_bin = (*it)->target_bin;
 		
-		algorithm_descend<MODE>(this, notes, pres_item, target_bin);
+		algorithm_descend<MODE, MINIBS_SCALE>(this, notes, pres_item, target_bin);
 		below = adversary(upcoming_adv, alg_to_evaluate);
-		algorithm_ascend<MODE>(this, notes, pres_item);
+		algorithm_ascend<MODE, MINIBS_SCALE>(this, notes, pres_item);
 
 		if (below == victory::alg)
 		{
@@ -911,7 +912,7 @@ template<minimax MODE> victory computation<MODE>::algorithm(int pres_item, algor
 // wrapper for exploration
 // Returns value of the current position.
 
-template <minimax MODE> victory explore(binconf *b, computation<MODE> *comp)
+template <minimax MODE, int MINIBS_SCALE> victory explore(binconf *b, computation<MODE, MINIBS_SCALE> *comp)
 {
     b->hashinit();
 
@@ -945,7 +946,8 @@ template <minimax MODE> victory explore(binconf *b, computation<MODE> *comp)
 }
 
 // wrapper for generation
-template <minimax MODE> victory generate(sapling start_sapling, computation<MODE> *comp)
+template <minimax MODE, int MINIBS_SCALE> victory generate(sapling start_sapling,
+		computation<MODE, MINIBS_SCALE> *comp)
 {
     duplicate(&(comp->bstate), &start_sapling.root->bc);
     comp->bstate.hashinit();

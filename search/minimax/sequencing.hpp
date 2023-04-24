@@ -24,10 +24,10 @@
 // Currently sequencing is templated but "not really" -- it is only for generation.
 // This should be fixed soon.
 
-template <minimax MODE> victory sequencing_adversary(binconf *b, unsigned int depth, computation<MODE> *comp,
+template <minimax MODE, int MINIBS_SCALE> victory sequencing_adversary(binconf *b, unsigned int depth, computation<MODE, MINIBS_SCALE> *comp,
 			 adversary_vertex *adv_to_evaluate, algorithm_vertex* parent_alg,
 			 const advisor& advis);
-template <minimax MODE> victory sequencing_algorithm(binconf *b, int k, unsigned int depth, computation<MODE> *comp,
+template <minimax MODE, int MINIBS_SCALE> victory sequencing_algorithm(binconf *b, int k, unsigned int depth, computation<MODE, MINIBS_SCALE> *comp,
 			 algorithm_vertex *alg_to_evaluate, adversary_vertex *parent_adv,
 			 const advisor& advis);
 
@@ -36,7 +36,7 @@ template <minimax MODE> victory sequencing_algorithm(binconf *b, int k, unsigned
 victory sequencing(binconf& root, adversary_vertex* root_vertex)
 {
 
-    computation<minimax::generating> comp;
+    computation<minimax::generating, 0> comp;
 
     onlineloads_init(comp.ol, &root);
     advisor simple_advis;
@@ -63,13 +63,13 @@ victory sequencing(binconf& root, adversary_vertex* root_vertex)
 	return victory::uncertain;
     } else {
 	print_if<PROGRESS>("Sequencing with advisor starts.\n");
-	victory ret = sequencing_adversary<minimax::generating>(&root, 0, &comp, root_vertex, NULL, simple_advis);
+	victory ret = sequencing_adversary<minimax::generating, 0>(&root, 0, &comp, root_vertex, NULL, simple_advis);
 	print_if<PROGRESS>("Sequencing with advisor ends.\n");
 	return ret;
     }
 }
 
-template <minimax MODE> victory sequencing_adversary(binconf *b, unsigned int depth, computation<MODE> *comp,
+template <minimax MODE, int MINIBS_SCALE> victory sequencing_adversary(binconf *b, unsigned int depth, computation<MODE, MINIBS_SCALE> *comp,
 			 adversary_vertex *adv_to_evaluate, algorithm_vertex* parent_alg,
 			 const advisor& advis)
 {
@@ -233,7 +233,7 @@ template <minimax MODE> victory sequencing_adversary(binconf *b, unsigned int de
     return r;
 }
 
-template <minimax MODE> victory sequencing_algorithm(binconf *b, int k, unsigned int depth, computation<MODE> *comp,
+template <minimax MODE, int MINIBS_SCALE> victory sequencing_algorithm(binconf *b, int k, unsigned int depth, computation<MODE, MINIBS_SCALE> *comp,
 			 algorithm_vertex *alg_to_evaluate, adversary_vertex *parent_adv,
 			 const advisor& advis)
 {
