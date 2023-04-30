@@ -15,7 +15,8 @@
 
 // All functions return 1 if player 1 (algorithm) wins, -1 otherwise.
    
-const int GS1BOUND = (BINS-1)*S -ALPHA;
+constexpr int GS1BOUND = (BINS-1)*S -ALPHA;
+constexpr int GS2BOUND = S - 2*ALPHA;
 
 int gs1(const binconf *b, measure_attr *meas)
 {
@@ -30,6 +31,12 @@ int gs1(const binconf *b, measure_attr *meas)
     MEASURE_ONLY(meas->gsmiss[GS1]++);
     return -1;
 
+}
+
+// Good situations (for 3 bins) rewritten for loadconf, where appropriate.
+bool gs1(loadconf *lc)
+{
+    return (lc->loadsum() - lc->loads[BINS] >= GS1BOUND);
 }
 
 int gs2(const binconf *b, measure_attr *meas)
@@ -47,6 +54,18 @@ int gs2(const binconf *b, measure_attr *meas)
     return -1;
 }
 
+bool gs2(loadconf *lc)
+{
+    for(int i=1; i<=BINS; i++)
+    {
+	if((lc->loads[i] >= (1*S - 2*ALPHA)) && (lc->loads[i] <= ALPHA) )
+	{
+	    return true;
+	}
+    }
+    return false;
+}
+
 int gs3(const binconf *b, measure_attr *meas)
 {
     int alowerbound = (int) ceil(1.5 * (double) (1*S-ALPHA));
@@ -60,6 +79,17 @@ int gs3(const binconf *b, measure_attr *meas)
     return -1;
 }
 
+constexpr int GS3BOUND = (3*S - 3*ALPHA)/2 + ((3*S - 3*ALPHA) % 2);
+bool gs3(loadconf *lc)
+{
+    if ( (lc->loads[1] >= GS3BOUND) && ((lc->loads[BINS] <= ALPHA) || (lc->loads[2] + lc->loads[3] >= 1*S+ALPHA)) )
+    {
+	return true;
+    }
+    return false;
+}
+
+// TODO: Check whether the formula for GS4 (namely, the ceiling) is not too strict.
 int gs4(const binconf *b, measure_attr *meas)
 {
    int chalf = (int) ceil(((double) b->loads[3])/ (double) 2);
@@ -73,6 +103,17 @@ int gs4(const binconf *b, measure_attr *meas)
 
    MEASURE_ONLY(meas->gsmiss[GS4]++);
    return -1;
+}
+
+bool gs4(loadconf *lc)
+{
+    int gs3bound_plus_chalf = (3*S - 3*ALPHA + lc->loads[3]) / 2  + (3*S - 3*ALPHA + lc->loads[3]) % 2;
+
+    if ( (lc->loads[1] + lc->loads[2] >= gs3bound_plus_chalf) && (lc->loads[2] <= ALPHA))
+    {
+	return true;
+    }
+    return false;
 }
 
 int gs5(const binconf *b, measure_attr *meas)
@@ -495,6 +536,39 @@ int testgs(const binconf *b, measure_attr *meas)
     }
    
     return -1; // All heuristics failed.
+}
+
+// GS2 variant, we'll call it GS8.
+// It works when the bin is slightly over alpha, and the load on the other two makes up for the difference.
+
+// Update: Actually just GS6 rephrased. Not sure why I did not realize this.
+
+bool gs6(loadconf *lc)
+{
+    // test for A and B separately (C must be below alpha either way.)
+    if (lc->loads[3] > ALPHA)
+    {
+	return false;
+    }
+    
+    if (lc->loads[1] >= ALPHA)
+    {
+	if (lc->loads[2] + lc->loads[3] - lc->loads[1] >= GS2BOUND)
+	{
+	    return true;
+	}
+
+    }
+
+    if (lc->loads[2] >= ALPHA)
+    {
+	if (lc->loads[1] + lc->loads[3] - lc->loads[2] >= GS2BOUND)
+	{
+	    return true;
+	}
+    }
+
+    return false;
 }
 
 // tries all the choices

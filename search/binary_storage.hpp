@@ -10,6 +10,7 @@ template <int DENOMINATOR> class binary_storage
 {
 public:
 
+    const int VERSION = 2;
     char storage_file_path[256];
     FILE *storage_file = nullptr;
     binary_storage()
@@ -42,20 +43,23 @@ public:
 	{
 	    int read_bins = 0, read_r = 0, read_s = 0, read_scale = 0;
 	    int succ_read_bins = 0, succ_read_r = 0, succ_read_s = 0, succ_read_scale = 0;
+	    int read_version = 0, succ_read_version = 0;
 	    succ_read_bins = fread(&read_bins, sizeof(int), 1, storage_file);
 	    succ_read_r = fread(&read_r, sizeof(int), 1, storage_file);
 	    succ_read_s = fread(&read_s, sizeof(int), 1, storage_file);
 	    succ_read_scale = fread(&read_scale, sizeof(int), 1, storage_file);
+	    succ_read_version = fread(&read_version, sizeof(int), 1, storage_file);
 
-	    if (succ_read_bins != 1 || succ_read_r != 1 || succ_read_s != 1 || succ_read_scale != 1)
+	    if (succ_read_bins != 1 || succ_read_r != 1 || succ_read_s != 1 ||
+		succ_read_scale != 1 || succ_read_version != 1)
 	    {
-		ERRORPRINT("Binary_storage read %d %d %d %d: Signature reading failed.\n", BINS, R, S, DENOMINATOR);
+		ERRORPRINT("Binary_storage read %d %d %d %d v%d: Signature reading failed.\n", BINS, R, S, DENOMINATOR, VERSION);
 	    }
 	    
-	    if (read_bins != BINS || read_r != R || read_s != S || read_scale != DENOMINATOR)
+	    if (read_bins != BINS || read_r != R || read_s != S || read_scale != DENOMINATOR || read_version != VERSION)
 	    {
 		fprintf(stderr, "Reading the storage of results: signature verification failed.\n");
-		fprintf(stderr, "Signature read: %d %d %d %d", read_bins, read_r, read_s, read_scale);
+		fprintf(stderr, "Signature read: %d %d %d %d v%d", read_bins, read_r, read_s, read_scale, read_version);
 		// assert(read_bins == BINS && read_r == R && read_s == S);
 		return false;
 	    }
@@ -69,8 +73,8 @@ public:
 	    fwrite(&BINS, sizeof(int), 1, storage_file);
 	    fwrite(&R, sizeof(int), 1, storage_file);
 	    fwrite(&S, sizeof(int), 1, storage_file);
-	    
 	    fwrite(&D, sizeof(int), 1, storage_file);
+	    fwrite(&VERSION, sizeof(int), 1, storage_file);
 	}
 
     void write_zobrist_table()
@@ -227,8 +231,20 @@ public:
 		read_delimeter();
 	    }
 	}
+
+    void read_knownsum_set(std::unordered_set<uint64_t>& out_knownsum_set)
+	{
+	    read_one_set(out_knownsum_set);
+	    read_delimeter();
+	}
+
+    void write_knownsum_set(std::unordered_set<uint64_t> &knownsum_set)
+	{
+	    write_one_set(knownsum_set);
+	    write_delimeter();
+	}
     
-    void restore(std::vector<std::unordered_set<uint64_t>>& out_system)
+    void restore(std::vector<std::unordered_set<uint64_t>>& out_system, std::unordered_set<uint64_t> &out_knownsum_set)
 	{
 	    open_for_reading();
 	    bool check = check_signature();
@@ -243,15 +259,17 @@ public:
 		ERRORPRINT("Error: The Zobrist table do not match!\n");
 	    }
 
+	    read_knownsum_set(out_knownsum_set);
 	    read_set_system(out_system);
 	    close();
 	}
 
-    void backup(std::vector<std::unordered_set<uint64_t>>& system)
+    void backup(std::vector<std::unordered_set<uint64_t>>& system, std::unordered_set<uint64_t> &knownsum_set)
 	{
 	    open_for_writing();
 	    write_signature();
 	    write_zobrist_table();
+	    write_knownsum_set(knownsum_set);
 	    write_set_system(system);
 	    close();
 	}

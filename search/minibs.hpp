@@ -724,13 +724,13 @@ public:
 	}
 
     // The init is now able to recover data from previous computations.
-    void init_all_layers()
+    void init()
 	{
 
 	    binary_storage<DENOMINATOR> bstore;
 	    if (bstore.storage_exists())
 	    {
-		bstore.restore(alg_winning_positions);
+		bstore.restore(alg_winning_positions, alg_knownsum_winning);
 		print_if<PROGRESS>("Minibs<%d>: Init complete via restoration.\n", DENOMINATOR);
 	    } else
 	    {
@@ -741,6 +741,9 @@ public:
     
     void init_from_scratch()
 	{
+	    // We initialize the knownsum layer here.
+	    init_knownsum_layer();
+	    
 	    for (long unsigned int i = 0; i < feasible_itemconfs.size(); i++)
 	    {
 		std::unordered_set<uint64_t> winning_in_layer;
@@ -772,7 +775,7 @@ public:
 	    if (!bstore.storage_exists())
 	    {
 		print_if<PROGRESS>("Queen: Backing up Minibs<%d> calculations.\n", DENOMINATOR);
-		bstore.backup(alg_winning_positions);
+		bstore.backup(alg_winning_positions, alg_knownsum_winning);
 	    }
 	}
     

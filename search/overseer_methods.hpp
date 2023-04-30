@@ -207,8 +207,7 @@ void overseer::start()
 	    {
 		print_if<PROGRESS>("Overseer %d: allocating minibinstretching cache.\n", multiprocess::world_rank);
 		mbs = new minibs<MINIBS_SCALE_WORKER>();
-		mbs->init_knownsum_layer();
-		mbs->init_all_layers();
+		mbs->init();
 	    }
 
 

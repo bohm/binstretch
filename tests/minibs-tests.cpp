@@ -5,8 +5,8 @@
 #include <cstdint>
 
 #define IBINS 3
-#define IR 247
-#define IS 180
+#define IR 411
+#define IS 300
 
 #include "minibs.hpp"
 
@@ -166,7 +166,6 @@ template <int DENOMINATOR> void knownsum_tests(const minibs<DENOMINATOR>& mb)
 {
 
     initialize_knownsum();
-    // mb.init_knownsum_layer();
 
     loadconf iterated_lc = create_full_loadconf();
     do {
@@ -346,15 +345,8 @@ int main(void)
     // maximum_feasible_tests();
     
     minibs<TEST_SCALE> mb;
-    mb.init_knownsum_layer();
-    mb.init_all_layers();
-
-    binary_storage<TEST_SCALE> bstore;
-
-    if (!bstore.storage_exists())
-    {
-	bstore.backup(mb.alg_winning_positions);
-    }
+    mb.init();
+    mb.backup_calculations();
 
 
 

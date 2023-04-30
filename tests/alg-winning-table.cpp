@@ -5,13 +5,61 @@
 #include <cstdint>
 
 #define IBINS 3
-#define IR 247
-#define IS 180
+#define IR 411
+#define IS 300
 
 #include "minibs.hpp"
+#include "gs.hpp"
 
 constexpr int TEST_SCALE = 3;
-constexpr int GS2BOUND = S - 2*ALPHA;
+
+constexpr int TWO_MINUS_FIVE_ALPHA = 2*S - 5*ALPHA;
+bool gs4_gs6_step(loadconf *lc)
+{
+    int HALF_GS7_TH = 3*ALPHA + lc->loads[2] + lc->loads[3];
+    int GS4_GS6_TH = 5*S - 7*ALPHA + 3*lc->loads[3];
+
+    if (lc->loads[1] >= ALPHA && lc->loads[2] <= ALPHA &&
+	lc->loads[3] >= TWO_MINUS_FIVE_ALPHA && 2*lc->loads[1] <= HALF_GS7_TH)
+    {
+	if (4*lc->loads[1] + 4*lc->loads[2] >= GS4_GS6_TH)
+	{
+	    return true;
+	}
+    }
+
+    return false;
+}
+
+std::string gs_loadconf_tester(loadconf *lc)
+{
+    if (gs1(lc))
+    {
+	return "(GS1)";
+    } else if (gs2(lc))
+    {
+	return "(GS2)";
+    }
+    else if (gs3(lc))
+    {
+	return "(GS3)";
+    }
+    else if (gs4(lc))
+    {
+	return "(GS4)";
+    }
+    else if (gs6(lc))
+    {
+	return "(GS6)";
+    }
+    else if (gs4_gs6_step(lc))
+    {
+	return "(GS4-6)";
+    } else
+    {
+	return "";
+    }
+}
 
 template <int SCALE> std::pair<loadconf, itemconfig<SCALE>> loadshrunken(std::stringstream& str_s, bool only_load = false)
 {
@@ -57,7 +105,7 @@ template <int SCALE> void alg_winning_table(std::pair<loadconf, itemconfig<SCALE
     for (int item = start_item; item >= 1; item--)
     {
 	
-	std::vector<int> good_moves;
+	std::vector<std::string> good_moves;
 	uint64_t next_layer_hash = minibs_position->second.itemhash;
 	int shrunk_itemtype = minibs->shrink_item(item);
 
@@ -82,7 +130,15 @@ template <int SCALE> void alg_winning_table(std::pair<loadconf, itemconfig<SCALE
 		bool alg_wins_next_position = minibs->query_itemconf_winning(minibs_position->first, next_layer, item, bin);
 		if (alg_wins_next_position)
 		{
-		    good_moves.push_back(bin);
+		    char bin_name = (char) (a_minus_one + bin);
+		    good_moves.push_back(std::string(1, bin_name));
+		    // If this position is also a good situation (those we can analyze theoretically) we say so.
+		    loadconf gm(minibs_position->first, item, bin);
+		    std::string tester_reply = gs_loadconf_tester(&gm);
+		    if (!tester_reply.empty())
+		    {
+			good_moves.push_back(tester_reply);
+		    }
 		}
 	    }
 	}
@@ -90,9 +146,9 @@ template <int SCALE> void alg_winning_table(std::pair<loadconf, itemconfig<SCALE
 	// Printing phase.
 
 	fprintf(stderr, "In case %3d (scaled size: %3d), ALG can pack into: ", item, minibs->shrink_item(item));
-	for( int i = 0; i < good_moves.size(); i++)
+	for (unsigned int i = 0; i < good_moves.size(); i++)
 	{
-	    fprintf(stderr, "%c ", (char) (a_minus_one + good_moves[i]));
+	    fprintf(stderr, "%s ", good_moves[i].c_str());
 	}
 	fprintf(stderr, "\n");
     }
@@ -130,8 +186,9 @@ int main(int argc, char** argv)
     // maximum_feasible_tests();
     
     minibs<TEST_SCALE> mb;
-    mb.init_knownsum_layer();
-    mb.init_all_layers();
+    mb.init();
+    mb.backup_calculations();
+
 
     alg_winning_table(&p, &mb);
     // binary_storage<TEST_SCALE> bstore;
