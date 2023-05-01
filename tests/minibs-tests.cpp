@@ -17,7 +17,7 @@ constexpr int GS2BOUND = S - 2*ALPHA;
 // Stores the winning position into the provided unordered_set.
 // This is useful for some later tests.
 
-template <int DENOMINATOR> void sand_winning(minibs<DENOMINATOR> &mb, std::unordered_set<int>& sand_winning)
+template <int DENOMINATOR> void sand_winning(minibs<DENOMINATOR> &mb, std::unordered_set<int>& sand_winning, int fixed_sand_on_one)
 {
     itemconfig<DENOMINATOR> ic;
     ic.hashinit();
@@ -27,6 +27,11 @@ template <int DENOMINATOR> void sand_winning(minibs<DENOMINATOR> &mb, std::unord
 	loadconf lc;
 	lc.hashinit();
 	lc.assign_and_rehash(sand, 1);
+	if (fixed_sand_on_one >= 1)
+	{
+	    lc.assign_and_rehash(fixed_sand_on_one, 2);
+	}
+	
 	bool alg_winning_via_knownsum = mb.query_knownsum_layer(lc);
 	if (alg_winning_via_knownsum)
 	{
@@ -338,7 +343,7 @@ template <int DENOMINATOR> void itemconfig_backtrack(minibs<DENOMINATOR> &mb,
 
 
 
-int main(void)
+int main(int argc, char** argv)
 {
     zobrist_init();
 
@@ -348,6 +353,12 @@ int main(void)
     mb.init();
     mb.backup_calculations();
 
+    int fixed_load_on_one = 0;
+
+    if (argc >= 2)
+    {
+	fixed_load_on_one = atoi(argv[1]);
+    }
 
 
 
@@ -371,8 +382,8 @@ int main(void)
     // print_int_array<mb.DENOM>(mb.ITEMS_PER_TYPE, true);
 
     std::unordered_set<int> sand_winning_for_alg;
-    fprintf(stderr, "Sand winning positions (interval [1,%d]):\n", GS2BOUND);
-    sand_winning<TEST_SCALE>(mb, sand_winning_for_alg);
+    fprintf(stderr, "Sand winning positions (with one bin loaded to %d, interval [1,%d]):\n", fixed_load_on_one, GS2BOUND);
+    sand_winning<TEST_SCALE>(mb, sand_winning_for_alg, fixed_load_on_one);
     fprintf(stderr, "Single measurable item winning (interval [1,%d], ignoring sand wins):\n", GS2BOUND);
     one_measurable_item_winning<TEST_SCALE>(mb, sand_winning_for_alg);
     fprintf(stderr, "Single items winning (interval [1,%d], ignoring sand wins):\n", GS2BOUND);
