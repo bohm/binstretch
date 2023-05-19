@@ -31,6 +31,37 @@ bool gs4_gs6_step(loadconf *lc)
     return false;
 }
 
+// A step to GS4-6, discovered 2023-05-19.
+bool gs4_6_step2(loadconf *lc)
+{
+     int HALF_GS7_TH = 3*ALPHA + lc->loads[2] + lc->loads[3];
+
+     // Necessary conditions first:
+     // A >= ALPHA,
+     // ALPHA >= B, C >= 2 - 5*ALPHA.
+     if (lc->loads[1] < ALPHA || lc->loads[2] > ALPHA || lc->loads[3] < TWO_MINUS_FIVE_ALPHA)
+     {
+	 return false;
+     }
+
+
+     // The two inequalities:
+     // 2A + 2B >= 9/4 - 15/4 ALPHA + 7/4 C
+     // 8A + 8B >= 9 - 15ALPHA + 7C
+
+     if (8*lc->loads[1] + 8*lc->loads[2] >= 9*S - 15*ALPHA + 7*lc->loads[3])
+     {
+
+	 // 1.5*B + 1.5*C >= 2A + 1 - 7/2 ALPHA,
+	 // 3B + 3C >= 2A +1 - 7ALPHA.
+	 if (3*lc->loads[2] + 3*lc->loads[3] >= 4*lc->loads[1] + 2*S - 7*ALPHA)
+	 {
+	     return true;
+	 }
+     }
+     return false;
+}
+
 std::string gs_loadconf_tester(loadconf *lc)
 {
     if (gs1(lc))
@@ -55,7 +86,10 @@ std::string gs_loadconf_tester(loadconf *lc)
     else if (gs4_gs6_step(lc))
     {
 	return "(GS4-6)";
-    } else
+    } else if (gs4_6_step2(lc))
+    {
+	return "(GS4-6-step2)";
+    }
     {
 	return "";
     }
