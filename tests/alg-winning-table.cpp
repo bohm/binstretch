@@ -38,8 +38,9 @@ bool gs4_6_step2(loadconf *lc)
 
      // Necessary conditions first:
      // A >= ALPHA,
-     // ALPHA >= B, C >= 2 - 5*ALPHA.
-     if (lc->loads[1] < ALPHA || lc->loads[2] > ALPHA || lc->loads[3] < TWO_MINUS_FIVE_ALPHA)
+     // ALPHA >= B, C >= 2 - 5*ALPHA,
+     // A <= q = 3/2*ALPHA + (B+C)/2
+     if (lc->loads[1] < ALPHA || lc->loads[2] > ALPHA || lc->loads[3] < TWO_MINUS_FIVE_ALPHA || 2*lc->loads[1] > HALF_GS7_TH)
      {
 	 return false;
      }
@@ -60,6 +61,20 @@ bool gs4_6_step2(loadconf *lc)
 	 }
      }
      return false;
+}
+
+// A step before GS4, where we can assume B is loaded to alpha instead.
+// Discovered 2023-05-20.
+bool gs4_step(loadconf *lc)
+{
+    if (lc->loads[2] < ALPHA &&
+	2*lc->loads[1] >= 3*S - 5*ALPHA + lc->loads[3] &&
+	2*lc->loads[2] >= 2*lc->loads[1] - 5*ALPHA + S)
+    {
+	return true;
+    }
+    
+    return false;
 }
 
 std::string gs_loadconf_tester(loadconf *lc)
@@ -90,6 +105,10 @@ std::string gs_loadconf_tester(loadconf *lc)
     {
 	return "(GS4-6-step2)";
     }
+    else if (gs4_step(lc))
+    {
+	return "(GS4-step)";
+    } else
     {
 	return "";
     }
