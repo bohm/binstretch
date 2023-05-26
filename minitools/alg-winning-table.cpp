@@ -271,12 +271,14 @@ std::string gs_loadconf_tester(loadconf *lc)
     }
     else if (gs4_6_step2_variant(lc))
     {
-	return "(GS4-6s-v)";
+	return "(GS4-6s-step2-v)";
     }
+    /*
     else if (gs4_6_step3_stronger(lc))
     {
 	return "(GS4-6s-step3)";
     }
+    */
     else if (gs4_step(lc))
     {
 	return "(GS4-step)";
