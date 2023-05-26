@@ -37,6 +37,47 @@ bool gs4_6_weaker(loadconf *lc)
 }
 */
 
+template <int SCALE> bool gs5_plus(loadconf *lc, int full_size_next_item, int target_bin, minibs<SCALE> *mb)
+{
+    // Rule currently assumes that minibs is of scale 3.
+    assert(SCALE == 3);
+
+    // Next item must fit and must have weight at least 1/3.
+    if (lc->loads[target_bin] + full_size_next_item > R-1)
+    {
+	return false;
+    }
+
+    int shrunk_itemtype = mb->shrink_item(full_size_next_item);
+    if (shrunk_itemtype == 0)
+    {
+	return false;
+    }
+
+    // For simplicity of description, we pack the item inside the good situation.
+    loadconf nextconf(*lc, full_size_next_item, target_bin);
+
+    
+    int A = nextconf.loads[1];
+    int B = nextconf.loads[2];
+    int C = nextconf.loads[3];
+
+    if (A < ALPHA || B >= ALPHA || C != 0)
+    {
+	return false;
+    }
+
+    // Final condition: B must be loaded to at least 2 - 5*alpha.
+    int GS5_TH = 2*S - 5*ALPHA;
+    if (B >= GS5_TH)
+    {
+	return true;
+    } else
+    {
+	return false;
+    }
+}
+
 bool gs4_6_stronger(loadconf *lc)
 {
     int A = lc->loads[1];
@@ -181,6 +222,18 @@ bool gs4_step(loadconf *lc)
     }
     
     return false;
+}
+
+template <int SCALE> std::string gs_pre_placement(loadconf *lc, int item, int target_bin, minibs<SCALE> *mb)
+{
+    if (gs5_plus(lc, item, target_bin, mb))
+    {
+	return "(GS5+)";
+    }
+    else
+    {
+	return "";
+    }
 }
 
 std::string gs_loadconf_tester(loadconf *lc)
@@ -379,11 +432,22 @@ template <int SCALE> void alg_winning_table(std::pair<loadconf, itemconfig<SCALE
 		    char bin_name = (char) (a_minus_one + bin);
 		    good_moves.push_back(std::string(1, bin_name));
 		    // If this position is also a good situation (those we can analyze theoretically) we say so.
-		    loadconf gm(minibs_position->first, item, bin);
-		    std::string tester_reply = gs_loadconf_tester(&gm);
-		    if (!tester_reply.empty())
+
+		    // First, we run the tests which do not need to place the item.
+		    std::string tester_before_placing = gs_pre_placement<SCALE>(
+			&(minibs_position->first), item, bin, minibs);
+		    if (!tester_before_placing.empty())
 		    {
-			good_moves.push_back(tester_reply);
+			good_moves.push_back(tester_before_placing);
+		    } else
+		    {
+			// Then, we run the tests which assume the item is packed.
+			loadconf gm(minibs_position->first, item, bin);
+			std::string tester_reply = gs_loadconf_tester(&gm);
+			if (!tester_reply.empty())
+			{
+			    good_moves.push_back(tester_reply);
+			}
 		    }
 		}
 	    }

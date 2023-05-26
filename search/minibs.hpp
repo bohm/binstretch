@@ -245,6 +245,18 @@ template <int DENOMINATOR> class minibs
 {
 public:
     static constexpr int DENOM = DENOMINATOR;
+    // GS5+ extension. GS5+ is one of the currently only good situations which
+    // makes use of tracking items -- in this case, items of size at least alpha
+    // and at most 1-alpha.
+
+    // Setting EXTENSION_GS5 to false makes the computation structurally cleaner,
+    // as there are no special cases, but the understanding of winning and losing
+    // positions does not match the human understanding exactly.
+
+    // Setting EXTENSION_GS5 to true should include more winning positions in the system,
+    // which helps performance.
+    static constexpr bool EXTENSION_GS5 = true;
+    
     static constexpr std::array<int, DENOMINATOR> max_items_per_type()
 	{
 	    std::array<int, DENOMINATOR> ret = {};
@@ -454,6 +466,55 @@ public:
 	    return false;
 	}
 
+    // Reimplementation of GS5+.
+    static bool alg_winning_by_gs5plus(const loadconf &lc, int item, int bin)
+	{
+	    // Compile time checks.
+	    // There must be three bins, or GS5+ does not apply. And the extension must
+	    // be turned on.
+	    if (BINS != 3 || !EXTENSION_GS5)
+	    {
+		return false;
+	    }
+	    // The item must be bigger than ALPHA and the item must fit in the target bin.
+	    if (item < ALPHA || lc.loads[bin] + item > R-1)
+	    {
+		return false;
+	    }
+
+	    // The two bins other than "bin" are loaded below alpha.
+	    // One bin other than "bin" must be loaded to zero.
+	    bool one_bin_zero = false;
+	    bool one_bin_sufficient = false;
+	    for (int i = 1; i <= BINS; i++)
+	    {
+		if (i != bin)
+		{
+		    if (lc.loads[i] > ALPHA)
+		    {
+			return false;
+		    }
+
+		    if (lc.loads[i] == 0)
+		    {
+			one_bin_zero = true;
+		    }
+
+		    if (lc.loads[i] >= 2*S - 5*ALPHA)
+		    {
+			one_bin_sufficient = true;
+		    }
+		}
+	    }
+
+	    if (one_bin_zero && one_bin_sufficient)
+	    {
+		return true;
+	    }
+
+	    return false;
+	}
+    
     bool query_knownsum_layer(const loadconf &lc) const
 	{
 	    if (adv_immediately_winning(lc))
@@ -480,6 +541,11 @@ public:
 	    }
 
 	    if (alg_immediately_winning(load_if_packed, load_on_last))
+	    {
+		return true;
+	    }
+
+	    if (alg_winning_by_gs5plus(lc, item, bin))
 	    {
 		return true;
 	    }
