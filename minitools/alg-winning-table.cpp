@@ -286,6 +286,80 @@ std::string gs_loadconf_tester(loadconf *lc)
     }
 }
 
+
+
+// Returns [-1,-1] if GS5+ is not applicable, and [ALPHA, max_on_A] if yes.
+std::pair<int,int> gs5plus_range(loadconf *lc)
+{
+    if (BINS != 3)
+    {
+	return {-1, -1};
+    }
+
+    int A = lc->loads[1];
+    int B = lc->loads[2];
+    int C = lc->loads[3];
+
+    if (B >= ALPHA || C != 0)
+    {
+	return {-1, -1};
+    }
+
+    int GS5_TH = 2*S - 5*ALPHA;
+    if (A > ALPHA && B >= GS5_TH)
+    {
+	int max_on_A = (R - 1) - A;
+	if (max_on_A >= ALPHA)
+	{
+	    return {ALPHA, max_on_A};
+	}
+	else
+	{
+	    return {-1, -1};
+	}
+    }
+    else if (A <= ALPHA && A >= GS5_TH)
+    {
+	return {ALPHA, S};
+    }
+    else
+    {
+	return {-1, -1};
+    }
+}
+
+std::pair<int, int> gs2_range(loadconf *lc, int bin)
+{
+    int load = lc->loads[bin];
+    if (load > ALPHA)
+    {
+	return {-1, -1};
+    } else
+    {
+	return {1*S-2*ALPHA-load, ALPHA-load};
+    }
+}
+
+void print_ranges(loadconf *lc)
+{
+    char a_minus_one = 'A' - 1;
+
+    for (int i = 1; i <= 3; i++)
+    {
+	std::pair<int, int> p = gs2_range(lc, i);
+	if (p.first != -1)
+	{
+	    fprintf(stderr, "GS2 range for bin %c is [%d, %d].\n", a_minus_one + (char) i, p.first, p.second);
+	}
+    }
+
+    std::pair<int, int> gs5p = gs5plus_range(lc);
+    if (gs5p.first != -1)
+    {
+	fprintf(stderr, "GS5+ range is [%d, %d].\n", gs5p.first, gs5p.second);
+    }
+}
+
 template <int SCALE> void adv_winning_description(std::pair<loadconf, itemconfig<SCALE>> *pos, minibs<SCALE> *minibs)
 {
     bool pos_winning = minibs->query_itemconf_winning(pos->first, pos->second);
@@ -394,15 +468,41 @@ template <int SCALE> void alg_winning_table(std::pair<loadconf, itemconfig<SCALE
     }
 		   
 
+    std::array<std::pair<int, int>, 4> good_ranges = {};
+    // 0 - 2: GS2 ranges.
+    for (int i = 0; i < 3; i++)
+    {
+	good_ranges[i] = gs2_range(&(minibs_position->first), i+1);
+    }
+    // 3: GS5+ range.
+    good_ranges[3] = gs5plus_range(&(minibs_position->first));
+    
 
     fprintf(stderr, "For position ");
     fprintf(stderr, ":\n");
 
     char a_minus_one = 'A' - 1;
     int start_item = std::min(S, S * BINS - minibs_position->first.loadsum());
+
     
     for (int item = start_item; item >= 1; item--)
     {
+	// Do not list an item if it is in GS5+ range or any of the GS2 ranges.
+	bool skip_print = false;
+	for (int i = 0; i < 4; i++)
+	{
+	    if (item >= good_ranges[i].first && item <= good_ranges[i].second)
+	    {
+		skip_print = true;
+		break;
+	    }
+	}
+
+	if (skip_print)
+	{
+	    continue;
+	}
+
 	
 	std::vector<std::string> good_moves;
 	uint64_t next_layer_hash = minibs_position->second.itemhash;
@@ -462,6 +562,8 @@ template <int SCALE> void alg_winning_table(std::pair<loadconf, itemconfig<SCALE
 	}
 	fprintf(stderr, "\n");
     }
+
+    print_ranges(&(minibs_position->first));
 }
 
 int main(int argc, char** argv)
