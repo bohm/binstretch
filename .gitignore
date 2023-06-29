@@ -13,3 +13,10 @@
 /algorithm/x64/Release
 *.psess
 *.vspx
+*.cpp~
+*.hpp~
+experiments/*
+/x64
+/bs-dagtest.vcxproj.user
+/bs-dagtest.vcxproj.filters
+/binstretch.sln.DotSettings.user

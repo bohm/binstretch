@@ -1,0 +1,287 @@
+#include <cstdio>
+#include <cstdlib>
+#include <cassert>
+#include <map>
+
+#include "common.hpp"
+#include "hash.hpp"
+#include "dag/dag.hpp"
+#include "fits.hpp"
+#include "dynprog/wrappers.hpp"
+#include "gs.hpp"
+#include "tasks.hpp"
+#include "queen.hpp"
+
+#ifndef _UPDATER_H
+#define _UPDATER_H 1
+
+/* To facilitate faster updates and better decreases, I have moved
+   the UPDATING and DECREASING functionality into separate functions below.
+
+   This simple interpretation depends on a correct lower bound tree (with cached
+   vertices and postponed branches).
+
+   Both decrease() and update() are slimmed down versions of the minimax algorithm.
+*/
+
+// An updater class that actually evaluates the full tree each time, not
+// just a sub-DAG.
+// This in principle can slow things down, but it also can alleviate some
+// inconsistency issues in the DAG.
+
+class updater_computation
+{
+public:
+    dag *d;
+    sapling job;
+    victory root_result = victory::uncertain;
+    victory updater_result = victory::uncertain;
+    uint64_t unfinished_tasks = 0;
+    uint64_t vertices_visited = 0;
+    bool evaluation = false;
+    bool expansion = false;
+    
+    updater_computation(dag *graph, sapling job)
+	{
+	    d = graph;
+	    this->job = job;
+
+	    // We count initial tasks, so that continue_updating() returns true if there are tasks left
+	    // in the computation.
+	    count_tasks();
+
+	    evaluation = job.evaluation;
+	    expansion = job.expansion;
+	}
+
+    // A reduced constructor, when we wish to only update from root.
+    updater_computation(dag *graph)
+    {
+	    d = graph;
+	    sapling rootjob;
+	    rootjob.root = d->root;
+	    rootjob.evaluation = true;
+	    this->job = rootjob;
+	    evaluation = true;
+    }
+
+    victory update_adv(adversary_vertex *v);
+    victory update_alg(algorithm_vertex *v); 
+    void update()
+	{
+
+	    unfinished_tasks = 0;
+	    vertices_visited = 0;
+	    d->clear_visited();
+	    update_adv(job.root);
+	    root_result = d->root->win;
+	    updater_result = job.root->win;
+	}
+
+    void update_root()
+    	{
+	    uint64_t previous_unfinished_tasks = unfinished_tasks;
+	    uint64_t previous_vertices_visited = vertices_visited;
+	    unfinished_tasks = 0;
+	    vertices_visited = 0;
+	    d->clear_visited();
+	    update_adv(d->root);
+	    root_result = d->root->win;
+	    // We reset the unfinished_tasks and vertices_visited
+	    // so that we do not mess up the continue_updating() check.
+	    unfinished_tasks = previous_unfinished_tasks;
+	    vertices_visited = previous_vertices_visited;
+    	}
+
+    void count_tasks()
+	{
+	    for (const auto& [hash, adv_v] : d->adv_by_id)
+	    {
+		if (adv_v->task)
+		{
+		    unfinished_tasks++;
+		}
+	    }
+        }
+    
+    bool continue_updating()
+	{
+	    // fprintf(stderr, "Updater: seeing %ld tasks.\n", unfinished_tasks); 
+	    return (unfinished_tasks > 0);
+	}
+
+
+};
+
+victory updater_computation::update_adv(adversary_vertex *v)
+{
+    victory result = victory::alg;
+    int right_move;
+ 
+    assert(v != NULL);
+
+    if (v->win == victory::adv || v->win == victory::alg)
+    {
+	return v->win;
+    }
+
+    /* Already visited this update. */
+    if (v->visited)
+    {
+	return v->win;
+    }
+
+    v->visited = true;
+
+    vertices_visited++;
+
+    if (v->task)
+    {
+	uint64_t hash = v->bc.hash_with_last();
+	result = completion_check(hash);
+	if (result == victory::uncertain)
+	{
+	    unfinished_tasks++;
+	} else
+	{
+	    v->win = result;
+	}
+    }
+    else if (v->leaf != leaf_type::nonleaf)
+    {
+	// Deal with non-leaves.
+
+	if (v->leaf == leaf_type::assumption) // This if condition triggers only during expansion.
+	{
+	    assert(v->out.empty());
+	    result = v->win;
+	} else if (v->leaf == leaf_type::heuristical) // This if condition triggers only during expansion.
+	{
+	    result = v->win;
+	} else if (v->leaf == leaf_type::boundary)
+	{
+	    assert(v->out.empty());
+	    result = victory::uncertain;
+	} else // This if condition triggers only during expansion.
+	{
+	    // assert(v->leaf == leaf_type::trueleaf);
+	    assert(v->out.empty());
+	    result = victory::alg; // A true adversarial leaf is winning for alg.
+	}
+	
+	//fprintf(stderr, "Completion check:");
+	//print_binconf_stream(stderr, v->bc);
+        //fprintf(stderr, "Completion check result: %d\n", result);
+    } else {
+	assert(v->out.size() > 0);
+	std::list<adv_outedge*>::iterator it = v->out.begin();
+	while ( it != v->out.end())
+	{
+	    algorithm_vertex *n = (*it)->to;
+	    victory below = update_alg(n);
+	    if (below == victory::adv)
+	    {
+		result = victory::adv;
+		right_move = (*it)->item;
+		// we can break here (in fact we should break here, so that assertion that only one edge remains is true)
+		break;
+		
+	    } else if (below == victory::alg)
+	    {
+		adv_outedge *removed_edge = (*it);
+		qdag->remove_inedge<minimax::updating>(*it);
+		qdag->del_adv_outedge(removed_edge);
+		it = v->out.erase(it); // serves as it++
+	    } else if (below == victory::uncertain)
+	    {
+		if (result == victory::alg) {
+		    result = victory::uncertain;
+		}
+		it++;
+	    }
+	}
+	// remove outedges only for a non-task
+	if (result == victory::adv)
+	{
+	    qdag->remove_outedges_except<minimax::updating>(v, right_move);
+	}
+
+	if (result == victory::adv || result == victory::alg)
+	{
+	    v->win = result;
+	}
+    }
+    
+    if (v->state != vert_state::fixed && result == victory::alg)
+    {
+	// sanity check
+	assert( v->out.empty() );
+    }
+
+    return result;
+}
+
+victory updater_computation::update_alg(algorithm_vertex *v)
+{
+    assert(v != NULL);
+
+    if (v->win == victory::adv || v->win == victory::alg)
+    {
+	return v->win;
+    }
+
+    /* Already visited this update. */
+    if (v->visited)
+    {
+	return v->win;
+    }
+
+    v->visited = true;
+    vertices_visited++;
+
+    if (v->state == vert_state::finished)
+    {
+	return v->win;
+    }
+ 
+    victory result = victory::adv;
+    std::list<alg_outedge*>::iterator it = v->out.begin();
+    while ( it != v->out.end())
+    {
+	adversary_vertex *n = (*it)->to;
+   
+	victory below = update_adv(n);
+	if (below == victory::alg)
+	{
+	    result = victory::alg;
+	    break;
+	} else if (below == victory::adv)
+	{
+	    // do not delete subtree, it might be part
+	    // of the lower bound
+	    it++;
+	} else if (below == victory::uncertain)
+        {
+	    if (result == victory::adv) {
+		result = victory::uncertain;
+	    }
+	    it++;
+	}
+    }
+    
+    if (result == victory::alg && v->state != vert_state::fixed)
+    {
+	qdag->remove_outedges<minimax::updating>(v);
+	assert( v->out.empty() );
+
+    }
+
+    if (result == victory::adv || result == victory::alg)
+    {
+	v->win = result;
+    }
+
+    return result;
+}
+
+#endif

@@ -1,8 +1,0 @@
-To compile, you need a modern C++ compiler, such as recent g++ with -std=c++17.
-You also require an OpenMPI installation.
-Steps:
-
-1. In common.hpp, set up the desired constants.
-2. In server_properties.hpp, set up the capabilities of your computers.
-2. Compile the program: "mpic++ -Wall -O3 -std=c++17 main.cpp -o lb-45_33 -pthread -latomic"
-3. Run the program according to your network setup, e.g. "mpirun -np 2 ./lb-45_33"
