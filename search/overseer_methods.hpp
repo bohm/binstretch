@@ -26,11 +26,6 @@ void overseer::cleanup()
 	    f->root_solved = false;
 	}
 
-	if (USING_MINIBINSTRETCHING)
-	{
-	    print_if<PROGRESS>("Overseer %d: freeing minibinstretching cache.\n", multiprocess::world_rank);
-	    delete mbs;
-	}
     }
 
 bool overseer::all_workers_waiting()
@@ -343,8 +338,10 @@ void overseer::start()
 				     multiprocess::world_rank, dpc->size(), dpc->meas.filled_positions,
 				     dpc->meas.empty_positions));
 							
-    
+
+	    
 	    comm.transmit_measurements(ov_meas);
+
 	    delete dpc;
 	    delete adv_cache;
 	    delete[] finished_tasks;
@@ -356,6 +353,12 @@ void overseer::start()
     if (USING_HEURISTIC_WEIGHTSUM)
     {
         delete weight_heurs;
+    }
+
+    if (USING_MINIBINSTRETCHING)
+    {
+	print_if<PROGRESS>("Overseer %d: freeing minibinstretching cache.\n", multiprocess::world_rank);
+	delete mbs;
     }
 
 
