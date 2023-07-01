@@ -39,17 +39,13 @@ bool gs4_6_weaker(loadconf *lc)
 
 template <int SCALE> bool gs5_plus(loadconf *lc, int full_size_next_item, int target_bin, minibs<SCALE> *mb)
 {
-    // Rule currently assumes that minibs is of scale 3.
-    assert(SCALE == 3);
-
-    // Next item must fit and must have weight at least 1/3.
+    // Next item must fit and must have weight at least ALPHA.
     if (lc->loads[target_bin] + full_size_next_item > R-1)
     {
 	return false;
     }
 
-    int shrunk_itemtype = mb->shrink_item(full_size_next_item);
-    if (shrunk_itemtype == 0)
+    if (full_size_next_item < ALPHA)
     {
 	return false;
     }

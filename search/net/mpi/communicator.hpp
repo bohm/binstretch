@@ -115,7 +115,8 @@ public:
 	{
 	    running_low[target_overseer] = false;
 	}
-    
+
+    void sync_midpoint_of_initialization();
     void sync_after_initialization();
     
     bool round_start_and_finality();

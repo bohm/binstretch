@@ -158,6 +158,17 @@ int queen_class::start()
 	weight_heurs->init_weight_bounds();
     }
 
+    if (USING_MINIBINSTRETCHING)
+    {
+	print_if<PROGRESS>("Queen: allocating cache minibs<%d>.\n", MINIBS_SCALE_QUEEN);
+	mbs = new minibs<MINIBS_SCALE_QUEEN>();
+	mbs->init();
+	// Note: the next command is not executed by the overseer, as we wish to backup
+	// the calculations only by one process, and not have two write to a file at the same time.
+	mbs->backup_calculations();
+	comm.sync_midpoint_of_initialization();
+    }
+
     comm.sync_after_initialization(); // Sync before any rounds start.
 
     assumptions assumer;
@@ -250,17 +261,6 @@ int queen_class::start()
 
 	if (USING_MINIBINSTRETCHING)
 	{
-	    // The minibinstretching allocation happens here, so that the memory
-	    // can be freed as soon as possible.
-
-	    print_if<PROGRESS>("Queen: allocating cache minibs<%d>.\n", MINIBS_SCALE_QUEEN);
-
-
-	    mbs = new minibs<MINIBS_SCALE_QUEEN>();
-	    mbs->init();
-	    // Note: the next command is not executed by the overseer, as we wish to backup
-	    // the calculations only by one process, and not have two write to a file at the same time.
-	    mbs->backup_calculations();
 	    comp.mbs = mbs;
 	}
 
@@ -281,13 +281,6 @@ int queen_class::start()
 
 	MEASURE_ONLY(comp.meas.print_generation_stats());
 	MEASURE_ONLY(comp.meas.clear_generation_stats());
-
-	if (USING_MINIBINSTRETCHING)
-	{
-	    print_if<PROGRESS>("Queen: freeing minibinstretching cache.\n");
-	    delete comp.mbs;
-	    malloc_trim(0);
-	}
 
 	perf_timer.generation_phase_end();
 
@@ -495,14 +488,23 @@ int queen_class::start()
 	savefile(qdag, qdag->root);
     }
 
+    
+    // Print measurements and clean up.
+    MEASURE_ONLY(g_meas.print());
+    // delete_running_lows(); happens upon comm destruction.
+
     if (USING_HEURISTIC_WEIGHTSUM)
     {
 	delete weight_heurs;
     }
 
-    // Print measurements and clean up.
-    MEASURE_ONLY(g_meas.print());
-    // delete_running_lows(); happens upon comm destruction.
+
+    if (USING_MINIBINSTRETCHING)
+    {
+	print_if<PROGRESS>("Queen: freeing minibinstretching cache.\n");
+	delete mbs;
+	// malloc_trim(0);
+    }
 
     delete dpc;
     

@@ -20,6 +20,11 @@ void communicator::sync_after_initialization()
     sync_up();
 }
 
+void communicator::sync_midpoint_of_initialization()
+{
+    sync_up();
+}
+
 // A generic function for a quick broadcast of a number.
 void communicator::bcast_send_int(int root_sender, int num)
 {

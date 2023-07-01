@@ -172,6 +172,20 @@ void overseer::start()
     {
 	init_knownsum_with_lowest_sendable();
     }
+
+    // In the past, we have experimented with allocating minibinstretching in every
+    // round, but this has a big impact on running time.
+    // We still wait on the queen to allocate first, because we can re-use the stored
+    // pre-computations, if they exist on this computer.
+    if (USING_MINIBINSTRETCHING)
+    {
+	comm.sync_midpoint_of_initialization();
+	print_if<PROGRESS>("Overseer %d: allocating minibinstretching cache.\n", multiprocess::world_rank);
+	mbs = new minibs<MINIBS_SCALE_WORKER>();
+	mbs->init();
+    }
+
+
     // dpht_el::parallel_init(&dpht, dpht_size, worker_count);
 
     comm.sync_after_initialization(); // Sync before any rounds start.
@@ -199,16 +213,6 @@ void overseer::start()
 
 	if (!final_round)
 	{
-
-	    // We initialize minibinstretching only here, when the queen no longer
-	    // needs it.
-
-	    if (USING_MINIBINSTRETCHING)
-	    {
-		print_if<PROGRESS>("Overseer %d: allocating minibinstretching cache.\n", multiprocess::world_rank);
-		mbs = new minibs<MINIBS_SCALE_WORKER>();
-		mbs->init();
-	    }
 
 
             // receive (new) task array

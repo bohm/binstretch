@@ -45,6 +45,22 @@ public:
 	    }
 	}
 
+    // We might wish to use itemconfig for the full spectrum of item sizes.
+    // If we do, we hit the problem of alignment -- itemconfig only has DENOMINATOR
+    // positions, and uses the [0] position too.
+
+    // Align stores items of size 1 in [0].
+    inline static int align(int itemsize)
+	{
+	    return itemsize-1;
+	}
+
+    // Truesize prints the right size of item at index [0] (it is 1).
+    inline static int truesize(int index)
+	{
+	    return index+1;
+	}
+
 
     void initialize(const binconf& larger_bc)
 	{
