@@ -9,6 +9,8 @@
     VERT->print(stderr, true); \
     DAG->print_children(VERT); \
     DAG->print_path_to_root(VERT); \
+    fprintf(stderr, "Creating ./logs/assertion-failed.dag .\n"); \
+    DAG->log_graph("./logs/assertion-failed.dag");	\
     assert(STATEMENT); \
     }
 
@@ -19,7 +21,9 @@
     EDGE->to->print(stderr, true); \
     DAG->print_children(EDGE->from); \
     DAG->print_path_to_root(EDGE->to); \
-    assert(STATEMENT); \
+    fprintf(stderr, "Creating ./logs/assertion-failed.dag .\n"); \
+    DAG->log_graph("./logs/assertion-failed.dag"); \
+    assert(STATEMENT);				\
     }
 
 

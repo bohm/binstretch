@@ -196,7 +196,7 @@ int queen_class::start()
 
     // update_and_count_saplings(qdag); // Leave only uncertain saplings.
 
-    cleanup_after_adv_win(qdag, true);
+    cleanup_after_adv_win(qdag, sap_man.expansion);
     sapling_counter = sap_man.count_saplings();
     sapling job = sap_man.find_sapling(); // Can find a sapling to expand or evaluate.
     while (job.root != nullptr)
@@ -235,16 +235,12 @@ int queen_class::start()
 	}
 	*/
 	
-	task_depth = TASK_DEPTH_INIT + job.regrow_level * TASK_DEPTH_STEP;
-	task_load = TASK_LOAD_INIT + job.regrow_level * TASK_LOAD_STEP;
+	// task_depth = TASK_DEPTH_INIT + job.regrow_level * TASK_DEPTH_STEP;
+	// task_load = TASK_LOAD_INIT + job.regrow_level * TASK_LOAD_STEP;
 
 	// We do not regrow with a for loop anymore, we regrow using the job system in the DAG instead.
-	/*
-	FILE *flog = fopen("./logs/before-generation.log", "w");
-	qdag->clear_visited();
-	qdag->print_lowerbound_dfs(qdag->root, flog, true);
-	fclose(flog);
-	*/
+
+	qdag->log_graph("./logs/before-generation.log");
 
 	computation<minimax::generating, MINIBS_SCALE_QUEEN> comp;
 	comp.regrow_level = job.regrow_level;
@@ -289,7 +285,8 @@ int queen_class::start()
 	print_if<VERBOSE>("Consistency check after generation.\n");
 	consistency_checker c_after_gen(qdag, false);
 	c_after_gen.check();
-
+	qdag->log_graph("./logs/after-generation.log"); // For debug purposes.
+	
 	// If we have already finished via generation, we skip the parallel phase.
 	// We still enter the cleanup phase.
 	if (computation_root->win != victory::uncertain)
@@ -406,7 +403,19 @@ int queen_class::start()
 	if (job.root->win == victory::adv)
 	{
 	    winning_saplings++;
-	    cleanup_after_adv_win(qdag, job.evaluation); // Cleanup also prunes winning saplings.
+	    
+	    if (VERBOSE && sap_man.expansion)
+	    {
+		fprintf(stderr, "Queen: performing expansion cleanup.\n");
+	    } else if (VERBOSE)
+	    {
+		fprintf(stderr, "Queen: performing evaluation cleanup.\n");
+
+	    }
+	    
+	    cleanup_after_adv_win(qdag, sap_man.expansion); // Cleanup also prunes winning saplings.
+	    // qdag->log_graph("./logs/after-cleanup.log");
+
 	} else
 	{
 	    losing_binconf = job.root->bc;
@@ -418,34 +427,22 @@ int queen_class::start()
 	assert(job.root->win == victory::adv);
 
 	// If the root is fully computed and winning for anyone, we stop.
-	if (qdag->root->win != victory::uncertain)
+	if (!sap_man.expansion && qdag->root->win != victory::uncertain)
 	{
-	    sap_man.evaluation = false;
 	    if (qdag->root->win == victory::alg)
 	    {
 		ret = 1;
 	    } else
 	    {
-		// ret = 0; // Not needed.
-		// Clean the full graph, starting from the root.
-		sapling rootjob;
-		rootjob.root = qdag->root;
-		print_if<VERBOSE>("Begin root cleanup.\n");
-		cleanup_after_adv_win(qdag, job.evaluation);
 		if (REGROW)
 		{
 		    sap_man.expansion = true;
-		    sap_man.evaluation = false;
 		    print_if<PROGRESS>("Queen: switching from evaluation to expansion.\n");
-
-		    FILE *flog = fopen("./logs/before-expansion.log", "w");
-		    qdag->clear_visited();
-		    qdag->print_lowerbound_dfs(qdag->root, flog, true);
-		    fclose(flog);
+		    qdag->log_graph("./logs/expansion-transition.log");
 		}
 	    }
 	}
-	
+
         // --- END CLEANUP PHASE ---
 	sapling_counter = sap_man.count_saplings();
 	// fprintf(stderr, "Saplings in graph: %ld.\n", sapling_counter);
@@ -470,6 +467,16 @@ int queen_class::start()
 	ucomp_root.update_root();
 
 	assert(qdag->root->win == victory::adv);
+
+	// We perform one more cleanup here also, to potentially have a more
+	// readable partial output.
+
+	if (!REGROW)
+	{
+	    // Clean the full graph, starting from the root.
+	    print_if<VERBOSE>("Begin final root cleanup (expansion mode).\n");
+	    cleanup_after_adv_win(qdag, false);
+	}
     }
     
     perf_timer.queen_end();

@@ -16,7 +16,7 @@ private:
     void find_unexpanded_sapling_adv(adversary_vertex *v);
     void find_unexpanded_sapling_alg(algorithm_vertex *v);
 public:
-    bool evaluation = true;
+    // bool evaluation = true;
     bool expansion = false;
 
     sapling_manager(dag *graph)
@@ -41,7 +41,6 @@ void sapling_manager::find_uncertain_sapling_adv(adversary_vertex *adv_v)
 
     if (adv_v->sapling && adv_v->win == victory::uncertain)
     {
-	first_found_job.evaluation = true;
 	first_found_job.expansion = false;
 	first_found_job.root = adv_v;
 	return;
@@ -106,13 +105,12 @@ void sapling_manager::find_unexpanded_sapling_adv(adversary_vertex *adv_v)
 
     adv_v->visited = true;
 
-    // fprintf(stderr, "Expansion consider vertex (regrow threshold %d):\n", regrow_threshold);
-    adv_v->print(stderr, true);
+    // fprintf(stderr, "Expansion considers vertex (regrow threshold %d):\n", regrow_threshold);
+    // adv_v->print(stderr, true);
     
     if (adv_v->leaf == leaf_type::boundary && adv_v->regrow_level <= regrow_threshold)
     {
 	first_found_job.root = adv_v;
-	first_found_job.evaluation = false;
 	first_found_job.expansion = true;
 	first_found_job.regrow_level = adv_v->regrow_level;
 	return;
@@ -187,7 +185,7 @@ sapling sapling_manager::find_first_unexpanded()
 sapling sapling_manager::find_sapling()
 {
     sapling job_candidate;
-    if (evaluation)
+    if (!expansion)
     {
 	job_candidate = find_first_uncertain();
 	if (job_candidate.root != nullptr)
@@ -254,7 +252,7 @@ void count_unexpanded_adv(adversary_vertex *v)
 
 uint64_t sapling_manager::count_saplings()
 {
-    if (evaluation)
+    if (!expansion)
     {
 	uncertain_boundary_counter = 0;
 	dfs(d, count_uncertain_saplings_adv, do_nothing);

@@ -86,6 +86,10 @@ void adversary_vertex::print(FILE *stream, bool debug)
 	dotprint_state(state,stream);
     }
 
+    if (debug)
+    {
+	fprintf(stream, ",regrow_level=%d", regrow_level);
+    }
     // Print additional parameters (mostly used for re-loading the tree and such).
     if (task)
     {
@@ -248,6 +252,15 @@ void dag::print_lowerbound_dfs(algorithm_vertex *v, FILE* stream, bool debug)
     {
 	print_lowerbound_dfs(e->to, stream, debug);
     }
+}
+
+void dag::log_graph(const char *filepath)
+{
+    FILE *flog = fopen(filepath, "w");
+    clear_visited();
+    print_lowerbound_dfs(root, flog, true);
+    fclose(flog);
+
 }
 
 // print extended via dfs

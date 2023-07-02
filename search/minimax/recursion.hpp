@@ -290,12 +290,6 @@ template<minimax MODE, int MINIBS_SCALE> victory computation<MODE, MINIBS_SCALE>
     int maximum_feasible = this->prev_max_feasible;
     int heuristical_ub = S;
     
-    GEN_ONLY(print_if<DEBUG>("GEN: "));
-    EXP_ONLY(print_if<DEBUG>("EXP: "));
- 
-    print_if<DEBUG>("Adversary evaluating the position with bin configuration: ");
-    print_binconf<DEBUG>(&bstate);
-
     if (GENERATING)
     {
 	if (adv_to_evaluate->visited)
@@ -313,15 +307,14 @@ template<minimax MODE, int MINIBS_SCALE> victory computation<MODE, MINIBS_SCALE>
 	    return adv_to_evaluate->win;
 	}
 
-	// In the evaluation mode, we do not go down vertices that are fixed.
-	// In expansion mode, this only holds for finished vertices.
-	if (evaluation)
+	// Fixed vertices should not need to be traversed by generation -- anything below
+	// them should be expanded at a later time. (Hopefully!)
+	// Note that when we do an expansion, the root does not have the "fixed" state,
+	// but the "expanding" state.
+	if (adv_to_evaluate->state == vert_state::fixed)
 	{
-	    if (adv_to_evaluate->state == vert_state::fixed)
-	    {
-		assert(adv_to_evaluate->win == victory::adv);
-		return adv_to_evaluate->win;
-	    }
+	    assert(adv_to_evaluate->win == victory::adv);
+	    return adv_to_evaluate->win;
 	}
 
 	// Any vertex which is touched by generation becomes temporarily a non-leaf.
@@ -526,7 +519,7 @@ template<minimax MODE, int MINIBS_SCALE> victory computation<MODE, MINIBS_SCALE>
 	}
 
 	// we now do creation of tasks only until the REGROW_LIMIT is reached
-	if (!this->heuristic_regime && this->regrow_level <= REGROW_LIMIT
+	if (!this->heuristic_regime && this->regrow_level < REGROW_LIMIT
 	    && POSSIBLE_TASK(adv_to_evaluate, this->largest_since_computation_root, calldepth)
 	    && adv_to_evaluate->out.empty())
 	{
@@ -841,7 +834,7 @@ template<minimax MODE, int MINIBS_SCALE> victory computation<MODE, MINIBS_SCALE>
 	if (GENERATING)
 	{
 	    std::tie(upcoming_adv, connecting_outedge) =
-		attach_matching_vertex(qdag, alg_to_evaluate, &bstate, i);
+		attach_matching_vertex(qdag, alg_to_evaluate, &bstate, i, regrow_level);
 	}
 
 	below = adversary(upcoming_adv, alg_to_evaluate);
@@ -966,6 +959,7 @@ template <minimax MODE, int MINIBS_SCALE> victory generate(sapling start_sapling
     if (start_sapling.expansion)
     {
 	comp->evaluation = false;
+	assert(start_sapling.root->state == vert_state::expanding);
     }
     
     onlineloads_init(comp->ol, &(comp->bstate));

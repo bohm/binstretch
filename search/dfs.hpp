@@ -179,7 +179,14 @@ void mark_tasks_adv(dag *d, adversary_vertex *v, bool stop_on_certain)
     
     if (v->out.size() == 0)
     {
-	if (v->leaf == leaf_type::boundary)
+	
+	// A fixed vertex which is also a leaf needs to be expanded,
+	// but it is not a task for right now.
+	if (v->state == vert_state::fixed)
+	{
+	    assert(v->win == victory::adv);
+	    return;
+	} else if (v->leaf == leaf_type::boundary)
 	{
 	    v->task = true;
 	}
@@ -219,7 +226,7 @@ void mark_tasks(dag *d, sapling job)
 {
     print_if<PROGRESS>("Marking tasks. \n");
     d->clear_visited();
-    if (job.evaluation)
+    if (!job.expansion)
     {
 	mark_tasks_adv(d, job.root, true);
     } else // Expansion.
@@ -235,7 +242,7 @@ void unmark_tasks(adversary_vertex *adv_v)
     {
 	// fprintf(stderr, "Marking ex-task with regrow level %d.\n", (adv_v->regrow_level)+1);
 	// adv_v->print(stderr, true);
-	(adv_v->regrow_level)++;
+	// (adv_v->regrow_level)++;
     } else if(adv_v->task)
     {
 	fprintf(stderr, "Tasks should not be outside the boundary.\n");

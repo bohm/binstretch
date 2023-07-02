@@ -18,14 +18,14 @@ public:
     std::string filename;
     uint64_t binconf_hash; // binconf hash for debug purposes
     bool expansion = false;
-    bool evaluation = true;
+    // bool evaluation = true;
 
     void mark_in_progress()
 	{
-	    if (evaluation)
+	    if (!expansion)
 	    {
 		// We currently do nothing if it is just being evaluated.
-	    } else if (expansion)
+	    } else // expansion
 	    {
 		root->state = vert_state::expanding;
 	    }
@@ -33,11 +33,11 @@ public:
 
     void mark_complete()
 	{
-	    if (evaluation)
+	    if (!expansion)
 	    {
 		root->sapling = false;
 		// We currently do nothing here.
-	    } else if (expansion)
+	    } else // if (expansion)
 	    {
 		root->state = vert_state::fixed;
 		// Note: the vertex might become finished, but a recursive function
@@ -47,7 +47,7 @@ public:
 
     void print_sapling(FILE* stream)
 	{
-	    if (evaluation)
+	    if (!expansion)
 	    {
 		fprintf(stream, "Eval. sapling ");
 	    } else

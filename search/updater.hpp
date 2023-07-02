@@ -38,7 +38,7 @@ public:
     victory updater_result = victory::uncertain;
     uint64_t unfinished_tasks = 0;
     uint64_t vertices_visited = 0;
-    bool evaluation = false;
+    // bool evaluation = false;
     bool expansion = false;
     
     updater_computation(dag *graph, sapling job)
@@ -50,7 +50,6 @@ public:
 	    // in the computation.
 	    count_tasks();
 
-	    evaluation = job.evaluation;
 	    expansion = job.expansion;
 	}
 
@@ -60,9 +59,9 @@ public:
 	    d = graph;
 	    sapling rootjob;
 	    rootjob.root = d->root;
-	    rootjob.evaluation = true;
+	    rootjob.expansion = false;
 	    this->job = rootjob;
-	    evaluation = true;
+	    expansion = false;
     }
 
     victory update_adv(adversary_vertex *v);

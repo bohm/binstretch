@@ -91,6 +91,7 @@ public:
     void print_lowerbound_dfs(algorithm_vertex *v, FILE* stream, bool debug = false);
     void print_lowerbound_bfs(FILE* stream, bool debug = false);
 
+    void log_graph(const char* filepath);
     // Debugging functions.
     void print(FILE* stream, bool debug = false);
     void print_subdag(adversary_vertex *v, FILE* stream, bool debug = false);

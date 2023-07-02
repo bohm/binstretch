@@ -143,9 +143,8 @@ std::pair<algorithm_vertex *, adv_outedge*> attach_matching_vertex(dag *d, adver
 }
 
 std::pair<adversary_vertex *, alg_outedge *> attach_matching_vertex(dag *d,
-								    algorithm_vertex *alg_to_evaluate,
-								    binconf *binconf_after_pack,
-								    int target_bin)
+		              algorithm_vertex *alg_to_evaluate, binconf *binconf_after_pack,
+			      int target_bin, int cur_regrow_level)
 {
     adversary_vertex* upcoming_adv = nullptr;
     alg_outedge* connecting_outedge = nullptr;
@@ -156,6 +155,7 @@ std::pair<adversary_vertex *, alg_outedge *> attach_matching_vertex(dag *d,
 	upcoming_adv = d->add_adv_vertex(*binconf_after_pack);
 	// Note: "target_bin" is the position in the previous binconf, not the new one.
 	connecting_outedge = d->add_alg_outedge(alg_to_evaluate, upcoming_adv, target_bin);
+	upcoming_adv->regrow_level = cur_regrow_level+1;
     } else {
 	upcoming_adv = it->second;
 

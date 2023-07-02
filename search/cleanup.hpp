@@ -99,108 +99,6 @@ void cleanup_winning_subtree(dag *d, adversary_vertex *start)
 
 
 
-// Sets fresh vertices as fixed and removes all tasks from the DAG,
-// marking some as expandable.
-// Note that the function does not remove "new" paths in the tree
-// and also does not transform fixed vertices into finished.
-
-// Again, as we wish to run this DFS from a particular computation root, we do
-// not use the helper dfs() function.
-void fix_and_remove_tasks_rec(dag* d, adversary_vertex *v);
-void fix_and_remove_tasks_rec(dag *d, algorithm_vertex *v);
-
-int glob_last_regrow_level = 0;
-
-void fix_and_remove_tasks_rec(dag* d, adversary_vertex *v)
-{
-    if (v->visited)
-    {
-	return;
-    }
-    v->visited = true;
- 
-    // No non-winning vertices should be present in the tree at this point.
-    if(v->win != victory::adv)
-    {
-	fprintf(stderr, "The victory value of a vertex is not victory::adv, but ");
-	dotprint_victory(v->win);
-	fprintf(stderr, "\n");
-	d->print_children(v);
-	d->print_path_to_root(v);
-
-    }
-    
-    assert(v->win == victory::adv);
-
-    if (v->state == vert_state::finished || v->state == vert_state::expandable)
-    {
-	return;
-    }
-
-    if (v->task)
-    {
-	if (v->out.size() != 0)
-	{
-	    // If a task actually ends up with an edge towards somewhere else,
-	    // this means that the task actually has a winning strategy already in the tree.
-	    // It is a rare case, but it (maybe) still can happen. We just unmark it at this point.
-
-	    assert(v->out.size() == 1);
-	    v->task = false;
-	    v->state = vert_state::fixed;
-	} else
-	{
-	    // A normal task, looks like a leaf. Mark as expandable.
-	    v->task = false;
-	    v->state = vert_state::expandable;
-	    v->regrow_level = glob_last_regrow_level+1;
-	}
-    }
-    
-    if (v->state == vert_state::fresh)
-    {
-	v->state = vert_state::fixed;
-    }
-
-    for (adv_outedge *e : v->out)
-    {
-	algorithm_vertex* next = e->to;
-	fix_and_remove_tasks_rec(d, next);
-    }
-}
-
-void fix_and_remove_tasks_rec(dag *d, algorithm_vertex *v)
-{
-    if (v->visited)
-    {
-	return;
-    }
-    v->visited = true;
-    
-    // No non-winning vertices should be present in the tree at this point. 
-    assert(v->win == victory::adv);
-
-    if (v->state == vert_state::finished || v->state == vert_state::fixed)
-    {
-	return;
-    }
-
-    if (v->state == vert_state::fresh)
-    {
-	v->state = vert_state::fixed;
-    } else
-    {
-	v->print(stderr, true);
-	ERRORPRINT("An algorithmic vertex was %s, neither fresh, fixed nor finished.", state_name(v->state).c_str());
-    }
-
-    for (alg_outedge *e : v->out)
-    {
-	adversary_vertex* next = e->to;
-	fix_and_remove_tasks_rec(d, next);
-    }
-}
-
 // Marks all branches without tasks in them as vert_state::finished.
 // Called during the expansion steps after you compute a winning
 // strategy and when the tree is not yet complete.
@@ -247,7 +145,7 @@ bool finish_branches_rec(adversary_vertex *v)
 	}
     }
 
-    assert(v->out.size() == 1);
+    VERTEX_ASSERT(qdag, v, v->out.size() == 1);
     bool children_finished = finish_branches_rec((*v->out.begin())->to);
 
     if (children_finished)
@@ -301,16 +199,6 @@ bool finish_branches(dag *d, adversary_vertex *r)
     d->clear_visited();
     return finish_branches_rec(r);
 }
-
-
-
-void fix_vertices_remove_tasks(dag *d, sapling job)
-{
-    glob_last_regrow_level = job.regrow_level;
-    d->clear_visited();
-    fix_and_remove_tasks_rec(d, job.root);
-}
-
 
 
 // Some very particular corner cases may happen. For example,
@@ -400,7 +288,7 @@ void evaluation_cleanup(dag *d, algorithm_vertex *alg_v)
     }
 }
 
-void cleanup_after_adv_win(dag *d, bool evaluation)
+void cleanup_after_adv_win(dag *d, bool expansion)
 {
     // cleanup_winning_subtree(d, job.root);
     // fix_vertices_remove_tasks(d, job);
@@ -414,14 +302,15 @@ void cleanup_after_adv_win(dag *d, bool evaluation)
     unmark_tasks(d);
     
 
-    if(evaluation)
+    if(expansion)
     {
 	evaluation_cleanup_root(d);
+	finish_branches(d, d->root);
+
     }
     else // Expansion.
     {
 	evaluation_cleanup_root(d);
-	finish_branches(d, d->root);
     }
 
     // update_and_count_saplings(d);
