@@ -303,8 +303,8 @@ int queen_class::start()
 		break;
 	    }
 	// --- END GENERATION PHASE ---
-	// --- BEGIN PARALLEL PHASE ---
 	} else {
+	    // --- BEGIN PARALLEL PHASE ---
 	    perf_timer.parallel_phase_start();
 	    
 	    // Queen needs to start the round.
@@ -393,12 +393,13 @@ int queen_class::start()
 	    destroy_tstatus();
 	    comm.sync_after_round_end();
 	    comm.ignore_additional_solutions();
-	}
-	// --- END PARALLEL PHASE ---
-	// --- BEGIN CLEANUP PHASE ---
-	perf_timer.parallel_phase_end();
-	perf_timer.new_sapling_end(job);
 
+	    perf_timer.parallel_phase_end();
+	    // --- END PARALLEL PHASE ---
+	}
+
+	perf_timer.new_sapling_end(job);
+	// --- BEGIN CLEANUP PHASE ---
 	job.mark_complete();
 	if (job.root->win == victory::adv)
 	{
