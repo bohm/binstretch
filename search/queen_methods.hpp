@@ -240,7 +240,7 @@ int queen_class::start()
 
 	// We do not regrow with a for loop anymore, we regrow using the job system in the DAG instead.
 
-	qdag->log_graph("./logs/before-generation.log");
+	GRAPH_DEBUG_ONLY(qdag->log_graph("./logs/before-generation.log"));
 
 	computation<minimax::generating, MINIBS_SCALE_QUEEN> comp;
 	comp.regrow_level = job.regrow_level;
@@ -282,10 +282,14 @@ int queen_class::start()
 
 	computation_root->win = updater_result.load(std::memory_order_acquire);
 
-	print_if<VERBOSE>("Consistency check after generation.\n");
-	consistency_checker c_after_gen(qdag, false);
-	c_after_gen.check();
-	qdag->log_graph("./logs/after-generation.log"); // For debug purposes.
+	if (CONSISTENCY)
+	{
+	    print_if<VERBOSE>("Consistency check after generation.\n");
+	    consistency_checker c_after_gen(qdag, false);
+	    c_after_gen.check();
+	}
+	
+	GRAPH_DEBUG_ONLY(qdag->log_graph("./logs/after-generation.log"));
 	
 	// If we have already finished via generation, we skip the parallel phase.
 	// We still enter the cleanup phase.
@@ -439,7 +443,8 @@ int queen_class::start()
 		{
 		    sap_man.expansion = true;
 		    print_if<PROGRESS>("Queen: switching from evaluation to expansion.\n");
-		    qdag->log_graph("./logs/expansion-transition.log");
+
+		    GRAPH_DEBUG_ONLY(qdag->log_graph("./logs/expansion-transition.log"));
 		}
 	    }
 	}

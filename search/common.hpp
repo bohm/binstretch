@@ -25,8 +25,8 @@
 
 constexpr bool PROGRESS = true; // Whether to print progress info to stderr.
 constexpr bool VERBOSE = true; // Further information about progress.
-constexpr bool OUTPUT = true; // Whether to produce output.
-constexpr bool REGROW = true; // Whether to regrow or just terminate after first iteration.
+constexpr bool OUTPUT = false; // Whether to produce output.
+constexpr bool REGROW = false; // Whether to regrow or just terminate after first iteration.
 constexpr bool MEASURE = false; // Whether to collect and print measurements to stderr.
 constexpr bool FURTHER_MEASURE = false; // Whether to collect more detailed data that is not needed often.
 
@@ -154,9 +154,11 @@ const std::string LOG_DIR = "./logs";
 // debug constants
 
 constexpr bool DEBUG = false;
+constexpr bool CONSISTENCY = false; // Additional consistency checks.
 constexpr bool COMM_DEBUG = false; // Network debug messages.
 constexpr bool TASK_DEBUG = false; // Debugging creation of tasks, batching, etc.
 constexpr bool GRAPH_DEBUG = false; // Debugging the DAG creation and adding/removing edges.
+// GRAPH_DEBUG also prints intermediary graphs into the ./logs/ folder.
 constexpr bool PARSING_DEBUG = false; // Debugging loading and saving a file.
 
 // completely disable dynamic programming or binconf cache
@@ -320,3 +322,5 @@ void assert_with_message(const char* expression, bool evaluation, const char* me
 
 #define MEASURE_ONLY(x) if (MEASURE) {x;}
 #define REGROW_ONLY(x) if (REGROW) {x;}
+#define CONSISTENCY_ONLY(x) if (CONSISTENCY) {x;}
+#define GRAPH_DEBUG_ONLY(x) if (GRAPH_DEBUG) {x;}

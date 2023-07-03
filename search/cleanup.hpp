@@ -294,10 +294,12 @@ void cleanup_after_adv_win(dag *d, bool expansion)
     // fix_vertices_remove_tasks(d, job);
 
     // For debugging purposes, we do two consistency checks.
-
-    print_if<DEBUG>("Consistency check before cleanup:\n");
-    consistency_checker c1(d, false);
-    c1.check();
+    if (CONSISTENCY)
+    {
+	print_if<DEBUG>("Consistency check before cleanup:\n");
+	consistency_checker c1(d, false);
+	c1.check();
+    }
 
     unmark_tasks(d);
     
@@ -314,14 +316,18 @@ void cleanup_after_adv_win(dag *d, bool expansion)
     }
 
     // update_and_count_saplings(d);
-    // Consistency checks.
 
-    print_if<DEBUG>("Consistency check after cleanup:\n");
-    assert_no_tasks(d);
-    assert_winning_degrees(d);
-    assert_no_fresh_winning(d);
-    consistency_checker c2(d, false);
-    c2.check();
+    // Consistency checks.
+    if (CONSISTENCY)
+    {
+
+	print_if<DEBUG>("Consistency check after cleanup:\n");
+	assert_no_tasks(d);
+	assert_winning_degrees(d);
+	assert_no_fresh_winning(d);
+	consistency_checker c2(d, false);
+	c2.check();
+    }
 }
 
 
