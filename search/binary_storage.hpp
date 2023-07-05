@@ -5,6 +5,12 @@
 #include "common.hpp"
 #include "functions.hpp"
 #include <filesystem>
+#include <parallel_hashmap/phmap.h>
+// Notice: https://github.com/greg7mdp/parallel-hashmap is now required for the program to build.
+// This is a header-only hashmap/set that seems quicker and lower-memory than the unordered_set.
+
+using phmap::flat_hash_set;
+
 
 template <int DENOMINATOR> class binary_storage
 {
@@ -174,7 +180,7 @@ public:
 	}
 
    
-    void write_one_set(std::unordered_set<uint64_t> &s)
+    void write_one_set(flat_hash_set<uint64_t> &s)
 	{
 	    write_set_size(s.size());
 	    uint64_t* set_as_array = new uint64_t[s.size()];
@@ -188,7 +194,7 @@ public:
 	    delete[] set_as_array;
 	}
 
-    void read_one_set(std::unordered_set<uint64_t>& out_set)
+    void read_one_set(flat_hash_set<uint64_t>& out_set)
 	{
 	    out_set.clear();
 	    unsigned int set_size = read_set_size();
@@ -210,41 +216,41 @@ public:
 	    delete[] set_as_array;
 	}
 
-    void write_set_system(std::vector<std::unordered_set<uint64_t>>& system)
+    void write_set_system(std::vector<flat_hash_set<uint64_t>>& system)
 	{
 	    write_number_of_sets(system.size());
-	    for (std::unordered_set<uint64_t> &set : system)
+	    for (flat_hash_set<uint64_t> &set : system)
 	    {
 		write_one_set(set);
 		write_delimeter();
 	    }
 	}
     
-    void read_set_system(std::vector<std::unordered_set<uint64_t>>& out_system)
+    void read_set_system(std::vector<flat_hash_set<uint64_t>>& out_system)
 	{
 	    unsigned int nos = read_number_of_sets();
 	    out_system.clear();
 	    for (unsigned int i = 0; i < nos; i++)
 	    {
-		out_system.push_back(std::unordered_set<uint64_t>());
+		out_system.push_back(flat_hash_set<uint64_t>());
 		read_one_set(out_system[i]);
 		read_delimeter();
 	    }
 	}
 
-    void read_knownsum_set(std::unordered_set<uint64_t>& out_knownsum_set)
+    void read_knownsum_set(flat_hash_set<uint64_t>& out_knownsum_set)
 	{
 	    read_one_set(out_knownsum_set);
 	    read_delimeter();
 	}
 
-    void write_knownsum_set(std::unordered_set<uint64_t> &knownsum_set)
+    void write_knownsum_set(flat_hash_set<uint64_t> &knownsum_set)
 	{
 	    write_one_set(knownsum_set);
 	    write_delimeter();
 	}
     
-    void restore(std::vector<std::unordered_set<uint64_t>>& out_system, std::unordered_set<uint64_t> &out_knownsum_set)
+    void restore(std::vector<flat_hash_set<uint64_t>>& out_system, flat_hash_set<uint64_t> &out_knownsum_set)
 	{
 	    open_for_reading();
 	    bool check = check_signature();
@@ -264,7 +270,7 @@ public:
 	    close();
 	}
 
-    void backup(std::vector<std::unordered_set<uint64_t>>& system, std::unordered_set<uint64_t> &knownsum_set)
+    void backup(std::vector<flat_hash_set<uint64_t>>& system, flat_hash_set<uint64_t> &knownsum_set)
 	{
 	    open_for_writing();
 	    write_signature();

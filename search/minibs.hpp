@@ -1,5 +1,8 @@
 #pragma once
 #include <cstring>
+#include <parallel_hashmap/phmap.h>
+// Notice: https://github.com/greg7mdp/parallel-hashmap is now required for the program to build.
+// This is a header-only hashmap/set that seems quicker and lower-memory than the unordered_set.
 
 #include "common.hpp"
 #include "binconf.hpp"
@@ -9,6 +12,8 @@
 #include "cache/loadconf.hpp"
 #include "heur_alg_knownsum.hpp"
 #include "binary_storage.hpp"
+
+using phmap::flat_hash_set;
 
 template <int DENOMINATOR> class itemconfig
 {
@@ -323,9 +328,9 @@ public:
     std::vector< itemconfig<DENOMINATOR> > feasible_itemconfs;
 
     std::unordered_map<uint64_t, long unsigned int> feasible_map;
-    std::vector< std::unordered_set<uint64_t> > alg_winning_positions;
+    std::vector< flat_hash_set<uint64_t> > alg_winning_positions;
 
-    std::unordered_set<uint64_t> alg_knownsum_winning;
+    flat_hash_set<uint64_t> alg_knownsum_winning;
 
     minidp<DENOMINATOR> mdp;
 
@@ -828,7 +833,7 @@ public:
 	    
 	    for (long unsigned int i = 0; i < feasible_itemconfs.size(); i++)
 	    {
-		std::unordered_set<uint64_t> winning_in_layer;
+		flat_hash_set<uint64_t> winning_in_layer;
 		alg_winning_positions.push_back(winning_in_layer);
 	    }
 

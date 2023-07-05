@@ -121,8 +121,8 @@ fi
 
 
 if [[ "$BUILDING_SEARCH" = true ]]; then
-	echo "Running: mpic++ -I./ -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S main.cpp -o ../$OUTPUT/search-$BINS-$R-$S -pthread $LINKING_SUFFIX"
-	cd search; mpic++ -I./ -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S main.cpp -o ../$OUTPUT/search-$BINS-$R-$S -pthread $LINKING_SUFFIX; cd ..
+	echo "Running: mpic++ -I./ -I../../parallel-hashmap/ -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S main.cpp -o ../$OUTPUT/search-$BINS-$R-$S -pthread $LINKING_SUFFIX"
+	cd search; mpic++ -I./ -I../../parallel-hashmap/ -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S main.cpp -o ../$OUTPUT/search-$BINS-$R-$S -pthread $LINKING_SUFFIX; cd ..
 fi
 
 if [[ "$BUILDING_PAINTER" = true ]]; then
@@ -142,9 +142,9 @@ fi
 
 if [[ "$BUILDING_MINITOOLS" = true ]]; then
 	echo "Running: g++ -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S listsaplings.cpp -o ../$OUTPUT/listsaplings-$BINS-$R-$S -pthread $LINKING_SUFFIX"
-	cd minitools; g++ -I../search/ -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S listsaplings.cpp -o ../$OUTPUT/listsaplings-$BINS-$R-$S -pthread $LINKING_SUFFIX; cd ..
-	echo "Running: g++ -Wall -std=$CPP_STANDARD $OPTFLAG -march=native minitools/alg-winning-table.cpp -o ./$OUTPUT/awt -pthread"
-	g++ -I./search/ -Wall -std=$CPP_STANDARD $OPTFLAG -march=native minitools/alg-winning-table.cpp -o ./$OUTPUT/awt -pthread
+	cd minitools; g++ -I../search/ -I../../parallel-hashmap/ -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S listsaplings.cpp -o ../$OUTPUT/listsaplings-$BINS-$R-$S -pthread $LINKING_SUFFIX; cd ..
+	echo "Running: g++ -I./search/ -I../parallel-hashmap/  -Wall -std=$CPP_STANDARD $OPTFLAG -march=native minitools/alg-winning-table.cpp -o ./$OUTPUT/awt -pthread"
+	g++ -I./search/ -I../parallel-hashmap/  -Wall -std=$CPP_STANDARD $OPTFLAG -march=native minitools/alg-winning-table.cpp -o ./$OUTPUT/awt -pthread
 
 fi
 
