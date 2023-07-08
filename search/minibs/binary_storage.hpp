@@ -1,14 +1,14 @@
 #pragma once
 
 // Allows for recovery of some precomputed cache tables, primarily minibinstretching.
-
-#include "common.hpp"
-#include "functions.hpp"
 #include <filesystem>
 #include <parallel_hashmap/phmap.h>
 // Notice: https://github.com/greg7mdp/parallel-hashmap is now required for the program to build.
 // This is a header-only hashmap/set that seems quicker and lower-memory than the unordered_set.
 
+#include "../common.hpp"
+#include "../functions.hpp"
+#include "itemconfig.hpp"
 using phmap::flat_hash_set;
 
 
@@ -16,12 +16,12 @@ template <int DENOMINATOR> class binary_storage
 {
 public:
 
-    const int VERSION = 2;
+    const int VERSION = 3;
     char storage_file_path[256];
     FILE *storage_file = nullptr;
     binary_storage()
 	{
-	    sprintf(storage_file_path, "./cache/minibs-%d-%d-%d-scale-%d.bin", BINS, R, S, DENOMINATOR);
+	    sprintf(storage_file_path, "./cache/minibs-%d-%d-%d-scale-%d-v%d.bin", BINS, R, S, DENOMINATOR, VERSION);
 	}
 
     bool storage_exists()
@@ -249,7 +249,68 @@ public:
 	    write_one_set(knownsum_set);
 	    write_delimeter();
 	}
+
+    void write_number_of_feasible_itemconfs(unsigned int nofc)
+	{
+	    fwrite(&nofc, sizeof(unsigned int), 1, storage_file);
+	}
+
+    unsigned int read_number_of_feasible_itemconfs()
+	{
+	    unsigned int nofc = 0;
+	    int nofc_read = 0;
+	    nofc_read = fread(&nofc, sizeof(unsigned int), 1, storage_file);
+	    if (nofc_read != 1)
+	    {
+		ERRORPRINT("Binary storage error: failed to read the number of feasible minibs configurations.\n");
+	    }
+	    return nofc;
+	}
+
+    void write_itemconf(itemconfig<DENOMINATOR>& ic)
+	{
+	    fwrite(ic.items.data(), sizeof(int), DENOMINATOR, storage_file);
+	}
+
+
+    void read_itemconf(itemconfig<DENOMINATOR>& out_ic)
+	{
+	    int ic_read = 0;
+	    ic_read = fread(out_ic.items.data(), sizeof(int), DENOMINATOR, storage_file);
+
+	    if (ic_read != DENOMINATOR)
+	    {
+		ERRORPRINT("Binary storage error: failed to read one itemconfig.\n");
+	    }
+	}
+
+
+    void write_feasible_itemconfs(std::vector<itemconfig<DENOMINATOR> > &feasible_ics)
+	{
+	    write_number_of_feasible_itemconfs(feasible_ics.size());
+	    write_delimeter();
+	    for (int i = 0; i < feasible_ics.size(); ++i)
+	    {
+		write_itemconf(feasible_ics[i]);
+	    }
+	    write_delimeter();
+	}
+
+    void read_feasible_itemconfs(std::vector<itemconfig<DENOMINATOR> > &feasible_ics)
+	{
+	    int nofc = read_number_of_feasible_itemconfs();
+	    read_delimeter();
+	    for (int i = 0; i < nofc; ++i)
+	    {
+		itemconfig<DENOMINATOR> new_ic;
+		read_itemconf(new_ic);
+		new_ic.hashinit();
+		feasible_ics.push_back(new_ic);
+	    }
+	    read_delimeter();
     
+	}
+	    
     void restore(std::vector<flat_hash_set<uint64_t>>& out_system, flat_hash_set<uint64_t> &out_knownsum_set)
 	{
 	    open_for_reading();
@@ -270,6 +331,7 @@ public:
 	    close();
 	}
 
+    
     void backup(std::vector<flat_hash_set<uint64_t>>& system, flat_hash_set<uint64_t> &knownsum_set)
 	{
 	    open_for_writing();

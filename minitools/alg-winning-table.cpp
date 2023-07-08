@@ -8,7 +8,7 @@
 #define IR 411
 #define IS 300
 
-#include "minibs.hpp"
+#include "minibs/minibs.hpp"
 #include "gs.hpp"
 
 constexpr int TEST_SCALE = 3;
@@ -74,23 +74,24 @@ template <int SCALE> bool gs5_plus(loadconf *lc, int full_size_next_item, int ta
     }
 }
 
-bool gs4_6_stronger(loadconf *lc)
+bool gs8s(loadconf *lc)
 {
     int A = lc->loads[1];
     int B = lc->loads[2];
     int C = lc->loads[3];
     
     int TWICE_GS7_TH = 3*ALPHA + B + C;
-    int GS4_GS6_STRONGER = 5*S - 7*ALPHA + 3*C;
+    int GS8_STRONGER = 5*S - 7*ALPHA + 3*C;
 
     if (A >= ALPHA && B <= ALPHA && 2*A <= TWICE_GS7_TH)
     {
-	// Stronger condition, which is not always true:
+	// Strong condition, which is not always true:
 	// After applying FF(B|1-2alpha), the next item i does not fit into B *and* if it fit on C, it would trigger GS2.
+	//
 
-	if (A + 2*C >= 3*S - 6*ALPHA)
+	if ((C >= 2*S - 5*ALPHA) || (A + 2*C >= 3*S - 6*ALPHA))
 	{
-	    if (4*A + 4*B >= GS4_GS6_STRONGER)
+	    if (4*A + 4*B >= GS8_STRONGER)
 	    {
 		return true;
 	    }
@@ -101,7 +102,7 @@ bool gs4_6_stronger(loadconf *lc)
 }
 
 // A step to GS4-6, discovered 2023-05-19.
-bool gs4_6_step2_stronger(loadconf *lc)
+bool gs8_step2s(loadconf *lc)
 {
     int A = lc->loads[1];
     int B = lc->loads[2];
@@ -112,32 +113,69 @@ bool gs4_6_step2_stronger(loadconf *lc)
      // Necessary conditions first:
      // A >= ALPHA,
      // ALPHA >= B, C
-     // A + 2C >= 3 - 6*ALPHA
      // 2*A <= 2*q
-     if (A >= ALPHA && B <= ALPHA && 2*A <= TWICE_GS7_TH && A + 2*C >= 3*S - 6*ALPHA)
+     if (A >= ALPHA && B <= ALPHA && 2*A <= TWICE_GS7_TH)
      {
-	// The two inequalities:
-	// 2A + 2B >= 9/4 - 15/4 ALPHA + 7/4 C
-	// 8A + 8B >= 9 - 15ALPHA + 7C
 
-	if (8*lc->loads[1] + 8*lc->loads[2] >= 9*S - 15*ALPHA + 7*lc->loads[3])
-	{
+	 // Strong condition.
+	 if ((C >= 2*S - 5*ALPHA) || (A + 2*C >= 3*S - 6*ALPHA))
+	 {
+	     // The two inequalities:
+	     // 2A + 2B >= 9/4 - 15/4 ALPHA + 7/4 C, simplifies to
+	     // 8A + 8B >= 9 - 15ALPHA + 7C
+	     if (8*lc->loads[1] + 8*lc->loads[2] >= 9*S - 15*ALPHA + 7*lc->loads[3])
+	     {
 
-	    // 1.5*B + 1.5*C >= 2A + 1 - 7/2 ALPHA,
-	    // 3B + 3C >= 2A +1 - 7ALPHA.
-	    if (3*lc->loads[2] + 3*lc->loads[3] >= 4*lc->loads[1] + 2*S - 7*ALPHA)
-	    {
-		return true;
-	    }
-	}
+		 // 1.5*B + 1.5*C >= 2A + 1 - 7/2 ALPHA, simplifies to
+		 // 3B + 3C >= 4A +2 - 7ALPHA.
+		 if (3*lc->loads[2] + 3*lc->loads[3] >= 4*lc->loads[1] + 2*S - 7*ALPHA)
+		 {
+		     return true;
+		 }
+	     }
+	 }
      }
      
      return false;
 }
 
+// Strong condition becomes true after packing an item on A.
+// We already have 4A + 4B >= 5 - 7ALPHA +3C, which can be understood as the 2-6-4-3 coverage.
+// We have to put a stricter limit on A, because the next item in the range [3ALPHA-1, 1-2ALPHA-C]
+// must avoid hitting the q limit when packed on A.
+
+bool gs8_step2t(loadconf *lc)
+{
+    int A = lc->loads[1];
+    int B = lc->loads[2];
+    int C = lc->loads[3];
+
+    if (A >= ALPHA && B <= ALPHA)
+    {
+
+	// We already have GS8 condition.
+	int GS8_STRONGER = 5*S - 7*ALPHA + 3*C;
+	if (4*A + 4*B >= GS8_STRONGER)
+	{
+	    // Strong condition becomes true in the next step.
+	    if (A + 2*C >= 4*S - 9*ALPHA)
+	    {
+		// Limit on A.
+		if (2*A <= 7*ALPHA - 2*S +B + 3*C)
+		{
+		    return true;
+		}
+	    }
+	}
+    }
+    return false;
+}
+
+// Disabling some variants for now. -- MB
+
 // Fairly involved variant of GS4-6 step 2. Does not require the strong
 // condition. Explained in my notebook.
-bool gs4_6_step2_variant(loadconf *lc)
+/*bool gs4_6_step2_variant(loadconf *lc)
 {
     int A = lc->loads[1];
     int B = lc->loads[2];
@@ -205,10 +243,12 @@ bool gs4_6_step3_stronger(loadconf *lc)
     
     return false;
 }
+*/
+
 
 // A step before GS4, where we can assume B is loaded to alpha instead.
 // Discovered 2023-05-20.
-bool gs4_step(loadconf *lc)
+bool gs9(loadconf *lc)
 {
     if (lc->loads[2] < ALPHA &&
 	2*lc->loads[1] >= 3*S - 5*ALPHA + lc->loads[3] &&
@@ -253,31 +293,21 @@ std::string gs_loadconf_tester(loadconf *lc)
     {
 	return "(GS6)";
     }
-    else if (gs4_6_stronger(lc))
+    else if (gs8s(lc))
     {
-	return "(GS4-6s)";
+	return "(GS8s)";
     }
-    /* else if (gs4_6_weaker(lc))
+    else if (gs8_step2s(lc))
     {
-	return "(GS4-6w)";
-	}*/
-    else if (gs4_6_step2_stronger(lc))
-    {
-	return "(GS4-6s-step2)";
+	return "(GS8-step2s)";
     }
-    else if (gs4_6_step2_variant(lc))
+    else if (gs8_step2t(lc))
     {
-	return "(GS4-6s-step2-v)";
+	return "(GS8-step2t)";
     }
-    /*
-    else if (gs4_6_step3_stronger(lc))
+    else if (gs9(lc))
     {
-	return "(GS4-6s-step3)";
-    }
-    */
-    else if (gs4_step(lc))
-    {
-	return "(GS4-step)";
+	return "(GS9)";
     } else
     {
 	return "";
