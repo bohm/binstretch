@@ -627,7 +627,6 @@ int main(int argc, char** argv)
     // maximum_feasible_tests();
     
     minibs<TEST_SCALE> mb;
-    mb.init();
     mb.backup_calculations();
 
 

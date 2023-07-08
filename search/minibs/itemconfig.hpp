@@ -135,7 +135,20 @@ public:
 
 	    return true;
 	}
-    
+
+    bool no_items() const
+	{
+	    for (int i = 1; i < DENOMINATOR; i++)
+	    {
+		if (items[i] != 0)
+		{
+		    return false;
+		}
+	    }
+
+	    return true;
+	}
+ 
     void print(FILE* stream = stderr, bool newline = true) const
 	{
 	    print_int_array<DENOMINATOR>(stream, items, false, false);

@@ -7,6 +7,7 @@
 #include "tasks.hpp"
 #include "server_properties.hpp"
 #include "worker.hpp"
+#include "minibs/minibs.hpp"
 
 class overseer
 {

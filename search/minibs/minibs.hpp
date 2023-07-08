@@ -13,8 +13,10 @@
 #include "../heur_alg_knownsum.hpp"
 #include "binary_storage.hpp"
 #include "minidp.hpp"
+#include "feasibility.hpp"
 
 using phmap::flat_hash_set;
+using phmap::flat_hash_map;
 
 template <int DENOMINATOR> class minibs
 {
@@ -32,152 +34,17 @@ public:
     // which helps performance.
     static constexpr bool EXTENSION_GS5 = true;
     
-    static constexpr std::array<int, DENOMINATOR> max_items_per_type()
-	{
-	    std::array<int, DENOMINATOR> ret = {};
-    	    for (int type = 1; type < DENOMINATOR; type++)
-	    {
-		int max_per_bin = (DENOMINATOR / type);
-		if (DENOMINATOR % type == 0)
-		{
-		    max_per_bin--;
-		}
-		ret[type] = max_per_bin * BINS;
-	    }
-	    return ret;
-	}
-
-    static constexpr std::array<int, DENOMINATOR> ITEMS_PER_TYPE = max_items_per_type();
-    
-    static constexpr uint64_t upper_bound_layers()
-	{
-	    uint64_t ret = 1;
-	    for (int i = 1; i < DENOMINATOR; i++)
-	    {
-		ret *= (ITEMS_PER_TYPE[i]+1);
-	    }
-
-	    return ret;
-	}
-
-    static constexpr uint64_t LAYERS_UB = upper_bound_layers();
-
-    
-    static int itemsum(const std::array<int, DENOMINATOR> &items)
-	{
-	    int ret = 0;
-	    for (int i = 1; i < DENOMINATOR; i++)
-	    {
-		ret += items[i] * i;
-	    }
-	    return ret;
-	}
-
-    static bool feasibility_plausible(const std::array<int, DENOMINATOR> &items)
-	{
-	    return itemsum(items) <= BINS * (DENOMINATOR-1);
-	}
+   
     // Non-static section.
 
     std::vector< itemconfig<DENOMINATOR> > feasible_itemconfs;
 
-    std::unordered_map<uint64_t, long unsigned int> feasible_map;
+    flat_hash_map<uint64_t, unsigned int> feasible_map;
     std::vector< flat_hash_set<uint64_t> > alg_winning_positions;
 
     flat_hash_set<uint64_t> alg_knownsum_winning;
 
     minidp<DENOMINATOR> mdp;
-
-    // The following recursive approach to enumeration is originally from heur_alg_knownsum.hpp.
-
-    std::array<int, DENOMINATOR> create_max_itemconf()
-	{
-	    std::array<int, DENOMINATOR> ret;
-	    ret[0] = 0;
-	    for (int i =1; i < DENOMINATOR; i++)
-	    {
-		ret[i] = ITEMS_PER_TYPE[i];
-	    }
-	    return ret;
-	}
-    
-    bool no_items(const std::array<int, DENOMINATOR>& ic) const
-	{
-	    for (int i = 1; i < DENOMINATOR; i++)
-	    {
-		if (ic[i] != 0)
-		{
-		    return false;
-		}
-	    }
-
-	    return true;
-	}
-    
-    void reset_itemcount(std::array<int, DENOMINATOR>& ic, int pos)
-	{
-	    assert(pos >= 2);
-	    ic[pos] = ITEMS_PER_TYPE[pos];
-	}
-    
-    void decrease_recursive(std::array<int, DENOMINATOR>& ic, int pos)
-	{
-	    if ( ic[pos] > 0)
-	    {
-		ic[pos]--;
-	    } else
-	    {
-		decrease_recursive(ic, pos-1);
-		reset_itemcount(ic, pos);
-	    }
-    
-	}
-
-    // Decrease the item configuration by one. This serves
-    // as an iteration function.
-    // Returns false if the item configuration cannot be decreased -- it is empty.
-
-    bool decrease_itemconf(std::array<int, DENOMINATOR>& ic)
-	{
-	    if( no_items(ic))
-	    {
-		return false;
-	    }
-	    else
-	    {
-		decrease_recursive(ic, DENOMINATOR-1);
-		return true;
-	    }
-	}
-    
-    void compute_feasible_itemconfs()
-	{
-	    std::array<int, DENOMINATOR> itemconf = create_max_itemconf();
-	    do
-	    {
-		bool feasible = false;
-
-		if (no_items(itemconf))
-		{
-		    feasible = true;
-		} else
-		{
-		    if (feasibility_plausible(itemconf))
-			{
-			    feasible = mdp.compute_feasibility(itemconf);
-			}
-		}
-		
-		if (feasible)
-		{
-		    itemconfig<DENOMINATOR> feasible_itemconf(itemconf);
-		    long unsigned int feasible_itemconf_index = feasible_itemconfs.size();
-		    feasible_itemconfs.push_back(feasible_itemconf);
-		    feasible_map[feasible_itemconf.itemhash] = feasible_itemconf_index;
-		}
-	    } while (decrease_itemconf(itemconf));
-	}
-
     inline int shrink_item(int larger_item)
 	{
 	    if ((larger_item * DENOMINATOR) % S == 0)
@@ -198,7 +65,7 @@ public:
 
     int lb_on_volume(const itemconfig<DENOMINATOR>& ic)
 	{
-	    if (no_items(ic.items))
+	    if (ic.no_items())
 	    {
 		return 0;
 	    }
@@ -564,15 +431,28 @@ public:
 
 	}
 
-    // The init is now able to recover data from previous computations.
-    void init()
+    // Call after feasible_itemconfs exist, to build the inverse map.
+    // While feasible_itemconfs will be stored to speed up computation, the map is easy to build.
+    void populate_feasible_map()
 	{
+	    for (unsigned int i = 0; i < feasible_itemconfs.size(); ++i)
+	    {
+		feasible_map[feasible_itemconfs[i].itemhash] = i;
+	    }
+	}
+    
+    // The init is now able to recover data from previous computations.
+    minibs()
+	{
+	    fprintf(stderr, "Minibs<%d>: There will be %d item sizes tracked.\n",DENOM, DENOM - 1);
 
 	    binary_storage<DENOMINATOR> bstore;
 	    if (bstore.storage_exists())
 	    {
-		bstore.restore(alg_winning_positions, alg_knownsum_winning);
+		bstore.restore(alg_winning_positions, alg_knownsum_winning, feasible_itemconfs);
+		populate_feasible_map();
 		print_if<PROGRESS>("Minibs<%d>: Init complete via restoration.\n", DENOMINATOR);
+		fprintf(stderr, "Minibs<%d> from restoration: %zu itemconfs are feasible.\n", DENOM, feasible_itemconfs.size());
 	    } else
 	    {
 		print_if<PROGRESS>("Minibs<%d>: Initialization must happen from scratch.\n", DENOMINATOR);
@@ -582,6 +462,10 @@ public:
     
     void init_from_scratch()
 	{
+	    minibs_feasibility<DENOMINATOR>::compute_feasible_itemconfs(feasible_itemconfs);
+	    populate_feasible_map();
+	    fprintf(stderr, "Minibs<%d> from scratch: %zu itemconfs are feasible.\n", DENOM, feasible_itemconfs.size());
+
 	    // We initialize the knownsum layer here.
 	    init_knownsum_layer();
 	    
@@ -616,17 +500,11 @@ public:
 	    if (!bstore.storage_exists())
 	    {
 		print_if<PROGRESS>("Queen: Backing up Minibs<%d> calculations.\n", DENOMINATOR);
-		bstore.backup(alg_winning_positions, alg_knownsum_winning);
+		bstore.backup(alg_winning_positions, alg_knownsum_winning, feasible_itemconfs);
 	    }
 	}
     
-    minibs()
-	{
-	    fprintf(stderr, "Minibs<%d>: There will be %d item sizes tracked.\n",DENOM, DENOM - 1);
-	    fprintf(stderr, "Minibs<%d>: There is at most %" PRIu64 " itemconfs, including infeasible ones.\n", DENOM, LAYERS_UB);
-
-	    print_int_array<DENOM>(ITEMS_PER_TYPE, true);
-	    compute_feasible_itemconfs();
-	    fprintf(stderr, "Minibs<%d>: %zu itemconfs are feasible.\n", DENOM, feasible_itemconfs.size());
-	}
+    // minibs()
+// 	{
+//	}
 };

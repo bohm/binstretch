@@ -289,7 +289,7 @@ public:
 	{
 	    write_number_of_feasible_itemconfs(feasible_ics.size());
 	    write_delimeter();
-	    for (int i = 0; i < feasible_ics.size(); ++i)
+	    for (unsigned int i = 0; i < feasible_ics.size(); ++i)
 	    {
 		write_itemconf(feasible_ics[i]);
 	    }
@@ -298,9 +298,9 @@ public:
 
     void read_feasible_itemconfs(std::vector<itemconfig<DENOMINATOR> > &feasible_ics)
 	{
-	    int nofc = read_number_of_feasible_itemconfs();
+	    unsigned int nofc = read_number_of_feasible_itemconfs();
 	    read_delimeter();
-	    for (int i = 0; i < nofc; ++i)
+	    for (unsigned int i = 0; i < nofc; ++i)
 	    {
 		itemconfig<DENOMINATOR> new_ic;
 		read_itemconf(new_ic);
@@ -311,7 +311,8 @@ public:
     
 	}
 	    
-    void restore(std::vector<flat_hash_set<uint64_t>>& out_system, flat_hash_set<uint64_t> &out_knownsum_set)
+    void restore(std::vector<flat_hash_set<uint64_t>>& out_system, flat_hash_set<uint64_t> &out_knownsum_set,
+	std::vector< itemconfig<DENOMINATOR> >& out_feasible_ics)
 	{
 	    open_for_reading();
 	    bool check = check_signature();
@@ -326,17 +327,20 @@ public:
 		ERRORPRINT("Error: The Zobrist table do not match!\n");
 	    }
 
+	    read_feasible_itemconfs(out_feasible_ics);
 	    read_knownsum_set(out_knownsum_set);
 	    read_set_system(out_system);
 	    close();
 	}
 
     
-    void backup(std::vector<flat_hash_set<uint64_t>>& system, flat_hash_set<uint64_t> &knownsum_set)
+    void backup(std::vector<flat_hash_set<uint64_t>>& system, flat_hash_set<uint64_t> &knownsum_set,
+		std::vector< itemconfig<DENOMINATOR> >& feasible_ics)
 	{
 	    open_for_writing();
 	    write_signature();
 	    write_zobrist_table();
+	    write_feasible_itemconfs(feasible_ics);
 	    write_knownsum_set(knownsum_set);
 	    write_set_system(system);
 	    close();
