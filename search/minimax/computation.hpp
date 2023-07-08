@@ -8,7 +8,7 @@
 #include "../search/weights/weight_heuristics.hpp"
 #include "../search/weights/scale_halves.hpp"
 #include "../search/weights/scale_thirds.hpp"
-#include "../minibs/minibs.hpp"
+#include "minibs/minibs.hpp"
 
 template <minimax MODE, int MINIBS_SCALE> class computation
 {

@@ -14,6 +14,7 @@
 #include "binary_storage.hpp"
 #include "minidp.hpp"
 #include "feasibility.hpp"
+#include "poset/poset.hpp"
 
 using phmap::flat_hash_set;
 using phmap::flat_hash_map;
@@ -35,12 +36,19 @@ public:
     static constexpr bool EXTENSION_GS5 = true;
     
    
-    // Non-static section.
-
     std::vector< itemconfig<DENOMINATOR> > feasible_itemconfs;
 
     flat_hash_map<uint64_t, unsigned int> feasible_map;
-    std::vector< flat_hash_set<uint64_t> > alg_winning_positions;
+
+    unsigned short number_of_chains = 0; 
+    flat_hash_map<int, unsigned short> set_id_to_chain_repr;
+    
+    // NEW: instead of vector of hash sets (load hashes), we store a vector of flat hash maps, where
+    // the index is a loadhash and the value is the smallest element in the chain where the position
+    // is winning.
+
+    std::vector< flat_hash_map<uint64_t, uint8_t> > alg_winning_positions;
+    // std::vector< flat_hash_set<uint64_t> > alg_winning_positions;
 
     flat_hash_set<uint64_t> alg_knownsum_winning;
 
@@ -271,6 +279,20 @@ public:
 
 	}
 
+    inline bool chain_cache_query(uint64_t loadhash, unsigned short set_id, unsigned short chain_repr)
+	{
+	    if (!alg_winning_positions[chain_repr].contains(loadhash))
+	    {
+		return false;
+	    } else
+	    {
+		uint8_t winning_set = alg_winning_positions[chain_repr][loadhash];
+		// Set id_s are handed out in increasing order while decreasing contents,
+		// so we need higher or equal set id to be winning.
+		return (winning_set >= (uint8_t) set_id);
+	    }
+		
+	}
 
     bool query_itemconf_winning(const loadconf &lc, const itemconfig<DENOMINATOR>& ic)
 	{
@@ -279,13 +301,13 @@ public:
 	    {
 		    return true;
 	    }
-
 	    assert(feasible_map.contains(ic.itemhash));
-	    int layer_index = feasible_map[ic.itemhash];
-	    return alg_winning_positions[layer_index].contains(lc.loadhash);
+	    unsigned int set_id = feasible_map[ic.itemhash];
+	    unsigned short chain_representative = set_id_to_chain_repr[set_id];
+	    return chain_cache_query(lc.loadhash, set_id, chain_representative);
 	}
-    
-    bool query_itemconf_winning(const loadconf &lc, int next_item_layer, int item, int bin)
+
+    bool query_itemconf_winning(const loadconf &lc, int next_item_set_id, int item, int bin)
 	{
 	    // We have to check the hash table if the position is winning.
 	    uint64_t hash_if_packed = lc.virtual_loadhash(item, bin);
@@ -293,28 +315,30 @@ public:
 	    if (query_knownsum_layer(lc, item, bin))
 	    {
 		return true;
+
 	    }
-	    
-	    return alg_winning_positions[next_item_layer].contains(hash_if_packed);
+
+	    unsigned short chain_representative = set_id_to_chain_repr[next_item_set_id];
+	    return chain_cache_query(hash_if_packed, next_item_set_id, chain_representative);
 	}
     
-    void init_itemconf_layer(long unsigned int layer_index)
+    void init_itemconf_layer(long unsigned int set_id)
 	{
 
-	    itemconfig<DENOMINATOR> layer = feasible_itemconfs[layer_index];
+	    itemconfig<DENOMINATOR> layer = feasible_itemconfs[set_id];
+	    unsigned short chain_representative = set_id_to_chain_repr[set_id];
 
-	    bool last_layer = (layer_index == (feasible_itemconfs.size() - 1));
-	
+	    bool last_layer = (set_id == (feasible_itemconfs.size() - 1));
+
 	    if (PROGRESS)
 	    {
-		fprintf(stderr, "Processing itemconf layer %lu / %lu , corresponding to: ", layer_index, feasible_itemconfs.size() );
+		fprintf(stderr, "Processing itemconf layer %lu / %lu , corresponding to: ", set_id, feasible_itemconfs.size() );
 		layer.print();
 	    }
     	    
 	    loadconf iterated_lc = create_full_loadconf();
 	    uint64_t winning_loadconfs = 0;
 	    uint64_t losing_loadconfs = 0;
-
 
 	    int scaled_ub_from_dp = DENOMINATOR-1;
 
@@ -330,7 +354,7 @@ public:
 
 	    if (MEASURE)
 	    {
-		// fprintf(stderr, "Layer %d: maximum feasible item is scaled %d, and original %d.\n", layer_index,  scaled_ub_from_dp, ub_from_dp);
+		// fprintf(stderr, "Layer %d: maximum feasible item is scaled %d, and original %d.\n", set_id,  scaled_ub_from_dp, ub_from_dp);
 	    }
 	
 	    // We also compute the lower bound on volume that any feasible load configuration
@@ -387,13 +411,14 @@ public:
 			}
 
 			assert(feasible_map.contains(next_layer_hash));
-			int next_layer = feasible_map[next_layer_hash];
+			unsigned int next_layer = feasible_map[next_layer_hash];
 
 			for (int bin = 1; bin <= BINS; bin++)
 			{
 			    if (bin > 1 && iterated_lc.loads[bin] == iterated_lc.loads[bin-1])
 			    {
-				continue; 			    }
+				continue;
+ 			    }
 
 			    if (item + iterated_lc.loads[bin] <= R-1) // A plausible move.
 			    {
@@ -417,7 +442,8 @@ public:
 		    if (!losing_item_exists)
 		    {
 			MEASURE_ONLY(winning_loadconfs++);
-			alg_winning_positions[layer_index].insert(iterated_lc.loadhash);
+			// alg_winning_positions[set_id].insert(iterated_lc.loadhash);
+			alg_winning_positions[chain_representative][iterated_lc.loadhash] = (uint8_t) set_id;
 		    }
 		    else
 		    {
@@ -427,7 +453,7 @@ public:
 	    } while (decrease(&iterated_lc));
 
 	    // fprintf(stderr, "Layer %d: Winning positions: %" PRIu64 " and %" PRIu64 " losing.\n",
-//			      layer_index, winning_loadconfs, losing_loadconfs);
+//			      set_id, winning_loadconfs, losing_loadconfs);
 
 	}
 
@@ -447,16 +473,41 @@ public:
 	    fprintf(stderr, "Minibs<%d>: There will be %d item sizes tracked.\n",DENOM, DENOM - 1);
 
 	    binary_storage<DENOMINATOR> bstore;
-	    if (bstore.storage_exists())
+	    // if (bstore.storage_exists())
+	    if(false)
 	    {
-		bstore.restore(alg_winning_positions, alg_knownsum_winning, feasible_itemconfs);
+		// bstore.restore(alg_winning_positions, alg_knownsum_winning, feasible_itemconfs);
 		populate_feasible_map();
+		// Initialize chain cover. TODO: Restore from backup.
+		poset<DENOMINATOR> ps(&feasible_itemconfs, &feasible_map);
+		ps.chain_cover();
+		std::tie(number_of_chains, set_id_to_chain_repr) = ps.export_chain_cover();
+		for (unsigned short i = 0; i < number_of_chains; ++i)
+		{
+		    flat_hash_map<uint64_t, uint8_t> winning_in_chain;
+		    alg_winning_positions.push_back(winning_in_chain);
+		}
+		
 		print_if<PROGRESS>("Minibs<%d>: Init complete via restoration.\n", DENOMINATOR);
 		fprintf(stderr, "Minibs<%d> from restoration: %zu itemconfs are feasible.\n", DENOM, feasible_itemconfs.size());
+		fprintf(stderr, "Minibs<%d> from restoration: %hu chains in the decomposition.\n", DENOM, number_of_chains);
+
 	    } else
 	    {
 		print_if<PROGRESS>("Minibs<%d>: Initialization must happen from scratch.\n", DENOMINATOR);
 		init_from_scratch();
+	    }
+	}
+
+    minibs(bool forced_from_scratch)
+	{
+	    if (forced_from_scratch)
+	    {
+		print_if<PROGRESS>("Minibs<%d>: Initialization must happen from scratch.\n", DENOMINATOR);
+		init_from_scratch();
+	    } else
+	    {
+		minibs();
 	    }
 	}
     
@@ -468,12 +519,18 @@ public:
 
 	    // We initialize the knownsum layer here.
 	    init_knownsum_layer();
-	    
-	    for (long unsigned int i = 0; i < feasible_itemconfs.size(); i++)
+
+	    // Initialize chain cover.
+	    poset ps(&feasible_itemconfs, &feasible_map);
+	    ps.chain_cover();
+	    std::tie(number_of_chains, set_id_to_chain_repr) = ps.export_chain_cover();
+	    for (unsigned short i = 0; i < number_of_chains; ++i)
 	    {
-		flat_hash_set<uint64_t> winning_in_layer;
-		alg_winning_positions.push_back(winning_in_layer);
+		flat_hash_map<uint64_t, uint8_t> winning_in_chain;
+		alg_winning_positions.push_back(winning_in_chain);
 	    }
+
+	    fprintf(stderr, "Minibs<%d> from scratch: %hu chains in the decomposition.\n", DENOM, number_of_chains);
 
 	    for (long unsigned int i = 0; i < feasible_itemconfs.size(); i++)
 	    {
@@ -488,9 +545,10 @@ public:
 		*/
 	
 		init_itemconf_layer(i);
+		unsigned short chain_representative = set_id_to_chain_repr[i];
 		// print_if<PROGRESS>("Overseer: Processed itemconf layer %d.\n", i);
-		print_if<PROGRESS>("Size of the layer %d cache: %lu.\n", i,
-		 		   alg_winning_positions[i].size());
+		print_if<PROGRESS>("Itemconf %d in chain %hu, size of the chain cache: %lu.\n", i, chain_representative,
+		 		   alg_winning_positions[chain_representative].size());
 	    }
 	}
 
@@ -500,7 +558,7 @@ public:
 	    if (!bstore.storage_exists())
 	    {
 		print_if<PROGRESS>("Queen: Backing up Minibs<%d> calculations.\n", DENOMINATOR);
-		bstore.backup(alg_winning_positions, alg_knownsum_winning, feasible_itemconfs);
+		// bstore.backup(alg_winning_positions, alg_knownsum_winning, feasible_itemconfs);
 	    }
 	}
     

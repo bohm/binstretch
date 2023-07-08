@@ -1,5 +1,8 @@
 #pragma once
 
+#include "common.hpp"
+#include "binconf.hpp"
+
 template <int DENOMINATOR> class itemconfig
 {
 public:

@@ -19,7 +19,7 @@
 
 #include <parallel_hashmap/phmap.h>
 
-#include "../minibs.hpp"
+#include "minibs/itemconfig.hpp"
 
 using phmap::flat_hash_map;
 
@@ -69,7 +69,7 @@ public:
     std::vector<poset_vertex> verts;
     int chain_counter = 0;
     
-    poset(std::vector<itemconfig<DENOMINATOR> >* feasible_itemconfs, std::unordered_map<uint64_t, long unsigned int>* feasible_map)
+    poset(std::vector<itemconfig<DENOMINATOR> >* feasible_itemconfs, flat_hash_map<uint64_t, unsigned int>* feasible_map)
 	{
 	    int max_id = 0;
 	    unsigned int edge_counter = 0;
@@ -304,12 +304,12 @@ public:
 	{
 	    unsigned short max_short = std::numeric_limits<unsigned short>::max();
 	    assert(chain_counter <= (int) max_short);
-	    short chain_count = (unsigned short) chain_counter;
+	    unsigned short chain_count = (unsigned short) chain_counter;
 	    flat_hash_map<int, unsigned short> cover_map;
 	    for (unsigned int i = 0; i < verts.size(); i += 2)
 	    {
 		// Vertices can be unmatched, but they all are assigned a chain id.
-		assert(verts[i].chain_id != -1);
+		assert(verts[i].chain_id >= 0 && verts[i].chain_id < chain_count);
 		cover_map[verts[i].set_id] = (unsigned short) verts[i].chain_id;
 	    }
 
