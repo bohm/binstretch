@@ -591,7 +591,7 @@ public:
     void init_knownsum_layer()
 	{
 
-	    print_if<PROGRESS>("Processing the knownsum layer.\n");
+	    // print_if<PROGRESS>("Processing the knownsum layer.\n");
     	    
 	    loadconf iterated_lc = create_full_loadconf();
 	    uint64_t winning_loadconfs = 0;
@@ -700,8 +700,7 @@ public:
 
 	    if (PROGRESS)
 	    {
-		fprintf(stderr, "Archival<%d>: Processing itemconf layer %lu / %lu , corresponding to: ", DENOMINATOR, layer_index, feasible_itemconfs.size() );
-		layer.print();
+		// fprintf(stderr, "Archival<%d>: Processing itemconf layer %lu / %lu , corresponding to: ", DENOMINATOR, layer_index, feasible_itemconfs.size() );
 	    }
     	    
 	    loadconf iterated_lc = create_full_loadconf();
@@ -827,7 +826,6 @@ public:
     // The init is now able to recover data from previous computations.
     void init()
 	{
-	    print_if<PROGRESS>("Minibs_Archival<%d>: Initialization must happen from scratch.\n", DENOMINATOR);
 	    init_from_scratch();
 	}
     
@@ -855,9 +853,10 @@ public:
 		*/
 	
 		init_itemconf_layer(i);
-		// print_if<PROGRESS>("Overseer: Processed itemconf layer %d.\n", i);
-		// print_if<PROGRESS>("Size of the layer %d cache: %lu.\n", i,
-		//		   alg_winning_positions[i].size());
+		print_if<PROGRESS>("Archival<%d>: Processed itemconf layer %d: ", DENOM, i);
+		feasible_itemconfs[i].print();
+		print_if<PROGRESS>("Size of the layer %d cache: %lu.\n", i,
+				   alg_winning_positions[i].size());
 	    }
 	}
 
@@ -871,5 +870,18 @@ public:
 	    print_int_array<DENOM>(ITEMS_PER_TYPE, true);
 	    compute_feasible_itemconfs();
 	    fprintf(stderr, "Minibs_Archival<%d>: %zu itemconfs are feasible.\n", DENOM, feasible_itemconfs.size());
+	}
+
+    void stats()
+	{
+	    
+	    unsigned int total_elements = 0;
+	    fprintf(stderr, "Number of feasible sets %zu, number of caches is the same.\n", feasible_itemconfs.size());
+	    for (unsigned short i = 0; i < feasible_itemconfs.size(); ++i)
+	    {
+		total_elements += alg_winning_positions[i].size();
+	    }
+	    fprintf(stderr, "Total elements in all caches: %u.\n", total_elements);
+
 	}
 };

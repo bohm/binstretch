@@ -4,7 +4,7 @@
 #include <unordered_map>
 #include <cstdint>
 
-#define IBINS 8
+#define IBINS 6
 #define IR 19
 #define IS 14
 
@@ -20,6 +20,9 @@ void archival_consistency_check()
     minibs<TEST_SCALE> mb(true); // Force construction from scratch.
     minibs_archival<TEST_SCALE> mbs_archival;
     mbs_archival.init();
+
+    flat_hash_set<uint64_t> loadhash_present_somewhere;
+    
     // For every feasible item configuration and every loadconf, check that the answers match.
     for (unsigned int i = 0; i < mb.feasible_itemconfs.size(); ++i)
     {
@@ -58,8 +61,13 @@ void archival_consistency_check()
 		continue;
 	    }
 
+	    
 	    if (loadsum < S*BINS)
 	    {
+		if (mb.query_itemconf_winning(iterated_lc, layer))
+		{
+		    loadhash_present_somewhere.insert(iterated_lc.loadhash);
+		}
 		if (mb.query_itemconf_winning(iterated_lc, layer) != mbs_archival.query_itemconf_winning(iterated_lc, layer_archival))
 		{
 		    bool chain_answer = mb.query_itemconf_winning(iterated_lc, layer);
@@ -71,11 +79,20 @@ void archival_consistency_check()
 		    // layer_archival.print();
 		    fprintf(stderr, "Chain-based cache claims: %d.\n",  chain_answer);
 		    fprintf(stderr, "One-cache-per-set claims: %d.\n",  archival_answer);
+		    unsigned short chain_repr = mb.set_id_to_chain_repr[i];
+		    fprintf(stderr, "Result in chain cache: c[%hu][%" PRIu64 "] = %" PRIu16 ".\n" ,
+			    chain_repr, iterated_lc.loadhash,
+			    mb.alg_winning_positions[chain_repr][iterated_lc.loadhash]);
 		    exit(-1);
 		}
 	    }
 	} while (decrease(&iterated_lc));
+
     }
+
+    fprintf(stderr, "Total unique loadhashes stored in any cache: %zu.\n", loadhash_present_somewhere.size());
+    mb.stats();
+
 }
 
 int main(int argc, char** argv)
@@ -84,13 +101,15 @@ int main(int argc, char** argv)
 
     // maximum_feasible_tests();
     
-    minibs<TEST_SCALE> mb(true); // Force construction from scratch.
+    // minibs<TEST_SCALE> mb(true); // Force construction from scratch.
+    // mb.stats();
     // mb.backup_calculations();
 
     // Compare to the archival size:
 
     // minibs_archival<TEST_SCALE> mb_archival;
     // mb_archival.init();
+    // mb_archival.stats();
     /*
     poset<TEST_SCALE> ps(&(mb.feasible_itemconfs), &(mb.feasible_map));
     unsigned int x = ps.count_sinks();
@@ -98,7 +117,7 @@ int main(int argc, char** argv)
 
     */
     
-    // archival_consistency_check();
+   archival_consistency_check();
     // ps.chain_cover();
     return 0;
 }

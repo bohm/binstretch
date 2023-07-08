@@ -47,7 +47,7 @@ public:
     // the index is a loadhash and the value is the smallest element in the chain where the position
     // is winning.
 
-    std::vector< flat_hash_map<uint64_t, uint8_t> > alg_winning_positions;
+    std::vector< flat_hash_map<uint64_t, uint16_t> > alg_winning_positions;
     // std::vector< flat_hash_set<uint64_t> > alg_winning_positions;
 
     flat_hash_set<uint64_t> alg_knownsum_winning;
@@ -286,10 +286,10 @@ public:
 		return false;
 	    } else
 	    {
-		uint8_t winning_set = alg_winning_positions[chain_repr][loadhash];
+		uint16_t winning_set = alg_winning_positions[chain_repr][loadhash];
 		// Set id_s are handed out in increasing order while decreasing contents,
 		// so we need higher or equal set id to be winning.
-		return (winning_set >= (uint8_t) set_id);
+		return (winning_set >= (uint16_t) set_id);
 	    }
 		
 	}
@@ -322,7 +322,7 @@ public:
 	    return chain_cache_query(hash_if_packed, next_item_set_id, chain_representative);
 	}
     
-    void init_itemconf_layer(long unsigned int set_id)
+    void init_itemconf_layer(unsigned int set_id)
 	{
 
 	    itemconfig<DENOMINATOR> layer = feasible_itemconfs[set_id];
@@ -332,7 +332,7 @@ public:
 
 	    if (PROGRESS)
 	    {
-		fprintf(stderr, "Processing itemconf layer %lu / %lu , corresponding to: ", set_id, feasible_itemconfs.size() );
+		fprintf(stderr, "Processing itemconf layer %u / %lu , corresponding to: ", set_id, feasible_itemconfs.size() );
 		layer.print();
 	    }
     	    
@@ -443,7 +443,7 @@ public:
 		    {
 			MEASURE_ONLY(winning_loadconfs++);
 			// alg_winning_positions[set_id].insert(iterated_lc.loadhash);
-			alg_winning_positions[chain_representative][iterated_lc.loadhash] = (uint8_t) set_id;
+			alg_winning_positions[chain_representative][iterated_lc.loadhash] = (uint16_t) set_id;
 		    }
 		    else
 		    {
@@ -484,7 +484,7 @@ public:
 		std::tie(number_of_chains, set_id_to_chain_repr) = ps.export_chain_cover();
 		for (unsigned short i = 0; i < number_of_chains; ++i)
 		{
-		    flat_hash_map<uint64_t, uint8_t> winning_in_chain;
+		    flat_hash_map<uint64_t, uint16_t> winning_in_chain;
 		    alg_winning_positions.push_back(winning_in_chain);
 		}
 		
@@ -526,7 +526,7 @@ public:
 	    std::tie(number_of_chains, set_id_to_chain_repr) = ps.export_chain_cover();
 	    for (unsigned short i = 0; i < number_of_chains; ++i)
 	    {
-		flat_hash_map<uint64_t, uint8_t> winning_in_chain;
+		flat_hash_map<uint64_t, uint16_t> winning_in_chain;
 		alg_winning_positions.push_back(winning_in_chain);
 	    }
 
@@ -560,6 +560,30 @@ public:
 		print_if<PROGRESS>("Queen: Backing up Minibs<%d> calculations.\n", DENOMINATOR);
 		// bstore.backup(alg_winning_positions, alg_knownsum_winning, feasible_itemconfs);
 	    }
+	}
+
+
+    void stats()
+	{
+
+	    unsigned int total_elements = 0;
+	    fprintf(stderr, "Number of feasible sets %zu, number of chains %hu.\n", feasible_itemconfs.size(), number_of_chains);
+	    for (unsigned short i = 0; i < number_of_chains; ++i)
+	    {
+		// Count chain length -- Note: quadratic.
+		unsigned int chain_length = 0;
+		for (unsigned int j = 0; j < feasible_itemconfs.size(); ++j)
+		{
+		    if (set_id_to_chain_repr[j] == i)
+		    {
+			chain_length++;
+		    }
+		}
+		fprintf(stderr, "Chain %hu: length %u,  %zu elements in cache.\n", i, chain_length,
+			alg_winning_positions[i].size());
+		total_elements += alg_winning_positions[i].size();
+	    }
+	    fprintf(stderr, "Total elements in all chain caches: %u.\n", total_elements);
 	}
     
     // minibs()
