@@ -213,6 +213,110 @@ template <int DENOM> void loadhashes_across_caches(minibs <DENOM> &mb)
     fprintf(stderr, "Total unique loadhashes stored in any cache: %zu.\n", loadhash_present_somewhere.size());
 }
 
+bool set_comparator(const flat_hash_set<unsigned int> &a, const flat_hash_set<unsigned int> &b)
+{
+    unsigned int min_a_not_b = std::numeric_limits<unsigned int>::max();
+    unsigned int min_b_not_a = std::numeric_limits<unsigned int>::max();
+
+    for (unsigned int el_a : a)
+    {
+	if (!b.contains(el_a))
+	{
+	    min_a_not_b = std::min(min_a_not_b, el_a);
+	}
+    }
+
+    for (unsigned int el_b : b)
+    {
+	if (!a.contains(el_b))
+	{
+	    min_b_not_a = std::min(min_b_not_a, el_b);
+	}
+    }
+
+    return min_a_not_b < min_b_not_a;
+}
+
+void sorted_print(const flat_hash_set<unsigned int> &a, unsigned int universe_range)
+{
+    for (unsigned int i = 0; i < universe_range; ++i)
+    {
+	if (a.contains(i))
+	{
+	    fprintf(stderr, "%u ", i);
+	}
+    }
+    fprintf(stderr, "\n");
+}
+
+template <int DENOM> void loadhash_fingerprinting(minibs<DENOM> &mb)
+{
+    flat_hash_map<uint64_t, unsigned int> fingerprint_position;
+    std::vector< flat_hash_set<unsigned int> > fingerprints;
+
+    // Idea: for every feasible layer and every loadhash in it,
+    // insert the feasible layer's ID into the fingerprint.
+
+    // On its own, this is just a different way of storing the data, but it has
+    // some potential improvements.
+     // For every feasible item configuration and every loadconf, check that the answers match.
+    for (unsigned int i = 0; i < mb.feasible_itemconfs.size(); ++i)
+    {
+
+	itemconfig<TEST_SCALE> layer = mb.feasible_itemconfs[i];
+
+	loadconf iterated_lc = create_full_loadconf();
+	int lb_on_vol = mb.lb_on_volume(layer);
+
+	do {
+	    int loadsum = iterated_lc.loadsum();
+	    if (loadsum < lb_on_vol)
+	    {
+		continue;
+	    }
+	    
+	    if (mb.adv_immediately_winning(iterated_lc) || mb.alg_immediately_winning(iterated_lc))
+	    {
+		continue;
+	    }
+	    
+	    // Ignore all positions which are already winning in the knownsum layer.
+	    if (mb.query_knownsum_layer(iterated_lc))
+	    {
+		continue;
+	    }
+
+	    
+	    if (loadsum < S*BINS)
+	    {
+		if (mb.alg_winning_positions[i].contains(iterated_lc.loadhash))
+		{
+		    // We wish to fingerprint iterated_lc.loadhash -- we first
+		    // check if has been fingeprinted previously.
+		    if (!fingerprint_position.contains(iterated_lc.loadhash))
+		    {
+			unsigned int new_pos = fingerprints.size();
+			fingerprints.push_back(flat_hash_set<unsigned int>());
+			fingerprint_position[iterated_lc.loadhash] = new_pos;
+		    }
+
+		    unsigned int pos = fingerprint_position[iterated_lc.loadhash];
+		    fingerprints[pos].insert(i);
+		}
+	    }
+	} while (decrease(&iterated_lc));
+    }
+
+    // --- compute metrics about the representation ---
+
+    fprintf(stderr, "Total number of fingerprints: %zu.\n", fingerprints.size());
+
+    for (unsigned int j = 0; j < fingerprints.size(); ++j)
+    {
+	sorted_print(fingerprints[j], mb.feasible_itemconfs.size());
+    }
+}
+
 void maximum_feasible_tests()
 {
     minibs<6> mb;
@@ -442,12 +546,12 @@ int main(int argc, char** argv)
     // maximum_feasible_tests();
     
     minibs<TEST_SCALE> mb;
-    print_basic_components(mb);
-    mb.stats_by_layer();
+    // print_basic_components(mb);
+    // mb.stats_by_layer();
     mb.stats();
-    mb.prune_feasible_caches();
-    mb.stats_by_layer();
-    mb.stats();
+    // mb.prune_feasible_caches();
+    // mb.stats_by_layer();
+    // mb.stats();
 
     // print_one_layer(mb, 4736);
     // print_one_layer(mb, 4743);
@@ -456,7 +560,8 @@ int main(int argc, char** argv)
     // query_all_caches(mb, random_value);
     // uint64_t random_value_2 = 4996653019173903213;
     // query_all_caches(mb, random_value_2);
-    loadhashes_across_caches(mb);
+    // loadhashes_across_caches(mb);
+    // loadhash_fingerprinting(mb);
    
     // mb.backup_calculations();
 

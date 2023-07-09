@@ -42,16 +42,23 @@ public:
     flat_hash_map<uint64_t, unsigned int> feasible_map;
     std::vector< flat_hash_set<uint64_t> > alg_winning_positions;
 
-    // New heuristic: to save aggressively on memory, we store a list (an array)
-    // of "basic" itemconfs for each composed itemconf.
-    // Think of it this way: for an itemconf (2 1 0 1 0), the basic itemconfs are
-    // (2 0 0 0 0), (0 1 0 0 0), (0 0 0 1 0).
+    // Fingerprints on their own is just a transposition of the original minibs
+    // approach. Instead of storing loadhashes for each item layer, we store
+    // list of item layer ids for every loadhash.
 
-    // During postprocessing, we remove a winning configuration from (2 1 0 1 0)
-    // if it exists in *any* of the basic ones.
+    // The memory saving advantage comes from sparsifiying this structure.
+    // This sparsification is not easily done on the fly, so we do it during
+    // postprocessing.
+    
+    flat_hash_map<uint64_t, unsigned int> fingerprint_map;
+    // We store pointers to the winning fingerprints,
+    // to enable smooth sparsification.
+    std::vector< flat_hash_set<unsigned int>* > fingerprints;
 
-    std::vector< std::array<int, DENOMINATOR> > basic_components;
-
+    // Vector of unique fingerprints, created during sparsification.
+    // Useful for deleting them e.g. during termination.
+    std::vector<flat_hash_set<unsigned int>* > unique_fps;
+    
     flat_hash_set<uint64_t> alg_knownsum_winning;
 
     minidp<DENOMINATOR> mdp;
@@ -290,21 +297,16 @@ public:
 		    return true;
 	    }
 
-	    // assert(feasible_map.contains(ic.itemhash));
-	    int layer_index = feasible_map[ic.itemhash];
-
-	    // Slowdown caused by the new, memory-saving heuristic
-	    for (int j = 0; basic_components[layer_index][j] != -1 && j < DENOMINATOR; ++j)
+	    if (!fingerprint_map.contains(lc.loadhash))
 	    {
-		bool basic_query = alg_winning_positions[ basic_components[layer_index][j] ].contains(lc.loadhash);
-		if (basic_query)
-		{
-		    return true;
-		}
-		// If basic query returns false, we still might be winning, so we continue.
+		return false;
 	    }
 	    
-	    return alg_winning_positions[layer_index].contains(lc.loadhash);
+	    // assert(feasible_map.contains(ic.itemhash));
+	    unsigned int layer_index = (unsigned int) feasible_map[ic.itemhash];
+
+	    flat_hash_set<unsigned int>  *fp = fingerprints[fingerprint_map[lc.loadhash]];
+	    return fp->contains(layer_index);
 	}
     
     bool query_itemconf_winning(const loadconf &lc, int next_item_layer, int item, int bin)
@@ -317,20 +319,29 @@ public:
 		return true;
 	    }
 
-	    // Slowdown caused by the new, memory-saving heuristic
-	    for (int j = 0; basic_components[next_item_layer][j] != -1 && j < DENOMINATOR; ++j)
+	    if (!fingerprint_map.contains(hash_if_packed))
 	    {
-		bool basic_query = alg_winning_positions[ basic_components[next_item_layer][j] ].contains(hash_if_packed);
-		if (basic_query)
-		{
-		    return true;
-		}
-		// If basic query returns false, we still might be winning, so we continue.
+		return false;
+	    }
+
+	    flat_hash_set<unsigned int> *fp = fingerprints[fingerprint_map[hash_if_packed]];
+	    return fp->contains(next_item_layer);
+	}
+
+    inline void itemconf_encache_alg_win(const uint64_t& loadhash, const unsigned int& item_layer)
+	{
+	    if (!fingerprint_map.contains(loadhash))
+	    {
+		unsigned int new_pos = fingerprints.size();
+		flat_hash_set<unsigned int> *fp_new = new flat_hash_set<unsigned int>();
+		fingerprints.push_back(fp_new);
+		fingerprint_map[loadhash] = new_pos;
 	    }
 	    
-	    return alg_winning_positions[next_item_layer].contains(hash_if_packed);
+	    flat_hash_set<unsigned int> *fp = fingerprints[fingerprint_map[loadhash]];
+	    fp->insert(item_layer);
 	}
- 
+    
     void init_itemconf_layer(long unsigned int layer_index)
 	{
 
@@ -450,7 +461,7 @@ public:
 		    if (!losing_item_exists)
 		    {
 			MEASURE_ONLY(winning_loadconfs++);
-			alg_winning_positions[layer_index].insert(iterated_lc.loadhash);
+			itemconf_encache_alg_win(iterated_lc.loadhash, layer_index);
 		    }
 		    else
 		    {
@@ -464,63 +475,56 @@ public:
 
 	}
 
-    // Call at the start, when we wish to just ignore the basic components and do the normal computation.
-    void init_basic_components()
+
+    static uint64_t fingerprint_hash(std::vector<uint64_t> *rns, flat_hash_set<unsigned int> * fp)
 	{
-	    for (unsigned int i = 0; i < feasible_itemconfs.size(); ++i)
-	    { 
-		std::array<int, DENOMINATOR> empty;
-		empty.fill(-1);
-		basic_components.push_back(empty);
+	    uint64_t ret = 0;
+	    for (unsigned int u: *fp)
+	    {
+		ret ^= (*rns)[u];
 	    }
+	    return ret;
 	}
 
-    // Call after the DP run is complete, to compute the right basic components.
-    void compute_basic_components()
+    // Generates capacity random numbers for use in the sparsification.
+    static std::vector<uint64_t>* create_random_hashes(unsigned int capacity)
 	{
-	    for (unsigned int i = 0; i < feasible_itemconfs.size(); ++i)
+	    std::vector<uint64_t>* ret = new std::vector<uint64_t>();
+	    for (unsigned int i = 0; i < capacity; ++i)
 	    {
-		itemconfig<DENOMINATOR> layer = feasible_itemconfs[i];
-		if (!layer.basic())
-		{
-		    int push_back_pos = 0;
-		    for (int pos = 1; pos < DENOMINATOR; pos++)
-		    {
-			if (layer.items[pos] > 0)
-			{
-			    itemconfig<DENOMINATOR> basic_layer;
-			    basic_layer.hashinit();
-			    basic_layer.increase(pos, layer.items[pos]);
-			    int basic_layer_pos = feasible_map[basic_layer.itemhash];
-			    basic_components[i][push_back_pos] = basic_layer_pos;
-			    push_back_pos++;
-			}
-		    }
-		}
+		ret->push_back(rand_64bit());
 	    }
+	    return ret;
+	}
     
-	}
-
-    // Prune the caches based on the idea of basic components.
-
-    void prune_feasible_caches()
+    void sparsify()
 	{
-	    for (unsigned int i = 0; i < feasible_itemconfs.size(); ++i)
-	    {
-		for (int j = 0; j < DENOMINATOR; ++j)
-		{
-		    if (basic_components[i][j] == -1)
-		    {
-			break;
-		    }
+	    std::vector<uint64_t>* random_numbers = create_random_hashes(feasible_itemconfs.size());
 
-		    int basic_comp = basic_components[i][j];
-		    for (uint64_t winning_loadhash: alg_winning_positions[basic_comp])
-		    {
-			alg_winning_positions[i].erase(winning_loadhash);
-		    }
+	    flat_hash_map<uint64_t, flat_hash_set<unsigned int> * > unique_fingerprint_map;
+
+	    for (unsigned int i = 0; i < fingerprints.size(); ++i)
+	    {
+		uint64_t hash = fingerprint_hash(random_numbers, fingerprints[i]);
+		if (unique_fingerprint_map.contains(hash))
+		{
+		    flat_hash_set<unsigned int> *unique_fp = unique_fingerprint_map[hash];
+		    delete fingerprints[i];
+		    fingerprints[i] = unique_fp;
+		} else
+		{
+		    unique_fingerprint_map[hash] = fingerprints[i];
 		}
 	    }
+
+	    // Convert the flat_hash_map into a vector, keeping track of unique elements
+	    // and forgetting the hash function.
+	    for (const auto& [key, el]: unique_fingerprint_map)
+	    {
+		unique_fps.push_back(el);
+	    }
+		
+	    delete random_numbers;
 	}
     
     // Call after feasible_itemconfs exist, to build the inverse map.
@@ -558,7 +562,6 @@ public:
 	    populate_feasible_map();
 	    fprintf(stderr, "Minibs<%d> from scratch: %zu itemconfs are feasible.\n", DENOM, feasible_itemconfs.size());
 
-	    init_basic_components();
 	    
 	    // We initialize the knownsum layer here.
 	    init_knownsum_layer();
@@ -573,12 +576,10 @@ public:
 	    {
 	
 		init_itemconf_layer(i);
-		// print_if<PROGRESS>("Overseer: Processed itemconf layer %d.\n", i);
-		print_if<PROGRESS>("Size of the layer %d cache: %lu.\n", i,
-		 		   alg_winning_positions[i].size());
 	    }
 
-	    compute_basic_components();
+	    sparsify();
+
 	}
 
     inline void backup_calculations()
@@ -606,12 +607,15 @@ public:
 	{
 	    
 	    unsigned int total_elements = 0;
-	    fprintf(stderr, "Number of feasible sets %zu, number of caches is the same.\n", feasible_itemconfs.size());
-	    for (unsigned short i = 0; i < feasible_itemconfs.size(); ++i)
+	    fprintf(stderr, "Number of feasible sets %zu, number of fingerprints %zu.\n",
+		    feasible_itemconfs.size(), fingerprints.size());
+	    for (unsigned int i = 0; i < fingerprints.size(); ++i)
 	    {
-		total_elements += alg_winning_positions[i].size();
+		total_elements += fingerprints[i]->size();
 	    }
+
 	    fprintf(stderr, "Total elements in all caches: %u.\n", total_elements);
 
+	    fprintf(stderr, "Number of unique fingerprints: %zu.\n", unique_fps.size());
 	}
 };
