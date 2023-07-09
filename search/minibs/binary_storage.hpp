@@ -9,14 +9,15 @@
 #include "../common.hpp"
 #include "../functions.hpp"
 #include "itemconfig.hpp"
-using phmap::flat_hash_set;
 
+using phmap::flat_hash_set;
+using phmap::flat_hash_map;
 
 template <int DENOMINATOR> class binary_storage
 {
 public:
 
-    const int VERSION = 3;
+    const int VERSION = 4;
     char storage_file_path[256];
     FILE *storage_file = nullptr;
     binary_storage()
@@ -194,6 +195,22 @@ public:
 	    delete[] set_as_array;
 	}
 
+       
+    void write_one_set(flat_hash_set<unsigned int> *s)
+	{
+	    write_set_size(s->size());
+	    unsigned int* set_as_array = new unsigned int[s->size()];
+	    uint64_t c = 0;
+	    for (const unsigned int & el: *s)
+	    {
+		set_as_array[c++] = el;
+	    }
+
+	    fwrite(set_as_array, sizeof(unsigned int), c, storage_file);
+	    delete[] set_as_array;
+	}
+
+
     void read_one_set(flat_hash_set<uint64_t>& out_set)
 	{
 	    out_set.clear();
@@ -215,6 +232,30 @@ public:
 
 	    delete[] set_as_array;
 	}
+
+     void read_one_set(flat_hash_set<unsigned int>* out_set)
+	{
+	    out_set->clear();
+	    unsigned int set_size = read_set_size();
+	    out_set->reserve(set_size);
+	    size_t set_read = 0;
+	    unsigned int* set_as_array = new unsigned int[set_size];
+ 	    set_read = fread(set_as_array, sizeof(unsigned int), set_size, storage_file);
+
+	    if (set_read != set_size)
+	    {
+		ERRORPRINT("Binary storage error: failed to read one of the sets.\n");
+	    }
+	    
+	    for (unsigned int i = 0; i < set_size; i++)
+	    {
+		out_set->insert(set_as_array[i]);
+	    }
+
+	    delete[] set_as_array;
+	}
+
+   
 
     void write_set_system(std::vector<flat_hash_set<uint64_t>>& system)
 	{
@@ -238,6 +279,183 @@ public:
 	    }
 	}
 
+
+    void write_unique_fingerprints(std::vector<flat_hash_set<unsigned int>* >& unique_fps,
+				   flat_hash_map<unsigned int, flat_hash_set<unsigned int> *>& p_seq)
+	{
+	    write_set_size(unique_fps.size());
+
+	    for (unsigned int i = 0; i < p_seq.size(); ++i)
+	    {
+		write_one_set(p_seq[i]);
+		write_delimeter();
+	    }
+	}
+
+
+    // Reads the fingerprints in order, creates the mapping as the fingerprints get allocated.
+    void read_unique_fingerprints(
+	std::vector<flat_hash_set<unsigned int>* >& out_unique_fps,
+	flat_hash_map<unsigned int, flat_hash_set<unsigned int> *>& out_p_seq)
+	{
+	    unsigned int unique_trees = read_set_size();
+	    for (unsigned int i = 0; i < unique_trees; ++i)
+	    {
+		flat_hash_set<unsigned int>* fp = new flat_hash_set<unsigned int>();
+		read_one_set(fp);
+		out_p_seq[i] = fp;
+		out_unique_fps.push_back(fp);
+		read_delimeter();
+	    }
+	    
+	}
+
+    unsigned int * undo_fp_pointers(std::vector< flat_hash_set<unsigned int>* >& fingerprints,
+				    flat_hash_map<flat_hash_set<unsigned int> *, unsigned int>& reverse_pointers)
+	{
+	    unsigned int *ret = new unsigned int[fingerprints.size()];
+	    for (unsigned int i = 0; i < fingerprints.size(); ++i)
+	    {
+		ret[i] = reverse_pointers[fingerprints[i]];
+	    }
+
+	    return ret;
+	    
+	}
+
+    std::pair<unsigned int, unsigned int*> read_pointerless_fingerprints()
+	{
+	    unsigned int fingerprints_size = read_set_size();
+	    unsigned int* pointerless = new unsigned int[fingerprints_size];
+	    
+    	    int read_prints = fread(pointerless, sizeof(unsigned int),
+		   fingerprints_size, storage_file);
+
+	    if (read_prints != (int) fingerprints_size)
+	    {
+		ERRORPRINT("Binary storage error: failed to read pointerless fingerprints.\n");
+	    }
+	    read_delimeter();
+
+	    return std::pair(fingerprints_size, pointerless);
+    
+	}
+    
+    void convert_pointerless_to_pointers(unsigned int fingerprint_count,
+					 unsigned int* pointerless_fingerprints,
+					 flat_hash_map<unsigned int, flat_hash_set<unsigned int> *>& p_seq,
+					 std::vector< flat_hash_set<unsigned int> *>& out_fingerprints)
+	{
+	    for (unsigned int i = 0; i < fingerprint_count; ++i)
+	    {
+		out_fingerprints.push_back(p_seq[pointerless_fingerprints[i]]);
+	    }
+	}
+	  
+    void read_fingerprint_map(flat_hash_map<uint64_t, unsigned int>& out_fingerprint_map)
+	{
+	    unsigned int map_size = read_set_size();
+	    uint64_t *keys = new uint64_t[map_size];
+	    unsigned int *values = new unsigned int[map_size];
+
+ 	    int succ_read_keys = fread(keys, sizeof(uint64_t), map_size, storage_file);
+
+ 	    if (succ_read_keys != (int) map_size)
+	    {
+		ERRORPRINT("Binary storage error: failed to read the keys of fingerprint_map.\n");
+	    }
+
+	    read_delimeter();
+
+	    int succ_read_values =  fread(values, sizeof(unsigned int), map_size, storage_file);
+	    if (succ_read_values != (int) map_size)
+	    {
+		ERRORPRINT("Binary storage error: failed to read the values of fingerprint_map.\n");
+	    }
+
+	    read_delimeter();
+
+	    for (unsigned int i = 0; i < map_size; ++i)
+	    {
+		out_fingerprint_map[keys[i]] = values[i];
+	    }
+	}
+   
+
+    void write_fingerprint_map(flat_hash_map<uint64_t, unsigned int>& fingerprint_map)
+	{
+	    // Store the map as two arrays.
+
+	    uint64_t *keys = new uint64_t[fingerprint_map.size()];
+	    unsigned int *values = new unsigned int[fingerprint_map.size()];
+
+	    int pos = 0;
+	    for( const auto& [k, v]: fingerprint_map)
+	    {
+		keys[pos] = k;
+		values[pos] = v;
+		pos++;
+	    }
+
+	    // Store the two arrays.
+	    write_set_size(fingerprint_map.size());
+	    
+    	    fwrite(keys, sizeof(uint64_t), fingerprint_map.size(), storage_file);
+	    write_delimeter();
+    	    fwrite(values, sizeof(unsigned int), fingerprint_map.size(), storage_file);
+	    write_delimeter();
+	}
+    
+
+     void read_fingerprint_system(flat_hash_map<uint64_t, unsigned int>& out_fingerprint_map,
+				  std::vector< flat_hash_set<unsigned int>* >& out_fingerprints,
+				  std::vector<flat_hash_set<unsigned int>* >& out_unique_fps)
+	{
+	    flat_hash_map<unsigned int, flat_hash_set<unsigned int>* > pointer_sequence;
+	    read_unique_fingerprints(out_unique_fps, pointer_sequence);
+
+	    // Read pointerless fingerprints
+	    auto [fingerprints_count, pointerless] = read_pointerless_fingerprints();
+	    convert_pointerless_to_pointers(fingerprints_count, pointerless, pointer_sequence,
+					    out_fingerprints);
+
+	    delete[] pointerless;
+	    read_fingerprint_map(out_fingerprint_map);
+    
+	}
+	   
+    void write_fingerprint_system(flat_hash_map<uint64_t, unsigned int>& fingerprint_map,
+				  std::vector< flat_hash_set<unsigned int>* >& fingerprints,
+				  std::vector<flat_hash_set<unsigned int>* >& unique_fps)
+	{
+	    flat_hash_map<unsigned int, flat_hash_set<unsigned int>* > pointer_sequence;
+	    flat_hash_map<flat_hash_set<unsigned int> *, unsigned int> reverse_pointers;
+	    unsigned int pointer_counter = 0;
+	    for (const auto& el: unique_fps)
+	    {
+		pointer_sequence[pointer_counter] = el;
+		reverse_pointers[el] = pointer_counter;
+		pointer_counter++;
+	    }
+
+	    write_unique_fingerprints(unique_fps, pointer_sequence);
+	    
+	    unsigned int* pointerless_fingerprints = undo_fp_pointers(fingerprints,
+								    reverse_pointers);
+
+
+	    // write pointerless fingerprints;
+	    write_set_size(fingerprints.size());
+    	    fwrite(pointerless_fingerprints, sizeof(unsigned int),
+		   fingerprints.size(), storage_file);
+	    write_delimeter();
+
+	    delete pointerless_fingerprints;
+	    
+	    write_fingerprint_map(fingerprint_map);
+	    
+	}
+    
     void read_knownsum_set(flat_hash_set<uint64_t>& out_knownsum_set)
 	{
 	    read_one_set(out_knownsum_set);
@@ -311,8 +529,11 @@ public:
     
 	}
 	    
-    void restore(std::vector<flat_hash_set<uint64_t>>& out_system, flat_hash_set<uint64_t> &out_knownsum_set,
-	std::vector< itemconfig<DENOMINATOR> >& out_feasible_ics)
+    void restore(flat_hash_map<uint64_t, unsigned int>& out_fingerprint_map,
+		 std::vector< flat_hash_set<unsigned int>* >& out_fingerprints,
+		 std::vector<flat_hash_set<unsigned int>* >& out_unique_fps,
+		 flat_hash_set<uint64_t> &out_knownsum_set,
+		 std::vector< itemconfig<DENOMINATOR> >& out_feasible_ics)
 	{
 	    open_for_reading();
 	    bool check = check_signature();
@@ -329,12 +550,17 @@ public:
 
 	    read_feasible_itemconfs(out_feasible_ics);
 	    read_knownsum_set(out_knownsum_set);
-	    read_set_system(out_system);
+	    // read_set_system(out_system);
+	    read_fingerprint_system(out_fingerprint_map, out_fingerprints, out_unique_fps);
 	    close();
 	}
 
     
-    void backup(std::vector<flat_hash_set<uint64_t>>& system, flat_hash_set<uint64_t> &knownsum_set,
+    void backup(
+		flat_hash_map<uint64_t, unsigned int>& fingerprint_map,
+		std::vector< flat_hash_set<unsigned int>* >& fingerprints,
+		std::vector<flat_hash_set<unsigned int>* >& unique_fps,
+		flat_hash_set<uint64_t> &knownsum_set,
 		std::vector< itemconfig<DENOMINATOR> >& feasible_ics)
 	{
 	    open_for_writing();
@@ -342,7 +568,7 @@ public:
 	    write_zobrist_table();
 	    write_feasible_itemconfs(feasible_ics);
 	    write_knownsum_set(knownsum_set);
-	    write_set_system(system);
+	    write_fingerprint_system(fingerprint_map, fingerprints, unique_fps);
 	    close();
 	}
 };

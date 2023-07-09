@@ -548,6 +548,7 @@ int main(int argc, char** argv)
     minibs<TEST_SCALE> mb;
     // print_basic_components(mb);
     // mb.stats_by_layer();
+    mb.backup_calculations();
     mb.stats();
     // mb.prune_feasible_caches();
     // mb.stats_by_layer();

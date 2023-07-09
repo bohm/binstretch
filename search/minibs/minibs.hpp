@@ -545,10 +545,13 @@ public:
 	    binary_storage<DENOMINATOR> bstore;
 	    if (bstore.storage_exists())
 	    {
-		bstore.restore(alg_winning_positions, alg_knownsum_winning, feasible_itemconfs);
+		bstore.restore(fingerprint_map, fingerprints, unique_fps,
+		    alg_knownsum_winning, feasible_itemconfs);
 		populate_feasible_map();
 		print_if<PROGRESS>("Minibs<%d>: Init complete via restoration.\n", DENOMINATOR);
 		fprintf(stderr, "Minibs<%d> from restoration: %zu itemconfs are feasible.\n", DENOM, feasible_itemconfs.size());
+		fprintf(stderr, "Minibs<%d> from restoration: %zu unique fingerprints.\n",
+			DENOMINATOR, unique_fps.size());
 	    } else
 	    {
 		print_if<PROGRESS>("Minibs<%d>: Initialization must happen from scratch.\n", DENOMINATOR);
@@ -588,7 +591,8 @@ public:
 	    if (!bstore.storage_exists())
 	    {
 		print_if<PROGRESS>("Queen: Backing up Minibs<%d> calculations.\n", DENOMINATOR);
-		bstore.backup(alg_winning_positions, alg_knownsum_winning, feasible_itemconfs);
+		bstore.backup(fingerprint_map, fingerprints, unique_fps,
+		    alg_knownsum_winning, feasible_itemconfs);
 	    }
 	}
 
