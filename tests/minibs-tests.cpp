@@ -4,13 +4,13 @@
 #include <unordered_map>
 #include <cstdint>
 
-#define IBINS 10
-#define IR 15
-#define IS 11
+#define IBINS 6
+#define IR 19
+#define IS 14
 
 #include "minibs/minibs.hpp"
 
-constexpr int TEST_SCALE = 3;
+constexpr int TEST_SCALE = 6;
 constexpr int GS2BOUND = S - 2*ALPHA;
 
 // Computes the winning sand positions (for ALG with ratio R-1/S).
@@ -119,6 +119,98 @@ template <int DENOMINATOR> void single_items_winning(minibs<DENOMINATOR> &mb, st
 	    // ic.print();
 	}
     }
+}
+
+template<int DENOM> void print_basic_components(minibs<DENOM> &mb)
+{
+    for(unsigned int i = 0; i < mb.feasible_itemconfs.size(); ++i)
+    {
+	itemconfig<DENOM> ic = mb.feasible_itemconfs[i];
+	fprintf(stderr, "Printing basic components of itemconfig: ");
+	ic.print();
+	for (int j = 0; j < DENOM; ++j)
+	{
+	    if (mb.basic_components[i][j] == -1)
+	    {
+		break;
+	    }
+	    fprintf(stderr, "%d, ", mb.basic_components[i][j]);
+	}
+	fprintf(stderr, "\n");
+    }
+}
+
+template<int DENOM> void print_one_layer(minibs<DENOM> &mb, unsigned int layer)
+{
+    assert(layer <= mb.feasible_itemconfs.size());
+    itemconfig<DENOM> ic = mb.feasible_itemconfs[layer];
+    fprintf(stderr, "Fully printing layer %u, aka ", layer);
+    ic.print();
+    for (const uint64_t& loadhash: mb.alg_winning_positions[layer])
+    {
+	fprintf(stderr, "%" PRIu64 "\n", loadhash);
+    }
+    fprintf(stderr, "-----\n");
+}
+
+template <int DENOM> void query_all_caches(minibs <DENOM> &mb, uint64_t loadhash)
+{
+    for(unsigned int i = 0; i < mb.feasible_itemconfs.size(); ++i)
+    {
+	if (mb.alg_winning_positions[i].contains(loadhash))
+	{
+	    fprintf(stderr, "The sought element %" PRIu64 "is contained in %d: ", loadhash, i);
+	    mb.feasible_itemconfs[i].print();
+	}
+    }
+	   
+}
+
+
+template <int DENOM> void loadhashes_across_caches(minibs <DENOM> &mb)
+{
+    flat_hash_set<uint64_t> loadhash_present_somewhere;
+    
+    // For every feasible item configuration and every loadconf, check that the answers match.
+    for (unsigned int i = 0; i < mb.feasible_itemconfs.size(); ++i)
+    {
+
+	itemconfig<TEST_SCALE> layer = mb.feasible_itemconfs[i];
+
+	loadconf iterated_lc = create_full_loadconf();
+	int lb_on_vol = mb.lb_on_volume(layer);
+
+	do {
+	    int loadsum = iterated_lc.loadsum();
+	    if (loadsum < lb_on_vol)
+	    {
+		continue;
+	    }
+	    
+	    if (mb.adv_immediately_winning(iterated_lc) || mb.alg_immediately_winning(iterated_lc))
+	    {
+		continue;
+	    }
+	    
+	    // Ignore all positions which are already winning in the knownsum layer.
+	    if (mb.query_knownsum_layer(iterated_lc))
+	    {
+		continue;
+	    }
+
+	    
+	    if (loadsum < S*BINS)
+	    {
+		if (mb.alg_winning_positions[i].contains(iterated_lc.loadhash))
+		{
+		    loadhash_present_somewhere.insert(iterated_lc.loadhash);
+		}
+	    }
+	} while (decrease(&iterated_lc));
+
+    }
+
+    fprintf(stderr, "Total unique loadhashes stored in any cache: %zu.\n", loadhash_present_somewhere.size());
 }
 
 void maximum_feasible_tests()
@@ -350,14 +442,32 @@ int main(int argc, char** argv)
     // maximum_feasible_tests();
     
     minibs<TEST_SCALE> mb;
-    mb.backup_calculations();
+    print_basic_components(mb);
+    mb.stats_by_layer();
+    mb.stats();
+    mb.prune_feasible_caches();
+    mb.stats_by_layer();
+    mb.stats();
 
+    // print_one_layer(mb, 4736);
+    // print_one_layer(mb, 4743);
+
+    // uint64_t random_value = 15468908296186064337;
+    // query_all_caches(mb, random_value);
+    // uint64_t random_value_2 = 4996653019173903213;
+    // query_all_caches(mb, random_value_2);
+    loadhashes_across_caches(mb);
+   
+    // mb.backup_calculations();
+
+    /*
     int fixed_load_on_one = 0;
 
     if (argc >= 2)
     {
 	fixed_load_on_one = atoi(argv[1]);
     }
+    */
 
 
 
@@ -375,11 +485,12 @@ int main(int argc, char** argv)
 
     */
     
-    fprintf(stderr, "----\n");
+    // fprintf(stderr, "----\n");
 
     // topmost_layer_info<TEST_SIZE>(mb);
     // print_int_array<mb.DENOM>(mb.ITEMS_PER_TYPE, true);
 
+    /*
     std::unordered_set<int> sand_winning_for_alg;
     fprintf(stderr, "Sand winning positions (with one bin loaded to %d, interval [1,%d]):\n", fixed_load_on_one, GS2BOUND);
     sand_winning<TEST_SCALE>(mb, sand_winning_for_alg, fixed_load_on_one);
@@ -387,6 +498,7 @@ int main(int argc, char** argv)
     one_measurable_item_winning<TEST_SCALE>(mb, sand_winning_for_alg);
     fprintf(stderr, "Single items winning (interval [1,%d], ignoring sand wins):\n", GS2BOUND);
     single_items_winning<TEST_SCALE>(mb, sand_winning_for_alg);
+    */
 
     return 0;
 }

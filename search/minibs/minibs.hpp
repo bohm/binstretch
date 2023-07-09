@@ -42,6 +42,16 @@ public:
     flat_hash_map<uint64_t, unsigned int> feasible_map;
     std::vector< flat_hash_set<uint64_t> > alg_winning_positions;
 
+    // New heuristic: to save aggressively on memory, we store a list (an array)
+    // of "basic" itemconfs for each composed itemconf.
+    // Think of it this way: for an itemconf (2 1 0 1 0), the basic itemconfs are
+    // (2 0 0 0 0), (0 1 0 0 0), (0 0 0 1 0).
+
+    // During postprocessing, we remove a winning configuration from (2 1 0 1 0)
+    // if it exists in *any* of the basic ones.
+
+    std::vector< std::array<int, DENOMINATOR> > basic_components;
+
     flat_hash_set<uint64_t> alg_knownsum_winning;
 
     minidp<DENOMINATOR> mdp;
@@ -280,8 +290,20 @@ public:
 		    return true;
 	    }
 
-	    assert(feasible_map.contains(ic.itemhash));
+	    // assert(feasible_map.contains(ic.itemhash));
 	    int layer_index = feasible_map[ic.itemhash];
+
+	    // Slowdown caused by the new, memory-saving heuristic
+	    for (int j = 0; basic_components[layer_index][j] != -1 && j < DENOMINATOR; ++j)
+	    {
+		bool basic_query = alg_winning_positions[ basic_components[layer_index][j] ].contains(lc.loadhash);
+		if (basic_query)
+		{
+		    return true;
+		}
+		// If basic query returns false, we still might be winning, so we continue.
+	    }
+	    
 	    return alg_winning_positions[layer_index].contains(lc.loadhash);
 	}
     
@@ -294,10 +316,21 @@ public:
 	    {
 		return true;
 	    }
+
+	    // Slowdown caused by the new, memory-saving heuristic
+	    for (int j = 0; basic_components[next_item_layer][j] != -1 && j < DENOMINATOR; ++j)
+	    {
+		bool basic_query = alg_winning_positions[ basic_components[next_item_layer][j] ].contains(hash_if_packed);
+		if (basic_query)
+		{
+		    return true;
+		}
+		// If basic query returns false, we still might be winning, so we continue.
+	    }
 	    
 	    return alg_winning_positions[next_item_layer].contains(hash_if_packed);
 	}
-    
+ 
     void init_itemconf_layer(long unsigned int layer_index)
 	{
 
@@ -431,6 +464,65 @@ public:
 
 	}
 
+    // Call at the start, when we wish to just ignore the basic components and do the normal computation.
+    void init_basic_components()
+	{
+	    for (unsigned int i = 0; i < feasible_itemconfs.size(); ++i)
+	    { 
+		std::array<int, DENOMINATOR> empty;
+		empty.fill(-1);
+		basic_components.push_back(empty);
+	    }
+	}
+
+    // Call after the DP run is complete, to compute the right basic components.
+    void compute_basic_components()
+	{
+	    for (unsigned int i = 0; i < feasible_itemconfs.size(); ++i)
+	    {
+		itemconfig<DENOMINATOR> layer = feasible_itemconfs[i];
+		if (!layer.basic())
+		{
+		    int push_back_pos = 0;
+		    for (int pos = 1; pos < DENOMINATOR; pos++)
+		    {
+			if (layer.items[pos] > 0)
+			{
+			    itemconfig<DENOMINATOR> basic_layer;
+			    basic_layer.hashinit();
+			    basic_layer.increase(pos, layer.items[pos]);
+			    int basic_layer_pos = feasible_map[basic_layer.itemhash];
+			    basic_components[i][push_back_pos] = basic_layer_pos;
+			    push_back_pos++;
+			}
+		    }
+		}
+	    }
+    
+	}
+
+    // Prune the caches based on the idea of basic components.
+
+    void prune_feasible_caches()
+	{
+	    for (unsigned int i = 0; i < feasible_itemconfs.size(); ++i)
+	    {
+		for (int j = 0; j < DENOMINATOR; ++j)
+		{
+		    if (basic_components[i][j] == -1)
+		    {
+			break;
+		    }
+
+		    int basic_comp = basic_components[i][j];
+		    for (uint64_t winning_loadhash: alg_winning_positions[basic_comp])
+		    {
+			alg_winning_positions[i].erase(winning_loadhash);
+		    }
+		}
+	    }
+	}
+    
     // Call after feasible_itemconfs exist, to build the inverse map.
     // While feasible_itemconfs will be stored to speed up computation, the map is easy to build.
     void populate_feasible_map()
@@ -466,6 +558,8 @@ public:
 	    populate_feasible_map();
 	    fprintf(stderr, "Minibs<%d> from scratch: %zu itemconfs are feasible.\n", DENOM, feasible_itemconfs.size());
 
+	    init_basic_components();
+	    
 	    // We initialize the knownsum layer here.
 	    init_knownsum_layer();
 	    
@@ -477,21 +571,14 @@ public:
 
 	    for (long unsigned int i = 0; i < feasible_itemconfs.size(); i++)
 	    {
-		/*
-		for (const auto& [key, value]: feasible_map)
-		{
-		    std::cerr << key;
-		    std::cerr << ": ";
-		    std::cerr << value;
-		    std::cerr << "\n";
-		}
-		*/
 	
 		init_itemconf_layer(i);
 		// print_if<PROGRESS>("Overseer: Processed itemconf layer %d.\n", i);
 		print_if<PROGRESS>("Size of the layer %d cache: %lu.\n", i,
 		 		   alg_winning_positions[i].size());
 	    }
+
+	    compute_basic_components();
 	}
 
     inline void backup_calculations()
@@ -503,8 +590,28 @@ public:
 		bstore.backup(alg_winning_positions, alg_knownsum_winning, feasible_itemconfs);
 	    }
 	}
-    
-    // minibs()
-// 	{
-//	}
+
+    void stats_by_layer()
+	{
+	    for (unsigned int i = 0; i < feasible_itemconfs.size(); i++)
+	    {
+	
+		fprintf(stderr, "Layer %u,  ", i);
+		feasible_itemconfs[i].print();
+		fprintf(stderr, "Size of the layer %d cache: %lu.\n", i,
+		 		   alg_winning_positions[i].size());
+	    }
+	}
+    void stats()
+	{
+	    
+	    unsigned int total_elements = 0;
+	    fprintf(stderr, "Number of feasible sets %zu, number of caches is the same.\n", feasible_itemconfs.size());
+	    for (unsigned short i = 0; i < feasible_itemconfs.size(); ++i)
+	    {
+		total_elements += alg_winning_positions[i].size();
+	    }
+	    fprintf(stderr, "Total elements in all caches: %u.\n", total_elements);
+
+	}
 };

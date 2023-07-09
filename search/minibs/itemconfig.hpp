@@ -98,6 +98,13 @@ public:
 	    items[itemtype]++;
 	}
 
+    void increase(int itemtype, int amount)
+	{
+	    itemhash ^= Zi[itemtype*(MAX_ITEMS+1) + items[itemtype]];
+	    itemhash ^= Zi[itemtype*(MAX_ITEMS+1) + items[itemtype] + amount];
+	    items[itemtype] += amount;
+	}
+    
     // Decreases itemtype's count by one and rehashes.
    
     void decrease(int itemtype)
@@ -148,7 +155,17 @@ public:
 
 	    return true;
 	}
- 
+
+    // Checks if the itemconfig is "basic", meaning that it only has values in at most one
+    // field. (2 0 0 0 0) is basic, (0 0 0 0 0) is basic, (2 1 0 1 0) is not.
+
+    bool basic() const
+	{
+	    int max = *std::max_element(items.begin(), items.end());
+	    int sum = std::accumulate(items.begin(), items.end(), 0);
+	    return (max == sum);
+	}
+    
     void print(FILE* stream = stderr, bool newline = true) const
 	{
 	    print_int_array<DENOMINATOR>(stream, items, false, false);
