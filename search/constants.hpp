@@ -1,6 +1,9 @@
 #ifndef _CONSTANTS_HPP
 #define _CONSTANTS_HPP 1
 
+#include <memory>
+#include <parallel_hashmap/phmap.h>
+
 // System constants that do not need to be modified often.
 
 // Sanity check for definition of the variables that should be passed
@@ -165,6 +168,13 @@ const int RECOMMENDED_MONOTONICITY = 5;
 #else
 const int RECOMMENDED_MONOTONICITY = IS-1;
 #endif
+
+// Aliases for types.
+using phmap::flat_hash_set;
+using phmap::flat_hash_map;
+using std::shared_ptr;
+using fp_set = flat_hash_set<unsigned int>;
+
 
 
 #endif // _CONSTANTS_HPP

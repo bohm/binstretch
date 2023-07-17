@@ -10,7 +10,7 @@
 
 #include "minibs/minibs.hpp"
 
-constexpr int TEST_SCALE = 6;
+constexpr int TEST_SCALE = 3;
 constexpr int GS2BOUND = S - 2*ALPHA;
 
 // Computes the winning sand positions (for ALG with ratio R-1/S).

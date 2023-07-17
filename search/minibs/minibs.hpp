@@ -18,6 +18,8 @@
 using phmap::flat_hash_set;
 using phmap::flat_hash_map;
 
+using fp_set = flat_hash_set<unsigned int>;
+
 template <int DENOMINATOR> class minibs
 {
 public:
@@ -53,14 +55,22 @@ public:
     flat_hash_map<uint64_t, unsigned int> fingerprint_map;
     // We store pointers to the winning fingerprints,
     // to enable smooth sparsification.
-    std::vector< flat_hash_set<unsigned int>* > fingerprints;
+    std::vector<fp_set*> fingerprints;
 
     // Vector of unique fingerprints, created during sparsification.
     // Useful for deleting them e.g. during termination.
     std::vector<flat_hash_set<unsigned int>* > unique_fps;
+
+    // In order to allow round-per-round sparsification, we must allow tree
+    // duplication in any round. What it means is that if we wish to insert into a tree,
+    // we have to make sure it is exclusive for this loadhash and not shared.
+    // To that end, we use this set, with the same keys as fingerprint_map.
+    flat_hash_set<uint64_t> fingerprint_exclusive;
     
     flat_hash_set<uint64_t> alg_knownsum_winning;
 
+    std::vector<uint64_t> *rns_for_fingerprints = nullptr;
+    
     minidp<DENOMINATOR> mdp;
     inline int shrink_item(int larger_item)
 	{
@@ -336,10 +346,26 @@ public:
 		flat_hash_set<unsigned int> *fp_new = new flat_hash_set<unsigned int>();
 		fingerprints.push_back(fp_new);
 		fingerprint_map[loadhash] = new_pos;
+		fingerprint_exclusive.insert(loadhash);
 	    }
+
 	    
-	    flat_hash_set<unsigned int> *fp = fingerprints[fingerprint_map[loadhash]];
-	    fp->insert(item_layer);
+	    fp_set *fp = fingerprints[fingerprint_map[loadhash]];
+	    
+	    // If the fingerprint is exclusive, we can insert into it. Otherwise, duplicate it.
+	    if (fingerprint_exclusive.contains(loadhash))
+	    {
+		fp->insert(item_layer);
+	    } else
+	    {
+		fp_set *fp_new = new flat_hash_set<unsigned int>(*fp);
+		fp_new->insert(item_layer);
+
+		unsigned int new_pos = fingerprints.size();
+		fingerprints.push_back(fp_new);
+		fingerprint_map[loadhash] = new_pos;
+		fingerprint_exclusive.insert(loadhash);
+	    }
 	}
     
     void init_itemconf_layer(long unsigned int layer_index)
@@ -476,12 +502,12 @@ public:
 	}
 
 
-    static uint64_t fingerprint_hash(std::vector<uint64_t> *rns, flat_hash_set<unsigned int> * fp)
+    uint64_t fingerprint_hash(flat_hash_set<unsigned int> * fp)
 	{
 	    uint64_t ret = 0;
 	    for (unsigned int u: *fp)
 	    {
-		ret ^= (*rns)[u];
+		ret ^= (*rns_for_fingerprints)[u];
 	    }
 	    return ret;
 	}
@@ -496,35 +522,52 @@ public:
 	    }
 	    return ret;
 	}
+
     
-    void sparsify()
+    void sparsify(flat_hash_map<uint64_t, fp_set*>* unique_fingerprint_map = nullptr)
 	{
-	    std::vector<uint64_t>* random_numbers = create_random_hashes(feasible_itemconfs.size());
-
-	    flat_hash_map<uint64_t, flat_hash_set<unsigned int> * > unique_fingerprint_map;
-
+	    bool custom_allocation = false;
+	    if (unique_fingerprint_map == nullptr)
+	    {
+		custom_allocation = true;
+		unique_fingerprint_map = new flat_hash_map<uint64_t, fp_set*>();
+	    }
 	    for (unsigned int i = 0; i < fingerprints.size(); ++i)
 	    {
-		uint64_t hash = fingerprint_hash(random_numbers, fingerprints[i]);
-		if (unique_fingerprint_map.contains(hash))
+		uint64_t hash = fingerprint_hash(fingerprints[i]);
+		if (unique_fingerprint_map->contains(hash))
 		{
-		    flat_hash_set<unsigned int> *unique_fp = unique_fingerprint_map[hash];
+		    flat_hash_set<unsigned int> *unique_fp = (*unique_fingerprint_map)[hash];
 		    delete fingerprints[i];
 		    fingerprints[i] = unique_fp;
 		} else
 		{
-		    unique_fingerprint_map[hash] = fingerprints[i];
+		    (*unique_fingerprint_map)[hash] = fingerprints[i];
 		}
 	    }
 
+
+	    if (custom_allocation)
+	    {
+		delete unique_fingerprint_map;
+	    }
+	}
+
+    void unique_fingerprint_vector()
+	{
+	    flat_hash_map<uint64_t, fp_set*>* unique_fingerprint_map =
+		new flat_hash_map<uint64_t, fp_set*>();
+	    sparsify(unique_fingerprint_map);
+
+
 	    // Convert the flat_hash_map into a vector, keeping track of unique elements
 	    // and forgetting the hash function.
-	    for (const auto& [key, el]: unique_fingerprint_map)
+	    for (const auto& [key, el]: *unique_fingerprint_map)
 	    {
 		unique_fps.push_back(el);
 	    }
-		
-	    delete random_numbers;
+
+	    delete unique_fingerprint_map;
 	}
     
     // Call after feasible_itemconfs exist, to build the inverse map.
@@ -565,7 +608,10 @@ public:
 	    populate_feasible_map();
 	    fprintf(stderr, "Minibs<%d> from scratch: %zu itemconfs are feasible.\n", DENOM, feasible_itemconfs.size());
 
-	    
+
+	    rns_for_fingerprints = create_random_hashes(feasible_itemconfs.size());
+
+    
 	    // We initialize the knownsum layer here.
 	    init_knownsum_layer();
 	    
@@ -577,11 +623,13 @@ public:
 
 	    for (long unsigned int i = 0; i < feasible_itemconfs.size(); i++)
 	    {
-	
 		init_itemconf_layer(i);
+		sparsify();
+		fingerprint_exclusive.clear();
 	    }
 
-	    sparsify();
+	    // sparsify();
+	    unique_fingerprint_vector(); // Also runs sparsify().
 
 	}
 
@@ -621,5 +669,10 @@ public:
 	    fprintf(stderr, "Total elements in all caches: %u.\n", total_elements);
 
 	    fprintf(stderr, "Number of unique fingerprints: %zu.\n", unique_fps.size());
+	}
+
+    ~minibs()
+	{
+	    delete rns_for_fingerprints;
 	}
 };

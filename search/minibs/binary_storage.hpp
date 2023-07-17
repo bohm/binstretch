@@ -6,12 +6,10 @@
 // Notice: https://github.com/greg7mdp/parallel-hashmap is now required for the program to build.
 // This is a header-only hashmap/set that seems quicker and lower-memory than the unordered_set.
 
+#include "../constants.hpp"
 #include "../common.hpp"
 #include "../functions.hpp"
 #include "itemconfig.hpp"
-
-using phmap::flat_hash_set;
-using phmap::flat_hash_map;
 
 template <int DENOMINATOR> class binary_storage
 {
@@ -408,8 +406,8 @@ public:
     
 
      void read_fingerprint_system(flat_hash_map<uint64_t, unsigned int>& out_fingerprint_map,
-				  std::vector< flat_hash_set<unsigned int>* >& out_fingerprints,
-				  std::vector<flat_hash_set<unsigned int>* >& out_unique_fps)
+				  std::vector<shared_ptr<fp_set>>& out_fingerprints,
+				  std::vector<shared_ptr<fp_set>>& out_unique_fps)
 	{
 	    flat_hash_map<unsigned int, flat_hash_set<unsigned int>* > pointer_sequence;
 	    read_unique_fingerprints(out_unique_fps, pointer_sequence);
@@ -425,8 +423,8 @@ public:
 	}
 	   
     void write_fingerprint_system(flat_hash_map<uint64_t, unsigned int>& fingerprint_map,
-				  std::vector< flat_hash_set<unsigned int>* >& fingerprints,
-				  std::vector<flat_hash_set<unsigned int>* >& unique_fps)
+				  std::vector<shared_ptr<fp_set>>& fingerprints,
+				  std::vector<shared_ptr<fp_set>>& unique_fps)
 	{
 	    flat_hash_map<unsigned int, flat_hash_set<unsigned int>* > pointer_sequence;
 	    flat_hash_map<flat_hash_set<unsigned int> *, unsigned int> reverse_pointers;
@@ -456,13 +454,13 @@ public:
 	    
 	}
     
-    void read_knownsum_set(flat_hash_set<uint64_t>& out_knownsum_set)
+    void read_knownsum_set(fp_set &out_knownsum_set)
 	{
 	    read_one_set(out_knownsum_set);
 	    read_delimeter();
 	}
 
-    void write_knownsum_set(flat_hash_set<uint64_t> &knownsum_set)
+    void write_knownsum_set(fp_set &knownsum_set)
 	{
 	    write_one_set(knownsum_set);
 	    write_delimeter();
@@ -530,8 +528,8 @@ public:
 	}
 	    
     void restore(flat_hash_map<uint64_t, unsigned int>& out_fingerprint_map,
-		 std::vector< flat_hash_set<unsigned int>* >& out_fingerprints,
-		 std::vector<flat_hash_set<unsigned int>* >& out_unique_fps,
+		 std::vector<shared_ptr<fp_set>>& out_fingerprints,
+		 std::vector<shared_ptr<fp_set>>& out_unique_fps,
 		 flat_hash_set<uint64_t> &out_knownsum_set,
 		 std::vector< itemconfig<DENOMINATOR> >& out_feasible_ics)
 	{
@@ -558,9 +556,9 @@ public:
     
     void backup(
 		flat_hash_map<uint64_t, unsigned int>& fingerprint_map,
-		std::vector< flat_hash_set<unsigned int>* >& fingerprints,
-		std::vector<flat_hash_set<unsigned int>* >& unique_fps,
-		flat_hash_set<uint64_t> &knownsum_set,
+		std::vector<shared_ptr<fp_set>>& fingerprints,
+		std::vector<shared_ptr<fp_set>>& unique_fps,
+		fp_set &knownsum_set,
 		std::vector< itemconfig<DENOMINATOR> >& feasible_ics)
 	{
 	    open_for_writing();
