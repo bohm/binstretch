@@ -159,7 +159,7 @@ std::tuple<int, std::string, binconf*> parse_adv_vertex(const char *line)
 partial_dag* loadfile(const char* filename)
 {
 
-    char line[1024] = {0};
+    char line[10000] = {0};
 
     partial_dag *pd = new partial_dag;
     
@@ -173,7 +173,7 @@ partial_dag* loadfile(const char* filename)
     
     while(!feof(fin))
     {
-	std::ignore = fgets(line, 1024, fin);
+	std::ignore = fgets(line, 10000, fin);
 	line_type l = recognize(line);
 	int name = -1, name_from = -1, name_to = -1, bin = -1, next_item = -1;
 	std::string heurstring;

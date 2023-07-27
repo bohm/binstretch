@@ -4,9 +4,9 @@
 #include <unordered_map>
 #include <cstdint>
 
-#define IBINS 6
-#define IR 19
-#define IS 14
+#define IBINS 3
+#define IR 821
+#define IS 600
 
 #include "minibs/minibs.hpp"
 
@@ -566,14 +566,12 @@ int main(int argc, char** argv)
    
     // mb.backup_calculations();
 
-    /*
     int fixed_load_on_one = 0;
 
     if (argc >= 2)
     {
 	fixed_load_on_one = atoi(argv[1]);
     }
-    */
 
 
 
@@ -596,7 +594,7 @@ int main(int argc, char** argv)
     // topmost_layer_info<TEST_SIZE>(mb);
     // print_int_array<mb.DENOM>(mb.ITEMS_PER_TYPE, true);
 
-    /*
+    
     std::unordered_set<int> sand_winning_for_alg;
     fprintf(stderr, "Sand winning positions (with one bin loaded to %d, interval [1,%d]):\n", fixed_load_on_one, GS2BOUND);
     sand_winning<TEST_SCALE>(mb, sand_winning_for_alg, fixed_load_on_one);
@@ -604,7 +602,7 @@ int main(int argc, char** argv)
     one_measurable_item_winning<TEST_SCALE>(mb, sand_winning_for_alg);
     fprintf(stderr, "Single items winning (interval [1,%d], ignoring sand wins):\n", GS2BOUND);
     single_items_winning<TEST_SCALE>(mb, sand_winning_for_alg);
-    */
+    
 
     return 0;
 }

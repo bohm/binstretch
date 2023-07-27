@@ -74,8 +74,8 @@ public:
 
 	    while(!feof(advicefin))
 	    {
-		char linebuf[1024];
-		if(fgets(linebuf, 1024, advicefin) == nullptr)
+		char linebuf[10000];
+		if(fgets(linebuf, 10000, advicefin) == nullptr)
 		{
 		    break;
 		}

@@ -5,13 +5,13 @@
 #include <cstdint>
 
 #define IBINS 3
-#define IR 411
-#define IS 300
+#define IR 821
+#define IS 600
 
 #include "minibs/minibs.hpp"
 #include "gs.hpp"
 
-constexpr int TEST_SCALE = 3;
+constexpr int TEST_SCALE = 6;
 
 constexpr int TWO_MINUS_FIVE_ALPHA = 2*S - 5*ALPHA;
 
@@ -101,8 +101,44 @@ bool gs8s(loadconf *lc)
     return false;
 }
 
+bool gs8_step1s_rev2(loadconf *lc)
+{
+    int A = lc->loads[1];
+    int B = lc->loads[2];
+    int C = lc->loads[3];
+    
+    int TWICE_GS7_TH = 3*ALPHA + B + C;
+
+     // Necessary conditions first:
+     // A >= ALPHA,
+     // ALPHA >= B, C
+     // 2*A <= 2*q
+     if (A >= ALPHA && B <= ALPHA && 2*A <= TWICE_GS7_TH)
+     {
+
+	 // Strong condition.
+	 if ((C >= 2*S - 5*ALPHA) || (A + 2*C >= 3*S - 6*ALPHA))
+	 {
+	     // The two inequalities:
+	     // 8A + 8B >= 9 - 15ALPHA + 7C
+	     if (8*A + 8*B >= 9*S - 15*ALPHA + 7*C)
+	     {
+
+		 // A + i <= q as long as i is within GS6 limits.
+		 // 4A + B <= 3alpha + 3C
+		 if (4*A + B <= 3*ALPHA + 3*C)
+		 {
+		     return true;
+		 }
+	     }
+	 }
+     }
+     
+     return false;
+}
+
 // A step to GS4-6, discovered 2023-05-19.
-bool gs8_step2s(loadconf *lc)
+bool gs8_step1s(loadconf *lc)
 {
     int A = lc->loads[1];
     int B = lc->loads[2];
@@ -144,7 +180,7 @@ bool gs8_step2s(loadconf *lc)
 // We have to put a stricter limit on A, because the next item in the range [3ALPHA-1, 1-2ALPHA-C]
 // must avoid hitting the q limit when packed on A.
 
-bool gs8_step2t(loadconf *lc)
+bool gs8_step1t(loadconf *lc)
 {
     int A = lc->loads[1];
     int B = lc->loads[2];
@@ -169,6 +205,41 @@ bool gs8_step2t(loadconf *lc)
 	}
     }
     return false;
+}
+
+// Discovered 2023-07-18, sent in an email to Lukasz.
+bool gs8_step2s_ac(loadconf *lc)
+{
+    int A = lc->loads[1];
+    int B = lc->loads[2];
+    int C = lc->loads[3];
+
+    if (A > ALPHA)
+    {
+	return false;
+    }
+
+    // If strong condition is false, report false.
+    if ((C < 2*S - 5*ALPHA) && (A + 2*C < 3*S - 6*ALPHA))
+    {
+	return false;
+    }
+
+    // The three fundamental conditions of GS8-step2s-ac.
+
+    if (A + B >= 1*S - 2*ALPHA + C)
+    {
+	if (8*A + 8*B >= 9*S - 23*ALPHA + 15*C)
+	{
+	    if (7*C+6*B >= 13*S - 29*ALPHA)
+	    {
+		return true;
+	    }
+	}
+    }
+
+    return false;
+	
 }
 
 // Disabling some variants for now. -- MB
@@ -248,15 +319,52 @@ bool gs4_6_step3_stronger(loadconf *lc)
 
 // A step before GS4, where we can assume B is loaded to alpha instead.
 // Discovered 2023-05-20.
+
+// GS9 assumes B hits GS3 (which does not depend on A or load of C, as long as C is below alpha)
+// if A is loaded to alpha.
 bool gs9(loadconf *lc)
 {
-    if (lc->loads[2] < ALPHA &&
-	2*lc->loads[1] >= 3*S - 5*ALPHA + lc->loads[3] &&
-	2*lc->loads[2] >= 2*lc->loads[1] - 5*ALPHA + S)
+    int A = lc->loads[1];
+    int B = lc->loads[2];
+    int C = lc->loads[3];
+
+    int TWICE_GS7_TH = 3*ALPHA + B + C;
+
+    if (B < ALPHA &&
+	2*A >= 3*S - 5*ALPHA + C &&
+	2*A <= TWICE_GS7_TH)
     {
 	return true;
     }
     
+    return false;
+}
+
+
+// One step before GS9; it also reaches GS8s.
+bool gs9_step1(loadconf *lc)
+{
+    int A = lc->loads[1];
+    int B = lc->loads[2];
+    int C = lc->loads[3];
+    int TWICE_GS7_TH = 3*ALPHA + B + C;
+
+
+    if (A >= ALPHA && B < ALPHA && C < ALPHA && 2*A <= TWICE_GS7_TH)
+    {
+	// A >= 2.5 - 6.5ALPHA + C/2.
+	if (2*A >= 5*S - 13*ALPHA + C)
+	{
+	    if (A <= B + C + 9*ALPHA -3*S)
+	    {
+		if (14*A + 14*B >= 19*S - 23*ALPHA + 3*C)
+		{
+		    return true;
+		}
+	    }
+	}
+    }
+
     return false;
 }
 
@@ -297,18 +405,28 @@ std::string gs_loadconf_tester(loadconf *lc)
     {
 	return "(GS8s)";
     }
-    else if (gs8_step2s(lc))
+    else if (gs8_step1s_rev2(lc))
     {
-	return "(GS8-step2s)";
+	return "(GS8-step1s-rev2)";
     }
-    else if (gs8_step2t(lc))
+    else if (gs8_step1s(lc))
     {
-	return "(GS8-step2t)";
+	return "(GS8-step1s)";
+    }
+    else if (gs8_step1t(lc))
+    {
+	return "(GS8-step1t)";
     }
     else if (gs9(lc))
     {
 	return "(GS9)";
-    } else
+    } else if (gs9_step1(lc))
+    {
+	return "(GS9-step1)";
+    } else if (gs8_step2s_ac(lc))
+    {
+	return "(GS8-step2s-AC)";
+    }
     {
 	return "";
     }
@@ -368,6 +486,25 @@ std::pair<int, int> gs2_range(loadconf *lc, int bin)
     }
 }
 
+std::pair<int, int> gs7_range(loadconf *lc)
+{
+    int A = lc->loads[1];
+    int B = lc->loads[2];
+    int C = lc->loads[3];
+    int TWICE_GS7_TH = 3*ALPHA + B + C;
+
+    if (A >= ALPHA && B < ALPHA && C < ALPHA)
+    {
+	if (2*A <= TWICE_GS7_TH)
+	{
+	    return {std::min(S,S + ALPHA - A + 1), S}; 
+	}
+    }
+
+    return {-1, -1};
+
+}
+
 void print_ranges(loadconf *lc)
 {
     char a_minus_one = 'A' - 1;
@@ -386,6 +523,14 @@ void print_ranges(loadconf *lc)
     {
 	fprintf(stderr, "GS5+ range is [%d, %d].\n", gs5p.first, gs5p.second);
     }
+
+    std::pair<int, int> gs7p = gs7_range(lc);
+     if (gs7p.first != -1)
+    {
+	fprintf(stderr, "GS7 range is [%d, %d].\n", gs7p.first, gs7p.second);
+    }
+
+   
 }
 
 template <int SCALE> void adv_winning_description(std::pair<loadconf, itemconfig<SCALE>> *pos, minibs<SCALE> *minibs)
@@ -496,7 +641,7 @@ template <int SCALE> void alg_winning_table(std::pair<loadconf, itemconfig<SCALE
     }
 		   
 
-    std::array<std::pair<int, int>, 4> good_ranges = {};
+    std::array<std::pair<int, int>, 5> good_ranges = {};
     // 0 - 2: GS2 ranges.
     for (int i = 0; i < 3; i++)
     {
@@ -504,7 +649,8 @@ template <int SCALE> void alg_winning_table(std::pair<loadconf, itemconfig<SCALE
     }
     // 3: GS5+ range.
     good_ranges[3] = gs5plus_range(&(minibs_position->first));
-    
+    // 4: GS7 range.
+    good_ranges[4] = gs7_range(&(minibs_position->first)); 
 
     fprintf(stderr, "For position ");
     fprintf(stderr, ":\n");
@@ -517,7 +663,7 @@ template <int SCALE> void alg_winning_table(std::pair<loadconf, itemconfig<SCALE
     {
 	// Do not list an item if it is in GS5+ range or any of the GS2 ranges.
 	bool skip_print = false;
-	for (int i = 0; i < 4; i++)
+	for (unsigned int i = 0; i < good_ranges.size(); i++)
 	{
 	    if (item >= good_ranges[i].first && item <= good_ranges[i].second)
 	    {

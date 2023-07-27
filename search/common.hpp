@@ -35,7 +35,7 @@ constexpr bool FURTHER_MEASURE = false; // Whether to collect more detailed data
 // const int REGROW_LIMIT = 65535;
 const int REGROW_LIMIT = 4;
 
-const int TASK_LOAD_INIT = 15; // A bound on total load of a configuration before we split it into a task.
+const int TASK_LOAD_INIT = 30; // A bound on total load of a configuration before we split it into a task.
 const int TASK_LOAD_STEP = 0; // The amount by which the load can increase when regrowing the tree.
 const int TASK_DEPTH_INIT = 8; //The maximum depth of a vertex in the tree before it is made into a task.
 const int TASK_DEPTH_STEP = 0; // The amount by which the depth is increased when regrowing.
@@ -70,6 +70,8 @@ const std::vector<bin_int> INITIAL_ITEMS = {};
 
 // Monotonicity limiting the adversarial instance.
 const bin_int monotonicity = RECOMMENDED_MONOTONICITY;
+// constexpr bin_int monotonicity = 70;
+
 // const bin_int monotonicity = 0; // A non-decreasing instance.
 // const bin_int monotonicity = S-1; // Full generality.
 

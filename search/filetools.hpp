@@ -25,7 +25,7 @@ void folder_checks()
 
 std::string filename_timestamp(const std::tm* time)
 {
-    char bufstr[100];
+    char bufstr[1000];
     strftime(bufstr, sizeof(bufstr), "--%Y-%m-%d--%H-%M-%S", time);
     std::string ret(bufstr);
     return ret;
@@ -155,8 +155,8 @@ binconf loadbinconf_singlefile(const char* filename)
 	ERRORPRINT("Unable to open file %s\n", filename);
     }
 
-    char linebuf[1024];
-    char* retptr = fgets(linebuf, 1024, fin);
+    char linebuf[20000];
+    char* retptr = fgets(linebuf, 20000, fin);
     if (retptr == nullptr)
     {
 	ERRORPRINT("File %s found, but a line could not be loaded.\n", filename);

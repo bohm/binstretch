@@ -46,7 +46,7 @@ void dotprint_state(vert_state vs, FILE* stream = stderr, bool first = false)
     }
 }
 
-void adversary_vertex::print(FILE *stream, bool debug)
+void adversary_vertex::print(FILE *stream, bool debug, bool first_vertex)
 {
     // Print loads.
     fprintf(stream, "%" PRIu64 " [loads=\"", id);
@@ -73,6 +73,13 @@ void adversary_vertex::print(FILE *stream, bool debug)
 	    fprintf(stream, ",old_name=\"%d\"", old_name);
 	}
 
+    }
+
+    if (first_vertex && !debug)
+    {
+	fprintf(stream, ",binconf=\"");
+	print_binconf_stream(stream, bc, false);
+	fprintf(stream, "\"");
     }
     
     // Print the fact that it is an adversary vertex
@@ -278,6 +285,7 @@ void dag::print_lowerbound_bfs(FILE* stream, bool debug)
     std::queue<vertex_wrapper> vc;
     vertex_wrapper start;
     start.wraps_adversary = true;
+    bool first_vertex = true;
     start.adv_p = root;
     vc.push(start);
 
@@ -296,7 +304,11 @@ void dag::print_lowerbound_bfs(FILE* stream, bool debug)
 	    }
 
 	    v->visited = true;
-	    v->print(stream, debug);
+	    v->print(stream, debug, first_vertex);
+	    if (first_vertex)
+	    {
+		first_vertex = false;
+	    }
 
 	    // Possibly stop printing if v is heuristically solved.
 	    if (PRINT_HEURISTICS_IN_FULL || !v->heur_vertex)
