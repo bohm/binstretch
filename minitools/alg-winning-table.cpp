@@ -11,7 +11,7 @@
 #include "minibs/minibs.hpp"
 #include "gs.hpp"
 
-constexpr int TEST_SCALE = 6;
+constexpr int TEST_SCALE = 12;
 
 constexpr int TWO_MINUS_FIVE_ALPHA = 2*S - 5*ALPHA;
 

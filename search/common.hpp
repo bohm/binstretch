@@ -37,7 +37,7 @@ const int REGROW_LIMIT = 4;
 
 const int TASK_LOAD_INIT = 30; // A bound on total load of a configuration before we split it into a task.
 const int TASK_LOAD_STEP = 0; // The amount by which the load can increase when regrowing the tree.
-const int TASK_DEPTH_INIT = 8; //The maximum depth of a vertex in the tree before it is made into a task.
+const int TASK_DEPTH_INIT = 4; //The maximum depth of a vertex in the tree before it is made into a task.
 const int TASK_DEPTH_STEP = 0; // The amount by which the depth is increased when regrowing.
 
 // const int TASK_LOAD_INIT = 0;
@@ -69,8 +69,8 @@ const std::vector<bin_int> INITIAL_ITEMS = {};
 
 
 // Monotonicity limiting the adversarial instance.
-const bin_int monotonicity = RECOMMENDED_MONOTONICITY;
-// constexpr bin_int monotonicity = 70;
+// const bin_int monotonicity = RECOMMENDED_MONOTONICITY;
+constexpr bin_int monotonicity = 70;
 
 // const bin_int monotonicity = 0; // A non-decreasing instance.
 // const bin_int monotonicity = S-1; // Full generality.
@@ -116,8 +116,8 @@ constexpr bool USING_HEURISTIC_WEIGHTSUM = false && (!USING_HEURISTIC_KNOWNSUM) 
 #define WEIGHT_HEURISTICS weight_heuristics<scale_halves, scale_thirds>
 
 constexpr bool USING_MINIBINSTRETCHING = true;
-constexpr int MINIBS_SCALE_QUEEN = 6; // Minibinstretching scale for the DAG generation phase.
-constexpr int MINIBS_SCALE_WORKER = 6; // Minibinstretching scale for the exploration phase.
+constexpr int MINIBS_SCALE_QUEEN = 12; // Minibinstretching scale for the DAG generation phase.
+constexpr int MINIBS_SCALE_WORKER = 12; // Minibinstretching scale for the exploration phase.
 
 // batching constants
 const int BATCH_SIZE = 50;
