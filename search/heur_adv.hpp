@@ -98,7 +98,7 @@ std::vector<loadconf> build_lih_choices(const binconf &b) {
             large_choices.push_back(large);
         } else {
             loadconf large;
-            bin_int item = std::max(not_twice_into_last, not_once_into_current);
+            int item = std::max(not_twice_into_last, not_once_into_current);
             for (int j = 1; j <= items_to_send; j++) {
                 large.assign_and_rehash(item, j);
             }
@@ -147,7 +147,7 @@ std::pair<bool, loadconf> large_item_heuristic(const binconf &b, const std::vect
 
 // Idea of the heuristic: send items of size 5 until either
 // * one bin accepts two or * all bins have load > 5.
-std::pair<bool, bin_int> five_nine_heuristic(binconf *b, dynprog_data *dpdata, measure_attr *meas) {
+std::pair<bool, int> five_nine_heuristic(binconf *b, dynprog_data *dpdata, measure_attr *meas) {
     // print_if<true>("Computing FN for: "); print_binconf<true>(b);
 
     // It doesn't make too much sense to send BINS times 5, so we disallow it.
@@ -158,8 +158,8 @@ std::pair<bool, bin_int> five_nine_heuristic(binconf *b, dynprog_data *dpdata, m
         return std::make_pair(false, -1);
     }
 
-    // bin_int itemcount_start = b->_itemcount;
-    // bin_int totalload_start = b->_totalload;
+    // int itemcount_start = b->_itemcount;
+    // int totalload_start = b->_totalload;
     // uint64_t loadhash_start = b->loadhash;
     // uint64_t itemhash_start = b->itemhash;
 
@@ -175,7 +175,7 @@ std::pair<bool, bin_int> five_nine_heuristic(binconf *b, dynprog_data *dpdata, m
             }
         }
 
-        bin_int fives = 0; // how many fives are we sending
+        int fives = 0; // how many fives are we sending
         int fourteen_sequence = BINS - last_bin_above_five + 1;
         while (bins_times_nine_threat && fourteen_sequence >= 1 && last_bin_above_five <= BINS) {
             fourteen_feasible = pack_query_compute(*b, 14, fourteen_sequence, dpdata, meas);

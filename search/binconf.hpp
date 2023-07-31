@@ -14,7 +14,7 @@
 // a cut version of binconf which only uses the loads.
 class loadconf {
 public:
-    std::array<bin_int, BINS + 1> loads = {};
+    std::array<int, BINS + 1> loads = {};
     uint64_t loadhash = 0;
 
 // sorts the loads with advice: the advice
@@ -86,7 +86,7 @@ public:
 
 
     void check_position(int bl, int pos) {
-        std::array<bin_int, ZOBRIST_LOAD_BLOCKSIZE> p = decode_position(pos);
+        std::array<int, ZOBRIST_LOAD_BLOCKSIZE> p = decode_position(pos);
         for (int i = 0; i < ZOBRIST_LOAD_BLOCKSIZE; i++) {
             if (loads[bl * ZOBRIST_LOAD_BLOCKSIZE + i + 1] != p[i]) {
                 fprintf(stderr, "bl=%d, pos=%d, %d-th Load %d is different from decoded load %d.\n",
@@ -223,8 +223,8 @@ public:
     // instead only computes the hash "as if" the item is packed.
     uint64_t virtual_loadhash(int item, int bin) const {
         uint64_t virtual_ret = loadhash;
-        bin_int newload = loads[bin] + item;
-        bin_int curbin = bin;
+        int newload = loads[bin] + item;
+        int curbin = bin;
 
         while (curbin >= 2 && loads[curbin - 1] < newload) {
             // Virtually exchange the zobrist hash.
@@ -318,12 +318,12 @@ public:
     loadconf() {
     }
 
-    loadconf(std::array<bin_int, BINS + 1> &loadarray) {
+    loadconf(std::array<int, BINS + 1> &loadarray) {
         loads = loadarray;
         hashinit();
     }
 
-    loadconf(const loadconf &old, bin_int new_item, int bin) {
+    loadconf(const loadconf &old, int new_item, int bin) {
         loadhash = old.loadhash;
         loads = old.loads;
         assign_and_rehash(new_item, bin);
@@ -365,17 +365,17 @@ public:
 class binconf : public loadconf {
 public:
 
-    std::array<bin_int, S + 1> items = {};
-    bin_int _totalload = 0;
+    std::array<int, S + 1> items = {};
+    int _totalload = 0;
     // hash related properties
     uint64_t itemhash = 0;
     int _itemcount = 0;
-    bin_int last_item = 1; // last item inserted. Normally this is not needed, but with monotonicity it becomes necessary.
+    int last_item = 1; // last item inserted. Normally this is not needed, but with monotonicity it becomes necessary.
 
     binconf() {}
 
-    binconf(const std::vector<bin_int> &initial_loads, const std::vector<bin_int> &initial_items,
-            bin_int initial_last_item = 1) {
+    binconf(const std::vector<int> &initial_loads, const std::vector<int> &initial_items,
+            int initial_last_item = 1) {
         assert(initial_loads.size() <= BINS);
         assert(initial_items.size() <= S);
         std::copy(initial_loads.begin(), initial_loads.end(), loads.begin() + 1);
@@ -384,7 +384,7 @@ public:
         last_item = initial_last_item;
         _itemcount = itemcount_explicit();
         _totalload = totalload_explicit();
-        bin_int totalload_items = 0;
+        int totalload_items = 0;
         for (int i = 1; i <= S; i++) {
             totalload_items += i * items[i];
         }
@@ -395,8 +395,8 @@ public:
 
     }
 
-    binconf(const std::array<bin_int, BINS + 1> initial_loads, const std::array<bin_int, S + 1> initial_items,
-            bin_int initial_last_item = 1) {
+    binconf(const std::array<int, BINS + 1> initial_loads, const std::array<int, S + 1> initial_items,
+            int initial_last_item = 1) {
         loads = initial_loads;
         items = initial_items;
         last_item = initial_last_item;
@@ -405,12 +405,12 @@ public:
     }
 
 
-    bin_int totalload() const {
+    int totalload() const {
         return _totalload;
     }
 
-    bin_int totalload_explicit() const {
-        bin_int total = 0;
+    int totalload_explicit() const {
+        int total = 0;
         for (int i = 1; i <= BINS; i++) {
             total += loads[i];
         }
@@ -447,13 +447,13 @@ public:
 
     int assign_item(int item, int bin);
 
-    void unassign_item(int item, int bin, bin_int previously_last_item);
+    void unassign_item(int item, int bin, int previously_last_item);
 
     int assign_multiple(int item, int bin, int count);
 
     int assign_and_rehash(int item, int bin);
 
-    void unassign_and_rehash(int item, int bin, bin_int previously_last_item);
+    void unassign_and_rehash(int item, int bin, int previously_last_item);
 
     int itemcount() const {
         return _itemcount;
@@ -536,7 +536,7 @@ public:
 
     // Returns a hash that also encodes the next upcoming item. This allows
     // us to uniquely index algorithm's vertices.
-    uint64_t alghash(bin_int next_item) const {
+    uint64_t alghash(int next_item) const {
         return (loadhash ^ itemhash ^ Zalg[next_item]);
     }
 
@@ -648,7 +648,7 @@ void print_binconf(const binconf *b, bool newline = true) {
 void binconf::consistency_check() const {
     assert(_itemcount == itemcount_explicit());
     assert(_totalload == totalload_explicit());
-    bin_int totalload_items = 0;
+    int totalload_items = 0;
     for (int i = 1; i <= S; i++) {
         totalload_items += i * items[i];
     }
@@ -684,7 +684,7 @@ int binconf::assign_multiple(int item, int bin, int count) {
 }
 
 
-void binconf::unassign_item(int item, int bin, bin_int item_before_last) {
+void binconf::unassign_item(int item, int bin, int item_before_last) {
     loads[bin] -= item;
     _totalload -= item;
     items[item]--;
@@ -708,7 +708,7 @@ int binconf::assign_and_rehash(int item, int bin) {
     return from;
 }
 
-void binconf::unassign_and_rehash(int item, int bin, bin_int item_before_last) {
+void binconf::unassign_and_rehash(int item, int bin, int item_before_last) {
     loads[bin] -= item;
     _totalload -= item;
     items[item]--;
@@ -727,11 +727,11 @@ void binconf::unassign_and_rehash(int item, int bin, bin_int item_before_last) {
 class fullconf {
 public:
     uint64_t loadhash = 0;
-    bin_int loadset[BINS + 1][S + 1] = {0};
+    int loadset[BINS + 1][S + 1] = {0};
 
-    bin_int load(bin_int bin) {
+    int load(int bin) {
         assert(bin >= 1 && bin <= BINS);
-        bin_int sum = 0;
+        int sum = 0;
         for (int i = 1; i <= S; i++) {
             sum += i * loadset[bin][i];
         }

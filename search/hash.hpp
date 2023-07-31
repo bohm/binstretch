@@ -34,9 +34,9 @@ uint64_t rand_64bit() {
     return r;
 }
 
-bin_int rand_load() {
+int rand_load() {
     uint64_t r = gen();
-    bin_int rb = (bin_int) (r % (R + 1));
+    int rb = (int) (r % (R + 1));
     return rb;
 }
 

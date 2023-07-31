@@ -49,7 +49,7 @@ public:
     }
 
     // currently not used
-    bin_int depth() const {
+    int depth() const {
         return 0;
     }
 

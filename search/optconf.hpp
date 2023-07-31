@@ -8,13 +8,13 @@
 class optconf {
 public:
     // actual loads of the bins
-    std::array<bin_int, BINS + 1> loads = {};
+    std::array<int, BINS + 1> loads = {};
     // permutation describing the order of the bins
-    std::array<bin_int, BINS + 1> ord = {};
-    std::array<bin_int, BINS + 1> invord = {};
+    std::array<int, BINS + 1> ord = {};
+    std::array<int, BINS + 1> invord = {};
     // items (assigned to absolute bins, not the order)
-    std::array<std::vector<bin_int>, S + 1> items = {};
-    bin_int _totalload = 0;
+    std::array<std::vector<int>, S + 1> items = {};
+    int _totalload = 0;
 
     optconf() {
         for (int i = 0; i <= BINS; i++) {
@@ -23,11 +23,11 @@ public:
     }
 
     void consistency_check() {
-        bin_int checkload = 0;
+        int checkload = 0;
         for (int i = 1; i <= BINS; i++) {
             checkload += loads[i];
         }
-        bin_int itemload = 0;
+        int itemload = 0;
         for (int s = 1; s <= S; s++) {
             itemload += s * items[s].size();
         }
@@ -77,7 +77,7 @@ public:
         for (int i = 1; i <= S; i++) {
             if (items[i].size() > 0) {
                 fprintf(stderr, "%d: ", i);
-                for (const bin_int &c: items[i]) {
+                for (const int &c: items[i]) {
                     fprintf(stderr, "%" PRId16 " ", c);
                 }
                 fprintf(stderr, "; ");
@@ -126,7 +126,7 @@ public:
     }
 
     void unassign_item(int item) {
-        bin_int bin = items[item].back();
+        int bin = items[item].back();
         items[item].pop_back();
         loads[bin] -= item;
         _totalload -= item;
@@ -134,7 +134,7 @@ public:
     }
 
 
-    bin_int largest_upcoming_item() {
+    int largest_upcoming_item() {
         if (loads[ord[1]] > S) {
             return 0;
         }
@@ -158,7 +158,7 @@ public:
     void init(const binconf &b) {
         clear();
         for (int size = 1; size <= S; size++) {
-            bin_int k = b.items[size];
+            int k = b.items[size];
             while (k > 0) {
                 onlinefit_assign(size);
                 k--;
@@ -169,7 +169,7 @@ public:
 
     // recomputes the whole instance using best fit decreasing
     void bestfit_recompute() {
-        std::array<bin_int, S + 1> orig_items = {};
+        std::array<int, S + 1> orig_items = {};
 
         // clear the original optconf
         for (int i = 1; i <= BINS; i++) {

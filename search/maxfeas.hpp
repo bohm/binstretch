@@ -9,12 +9,12 @@
 #define MAXIMUM_FEASIBLE maximum_feasible
 
 // improves lb and ub via querying the cache
-std::tuple<bin_int, bin_int, bool> improve_bounds(binconf *b, bin_int lb, bin_int ub, bool lb_certainly_feasible) {
+std::tuple<int, int, bool> improve_bounds(binconf *b, int lb, int ub, bool lb_certainly_feasible) {
     if (DISABLE_DP_CACHE) {
         return std::make_tuple(lb, ub, lb_certainly_feasible);
     }
 
-    for (bin_int q = ub; q >= lb; q--) {
+    for (int q = ub; q >= lb; q--) {
         auto [located, feasible] = pack_and_query(*b, q);
         if (located) {
             if (feasible) {
@@ -32,14 +32,14 @@ std::tuple<bin_int, bin_int, bool> improve_bounds(binconf *b, bin_int lb, bin_in
 }
 
 // improves lb and ub via querying the cache
-std::tuple<bin_int, bin_int, bool>
-improve_bounds_binary(binconf *b, bin_int lb, bin_int ub, bool lb_certainly_feasible) {
+std::tuple<int, int, bool>
+improve_bounds_binary(binconf *b, int lb, int ub, bool lb_certainly_feasible) {
 
     if (DISABLE_DP_CACHE) {
         return std::make_tuple(lb, ub, lb_certainly_feasible);
     }
 
-    bin_int mid = (lb + ub + 1) / 2;
+    int mid = (lb + ub + 1) / 2;
     while (lb <= ub) {
         auto [located, feasible] = pack_and_query(*b, mid);
         if (located) {
@@ -70,7 +70,7 @@ improve_bounds_binary(binconf *b, bin_int lb, bin_int ub, bool lb_certainly_feas
 // (Even though smaller items fit, the adversary possibly must avoid them due to monotonicity.)
 
 template<minimax MODE, int MINIBS_SCALE>
-bin_int maximum_feasible(binconf *b, const int depth, const bin_int cannot_send_less, bin_int initial_ub,
+int maximum_feasible(binconf *b, const int depth, const int cannot_send_less, int initial_ub,
                          computation<MODE, MINIBS_SCALE> *comp) {
     MEASURE_ONLY(comp->meas.maxfeas_calls++);
     print_if<DEBUG>("Starting dynprog maximization of configuration:\n");
@@ -79,8 +79,8 @@ bin_int maximum_feasible(binconf *b, const int depth, const bin_int cannot_send_
 
     comp->maxfeas_return_point = -1;
 
-    bin_int lb = onlineloads_bestfit(comp->ol); // definitely can pack at least lb
-    bin_int ub = std::min((bin_int) ((S * BINS) - b->totalload()), initial_ub); // definitely cannot send more than ub
+    int lb = onlineloads_bestfit(comp->ol); // definitely can pack at least lb
+    int ub = std::min((int) ((S * BINS) - b->totalload()), initial_ub); // definitely cannot send more than ub
 
     // consistency check
     if (lb > ub) {
@@ -125,7 +125,7 @@ bin_int maximum_feasible(binconf *b, const int depth, const bin_int cannot_send_
     }
 
 
-    bin_int cache_lb, cache_ub;
+    int cache_lb, cache_ub;
     std::tie(cache_lb, cache_ub, lb_certainly_feasible) =
 // 	improve_bounds_binary(b,lb,ub,tat, lb_certainly_feasible);
             improve_bounds(b, lb, ub, lb_certainly_feasible);
@@ -146,7 +146,7 @@ bin_int maximum_feasible(binconf *b, const int depth, const bin_int cannot_send_
 
     // not solved yet, bestfit is needed:
 
-    bin_int bestfit;
+    int bestfit;
     bestfit = bestfitalg(b);
     MEASURE_ONLY(comp->meas.bestfit_calls++);
 
@@ -157,13 +157,13 @@ bin_int maximum_feasible(binconf *b, const int depth, const bin_int cannot_send_
                 "lb %" PRIi16 ", ub %" PRIi16 ", bestfit: %" PRIi16 ", maxfeas: %" PRIi16 ", initial_ub %" PRIi16".\n",
                 lb, ub, bestfit, DYNPROG_MAX<false>(*b, comp->dpdata, &(comp->meas)), initial_ub);
         fprintf(stderr, "ihash %" PRIu64 ", pack_and_query [%" PRIi16 ", %" PRIi16 "]:", b->ihash(), ub, initial_ub);
-        for (bin_int dbug = ub; dbug <= initial_ub; dbug++) {
+        for (int dbug = ub; dbug <= initial_ub; dbug++) {
             auto [located, feasible] = pack_and_query(*b, dbug);
             fprintf(stderr, "(%d,%d),", located, feasible);
         }
         fprintf(stderr, "\nhashes: [");
-        for (bin_int dbug = ub; dbug <= initial_ub; dbug++) {
-            bin_int dbug_items = b->items[dbug];
+        for (int dbug = ub; dbug <= initial_ub; dbug++) {
+            int dbug_items = b->items[dbug];
             // print itemhash as if there was one more item of type dbug
             fprintf(stderr, "%" PRIu64 ", ",
                     b->ihash() ^ Zi[dbug * (MAX_ITEMS + 1) + dbug_items] ^ Zi[dbug * (MAX_ITEMS + 1) + dbug_items + 1]);
@@ -176,7 +176,7 @@ bin_int maximum_feasible(binconf *b, const int depth, const bin_int cannot_send_
 
     if (bestfit >= lb) {
         if (!DISABLE_DP_CACHE) {
-            for (bin_int x = lb; x <= bestfit; x++) {
+            for (int x = lb; x <= bestfit; x++) {
                 // disabling information about empty bins
                 pack_and_encache(*b, x, true);
                 //pack_and_hash<PERMANENT>(b, x, empty_by_bestfit, FEASIBLE, tat);
@@ -197,7 +197,7 @@ bin_int maximum_feasible(binconf *b, const int depth, const bin_int cannot_send_
     MEASURE_ONLY(comp->meas.dynprog_calls++);
     // DISABLED: passing ub so that dynprog_max_dangerous takes care of pushing into the cache
     // DISABLED: maximum_feasible = dynprog_max_dangerous(b,lb,ub,tat);
-    bin_int maximum_feasible = DYNPROG_MAX<false>(*b, comp->dpdata, &(comp->meas)); // STANDALONE is false
+    int maximum_feasible = DYNPROG_MAX<false>(*b, comp->dpdata, &(comp->meas)); // STANDALONE is false
     // measurements for dynprog_max_with_lih only
     /*
     if (comp->lih_hit)
@@ -211,7 +211,7 @@ bin_int maximum_feasible(binconf *b, const int depth, const bin_int cannot_send_
 
 
     */
-    /* bin_int check = dynprog_max_safe(*b,tat);
+    /* int check = dynprog_max_safe(*b,tat);
     if (maximum_feasible != check)
     {
 	print_binconf<true>(b);
@@ -220,11 +220,11 @@ bin_int maximum_feasible(binconf *b, const int depth, const bin_int cannot_send_
     } */
 
     if (!DISABLE_DP_CACHE) {
-        for (bin_int i = maximum_feasible + 1; i <= cache_ub; i++) {
+        for (int i = maximum_feasible + 1; i <= cache_ub; i++) {
             pack_and_encache(*b, i, false);
         }
 
-        for (bin_int i = cache_lb; i <= maximum_feasible; i++) {
+        for (int i = cache_lb; i <= maximum_feasible; i++) {
             pack_and_encache(*b, i, true);
         }
     }

@@ -42,7 +42,7 @@ public:
     // largest item since computation root (excluding sequencing and such)
     int largest_since_computation_root = 0;
     // previous maximum_feasible
-    bin_int prev_max_feasible = S;
+    int prev_max_feasible = S;
     uint64_t iterations = 0;
     int expansion_depth = 0;
     // root of the current minimax evaluation
@@ -72,7 +72,7 @@ public:
     // To save time allocating this array, we allocate it at construction time, essentially.
     // We only need to memset it inside algorithm().
 
-    std::array<std::array<bin_int, BINS + 1>, MAX_ITEMS> alg_uncertain_moves;
+    std::array<std::array<int, BINS + 1>, MAX_ITEMS> alg_uncertain_moves;
 
     // --- measure attributes ---
     measure_attr meas; // measurements for one computation
@@ -124,6 +124,6 @@ public:
 				 algorithm_vertex *parent_alg, const std::vector<bint_int>& seq);
     victory sequencing_algorithm(int k, unsigned int depth, computation<MODE> *comp,
 				 algorithm_vertex *alg_to_evaluate, adversary_vertex *parent_adv,
-				 const std::vector<bin_int>& seq);
+				 const std::vector<int>& seq);
     */
 };

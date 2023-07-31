@@ -59,7 +59,7 @@ victory computation<MODE, MINIBS_SCALE>::heuristic_visit_alg(int pres_item) {
     }
 
     // Repeating the code from the algorithm() section.
-    bin_int i = 1;
+    int i = 1;
     while (i <= BINS && !position_solved) {
         // Skip a step where two bins have the same load.
         if (i > 1 && bstate.loads[i] == bstate.loads[i - 1]) {
@@ -611,7 +611,7 @@ victory computation<MODE, MINIBS_SCALE>::algorithm(int pres_item, algorithm_vert
             std::list<alg_outedge *>::iterator it = alg_to_evaluate->out.begin();
             while (it != alg_to_evaluate->out.end()) {
                 upcoming_adv = (*it)->to;
-                bin_int target_bin = (*it)->target_bin;
+                int target_bin = (*it)->target_bin;
 
                 algorithm_descend<MODE, MINIBS_SCALE>(this, notes, pres_item, target_bin);
                 below = adversary(upcoming_adv, alg_to_evaluate);
@@ -644,7 +644,7 @@ victory computation<MODE, MINIBS_SCALE>::algorithm(int pres_item, algorithm_vert
     // while(i <= BINS)
 
     int uncertain_pos = 0;
-    bin_int i = alg_uncertain_moves[calldepth][uncertain_pos++];
+    int i = alg_uncertain_moves[calldepth][uncertain_pos++];
     /*if (i == 0)
     {
 	fprintf(stderr, "Trouble with alg_uncertain_moves on binconf:");

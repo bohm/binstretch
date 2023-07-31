@@ -7,7 +7,7 @@
 const int DP_RUNS = 200;
 const int BUDGET_LIMIT = BINS*S/2;
 
-bin_int dynprog_max_safe(const binconf &conf)
+int dynprog_max_safe(const binconf &conf)
 {
     std::vector<loadconf> a, b;
     std::vector<loadconf> *poldq = &a;
@@ -18,8 +18,8 @@ bin_int dynprog_max_safe(const binconf &conf)
 
     uint64_t salt = rand_64bit();
     int phase = 0;
-    bin_int max_overall = MAX_INFEASIBLE;
-    bin_int smallest_item = -1;
+    int max_overall = MAX_INFEASIBLE;
+    int smallest_item = -1;
     for (int i = 1; i <= S; i++)
     {
 	if (conf.items[i] > 0)
@@ -29,9 +29,9 @@ bin_int dynprog_max_safe(const binconf &conf)
 	}
     }
     
-    for (bin_int size = S; size >= 1; size--)
+    for (int size = S; size >= 1; size--)
     {
-	bin_int k = conf.items[size];
+	int k = conf.items[size];
 	while (k > 0)
 	{
 	    phase++;
@@ -72,7 +72,7 @@ bin_int dynprog_max_safe(const binconf &conf)
 			{
 			    if(size == smallest_item && k == 1)
 			    {
-				max_overall = std::max((bin_int) (S - tuple.loads[BINS]), max_overall);
+				max_overall = std::max((int) (S - tuple.loads[BINS]), max_overall);
 			    }
 
 			    pnewq->push_back(tuple);
@@ -106,7 +106,7 @@ binconf random_binconf(int budget)
     while (budget > 0)
     {
 	int largest_possible = std::min((int) S,budget);
-	bin_int random_item = 1 + (rand() % largest_possible);
+	int random_item = 1 + (rand() % largest_possible);
 	ret.items[random_item]++;
 	budget -= random_item;
     }

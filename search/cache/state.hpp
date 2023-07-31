@@ -41,7 +41,7 @@ public:
         _data = 0;
     }
 
-    bin_int depth() const {
+    int depth() const {
         return 0;
     }
 
@@ -51,7 +51,7 @@ public:
 const conf_el conf_el::ZERO{0};
 
 
-class state_cache // : public cache<conf_el, uint64_t, bin_int>
+class state_cache // : public cache<conf_el, uint64_t, int>
 {
 public:
     std::atomic<conf_el> *ht;
@@ -161,7 +161,7 @@ public:
         for (uint64_t i = start; i < std::min(end, htsize); i++) {
             conf_el field = ht[i];
             if (!field.empty()) {
-                bin_int last_bit = field.value();
+                int last_bit = field.value();
                 if (last_bit != 0) {
                     ht[i].store(conf_el::ZERO);
                 }

@@ -17,7 +17,7 @@
 #define STANDALONE_CLEANUP() if (STANDALONE) { delete dpdata; }
 
 template<bool STANDALONE>
-bin_int dynprog_max_direct(const binconf &conf, dynprog_data *dpdata = nullptr, measure_attr *meas = nullptr) {
+int dynprog_max_direct(const binconf &conf, dynprog_data *dpdata = nullptr, measure_attr *meas = nullptr) {
     if (STANDALONE) {
         dpdata = new dynprog_data;
     }
@@ -31,8 +31,8 @@ bin_int dynprog_max_direct(const binconf &conf, dynprog_data *dpdata = nullptr, 
 
     uint64_t salt = rand_64bit();
     bool initial_phase = true;
-    bin_int max_overall = MAX_INFEASIBLE;
-    bin_int smallest_item = -1;
+    int max_overall = MAX_INFEASIBLE;
+    int smallest_item = -1;
     for (int i = 1; i <= S; i++) {
         if (conf.items[i] > 0) {
             smallest_item = i;
@@ -74,8 +74,8 @@ bin_int dynprog_max_direct(const binconf &conf, dynprog_data *dpdata = nullptr, 
         pnewq->clear();
     }
 
-    for (bin_int size = S - 1; size >= 2; size--) {
-        bin_int k = conf.items[size];
+    for (int size = S - 1; size >= 2; size--) {
+        int k = conf.items[size];
         while (k > 0) {
             if (initial_phase) {
                 loadconf first;
@@ -110,7 +110,7 @@ bin_int dynprog_max_direct(const binconf &conf, dynprog_data *dpdata = nullptr, 
                         if (!loadconf_hashfind(tuple.loadhash ^ salt, loadht)) {
                             if (size == smallest_item && k == 1) {
                                 // this can be improved by sorting
-                                max_overall = std::max((bin_int) (S - tuple.loads[BINS]), max_overall);
+                                max_overall = std::max((int) (S - tuple.loads[BINS]), max_overall);
                             }
 
                             pnewq->push_back(tuple);
@@ -141,7 +141,7 @@ bin_int dynprog_max_direct(const binconf &conf, dynprog_data *dpdata = nullptr, 
     // handle items of size one separately
 
     if (conf.items[1] > 0) {
-        bin_int free_volume = S * BINS - conf.totalload();
+        int free_volume = S * BINS - conf.totalload();
 
         if (free_volume < 0) {
             STANDALONE_CLEANUP();
@@ -154,7 +154,7 @@ bin_int dynprog_max_direct(const binconf &conf, dynprog_data *dpdata = nullptr, 
         }
 
         for (loadconf &tuple: *poldq) {
-            bin_int empty_space_on_last = std::min((bin_int) (S - tuple.loads[BINS]), free_volume);
+            int empty_space_on_last = std::min((int) (S - tuple.loads[BINS]), free_volume);
             max_overall = std::max(empty_space_on_last, max_overall);
         }
     }
@@ -177,8 +177,8 @@ std::vector<loadconf> dynprog(const binconf &conf, dynprog_data *dpdata) {
     memset(dpdata->loadht, 0, LOADSIZE * 8);
 
     // We currently avoid the heuristics of handling separate sizes.
-    for (bin_int size = S; size >= 1; size--) {
-        bin_int k = conf.items[size];
+    for (int size = S; size >= 1; size--) {
+        int k = conf.items[size];
         while (k > 0) {
             if (initial_phase) {
                 loadconf first;

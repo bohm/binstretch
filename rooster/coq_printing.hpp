@@ -41,7 +41,7 @@ void print_bin_loads(FILE *stream, rooster_dag *rd, adversary_vertex *v)
     fprintf(stream, "] ");
 }
 
-void rooster_print_items(FILE* stream, const std::array<bin_int, S+1> & items)
+void rooster_print_items(FILE* stream, const std::array<int, S+1> & items)
 {
     fprintf(stream, "[");
     bool first = true;

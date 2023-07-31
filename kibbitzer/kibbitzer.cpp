@@ -19,7 +19,7 @@ dag *canvas = NULL;
 bool color = true;
 bool shortheur = false;
 int cut_at_depth = 0;
-bin_int cut_at_size = 0;
+int cut_at_size = 0;
 
 void build_suggestion(adversary_vertex *v)
 {
@@ -222,7 +222,7 @@ int main(int argc, char **argv)
 	    if (parsed_sizecut)
 	    {
 		sizecut = true;
-		cut_at_size = (bin_int) sizecut_val;
+		cut_at_size = (int) sizecut_val;
 	    }
 	}
 

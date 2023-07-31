@@ -3,12 +3,12 @@
 #include "../dynprog/algo.hpp"
 
 // A wrapper function that just checks all feasible packings and reports the maximum feasible item that can be sent.
-bin_int dynprog_max_via_vector(const binconf &conf, dynprog_data *dpdata) {
+int dynprog_max_via_vector(const binconf &conf, dynprog_data *dpdata) {
     std::vector<loadconf> feasible_packings = dynprog(conf, dpdata);
 
-    bin_int max_overall = MAX_INFEASIBLE;
+    int max_overall = MAX_INFEASIBLE;
     for (const loadconf &tuple: feasible_packings) {
-        max_overall = std::max((bin_int) (S - tuple.loads[BINS]), max_overall);
+        max_overall = std::max((int) (S - tuple.loads[BINS]), max_overall);
     }
 
     return max_overall;
@@ -16,14 +16,14 @@ bin_int dynprog_max_via_vector(const binconf &conf, dynprog_data *dpdata) {
 
 // --- Packing procedures. ---
 
-void add_item_inplace(binconf &h, const bin_int item, const bin_int multiplicity = 1) {
+void add_item_inplace(binconf &h, const int item, const int multiplicity = 1) {
     h.i_changehash(item, h.items[item], h.items[item] + multiplicity);
     h.items[item] += multiplicity; // in some sense, it is an inconsistent state, since "item" is not packed in "h"
     h._itemcount += multiplicity;
     h._totalload += multiplicity * item;
 }
 
-void remove_item_inplace(binconf &h, const bin_int item, const bin_int multiplicity = 1) {
+void remove_item_inplace(binconf &h, const int item, const int multiplicity = 1) {
     h._totalload -= multiplicity * item;
     h._itemcount -= multiplicity;
     h.items[item] -= multiplicity;
@@ -37,20 +37,20 @@ bool compute_feasibility(const binconf &h, dynprog_data *dpdata = nullptr, measu
     return (DYNPROG_MAX<true>(h) != MAX_INFEASIBLE);
 }
 
-void pack_and_encache(binconf &h, const bin_int item, const bool feasibility, const bin_int multiplicity = 1) {
+void pack_and_encache(binconf &h, const int item, const bool feasibility, const int multiplicity = 1) {
     add_item_inplace(h, item, multiplicity);
     dpc->insert(h, feasibility);
     remove_item_inplace(h, item, multiplicity);
 }
 
-std::pair<bool, bool> pack_and_query(binconf &h, const bin_int item, const bin_int multiplicity = 1) {
+std::pair<bool, bool> pack_and_query(binconf &h, const int item, const int multiplicity = 1) {
     add_item_inplace(h, item, multiplicity);
     auto retpair = dpc->lookup(h);
     remove_item_inplace(h, item, multiplicity);
     return retpair;
 }
 
-bool pack_query_compute(binconf &h, const bin_int item, const bin_int multiplicity = 1, dynprog_data *dpdata = nullptr,
+bool pack_query_compute(binconf &h, const int item, const int multiplicity = 1, dynprog_data *dpdata = nullptr,
                         measure_attr *meas = nullptr) {
     add_item_inplace(h, item, multiplicity);
     auto [located, feasible] = dpc->lookup(h);
@@ -66,7 +66,7 @@ bool pack_query_compute(binconf &h, const bin_int item, const bin_int multiplici
 }
 
 // Just pack and compute feasibility, do not use the cache.
-bool pack_compute(binconf &h, const bin_int item, const bin_int multiplicity = 1) {
+bool pack_compute(binconf &h, const int item, const int multiplicity = 1) {
     add_item_inplace(h, item, multiplicity);
     bool ret = compute_feasibility(h);
     remove_item_inplace(h, item, multiplicity);
@@ -102,7 +102,7 @@ std::pair<bool, fullconf> dynprog_feasible_with_output(const binconf &conf) {
 
     uint64_t salt = rand_64bit();
     bool initial_phase = true;
-    bin_int smallest_item = 0;
+    int smallest_item = 0;
 
     fullconf ret;
 
@@ -113,8 +113,8 @@ std::pair<bool, fullconf> dynprog_feasible_with_output(const binconf &conf) {
         }
     }
 
-    for (bin_int size = S; size >= 1; size--) {
-        bin_int k = conf.items[size];
+    for (int size = S; size >= 1; size--) {
+        int k = conf.items[size];
         while (k > 0) {
             if (initial_phase) {
                 fullconf first;

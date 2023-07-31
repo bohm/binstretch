@@ -35,7 +35,7 @@ adversary_vertex *expansion_root;
 
 // task but in a flat form; used for MPI
 struct flat_task {
-    bin_int shorts[BINS + 1 + S + 1 + 4];
+    int shorts[BINS + 1 + S + 1 + 4];
     uint64_t longs[2];
 };
 

@@ -37,17 +37,15 @@ namespace fs = std::experimental::filesystem;
 // Reasonable settings are int8_t, int16_t or int (depending in part on whether a bin can contain more
 // than 127 items or not. We allow it to go negative for signalling -1/-2.
 
-//typedef int16_t bin_int;
-//#define MPI_BIN_INT MPI_SHORT
+//typedef int16_t int;
+//#define MPI_int MPI_SHORT
 
-typedef int bin_int;
-#define MPI_BIN_INT MPI_INT
+#define MPI_int MPI_INT
 
-constexpr bin_int S = IS;
-constexpr bin_int R = IR;
-constexpr bin_int BINS = IBINS;
+constexpr int S = IS;
+constexpr int R = IR;
+constexpr int BINS = IBINS;
 
-// typedef uint64_t llu;
 typedef signed char tiny;
 
 
@@ -102,7 +100,7 @@ const int TASK_RECEIVED = 1;
 #define STRATEGY_BASIC_LIMIT 3
 
 // maximum number of items
-constexpr bin_int MAX_ITEMS = S * BINS;
+constexpr int MAX_ITEMS = S * BINS;
 
 constexpr int MAX_WEIGHT = 4;
 constexpr int MAX_TOTAL_WEIGHT = MAX_WEIGHT * IBINS;

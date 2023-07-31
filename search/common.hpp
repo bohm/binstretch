@@ -53,24 +53,24 @@ const long double TASKLOG_THRESHOLD = 60.0; // in seconds
 
 // If you want to generate a specific lower bound, you can create an initial bin configuration here.
 // You can also insert an initial sequence here.
-//const std::vector<bin_int> INITIAL_LOADS = {4,4,0};
-//const std::vector<bin_int> INITIAL_LOADS = {8,0,0};
-//const std::vector<bin_int> INITIAL_LOADS = {3,2,0};
-//const std::vector<bin_int> INITIAL_ITEMS = {1,2,0,0};
+//const std::vector<int> INITIAL_LOADS = {4,4,0};
+//const std::vector<int> INITIAL_LOADS = {8,0,0};
+//const std::vector<int> INITIAL_LOADS = {3,2,0};
+//const std::vector<int> INITIAL_ITEMS = {1,2,0,0};
 
-// const std::vector<bin_int> INITIAL_LOADS = {2};
-// const std::vector<bin_int> INITIAL_ITEMS = {2};
+// const std::vector<int> INITIAL_LOADS = {2};
+// const std::vector<int> INITIAL_ITEMS = {2};
 
-const std::vector<bin_int> INITIAL_LOADS = {};
-const std::vector<bin_int> INITIAL_ITEMS = {};
+const std::vector<int> INITIAL_LOADS = {};
+const std::vector<int> INITIAL_ITEMS = {};
 
 
 // Monotonicity limiting the adversarial instance.
-// const bin_int monotonicity = RECOMMENDED_MONOTONICITY;
-constexpr bin_int monotonicity = std::max(70, S-1);
+// const int monotonicity = RECOMMENDED_MONOTONICITY;
+constexpr int monotonicity = std::max(70, S-1);
 
-// const bin_int monotonicity = 0; // A non-decreasing instance.
-// const bin_int monotonicity = S-1; // Full generality.
+// const int monotonicity = 0; // A non-decreasing instance.
+// const int monotonicity = S-1; // Full generality.
 
 // constants used for good situations
 const int RMOD = (R - 1);
@@ -247,11 +247,11 @@ heuristic_strategy::~heuristic_strategy() = default;
 
 
 // if a maximization procedure gets an infeasible configuration, it returns MAX_INFEASIBLE.
-const bin_int MAX_INFEASIBLE = -1;
+const int MAX_INFEASIBLE = -1;
 // when a heuristic is unable to pack (but the configuration still may be feasible)
-const bin_int MAX_UNABLE_TO_PACK = -2;
+const int MAX_UNABLE_TO_PACK = -2;
 
-const bin_int IN_PROGRESS = 2;
+const int IN_PROGRESS = 2;
 
 
 char ADVICE_FILENAME[256];
@@ -266,12 +266,12 @@ uint64_t global_edge_counter = 0;
 /* total time spent in all threads */
 std::chrono::duration<long double> time_spent;
 
-bin_int lowest_sendable(bin_int last_item) {
+int lowest_sendable(int last_item) {
     return std::max(1, last_item - monotonicity);
 }
 
-void print_sequence(FILE *stream, const std::vector<bin_int> &seq) {
-    for (const bin_int &i: seq) {
+void print_sequence(FILE *stream, const std::vector<int> &seq) {
+    for (const int &i: seq) {
         fprintf(stream, "%" PRIi16 " ", i);
     }
     fprintf(stream, "\n");

@@ -62,11 +62,11 @@ std::string build_output_filename(std::tm *timestamp) {
 // a full loadfile takes too long.
 
 
-std::array<bin_int, BINS + 1> load_segment_with_loads(std::stringstream &str_s) {
-    std::array<bin_int, BINS + 1> ret = {};
+std::array<int, BINS + 1> load_segment_with_loads(std::stringstream &str_s) {
+    std::array<int, BINS + 1> ret = {};
 
     char c = 0;
-    bin_int load = -1;
+    int load = -1;
     str_s.get(c);
     assert(c == '[');
     for (int i = 1; i <= BINS; i++) {
@@ -84,11 +84,11 @@ std::array<bin_int, BINS + 1> load_segment_with_loads(std::stringstream &str_s) 
 }
 
 template<int SCALE>
-std::array<bin_int, SCALE + 1> load_segment_with_items(std::stringstream &str_s) {
-    std::array<bin_int, SCALE + 1> ret = {};
+std::array<int, SCALE + 1> load_segment_with_items(std::stringstream &str_s) {
+    std::array<int, SCALE + 1> ret = {};
 
     char c = 0;
-    bin_int item_size = -1;
+    int item_size = -1;
     str_s.get(c);
     assert(c == ' ');
     str_s.get(c);
@@ -111,8 +111,8 @@ std::array<bin_int, SCALE + 1> load_segment_with_items(std::stringstream &str_s)
     return ret;
 }
 
-bin_int load_last_item_segment(std::stringstream &str_s) {
-    bin_int last_item = -1;
+int load_last_item_segment(std::stringstream &str_s) {
+    int last_item = -1;
     str_s >> last_item;
 
     if (last_item < 0 || last_item > BINS * S) {
@@ -122,9 +122,9 @@ bin_int load_last_item_segment(std::stringstream &str_s) {
 }
 
 binconf loadbinconf(std::stringstream &str_s) {
-    std::array<bin_int, BINS + 1> loads = load_segment_with_loads(str_s);
-    std::array<bin_int, S + 1> items = load_segment_with_items<S>(str_s);
-    bin_int last_item = load_last_item_segment(str_s);
+    std::array<int, BINS + 1> loads = load_segment_with_loads(str_s);
+    std::array<int, S + 1> items = load_segment_with_items<S>(str_s);
+    int last_item = load_last_item_segment(str_s);
 
     binconf retbc(loads, items, last_item);
     retbc.hashinit();
@@ -187,13 +187,13 @@ public:
         fprintf(logfile, " %s\n", s.c_str());
     }
 
-    void log_binconf_with_move(binconf *b, bin_int pres_item, int target_bin) {
+    void log_binconf_with_move(binconf *b, int pres_item, int target_bin) {
         binconf copy(b->loads, b->items, b->last_item);
         copy.assign_item(pres_item, target_bin);
         print_binconf_stream(logfile, &copy, true);
     }
 
-    void log_loadconf_with_move(binconf *b, bin_int pres_item, int target_bin) {
+    void log_loadconf_with_move(binconf *b, int pres_item, int target_bin) {
         loadconf copy(*b, pres_item, target_bin);
         print_loadconf_stream(logfile, &copy, true);
     }

@@ -9,7 +9,7 @@
 #include <array>
 #include <chrono>
 
-typedef int16_t bin_int;
+typedef int16_t int;
 
 // I do not think those are necessary to be duplicated, this is some historical
 // error.
@@ -17,9 +17,9 @@ const int IBINS = 10;
 const int IR = 19;
 const int IS = 14;
 
-const bin_int S = (bin_int) IS;
-const bin_int R = (bin_int) IR;
-const bin_int BINS = (bin_int) IBINS;
+const int S = (int) IS;
+const int R = (int) IR;
+const int BINS = (int) IBINS;
 
 // The size of one block in the blocksize experiment.
 const int ZOBRIST_LOAD_BLOCKSIZE = 5;
@@ -57,15 +57,15 @@ uint64_t rand_64bit()
     return r;
 }
 
-bin_int rand_load()
+int rand_load()
 {
     uint64_t r = gen();
-    bin_int rb = (bin_int) ( r % (R+1));
+    int rb = (int) ( r % (R+1));
     return rb;
 }
 
 
-void print_standard_block(std::array<bin_int, ZOBRIST_LOAD_BLOCKSIZE> arr)
+void print_standard_block(std::array<int, ZOBRIST_LOAD_BLOCKSIZE> arr)
 {
     bool first = true;
     for (int i = 0; i < ZOBRIST_LOAD_BLOCKSIZE; i++)
@@ -85,7 +85,7 @@ void print_standard_block(std::array<bin_int, ZOBRIST_LOAD_BLOCKSIZE> arr)
  
 }
 
-void print_last_block(std::array<bin_int, ZOBRIST_LAST_BLOCKSIZE> arr)
+void print_last_block(std::array<int, ZOBRIST_LAST_BLOCKSIZE> arr)
 {
     bool first = true;
     for (int i = 0; i < ZOBRIST_LAST_BLOCKSIZE; i++)
@@ -104,24 +104,24 @@ void print_last_block(std::array<bin_int, ZOBRIST_LAST_BLOCKSIZE> arr)
     fprintf(stderr, "]\n");
 }
        
-std::array<bin_int, ZOBRIST_LOAD_BLOCKSIZE> decode_position(int pos)
+std::array<int, ZOBRIST_LOAD_BLOCKSIZE> decode_position(int pos)
 {
-    std::array<bin_int, ZOBRIST_LOAD_BLOCKSIZE> ret = {0};
+    std::array<int, ZOBRIST_LOAD_BLOCKSIZE> ret = {0};
     for (int i = ZOBRIST_LOAD_BLOCKSIZE-1; i >= 0 ; i--)
     {
-	bin_int current_value = (bin_int) (pos % (R+1));
+	int current_value = (int) (pos % (R+1));
 	ret[i] = current_value;
 	pos /= (R+1);
     }
     return ret;
 }
 
-std::array<bin_int, ZOBRIST_LAST_BLOCKSIZE> decode_last_position(int pos)
+std::array<int, ZOBRIST_LAST_BLOCKSIZE> decode_last_position(int pos)
 {
-    std::array<bin_int, ZOBRIST_LAST_BLOCKSIZE> ret = {0};
+    std::array<int, ZOBRIST_LAST_BLOCKSIZE> ret = {0};
     for (int i = ZOBRIST_LAST_BLOCKSIZE-1; i >= 0 ; i--)
     {
-	bin_int current_value = (bin_int) (pos % (R+1));
+	int current_value = (int) (pos % (R+1));
 	ret[i] = current_value;
 	pos /= (R+1);
     }
@@ -132,7 +132,7 @@ uint64_t loadhash_from_position(uint64_t *zl, int blocknum, int pos)
 {
 
     uint64_t ret = 0;
-    std::array<bin_int, ZOBRIST_LOAD_BLOCKSIZE> pos_arr = decode_position(pos);
+    std::array<int, ZOBRIST_LOAD_BLOCKSIZE> pos_arr = decode_position(pos);
     for (int i = 0; i < ZOBRIST_LOAD_BLOCKSIZE; i++)
     {
 	int bin_index = blocknum*ZOBRIST_LOAD_BLOCKSIZE + i;
@@ -145,7 +145,7 @@ uint64_t loadhash_from_position(uint64_t *zl, int blocknum, int pos)
 uint64_t loadhash_last_from_position(uint64_t *zl, int pos)
 {
     uint64_t ret = 0;
-    std::array<bin_int, ZOBRIST_LAST_BLOCKSIZE> pos_arr = decode_last_position(pos);
+    std::array<int, ZOBRIST_LAST_BLOCKSIZE> pos_arr = decode_last_position(pos);
     for (int i = 0; i < ZOBRIST_LAST_BLOCKSIZE; i++)
     {
 	int bin_index = (ZOBRIST_LOAD_BLOCKS-1)*ZOBRIST_LOAD_BLOCKSIZE + i;

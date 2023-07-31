@@ -10,7 +10,7 @@
 // Heuristics for bypassing dynamic programming. Currently only
 // best fit decreasing.
 
-bin_int bestfitalg(const binconf *orig) {
+int bestfitalg(const binconf *orig) {
     loadconf b;
     // a quick trick: keep track of totalload and terminate when it is 0
     int tl = orig->totalload();
@@ -43,7 +43,7 @@ bin_int bestfitalg(const binconf *orig) {
     return S - b.loads[BINS];
 }
 
-std::pair<bin_int, bin_int> bestfit_cut_interval(const binconf *orig) {
+std::pair<int, int> bestfit_cut_interval(const binconf *orig) {
     loadconf b;
     // a quick trick: keep track of totalload and terminate when it is 0
     int tl = orig->totalload() - S * orig->items[S] - orig->items[1];
@@ -144,7 +144,7 @@ void onlineloads_unassign(loadconf &ol, int item, int bin) {
     ol.unassign_without_hash(item, bin);
 }
 
-bin_int onlineloads_bestfit(const loadconf &ol) {
+int onlineloads_bestfit(const loadconf &ol) {
     // if best fit was not able to legally pack it, return 0
     if (ol.loads[1] > S) {
         return 0;

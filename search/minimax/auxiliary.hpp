@@ -28,7 +28,7 @@ void compute_next_moves_heur(std::vector<int> &cands, const binconf *b, heuristi
 }
 
 void compute_next_moves_sequence(std::vector<int> &cands, const binconf *b, int depth,
-                                 const std::vector<bin_int> &seq) {
+                                 const std::vector<int> &seq) {
     cands.push_back(seq[depth]);
 }
 

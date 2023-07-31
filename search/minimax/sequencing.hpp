@@ -74,7 +74,7 @@ victory sequencing_adversary(binconf *b, unsigned int depth, computation<MODE, M
     algorithm_vertex *upcoming_alg = NULL;
     adv_outedge *new_edge = NULL;
     bool switch_to_heuristic = false;
-    bin_int suggestion = 0;
+    int suggestion = 0;
 
     /* Everything can be packed into one bin, return 1. */
     if ((b->loads[BINS] + (BINS * S - b->totalload())) < R) {
@@ -243,7 +243,7 @@ victory sequencing_algorithm(binconf *b, int k, unsigned int depth, computation<
 
             // editing binconf in place -- undoing changes later
 
-            bin_int previously_last_item = b->last_item;
+            int previously_last_item = b->last_item;
             int from = b->assign_and_rehash(k, i);
             int ol_from = onlineloads_assign(comp->ol, k);
             // initialize the adversary's next vertex in the tree (corresponding to d)

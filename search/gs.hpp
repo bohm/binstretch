@@ -497,7 +497,7 @@ int gsheuristic(binconf *b, int k, measure_attr *meas) {
     int moved_load;
     for (int i = 1; i <= BINS; i++) {
         if ((b->loads[i] + k) < R) {
-            bin_int previously_last_item = b->last_item;
+            int previously_last_item = b->last_item;
             moved_load = b->assign_item(k, i);
             int value = testgs(b, meas);
             b->unassign_item(k, moved_load, previously_last_item);

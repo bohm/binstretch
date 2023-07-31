@@ -299,7 +299,7 @@ void init_knownsum_with_lowest_sendable() {
     }
 }
 
-int query_knownsum_lowest_sendable(uint64_t loadhash, bin_int last_item) {
+int query_knownsum_lowest_sendable(uint64_t loadhash, int last_item) {
     int layer_to_query = lowest_sendable(last_item);
 
     auto search = knownsum_with_sendable[layer_to_query].find(loadhash);

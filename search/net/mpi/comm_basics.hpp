@@ -210,13 +210,13 @@ int communicator::bcast_recv_tcount() {
 }
 
 void communicator::bcast_send_flat_task(flat_task &ft) {
-    MPI_Bcast(ft.shorts, BINS + S + 6, MPI_BIN_INT, multiprocess::QUEEN_ID, MPI_COMM_WORLD);
+    MPI_Bcast(ft.shorts, BINS + S + 6, MPI_int, multiprocess::QUEEN_ID, MPI_COMM_WORLD);
     MPI_Bcast(ft.longs, 2, MPI_UNSIGNED_LONG, multiprocess::QUEEN_ID, MPI_COMM_WORLD);
 }
 
 flat_task communicator::bcast_recv_flat_task() {
     flat_task ret;
-    MPI_Bcast(ret.shorts, BINS + S + 6, MPI_BIN_INT, multiprocess::QUEEN_ID, MPI_COMM_WORLD);
+    MPI_Bcast(ret.shorts, BINS + S + 6, MPI_int, multiprocess::QUEEN_ID, MPI_COMM_WORLD);
     MPI_Bcast(ret.longs, 2, MPI_UNSIGNED_LONG, multiprocess::QUEEN_ID, MPI_COMM_WORLD);
     return ret;
 }

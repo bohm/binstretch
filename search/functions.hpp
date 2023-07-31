@@ -71,7 +71,7 @@ uint64_t zero_last_two_bits(const uint64_t &n) {
     return ((n >> 2) << 2);
 }
 
-bin_int get_last_two_bits(const uint64_t &n) {
+int get_last_two_bits(const uint64_t &n) {
     return ((n & 3));
 }
 

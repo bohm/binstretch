@@ -8,7 +8,7 @@ class advice {
 
 public:
     binconf bc;
-    bin_int suggestion;
+    int suggestion;
 
     bool match(const binconf *other) const {
         return binconf_equal(&bc, other);
@@ -19,7 +19,7 @@ class advisor {
 private:
     std::vector<advice> adv_arr;
 public:
-    bin_int suggest_advice(const binconf *configuration) const {
+    int suggest_advice(const binconf *configuration) const {
         for (const advice &adv: adv_arr) {
             if (adv.match(configuration)) {
                 return adv.suggestion;
@@ -67,16 +67,16 @@ public:
             std::stringstream str_s(line);
 
             // Using filetools functions to load the bin configuration part.
-            std::array<bin_int, BINS + 1> loads = load_segment_with_loads(str_s);
-            std::array<bin_int, S + 1> items = load_segment_with_items<S>(str_s);
-            bin_int last_item = load_last_item_segment(str_s);
+            std::array<int, BINS + 1> loads = load_segment_with_loads(str_s);
+            std::array<int, S + 1> items = load_segment_with_items<S>(str_s);
+            int last_item = load_last_item_segment(str_s);
             binconf curbc(loads, items, last_item);
 
             std::string rest;
             std::getline(str_s, rest);
 
             // Load the suggestion.
-            bin_int suggestion = 0;
+            int suggestion = 0;
             if (sscanf(rest.c_str(), " suggestion: %d", &suggestion) != 1) {
                 ERRORPRINT("Suggestion %d failed to load.\n", adv_arr.size());
             }
