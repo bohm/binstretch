@@ -3,9 +3,6 @@
 #include "assumptions.hpp"
 #include "../search/thread_attr.hpp"
 #include "../dag/dag.hpp"
-#include "../search/weights/weight_heuristics.hpp"
-#include "../search/weights/scale_halves.hpp"
-#include "../search/weights/scale_thirds.hpp"
 #include "../minibs/minibs.hpp"
 
 template<minimax MODE, int MINIBS_SCALE>
@@ -15,7 +12,7 @@ public:
     // --- persistent thread attributes ---
     int monotonicity = 0;
 
-    // A signal from outside of the computation that the solution to the full process
+    // A signal from outside the computation that the solution to the full process
     // has been found.
     worker_flags *flags = nullptr;
 
@@ -36,14 +33,6 @@ public:
 
     // dynamic programming data
     dynprog_data *dpdata;
-
-    // Pointer to the object holding weight heuristical data.
-    WEIGHT_HEURISTICS *weight_heurs = nullptr;
-    // The current weight of the instance. We only touch it if USING_HEURISTIC_WEIGHTSUM is true.
-    // Mild TODO: In the future, move it to the algorithm_notes section perhaps?
-    // Bigger TODO: 
-    std::array<int, WEIGHT_HEURISTICS::NUM> bstate_weight_array = {};
-
     minibs<MINIBS_SCALE> *mbs = nullptr;
     itemconfig<MINIBS_SCALE> *scaled_items = nullptr;
 

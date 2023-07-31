@@ -23,7 +23,6 @@
 #include "maxfeas.hpp"
 #include "heur_adv.hpp"
 #include "heur_alg_knownsum.hpp"
-#include "heur_alg_weights.hpp"
 #include "gs.hpp"
 #include "tasks.hpp"
 #include "strategy.hpp"
@@ -57,11 +56,6 @@ victory computation<MODE, MINIBS_SCALE>::heuristic_visit_alg(int pres_item) {
         } else {
             next_layer_hash = scaled_items->virtual_increase(shrunk_itemtype);
         }
-    }
-
-    if (USING_HEURISTIC_WEIGHTSUM) {
-        weight_heurs->increase_weights(bstate_weight_array, pres_item);
-        // Weight in the next adversary state.
     }
 
     // Repeating the code from the algorithm() section.
@@ -151,23 +145,6 @@ victory computation<MODE, MINIBS_SCALE>::heuristic_visit_alg(int pres_item) {
                 }
             }
 
-            // A heuristic using weights.
-            // Since it only returns a bool now, we do not use the lowest sendable heuristic.
-            if (USING_HEURISTIC_WEIGHTSUM) {
-                if (!result_known) {
-
-                    bool alg_winning_query = weight_heurs->query_alg_winning(loadhash_if_descending,
-                                                                             bstate_weight_array);
-                    if (alg_winning_query) {
-                        ret = victory::alg;
-                        result_known = true;
-                        position_solved = true;
-                    } else {
-                        // Position currently unknown.
-                    }
-                }
-            }
-
             if (USING_MINIBINSTRETCHING) {
                 if (!result_known) {
                     int next_item_layer = mbs->feasible_map[next_layer_hash];
@@ -202,12 +179,6 @@ victory computation<MODE, MINIBS_SCALE>::heuristic_visit_alg(int pres_item) {
         alg_uncertain_moves[calldepth][next_uncertain_position] = 0;
 
     }
-
-    if (USING_HEURISTIC_WEIGHTSUM) {
-        // Reset weight to be as before.
-        weight_heurs->decrease_weights(bstate_weight_array, pres_item);
-    }
-
 
     return ret;
 }
@@ -335,16 +306,6 @@ victory computation<MODE, MINIBS_SCALE>::adversary(
         }
     }
 
-    // Same as above, but an enhanced heuristic.
-    if (USING_HEURISTIC_WEIGHTSUM) {
-        bool alg_winning_heuristically = weight_heurs->query_alg_winning(bstate.loadhash,
-                                                                         bstate_weight_array);
-        if (alg_winning_heuristically) {
-            return victory::alg;
-        } else {
-            // MEASURE_ONLY(meas.knownsum_miss++);
-        }
-    }
 
     if (USING_MINIBINSTRETCHING) {
         bool alg_winning_heuristically = mbs->query_itemconf_winning(bstate, *scaled_items);
@@ -811,10 +772,6 @@ victory explore(binconf *b, computation<MODE, MINIBS_SCALE> *comp) {
     comp->explore_root = &root_copy;
     comp->bstate = *b;
 
-    if (USING_HEURISTIC_WEIGHTSUM) {
-        comp->bstate_weight_array = {};
-    }
-
     if (USING_MINIBINSTRETCHING) {
         comp->scaled_items->initialize(comp->bstate);
     }
@@ -831,10 +788,6 @@ victory generate(sapling start_sapling,
     duplicate(&(comp->bstate), &start_sapling.root->bc);
     comp->bstate.hashinit();
     comp->itemdepth = comp->bstate.itemcount_explicit();
-    if (USING_HEURISTIC_WEIGHTSUM) {
-        comp->bstate_weight_array = {};
-
-    }
 
     if (USING_MINIBINSTRETCHING) {
         comp->scaled_items->initialize(comp->bstate);

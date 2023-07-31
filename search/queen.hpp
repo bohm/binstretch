@@ -10,10 +10,6 @@
 #include "saplings.hpp"
 #include "sapling_manager.hpp"
 #include "cleanup.hpp"
-#include "weights/weight_heuristics.hpp"
-#include "weights/scale_halves.hpp"
-#include "weights/scale_thirds.hpp"
-#include "weights/scale_quarters.hpp"
 #include "minibs/minibs.hpp"
 
 // Queen global variables and declarations.

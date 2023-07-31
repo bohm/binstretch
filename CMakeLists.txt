@@ -72,12 +72,6 @@ add_executable(clion
         search/strategies/heuristical.hpp
         search/strategies/insight.hpp
         search/strategies/insight_methods.hpp
-        search/weights/scale_halves.hpp
-        search/weights/scale_quarters.hpp
-        search/weights/scale_quintiles.hpp
-        search/weights/scale_thirds.hpp
-        search/weights/weight_heuristics.hpp
-        search/weights/weights_basics.hpp
         search/advisor.hpp
         search/assumptions.hpp
         search/binconf.hpp
@@ -93,7 +87,6 @@ add_executable(clion
         search/hash.hpp
         search/heur_adv.hpp
         search/heur_alg_knownsum.hpp
-        search/heur_alg_weights.hpp
         search/heur_classes.hpp
         search/layers.hpp
         search/loadfile.hpp
