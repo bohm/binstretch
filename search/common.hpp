@@ -67,7 +67,7 @@ const std::vector<bin_int> INITIAL_ITEMS = {};
 
 // Monotonicity limiting the adversarial instance.
 // const bin_int monotonicity = RECOMMENDED_MONOTONICITY;
-constexpr bin_int monotonicity = 70;
+constexpr bin_int monotonicity = std::max(70, S-1);
 
 // const bin_int monotonicity = 0; // A non-decreasing instance.
 // const bin_int monotonicity = S-1; // Full generality.
@@ -116,7 +116,7 @@ const int BATCH_SIZE = 50;
 const int BATCH_THRESHOLD = BATCH_SIZE / 2;
 
 // sizes of the hash tables
-const llu LOADSIZE = (1ULL << LOADLOG);
+constexpr uint64_t LOADSIZE = (1ULL << LOADLOG);
 
 // linear probing limit
 const int LINPROBE_LIMIT = 8;

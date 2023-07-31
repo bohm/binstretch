@@ -105,8 +105,8 @@ void printBits32(unsigned int num) {
     fprintf(stderr, "\n");
 }
 
-void printBits64(llu num) {
-    for (unsigned int bit = 0; bit < (sizeof(llu) * 8); bit++) {
+void printBits64(uint64_t num) {
+    for (unsigned int bit = 0; bit < (sizeof(uint64_t) * 8); bit++) {
         fprintf(stderr, "%" PRIu64, num & 0x01);
         num = num >> 1;
     }

@@ -47,7 +47,7 @@ constexpr bin_int S = IS;
 constexpr bin_int R = IR;
 constexpr bin_int BINS = IBINS;
 
-typedef uint64_t llu;
+// typedef uint64_t llu;
 typedef signed char tiny;
 
 

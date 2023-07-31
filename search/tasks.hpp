@@ -104,14 +104,14 @@ public:
 class semiatomic_q {
 //private:
 public:
-    int *data = NULL;
+    int *data = nullptr;
     std::atomic<int> qsize{0};
     int reserve = 0;
     std::atomic<int> qhead{0};
 
 public:
     ~semiatomic_q() {
-        if (data != NULL) {
+        if (data != nullptr) {
             delete[] data;
         }
     }
@@ -141,7 +141,7 @@ public:
         qhead.store(0);
         reserve = 0;
         delete[] data;
-        data = NULL;
+        data = nullptr;
     }
 };
 
@@ -156,7 +156,7 @@ std::vector<task> tarray_temporary; // temporary array used for building
 task *tarray; // tarray used after we know the size
 
 // Mapping from hashes to status indices.
-std::map<llu, int> tmap;
+std::map<uint64_t, int> tmap;
 
 
 int tcount = 0;
@@ -178,7 +178,7 @@ void init_tarray(const std::vector<task> &taq) {
 
 void destroy_tarray() {
     delete[] tarray;
-    tarray = NULL;
+    tarray = nullptr;
 }
 
 void init_tstatus() {
@@ -272,7 +272,7 @@ void reverse_tarray_tstatus() {
     }
 
     task *tarray_new = new task[tcount];
-    std::atomic<task_status> *tstatus_new = new std::atomic<task_status>[tcount];
+    auto *tstatus_new = new std::atomic<task_status>[tcount];
     for (int i = 0; i < tcount; i++) {
         tarray_new[perm[i]] = tarray[i];
         tstatus_new[perm[i]].store(tstatus[i]);
