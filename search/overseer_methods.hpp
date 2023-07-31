@@ -1,6 +1,4 @@
-#ifndef OVERSEER_METHODS_HPP
-#define OVERSEER_METHODS_HPP
-
+#pragma once
 #include "worker.hpp"
 #include "overseer.hpp"
 #include "heur_alg_knownsum.hpp"
@@ -327,5 +325,3 @@ void overseer::start() {
 
 
 }
-
-#endif // OVERSEER_METHODS

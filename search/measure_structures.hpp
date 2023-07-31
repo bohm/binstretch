@@ -1,6 +1,4 @@
-#ifndef _MEASURE_STRUCTURES
-#define _MEASURE_STRUCTURES
-
+#pragma once
 #include "common.hpp"
 
 // Measurements for the caching structures. Need to be atomic, as they are accessed
@@ -252,4 +250,3 @@ measure_attr g_meas;
 // In theory, overseer could use the g_meas above, but we store it separately in memory
 // to future-proof for a potential MPI-less implementation, where only one process spawns overseers as threads.
 measure_attr ov_meas;
-#endif

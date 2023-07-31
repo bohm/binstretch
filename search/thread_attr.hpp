@@ -1,6 +1,4 @@
-#ifndef _THREAD_ATTR_HPP
-#define _THREAD_ATTR_HPP 1
-
+#pragma once
 #include "common.hpp"
 #include "binconf.hpp"
 #include "optconf.hpp"
@@ -36,6 +34,3 @@ public:
         delete[] loadht;
     }
 };
-
-
-#endif

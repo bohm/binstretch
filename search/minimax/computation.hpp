@@ -1,7 +1,5 @@
-#ifndef MINIMAX_COMPUTATION_HPP
-#define MINIMAX_COMPUTATION_HPP
+#pragma once
 // dynprog global variables and other attributes separate for each thread.
-
 #include "assumptions.hpp"
 #include "../search/thread_attr.hpp"
 #include "../dag/dag.hpp"
@@ -54,12 +52,12 @@ public:
     int task_id;
     // largest item since computation root (excluding sequencing and such)
     int largest_since_computation_root = 0;
-    // previous maxmimum_feasible
+    // previous maximum_feasible
     bin_int prev_max_feasible = S;
     uint64_t iterations = 0;
     int expansion_depth = 0;
     // root of the current minimax evaluation
-    binconf *explore_root = NULL;
+    binconf *explore_root = nullptr;
     uint64_t explore_roothash = 0;
 
     std::chrono::time_point<std::chrono::system_clock> eval_start;
@@ -68,7 +66,7 @@ public:
     bool current_overdue = false;
     bool heuristic_regime = false;
     int heuristic_starting_depth = 0;
-    heuristic_strategy *current_strategy = NULL;
+    heuristic_strategy *current_strategy = nullptr;
     uint64_t overdue_tasks = 0;
     int regrow_level = 0;
     bool evaluation = true;
@@ -140,5 +138,3 @@ public:
 				 const std::vector<bin_int>& seq);
     */
 };
-
-#endif

@@ -31,7 +31,7 @@ void cleanup_winning_subtree_adv(dag *d, adversary_vertex *v) {
 
     v->visited = true;
 
-    std::list<adv_outedge *>::iterator it = v->out.begin();
+    auto it = v->out.begin();
     // We do the actual removal in this loop, so we can remove edges easily.
     while (it != v->out.end()) {
         algorithm_vertex *down = (*it)->to;
@@ -69,7 +69,7 @@ void cleanup_winning_subtree_alg(dag *d, algorithm_vertex *v) {
 
     v->visited = true;
 
-    std::list<alg_outedge *>::iterator it = v->out.begin();
+    auto it = v->out.begin();
     // We do the actual removal in this loop, so we can remove edges easily.
     while (it != v->out.end()) {
         adversary_vertex *down = (*it)->to;

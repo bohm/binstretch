@@ -249,11 +249,10 @@ public:
     }
 };
 
-heuristic_strategy::~heuristic_strategy() {
-}
+heuristic_strategy::~heuristic_strategy() = default;
 
 
-// if a maximalization procedure gets an infeasible configuration, it returns MAX_INFEASIBLE.
+// if a maximization procedure gets an infeasible configuration, it returns MAX_INFEASIBLE.
 const bin_int MAX_INFEASIBLE = -1;
 // when a heuristic is unable to pack (but the configuration still may be feasible)
 const bin_int MAX_UNABLE_TO_PACK = -2;

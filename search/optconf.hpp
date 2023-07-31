@@ -1,8 +1,6 @@
+#pragma once
 #include "common.hpp"
 #include <cinttypes>
-
-#ifndef _OPTCONF_HPP
-#define _OPTCONF_HPP 1
 
 // an extension of binconf that allows for easy unassignment
 // used by adversary to switch between onlinefit and bestfit
@@ -237,4 +235,3 @@ int main(void)
     o.print();
 }
 */
-#endif

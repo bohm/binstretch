@@ -1,6 +1,4 @@
-#ifndef _SAPLINGS_HPP
-#define _SAPLINGS_HPP 1
-
+#pragma once
 #include "dag/dag.hpp"
 
 // Helper functions on the DAG which have to do with saplings.
@@ -40,7 +38,7 @@ public:
         }
     }
 
-    void print_sapling(FILE *stream) {
+    void print_sapling(FILE *stream) const {
         if (!expansion) {
             fprintf(stream, "Eval. sapling ");
         } else {
@@ -53,6 +51,3 @@ public:
         fprintf(stream, "\n");
     }
 };
-
-
-#endif

@@ -115,7 +115,6 @@ add_executable(clion
         search/strategy.hpp
         search/tasks.hpp
         search/thread_attr.hpp
-        search/tree_print.hpp
         search/updater.hpp
         search/worker.hpp
         search/worker_methods.hpp)

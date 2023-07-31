@@ -1,6 +1,4 @@
-#ifndef _PERFORMANCE_TIMER_HPP
-#define _PERFORMANCE_TIMER_HPP 1
-
+#pragma once
 // Performance measurements for the queen thread.
 class performance_timer {
 private:
@@ -63,5 +61,3 @@ public:
         print_if<PROGRESS>("Parallel phase duration: %Lfs.\n", parallel_phase_time.count());
     }
 };
-
-#endif
