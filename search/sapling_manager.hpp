@@ -1,5 +1,4 @@
-#ifndef _SAPLING_MANAGER_HPP
-#define _SAPLING_MANAGER_HPP 1
+#pragma once
 
 // A class to facilitate looking for saplings (jobs) in the DAG.
 // You can just call find sapling to find the first job to do (evaluate or expand).
@@ -230,5 +229,3 @@ uint64_t sapling_manager::count_saplings() {
 
     }
 }
-
-#endif

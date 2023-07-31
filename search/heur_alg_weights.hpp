@@ -1,5 +1,4 @@
-#ifndef _HEUR_ALG_WEIGHTS
-#define _HEUR_ALG_WEIGHTS
+#pragma once
 
 // A third version of the known sum heuristic that introduces weighting functions.
 // Basic idea: every item has some weight, OPT cannot pack more than k*m weight overall.
@@ -216,5 +215,3 @@ int query_weightsum_heur(uint64_t loadhash, int cur_weight) {
         return search->second;
     }
 }
-
-#endif // _HEUR_ALG_WEIGHTS

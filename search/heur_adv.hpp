@@ -1,5 +1,4 @@
-#ifndef _HEUR_ADV_HPP
-#define _HEUR_ADV_HPP 1
+#pragma once
 
 #include <chrono>
 #include <algorithm>
@@ -271,6 +270,3 @@ adversary_heuristics(binconf *b, dynprog_data *dpdata, measure_attr *meas, adver
 
     return std::pair(victory::uncertain, nullptr);
 }
-
-
-#endif // _HEUR_ADV_HPP 1

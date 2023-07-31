@@ -1,5 +1,4 @@
-#ifndef STRATEGIES_HEURISTICAL_HPP
-#define STRATEGIES_HEURISTICAL_HPP
+#pragma once
 
 template<minimax MODE>
 class strategy_list : public adversarial_strategy {
@@ -303,5 +302,3 @@ switch_to_heuristics(binconf *b, dynprog_data *dpdata, measure_attr *meas, adver
 
     return std::pair(victory::uncertain, nullptr);
 }
-
-#endif

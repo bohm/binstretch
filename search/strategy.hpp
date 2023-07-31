@@ -1,5 +1,4 @@
-#ifndef _STRATEGY_HPP
-#define _STRATEGY_HPP 1
+#pragma once
 
 // Adversarial strategies (nothing smart so far).
 
@@ -126,5 +125,3 @@ void exp_strategy_step(int maximum_feasible, int lower_bound, int& stepcounter, 
     step = freqs[++stepcounter];
 }
 #endif
-
-#endif // _STRATEGY_HPP

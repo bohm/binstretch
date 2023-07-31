@@ -1,5 +1,4 @@
-#ifndef _DAG_CLONING_HPP
-#define _DAG_CLONING_HPP 1
+#pragma once
 
 // Creating a copy of a subgraph in a DAG -- either a true subdag, or
 // subdag converted into a tree.
@@ -130,6 +129,3 @@ void dag::clone_subdag(dag *processing, algorithm_vertex *vertex_to_process,
         }
     }
 }
-
-
-#endif // _DAG_CLONING_HPP

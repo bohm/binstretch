@@ -1,5 +1,4 @@
-#ifndef MINIMAX_SEQUENCING_HPP
-#define MINIMAX_SEQUENCING_HPP
+#pragma once
 
 // Sequencing routines -- generating a fixed tree as the start of the search.
 
@@ -306,5 +305,3 @@ victory sequencing_algorithm(binconf *b, int k, unsigned int depth, computation<
 
     return r;
 }
-
-#endif // _SEQUENCING_HPP

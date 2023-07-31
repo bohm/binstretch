@@ -1,5 +1,4 @@
-#ifndef _DAG_CONSISTENCY_HPP
-#define _DAG_CONSISTENCY_HPP 1
+#pragma once
 
 #include "../dag/dag.hpp"
 
@@ -171,5 +170,3 @@ void consistency_checker::consistency_traversal_rec(algorithm_vertex *alg_v) {
         consistency_traversal_rec(e->to);
     }
 }
-
-#endif

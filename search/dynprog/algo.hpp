@@ -1,5 +1,4 @@
-#ifndef _DYNPROG_ALGO_HPP
-#define _DYNPROG_ALGO_HPP 1
+#pragma once
 
 #include <chrono>
 #include <algorithm>
@@ -228,5 +227,3 @@ std::vector<loadconf> dynprog(const binconf &conf, dynprog_data *dpdata) {
     ret = *poldq;
     return ret;
 }
-
-#endif // _DYNPROG_ALGO_HPP

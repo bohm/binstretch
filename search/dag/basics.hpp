@@ -1,6 +1,4 @@
-#ifndef _DAG_BASICS_HPP
-#define _DAG_BASICS_HPP 1
-
+#pragma once
 
 // Short and basic methods for the dag class and vertex/edge classes.
 
@@ -419,5 +417,3 @@ bool adversary_vertex::nonfresh_descendants() {
     }
     return false;
 }
-
-#endif

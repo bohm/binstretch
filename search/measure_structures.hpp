@@ -1,4 +1,5 @@
 #pragma once
+
 #include "common.hpp"
 
 // Measurements for the caching structures. Need to be atomic, as they are accessed

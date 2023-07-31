@@ -1,3 +1,5 @@
+#pragma once
+
 #include <cstdio>
 
 #include "../common.hpp"
@@ -5,8 +7,6 @@
 
 // Implementations of specific caches, using the interface defined in cache_generic.hpp.
 
-#ifndef _CACHE_STATE_HPP
-#define _CACHE_STATE_HPP 1
 
 class conf_el {
 public:
@@ -284,5 +284,3 @@ void adv_cache_encache_alg_win(const binconf *d) {
     new_item.set(bchash, 1);
     adv_cache->insert(new_item, bchash);
 }
-
-#endif // _CACHE_STATE_HPP

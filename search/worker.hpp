@@ -1,5 +1,4 @@
-#ifndef _WORKER_HPP
-#define _WORKER_HPP 1
+#pragma once
 
 #include <condition_variable>
 
@@ -32,5 +31,3 @@ public:
 
     void start(worker_flags *assigned_flags);
 };
-
-#endif // WORKER

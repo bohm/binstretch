@@ -1,4 +1,5 @@
 #pragma once
+
 // Performance measurements for the queen thread.
 class performance_timer {
 private:

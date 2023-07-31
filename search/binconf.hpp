@@ -1,4 +1,5 @@
 #pragma once
+
 #include "common.hpp"
 #include "functions.hpp"
 #include "positional.hpp"

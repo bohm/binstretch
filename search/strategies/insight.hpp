@@ -1,5 +1,4 @@
-#ifndef STRATEGIES_INSIGHT_HPP
-#define STRATEGIES_INSIGHT_HPP
+#pragma once
 
 template<mm_state MODE>
 class thread_attr; // forward declaration.
@@ -95,5 +94,3 @@ public:
 
     void undo_adv_move();
 };
-
-#endif // STRATEGIES_INSIGHT_HPP

@@ -1,5 +1,4 @@
-#ifndef MINIMAX_RECURSION_HPP
-#define MINIMAX_RECURSION_HPP 1
+#pragma once
 
 // Minimax recursive routines.
 
@@ -851,5 +850,3 @@ victory generate(sapling start_sapling,
     victory ret = comp->adversary(start_sapling.root, NULL);
     return ret;
 }
-
-#endif // _MINIMAX_HPP

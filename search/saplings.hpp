@@ -1,4 +1,5 @@
 #pragma once
+
 #include "dag/dag.hpp"
 
 // Helper functions on the DAG which have to do with saplings.

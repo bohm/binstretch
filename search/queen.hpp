@@ -1,5 +1,4 @@
-#ifndef _QUEEN_HPP
-#define _QUEEN_HPP 1
+#pragma once
 
 #include <atomic>
 
@@ -56,4 +55,3 @@ public:
 // A global pointer to *the* queen. It is NULL everywhere
 // except on the main two threads.
 queen_class *queen = NULL;
-#endif

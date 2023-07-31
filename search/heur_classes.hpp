@@ -1,5 +1,4 @@
-#ifndef HEUR_CLASSES_HPP
-#define HEUR_CLASSES_HPP 1
+#pragma once
 
 #include <string>
 #include <sstream>
@@ -223,5 +222,3 @@ public:
         return ret;
     }
 };
-
-#endif

@@ -1,4 +1,5 @@
 #pragma once
+
 #include "worker.hpp"
 #include "overseer.hpp"
 #include "heur_alg_knownsum.hpp"

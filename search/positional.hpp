@@ -1,5 +1,4 @@
-#ifndef _POSITIONAL_HPP
-#define _POSITIONAL_HPP
+#pragma once
 
 #include "common.hpp"
 
@@ -47,6 +46,3 @@ uint64_t loadhash_last_from_position(uint64_t *zl, int pos) {
 
     return ret;
 }
-
-
-#endif

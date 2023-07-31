@@ -1,5 +1,4 @@
-#ifndef _DAG_PARTIAL_HPP
-#define _DAG_PARTIAL_HPP 1
+#pragma once
 
 #include <optional>
 
@@ -351,5 +350,3 @@ dag *partial_dag::finalize() {
 
     return d;
 }
-
-#endif

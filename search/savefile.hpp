@@ -1,5 +1,4 @@
-#ifndef _SAVEFILE_HPP
-#define _SAVEFILE_HPP 1
+#pragma once
 
 #include "common.hpp"
 #include "filetools.hpp"
@@ -50,6 +49,3 @@ void savefile(dag *d, adversary_vertex *r) {
     print_if<PROGRESS>("Printing the game graph in DOT format into %s.\n", filename.c_str());
     savefile(filename.c_str(), d, r);
 }
-
-
-#endif // _SAVEFILE_HPP

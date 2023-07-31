@@ -1,5 +1,4 @@
-#ifndef _DAG_CLASS_HPP
-#define _DAG_CLASS_HPP 1
+#pragma once
 
 #include <cstdio>
 #include <cstdlib>
@@ -323,5 +322,3 @@ public:
 
     void print(FILE *stream, bool debug);
 };
-
-#endif // _DAG_CLASS_HPP

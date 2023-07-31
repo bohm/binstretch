@@ -15,8 +15,7 @@
 #include <array>
 #include <unordered_set>
 #include <numeric>
-#define __STDC_FORMAT_MACROS
-#include <inttypes.h>
+#include <cinttypes>
 
 #include "constants.hpp" // Non-changeable system constants and recommendations.
 #include "small_classes.hpp" // Small classes and enum classes.

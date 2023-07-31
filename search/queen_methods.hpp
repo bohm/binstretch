@@ -1,5 +1,4 @@
-#ifndef _QUEEN_METHODS_HPP
-#define _QUEEN_METHODS_HPP 1
+#pragma once
 
 #include <malloc.h>
 
@@ -481,6 +480,3 @@ int queen_class::start() {
     delete qdag;
     return ret;
 }
-
-
-#endif // _QUEEN_METHODS_HPP

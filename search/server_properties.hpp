@@ -1,5 +1,4 @@
-#ifndef _SERVER_PROPERTIES_HPP
-#define _SERVER_PROPERTIES_HPP 1
+#pragma once
 
 #include <cstring>
 
@@ -19,6 +18,3 @@ std::tuple<unsigned int, unsigned int, unsigned int> server_properties(const cha
     }
 
 }
-
-
-#endif

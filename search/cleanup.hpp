@@ -1,4 +1,5 @@
 #pragma once
+
 #include "dag/consistency.hpp"
 
 // Functions for DAG cleanup after one phase of evaluation or expansion is done.

@@ -1,5 +1,4 @@
-#ifndef _LOADFILE_HPP
-#define _LOADFILE_HPP 1
+#pragma once
 
 #include <optional>
 #include <cstring>
@@ -203,6 +202,3 @@ partial_dag *loadfile(const char *filename) {
     fclose(fin);
     return pd;
 }
-
-
-#endif // _LOADFILE_HPP

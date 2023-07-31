@@ -1,5 +1,4 @@
-#ifndef STRATEGIES_ABSTRACT_HPP
-#define STRATEGIES_ABSTRACT_HPP
+#pragma once
 
 // A virtual class that sets the methods required for an adversarial strategy.
 // Essentially an interface.
@@ -30,5 +29,3 @@ virtual std::string print(const binconf *b) = 0;
 virtual std::vector<int> contents() = 0;
 
 };
-
-#endif

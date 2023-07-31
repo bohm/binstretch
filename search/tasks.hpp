@@ -1,8 +1,7 @@
+#pragma once
+
 /* This header file contains the task generation code and the task
 queue update code. */
-
-#ifndef _TASKS_HPP
-#define _TASKS_HPP 1
 
 #include <cstdio>
 #include <vector>
@@ -441,4 +440,3 @@ victory completion_check(uint64_t hash) {
 }
 
 */
-#endif

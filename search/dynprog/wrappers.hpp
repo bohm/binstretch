@@ -1,5 +1,4 @@
-#ifndef _DYNPROG_WRAPPERS_HPP
-#define _DYNPROG_WRAPPERS_HPP 1
+#pragma once
 
 #include "../dynprog/algo.hpp"
 
@@ -170,6 +169,3 @@ std::pair<bool, fullconf> dynprog_feasible_with_output(const binconf &conf) {
     // Generally should not happen, but we return an object anyway.
     return std::make_pair(false, ret);
 }
-
-
-#endif // _DYNPROG_WRAPPERS_HPP

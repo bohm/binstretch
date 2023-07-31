@@ -1,5 +1,4 @@
-#ifndef LAYERS_HPP
-#define LAYERS_HPP
+#pragma once
 // Layer-by-layer (topological) traversal.
 
 // Aliases for lists of vertices.
@@ -91,5 +90,3 @@ void do_nothing(int reldepth, adv_list &curlist) {
 
 void do_nothing(int reldepth, alg_list &curlist) {
 }
-
-#endif

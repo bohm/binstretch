@@ -1,5 +1,4 @@
-#ifndef DAG_PRINT
-#define DAG_PRINT
+#pragma once
 
 #include "../dynprog/wrappers.hpp"
 
@@ -404,5 +403,3 @@ void dag::print_path_to_root(algorithm_vertex *alg_v) {
     adv_outedge *e = *(alg_v->in.begin());
     print_path_to_root(e->from);
 }
-
-#endif

@@ -1,3 +1,4 @@
+#pragma once
 #include <cstdio>
 
 #include "common.hpp"
@@ -9,9 +10,6 @@
 // Our game is somewhat modified -- Player 1 is trying to win using capacity
 // R-1, not R. If Player 1 needs to use R in one bin each time, then R/S is a
 // lower bound. Therefore, in the rest of the code, ALPHA and R have to be tweaked.
-
-#ifndef _GS_H
-#define _GS_H 1
 
 // All functions return 1 if player 1 (algorithm) wins, -1 otherwise.
 
@@ -516,6 +514,3 @@ int gsheuristic(binconf *b, int k, measure_attr *meas) {
     MEASURE_ONLY(meas->gsheurmiss++);
     return -1;
 }
-
-
-#endif // _GS_H

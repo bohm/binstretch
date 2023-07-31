@@ -1,5 +1,4 @@
-#ifndef STRATEGIES_BASIC_HPP
-#define STRATEGIES_BASIC_HPP
+#pragma once
 
 template<minimax MODE>
 class adversarial_strategy_basic
@@ -68,5 +67,3 @@ public:
         return std::vector<int>();
     }
 };
-
-#endif

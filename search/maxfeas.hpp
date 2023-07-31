@@ -1,5 +1,4 @@
-#ifndef _MAXFEAS_HPP
-#define _MAXFEAS_HPP 1
+#pragma once
 
 #include "common.hpp"
 #include "dynprog/algo.hpp"
@@ -238,5 +237,3 @@ bin_int maximum_feasible(binconf *b, const int depth, const bin_int cannot_send_
     comp->maxfeas_return_point = 7;
     return maximum_feasible;
 }
-
-#endif // _MAXFEAS_HPP

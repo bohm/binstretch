@@ -1,8 +1,7 @@
+#pragma once
+
 #include <cstdio>
 #include <climits>
-
-#ifndef _CACHE_GUAR_LOCKS
-#define _CACHE_GUAR_LOCKS
 
 // Implementation of a guarantee cache with large entries that store the
 // whole itemlists. First, a hash is compared, and if it is matched, a
@@ -270,5 +269,3 @@ void guar_cache_locks::analysis() {
         }
     }
 }
-
-#endif // _CACHE_DP_LOCKS_HPP

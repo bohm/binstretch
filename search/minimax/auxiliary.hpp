@@ -1,5 +1,4 @@
-#ifndef AUX_MINIMAX_HPP
-#define AUX_MINIMAX_HPP
+#pragma once
 
 // Auxiliary functions that make the minimax code cleaner.
 
@@ -282,5 +281,3 @@ void computation<MODE, MINIBS_SCALE>::print_uncertain_moves() {
 
     fprintf(stderr, "}");
 }
-
-#endif // AUX_MINIMAX_HPP

@@ -1,5 +1,1 @@
-#ifndef STRATEGIES_INSIGHT_METHODS
-#define STRATEGIES_INSIGHT_METHODS
-
-
-#endif 
+#pragma once
