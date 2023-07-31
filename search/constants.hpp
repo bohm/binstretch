@@ -8,24 +8,26 @@
 
 #ifndef IBINS
 #error "The macro constant IBINS needs to be passed by the compiler!"
-#define IBINS 2 // This line is a hack to make G++ spit out only the error above.
+#define IBINS 3 // This line is a hack to make G++ spit out only the error above.
 #endif
 
 #ifndef IR
 #error "The macro constant IR needs to be passed by the compiler!"
-#define IR 4 // ditto
+#define IR 19 // ditto
 #endif
 
 #ifndef IS
 #error "The macro constant IS needs to be passed by the compiler!"
-#define IS 3 // ditto 
+#define IS 14 // ditto
 #endif
 
 
 // To have the code buildable on Ubuntu 18.04, we include this
 // compiler-dependent hack.
 #if __has_include(<filesystem>)
+
 #include <filesystem>
+
 namespace fs = std::filesystem;
 #else
 #include <experimental/filesystem>
@@ -75,12 +77,12 @@ const int GS6 = 9;
 const int GSFF = 10;
 
 const std::array<std::string, SITUATIONS> gsnames = {"GS1", "GS1MOD", "GS2", "GS2VARIANT", "GS3",
-    "GS3VARIANT", "GS4", "GS4VARIANT", "GS5", "GS6", "GSFF"};
+                                                     "GS3VARIANT", "GS4", "GS4VARIANT", "GS5", "GS6", "GSFF"};
 
 
 const int ZOBRIST_LOAD_BLOCKSIZE = 5;
-const int ZOBRIST_LOAD_BLOCKS = (IBINS-1)/ZOBRIST_LOAD_BLOCKSIZE + 1;
-const int ZOBRIST_LAST_BLOCKSIZE = (IBINS-1) % ZOBRIST_LOAD_BLOCKSIZE + 1;
+const int ZOBRIST_LOAD_BLOCKS = (IBINS - 1) / ZOBRIST_LOAD_BLOCKSIZE + 1;
+const int ZOBRIST_LAST_BLOCKSIZE = (IBINS - 1) % ZOBRIST_LOAD_BLOCKSIZE + 1;
 
 // modes for pushing into dynprog cache
 const int HEURISTIC = 0;
@@ -107,13 +109,13 @@ const int TASK_RECEIVED = 1;
 #define LARGEST_WITH_WEIGHT quintile_largest_with_weight
 
 // maximum number of items
-constexpr bin_int MAX_ITEMS = S*BINS;
+constexpr bin_int MAX_ITEMS = S * BINS;
 
 constexpr int MAX_WEIGHT = 4;
 constexpr int MAX_TOTAL_WEIGHT = MAX_WEIGHT * IBINS;
 
-constexpr int ZI_SIZE = (S+1)*(MAX_ITEMS+1);
-constexpr int ZL_SIZE = (BINS+1)*(R+1);
+constexpr int ZI_SIZE = (S + 1) * (MAX_ITEMS + 1);
+constexpr int ZL_SIZE = (BINS + 1) * (R + 1);
 
 // Plugging in some common monotonicity values.
 
@@ -163,7 +165,7 @@ const int RECOMMENDED_MONOTONICITY = 3;
 #elif IBINS >= 7 && IR == 15 && IS == 11
 const int RECOMMENDED_MONOTONICITY = 5;
 #else
-const int RECOMMENDED_MONOTONICITY = IS-1;
+const int RECOMMENDED_MONOTONICITY = IS - 1;
 #endif
 
 

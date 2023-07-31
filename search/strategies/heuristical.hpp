@@ -1,105 +1,96 @@
 #ifndef STRATEGIES_HEURISTICAL_HPP
 #define STRATEGIES_HEURISTICAL_HPP
 
-template <minimax MODE> class strategy_list : public adversarial_strategy
-{
+template<minimax MODE>
+class strategy_list : public adversarial_strategy {
     std::vector<int> itemlist;
     unsigned int position = 0;
-    
-    void init(const binconf *b, const std::vector<int>& list)
-	{
-	    type = heuristic::large_item;
-	    itemlist = list;
-	}
-    
+
+    void init(const binconf *b, const std::vector<int> &list) {
+        type = heuristic::large_item;
+        itemlist = list;
+    }
+
     // Parse the string and get the itemlist from it.
     // We currently use the "slow" stringstreams, but this is never used
     // in the main search code and thus should be fine.
-    void init_from_string(const binconf *b, const std::string& description)
-	{
-	    type = heuristic::large_item;
-	    std::vector<int> numerical_list;
-	    std::string _;
-	    std::istringstream hsstream(description);
-	    while (!hsstream.eof())
-	    {
-		int next = 0;
-		hsstream >> next;
-		numerical_list.push_back(next);
-		getline(hsstream, _, ',');
-	    }
+    void init_from_string(const binconf *b, const std::string &description) {
+        type = heuristic::large_item;
+        std::vector<int> numerical_list;
+        std::string _;
+        std::istringstream hsstream(description);
+        while (!hsstream.eof()) {
+            int next = 0;
+            hsstream >> next;
+            numerical_list.push_back(next);
+            getline(hsstream, _, ',');
+        }
 
-	    init(b, numerical_list);
-	}
+        init(b, numerical_list);
+    }
 
     // Create a printable form of the strategy based on the current configuration.
-    std::string print(const binconf *_)
-	{
-	    std::ostringstream os;
-	    bool first = true;
+    std::string print(const binconf *_) {
+        std::ostringstream os;
+        bool first = true;
 
-	    for (unsigned int i = position; i < itemlist.size(); i++)
-	    {
-		if(first)
-		{
-		    os << itemlist[i];
-		    first = false;
-		} else {
-		    os << ","; os << itemlist[i];
-		}
-	    }
-	    return os.str();
-	}
+        for (unsigned int i = position; i < itemlist.size(); i++) {
+            if (first) {
+                os << itemlist[i];
+                first = false;
+            } else {
+                os << ",";
+                os << itemlist[i];
+            }
+        }
+        return os.str();
+    }
 
 
-    std::vector<int> contents()
-	{
-	    std::vector<int> ret;
-	    for (unsigned int i = position; i < itemlist.size(); i++)
-	    {
-		ret.push_back(itemlist[i]);
-	    }
-	    return ret;
-	}
+    std::vector<int> contents() {
+        std::vector<int> ret;
+        for (unsigned int i = position; i < itemlist.size(); i++) {
+            ret.push_back(itemlist[i]);
+        }
+        return ret;
+    }
 
     // Does not change the strategy.
-    std::pair<victory, adversarial_strategy<MODE> * > heuristics(const binconf *b, computation<MODE> *comp)
-	{
-	    return std::pair<victory, adversarial_strategy<MODE> * >(victory::adv, nullptr);
-	}
-    
-    // No calculation needed.
-    void calcs(const binconf *b, computation<MODE> *comp) {}
-    void undo_calcs() {}
-    // The only valid move is the single item in the list.
-    std::vector<int> moveset(const binconf *b)
-	{
-	    std::vector<int> ret;
-	    ret.push_back(itemlist[position]);
-	    return ret;
-	}
-    void adv_move(const binconf *b, int item)
-	{
-	    position++; 
-	}
+    std::pair<victory, adversarial_strategy < MODE> * >
 
-    void undo_adv_move()
-	{
-	    position--;
-	}
+    heuristics(const binconf *b, computation <MODE> *comp) {
+        return std::pair < victory, adversarial_strategy < MODE > * > (victory::adv, nullptr);
+    }
+
+    // No calculation needed.
+    void calcs(const binconf *b, computation <MODE> *comp) {}
+
+    void undo_calcs() {}
+
+    // The only valid move is the single item in the list.
+    std::vector<int> moveset(const binconf *b) {
+        std::vector<int> ret;
+        ret.push_back(itemlist[position]);
+        return ret;
+    }
+
+    void adv_move(const binconf *b, int item) {
+        position++;
+    }
+
+    void undo_adv_move() {
+        position--;
+    }
 }
 
 // We actually disable the Five-Nine heuristics for now until
 // we get the rest of the code working.
 
-int first_with_load(const binconf& b, int threshold)
-{
-    for (int i = BINS; i >= 1; i--)
-    {
-	if( b.loads[i] >= threshold)
-	{
-	    return i;
-	}
+int first_with_load(const binconf &b, int threshold) {
+    for (int i = BINS; i >= 1; i--) {
+        if (b.loads[i] >= threshold) {
+            return i;
+        }
     }
 
     return -1;
@@ -112,8 +103,7 @@ int first_with_load(const binconf& b, int threshold)
 // (9,k) -- Send k nines and you will reach a win;
 // (14,l) -- Send l 14s and you will reach a win.
 
-std::pair<int, int> fn_should_send(const binconf *current_conf)
-{
+std::pair<int, int> fn_should_send(const binconf *current_conf) {
     binconf c(*current_conf);
 
     // This should be true by the properties of the heuristic,
@@ -121,221 +111,194 @@ std::pair<int, int> fn_should_send(const binconf *current_conf)
     // we do not test it.
 
     // assert(c.loads[BINS] >= 1);
-    
+
     // Find first bin with load at least five.
     int above_five = first_with_load(c, 5);
     // If you can send BINS - above_five + 1 items of size 14, do so.
-    if (pack_compute(c, 14, BINS - above_five + 1))
-    {
-	return std::pair(14, BINS - above_five + 1);
+    if (pack_compute(c, 14, BINS - above_five + 1)) {
+        return std::pair(14, BINS - above_five + 1);
     }
 
     // If not, find first bin above ten.
-    int above_ten = first_with_load(c,10);
+    int above_ten = first_with_load(c, 10);
 
     // If there is one, just send nines as long as you can.
 
     // Based on the heuristic, we should be able to send BINS * nines
     // when this first happens, and in general we should always be able
     // to send BINS - above_ten + 1 nines.
-    if (above_ten != -1)
-    {
-	// assert(pack_query_compute(c, 9, BINS - above_ten + 1));
-	return std::pair(9, BINS- above_ten + 1);
+    if (above_ten != -1) {
+        // assert(pack_query_compute(c, 9, BINS - above_ten + 1));
+        return std::pair(9, BINS - above_ten + 1);
     }
 
     // If there is no bin above ten and we cannot send 14's,
     // we must still be sending 5's.
 
-    return std::pair(5,1);
+    return std::pair(5, 1);
 }
 
-class strategy_fn : public adversarial_strategy
-{
+class strategy_fn : public adversarial_strategy {
 private:
     int fives = 0;
     int item_to_send = 0;
-public:    
-    void init(const std::vector<int>& list)
-	{
-	    if (list.size() != 1)
-	    {
-		fprintf(stderr, "Heuristic strategy FN is given a list of size %zu.\n",list.size());
-		assert(list.size() == 1);
-	    }
+public:
+    void init(const std::vector<int> &list) {
+        if (list.size() != 1) {
+            fprintf(stderr, "Heuristic strategy FN is given a list of size %zu.\n", list.size());
+            assert(list.size() == 1);
+        }
 
-	    if (list[0] < 1)
-	    {
-		fprintf(stderr, "Heuristic strategy FN is given %d fives as hint.\n", list[0]);
-		assert(list[0] >= 1);
-	    }
-	    fives = list[0];
-	}
+        if (list[0] < 1) {
+            fprintf(stderr, "Heuristic strategy FN is given %d fives as hint.\n", list[0]);
+            assert(list[0] >= 1);
+        }
+        fives = list[0];
+    }
 
-    void set_fives(int f)
-	{
-	    fives = f;
-	}
-    
-    heuristic_strategy* clone()
-	{
-	    heuristic_strategy_fn *copy = new heuristic_strategy_fn();
-	    copy->set_fives(fives);
-	    return copy;
-	}
- 
-    void init_from_string(const std::string& heurstring)
-	{
-	    int f = 0;
-	    sscanf(heurstring.c_str(), "FN(%d)", &f);
-	    if (f <= 0)
-	    {
-		fprintf(stderr, "Error parsing the string %s to build a FN strategy.\n", heurstring.c_str());
-		assert(f > 0);
-	    }
-	    fives = f;
-	}
+    void set_fives(int f) {
+        fives = f;
+    }
+
+    heuristic_strategy *clone() {
+        heuristic_strategy_fn *copy = new heuristic_strategy_fn();
+        copy->set_fives(fives);
+        return copy;
+    }
+
+    void init_from_string(const std::string &heurstring) {
+        int f = 0;
+        sscanf(heurstring.c_str(), "FN(%d)", &f);
+        if (f <= 0) {
+            fprintf(stderr, "Error parsing the string %s to build a FN strategy.\n", heurstring.c_str());
+            assert(f > 0);
+        }
+        fives = f;
+    }
 
 // We ignore the unused variable _ warning because it is perfectly fine.
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-variable"
 
-    void calcs(const binconf *b, computation<MODE> *comp)
-	{
-	    auto [item, _] = fn_should_send(current_conf);
-	    
+    void calcs(const binconf *b, computation <MODE> *comp) {
+        auto [item, _] = fn_should_send(current_conf);
 
-	}
-    int next_item(const binconf *current_conf)
-	{
-	    auto [item, _] = fn_should_send(current_conf);
 
-	    if (item == 5)
-	    {
-		assert(relative_depth <= fives);
-	    }
-	    
-	    return item;
-	}
+    }
+
+    int next_item(const binconf *current_conf) {
+        auto [item, _] = fn_should_send(current_conf);
+
+        if (item == 5) {
+            assert(relative_depth <= fives);
+        }
+
+        return item;
+    }
+
 #pragma GCC diagnostic pop
 
-    std::string print(const binconf *current_conf)
-	{
-	    std::ostringstream os;
-	    
-	    auto [item, multiplicity] = fn_should_send(current_conf);
+    std::string print(const binconf *current_conf) {
+        std::ostringstream os;
 
-	    // For backwards compatibility, in the cases that we should send 9 or 14,
-	    // we actually print the state as "large item heuristic". This should not
-	    // be a problem, because it is equivalent.
-	    if (item == 5)
-	    {
-		os << "FN(" << fives << ")";
-	    } else
-	    {
-		bool first = true;
-		while (multiplicity > 0)
-		{
-		    if(first)
-		    {
-			os << item;
-			first = false;
-		    } else {
-			os << ","; os << item;
-		    }
-		    multiplicity--;
-		}
-	    }
-	    return os.str();
-	}
+        auto [item, multiplicity] = fn_should_send(current_conf);
+
+        // For backwards compatibility, in the cases that we should send 9 or 14,
+        // we actually print the state as "large item heuristic". This should not
+        // be a problem, because it is equivalent.
+        if (item == 5) {
+            os << "FN(" << fives << ")";
+        } else {
+            bool first = true;
+            while (multiplicity > 0) {
+                if (first) {
+                    os << item;
+                    first = false;
+                } else {
+                    os << ",";
+                    os << item;
+                }
+                multiplicity--;
+            }
+        }
+        return os.str();
+    }
 
 
-    std::vector<int> contents()
-	{
-	    std::vector<int> ret;
-	    ret.push_back(fives);
-	    return ret;
-	}
+    std::vector<int> contents() {
+        std::vector<int> ret;
+        ret.push_back(fives);
+        return ret;
+    }
 };
 
 // A transition function that can be directly called to check if a heuristic is applicable.
 // Plays the role of adversary_heuristics() previously. It will be merged into strategies themselves.
 
-template<minimax MODE> std::pair<victory, adversarial_strategy*> switch_to_heuristics(binconf *b, dynprog_data *dpdata, measure_attr *meas, adversary_vertex *adv_to_evaluate)
-{
+template<minimax MODE>
+std::pair<victory, adversarial_strategy *>
+switch_to_heuristics(binconf *b, dynprog_data *dpdata, measure_attr *meas, adversary_vertex *adv_to_evaluate) {
     //A much weaker variant of large item heuristic, but takes O(1) time.
     adversarial_strategy *str = nullptr;
-    if (b->totalload() <= S && b->loads[2] >= R-S)
-    {
-	if(MODE == minimax::generating)
-	{
-	    // Build strategy.
-	    str = new strategy_list;
-	    std::vector<int> itemlist; 
-	    for (int i = 1; i <= BINS-1; i++)
-	    {
-		itemlist.push_back(S);
-	    }
-	    str->init(itemlist);
-	    str->type = heuristic::large_item;
-	}
-	return std::pair(victory::adv, str);
+    if (b->totalload() <= S && b->loads[2] >= R - S) {
+        if (MODE == minimax::generating) {
+            // Build strategy.
+            str = new strategy_list;
+            std::vector<int> itemlist;
+            for (int i = 1; i <= BINS - 1; i++) {
+                itemlist.push_back(S);
+            }
+            str->init(itemlist);
+            str->type = heuristic::large_item;
+        }
+        return std::pair(victory::adv, str);
     }
 
-    if (LARGE_ITEM_ACTIVE && (MODE == minimax::generating || LARGE_ITEM_ACTIVE_EVERYWHERE))
-    {
-	
-	meas->large_item_calls++;
+    if (LARGE_ITEM_ACTIVE && (MODE == minimax::generating || LARGE_ITEM_ACTIVE_EVERYWHERE)) {
 
-	auto [success, heurloadconf] = large_item_heuristic(*b, dpdata);
-	if (success)
-	{
-	    meas->large_item_hits++;
+        meas->large_item_calls++;
 
-	    if (MODE == minimax::generating)
-	    {
-		// Build strategy.
-		str = new strategy_list;
-		std::vector<int> itemlist; 
-		for (unsigned int i = 1; i <= BINS; i++)
-		{
-		    if (heurloadconf.loads[i] == 0)
-		    {
-			break;
-		    } else
-		    {
-			itemlist.push_back(heurloadconf.loads[i]);
-		    }
-		}
-		str->init(itemlist);
-		str->type = heuristic::large_item;
+        auto [success, heurloadconf] = large_item_heuristic(*b, dpdata);
+        if (success) {
+            meas->large_item_hits++;
 
-	    }
-	    return std::pair(victory::adv, str);
-	}
+            if (MODE == minimax::generating) {
+                // Build strategy.
+                str = new strategy_list;
+                std::vector<int> itemlist;
+                for (unsigned int i = 1; i <= BINS; i++) {
+                    if (heurloadconf.loads[i] == 0) {
+                        break;
+                    } else {
+                        itemlist.push_back(heurloadconf.loads[i]);
+                    }
+                }
+                str->init(itemlist);
+                str->type = heuristic::large_item;
+
+            }
+            return std::pair(victory::adv, str);
+        }
     }
 
     // one heuristic specific for 19/14
-    if (S == 14 && R == 19 && FIVE_NINE_ACTIVE && (MODE == minimax::generating || FIVE_NINE_ACTIVE_EVERYWHERE))
-    {
+    if (S == 14 && R == 19 && FIVE_NINE_ACTIVE && (MODE == minimax::generating || FIVE_NINE_ACTIVE_EVERYWHERE)) {
 
-	auto [fnh, fives_to_send] = five_nine_heuristic(b, dpdata, meas);
-	meas->five_nine_calls++;
-	if (fnh)
-	{
-	    meas->five_nine_hits++;
-	    if(MODE == minimax::generating)
-	    {
-		// Build strategy.
-		std::vector<int> fvs;
-		fvs.push_back(fives_to_send);
-		
-		str = new strategy_fn;
-		str->init(fvs);
-		str->type = heuristic::five_nine;
-	    }
-	    return std::pair(victory::adv, str);
-	}
+        auto [fnh, fives_to_send] = five_nine_heuristic(b, dpdata, meas);
+        meas->five_nine_calls++;
+        if (fnh) {
+            meas->five_nine_hits++;
+            if (MODE == minimax::generating) {
+                // Build strategy.
+                std::vector<int> fvs;
+                fvs.push_back(fives_to_send);
+
+                str = new strategy_fn;
+                str->init(fvs);
+                str->type = heuristic::five_nine;
+            }
+            return std::pair(victory::adv, str);
+        }
     }
 
     return std::pair(victory::uncertain, nullptr);

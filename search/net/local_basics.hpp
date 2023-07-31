@@ -4,8 +4,7 @@
 // In the local regime, it is assumed the communicator is a global
 // structure which provides the locking mechanisms.
 
-class communicator
-{
+class communicator {
 }
-    
+
 #endif

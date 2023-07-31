@@ -10,8 +10,7 @@
 
 // A sapling is an adversary vertex which will be processed by the parallel
 // minimax algorithm (its tree will be expanded).
-class sapling
-{
+class sapling {
 public:
     adversary_vertex *root = nullptr;
     int regrow_level = 0;
@@ -20,48 +19,40 @@ public:
     bool expansion = false;
     // bool evaluation = true;
 
-    void mark_in_progress()
-	{
-	    if (!expansion)
-	    {
-		// We currently do nothing if it is just being evaluated.
-	    } else // expansion
-	    {
-		root->state = vert_state::expanding;
-	    }
-	}
+    void mark_in_progress() {
+        if (!expansion) {
+            // We currently do nothing if it is just being evaluated.
+        } else // expansion
+        {
+            root->state = vert_state::expanding;
+        }
+    }
 
-    void mark_complete()
-	{
-	    if (!expansion)
-	    {
-		root->sapling = false;
-		// We currently do nothing here.
-	    } else // if (expansion)
-	    {
-		root->state = vert_state::fixed;
-		// Note: the vertex might become finished, but a recursive function
-		// needs to be called to verify this.
-	    }
-	}
+    void mark_complete() {
+        if (!expansion) {
+            root->sapling = false;
+            // We currently do nothing here.
+        } else // if (expansion)
+        {
+            root->state = vert_state::fixed;
+            // Note: the vertex might become finished, but a recursive function
+            // needs to be called to verify this.
+        }
+    }
 
-    void print_sapling(FILE* stream)
-	{
-	    if (!expansion)
-	    {
-		fprintf(stream, "Eval. sapling ");
-	    } else
-	    {
-		fprintf(stream, "Exp. sapling ");
-	    }
+    void print_sapling(FILE *stream) {
+        if (!expansion) {
+            fprintf(stream, "Eval. sapling ");
+        } else {
+            fprintf(stream, "Exp. sapling ");
+        }
 
-	    print_binconf_stream(stream, root->bc, false);
-	    fprintf(stream, " victory: ");
-	    print(stream, root->win);
-	    fprintf(stream, "\n");
-	}
+        print_binconf_stream(stream, root->bc, false);
+        fprintf(stream, " victory: ");
+        print(stream, root->win);
+        fprintf(stream, "\n");
+    }
 };
-
 
 
 #endif

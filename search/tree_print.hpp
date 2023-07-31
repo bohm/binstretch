@@ -17,33 +17,25 @@
 
 // Game tree (directed acyclic graph) printing routines.
 
-void print_states(FILE *stream, adversary_vertex *v)
-{
+void print_states(FILE *stream, adversary_vertex *v) {
     fprintf(stream, "(");
-    
-    if (v->leaf == leaf_type::task)
-    {
-	fprintf(stream, "t");
-    } else if (v->sapling)
-    {
-	fprintf(stream, "s");
+
+    if (v->leaf == leaf_type::task) {
+        fprintf(stream, "t");
+    } else if (v->sapling) {
+        fprintf(stream, "s");
     }
 
-    if (v->state == vert_state::expandable)
-    { 
-	fprintf(stream, "E");
-    } else if (v->state == vert_state::fresh)
-    {
-	fprintf(stream, "N");
-    } else if (v->state == vert_state::fixed)
-    {
-	fprintf(stream, "F");
-    } else if (v->state == vert_state::finished)
-    {
-	fprintf(stream, "D");
-    }
-    else {
-	fprintf(stream, "?");
+    if (v->state == vert_state::expandable) {
+        fprintf(stream, "E");
+    } else if (v->state == vert_state::fresh) {
+        fprintf(stream, "N");
+    } else if (v->state == vert_state::fixed) {
+        fprintf(stream, "F");
+    } else if (v->state == vert_state::finished) {
+        fprintf(stream, "D");
+    } else {
+        fprintf(stream, "?");
     }
 
     fprintf(stream, ")");
@@ -56,59 +48,53 @@ int tstatus_id(const adversary_vertex *v);
 unsigned int unfinished_counter = 0;
 
 void print_unfinished_rec(adversary_vertex *v, bool also_print_binconf);
+
 void print_unfinished_rec(algorithm_vertex *v, bool also_print_binconf);
 
-void print_unfinished_rec(adversary_vertex *v, bool also_print_binconf)
-{
-    if (v->visited)
-    {
-	return;
+void print_unfinished_rec(adversary_vertex *v, bool also_print_binconf) {
+    if (v->visited) {
+        return;
     }
     v->visited = true;
-    if ((v->leaf == leaf_type::task) && v->win == victory::uncertain)
-    {
-	fprintf(stderr, "UNF: %d with task status id %d", unfinished_counter, tstatus_id(v));
-	if (also_print_binconf)
-	{
-	    fprintf(stderr, ": ");
-	    print_binconf<true>(v->bc);
-	} else {
-	    fprintf(stderr, ".\n");
-	}
-	unfinished_counter++;
+    if ((v->leaf == leaf_type::task) && v->win == victory::uncertain) {
+        fprintf(stderr, "UNF: %d with task status id %d", unfinished_counter, tstatus_id(v));
+        if (also_print_binconf) {
+            fprintf(stderr, ": ");
+            print_binconf<true>(v->bc);
+        } else {
+            fprintf(stderr, ".\n");
+        }
+        unfinished_counter++;
     }
 
-    for (auto& outedge: v->out) {
-	print_unfinished_rec(outedge->to, also_print_binconf);
+    for (auto &outedge: v->out) {
+        print_unfinished_rec(outedge->to, also_print_binconf);
     }
 }
 
-void print_unfinished_rec(algorithm_vertex *v, bool also_print_binconf)
-{
-    if (v->visited)
-    {
-	return;
+void print_unfinished_rec(algorithm_vertex *v, bool also_print_binconf) {
+    if (v->visited) {
+        return;
     }
     v->visited = true;
 
-    for (auto& outedge: v->out) {
-	print_unfinished_rec(outedge->to, also_print_binconf);
+    for (auto &outedge: v->out) {
+        print_unfinished_rec(outedge->to, also_print_binconf);
     }
 }
 
 
-void print_unfinished(adversary_vertex *r)
-{
+void print_unfinished(adversary_vertex *r) {
     unfinished_counter = 0;
     qdag->clear_visited();
     print_unfinished_rec(r, false);
 }
 
-void print_unfinished_with_binconf(adversary_vertex *r)
-{
+void print_unfinished_with_binconf(adversary_vertex *r) {
     unfinished_counter = 0;
     qdag->clear_visited();
     print_unfinished_rec(r, true);
 
 }
+
 #endif

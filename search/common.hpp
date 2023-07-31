@@ -1,5 +1,4 @@
 #pragma once
-
 //#define NDEBUG  // turns off all asserts
 #include <cstdio>
 #include <cstdlib>
@@ -16,7 +15,6 @@
 #include <array>
 #include <unordered_set>
 #include <numeric>
-
 #define __STDC_FORMAT_MACROS
 #include <inttypes.h>
 
@@ -76,9 +74,9 @@ constexpr bin_int monotonicity = 70;
 // const bin_int monotonicity = S-1; // Full generality.
 
 // constants used for good situations
-const int RMOD = (R-1);
-const int ALPHA = (RMOD-S);
-constexpr bin_int LOWEST_SENDABLE_LIMIT = S - monotonicity;
+const int RMOD = (R - 1);
+const int ALPHA = (RMOD - S);
+constexpr int LOWEST_SENDABLE_LIMIT = std::max(1, S - monotonicity);
 
 // Dplog, conflog -- bitwise length of indices of hash tables and lock tables.
 // ht_size = 2^conflog, dpht_size = 2^dplog.
@@ -124,13 +122,13 @@ const int BATCH_SIZE = 50;
 const int BATCH_THRESHOLD = BATCH_SIZE / 2;
 
 // sizes of the hash tables
-const llu LOADSIZE = (1ULL<<LOADLOG);
+const llu LOADSIZE = (1ULL << LOADLOG);
 
 // linear probing limit
 const int LINPROBE_LIMIT = 8;
 
 const int DEFAULT_DP_SIZE = 100000;
-const int BESTFIT_THRESHOLD = (1*S)/10;
+const int BESTFIT_THRESHOLD = (1 * S) / 10;
 
 #define POSSIBLE_TASK possible_task_mixed
 // #define POSSIBLE_TASK possible_task_depth
@@ -198,65 +196,61 @@ int thread_rank_size = 0;
 
 // defined in binconf.hpp
 class binconf;
+
 class loadconf;
 
 // This abstract class describes what ADV should do when a heuristic succeeds.
 // Its two non-abstract implementations are defined in heur_classes.hpp.
-class heuristic_strategy
-{
+class heuristic_strategy {
 public:
     heuristic type;
     int relative_depth = 0;
 
-    virtual void init(const std::vector<int>& list) = 0;
-    virtual void init_from_string(const std::string & heurstring) = 0;
-    virtual heuristic_strategy* clone() = 0;
+    virtual void init(const std::vector<int> &list) = 0;
+
+    virtual void init_from_string(const std::string &heurstring) = 0;
+
+    virtual heuristic_strategy *clone() = 0;
+
     virtual int next_item(const binconf *current_conf) = 0;
+
     virtual std::string print(const binconf *b) = 0;
+
     virtual std::vector<int> contents() = 0;
+
     virtual ~heuristic_strategy() = 0;
 
-    void increase_depth()
-	{
-	    relative_depth++;
-	}
+    void increase_depth() {
+        relative_depth++;
+    }
 
-    void decrease_depth()
-	{
-	    relative_depth--;
-	}
+    void decrease_depth() {
+        relative_depth--;
+    }
 
     // Manually set depth; we use it for cloning purposes.
-    void set_depth(int depth)
-	{
-	    relative_depth = depth;
-	}
+    void set_depth(int depth) {
+        relative_depth = depth;
+    }
 
     // Recognizes a type of heuristic from the heurstring (e.g. when reading an already produced tree).
     // Currently very trivial rules, as we only have two kinds of heuristics.
-    static heuristic recognizeType(const std::string& heurstring)
-	{
-	    if (heurstring.length() == 0)
-	    {
-		fprintf(stderr, "Currently there are no heuristic strings of length 0.");
-		exit(-1);
-	    }
-	    
-	    if (heurstring[0] == 'F')
-	    {
-		return heuristic::five_nine;
-	    } else
-	    {
-		return heuristic::large_item;
-	    }
-	}
+    static heuristic recognizeType(const std::string &heurstring) {
+        if (heurstring.length() == 0) {
+            fprintf(stderr, "Currently there are no heuristic strings of length 0.");
+            exit(-1);
+        }
+
+        if (heurstring[0] == 'F') {
+            return heuristic::five_nine;
+        } else {
+            return heuristic::large_item;
+        }
+    }
 };
 
-heuristic_strategy::~heuristic_strategy()
-{
+heuristic_strategy::~heuristic_strategy() {
 }
-
-
 
 
 // if a maximalization procedure gets an infeasible configuration, it returns MAX_INFEASIBLE.
@@ -279,39 +273,33 @@ uint64_t global_edge_counter = 0;
 /* total time spent in all threads */
 std::chrono::duration<long double> time_spent;
 
-bin_int lowest_sendable(bin_int last_item)
-{
-     return std::max(1, last_item - monotonicity);
+bin_int lowest_sendable(bin_int last_item) {
+    return std::max(1, last_item - monotonicity);
 }
 
-void print_sequence(FILE *stream, const std::vector<bin_int>& seq)
-{
-    for (const bin_int& i: seq)
-    {
-	fprintf(stream, "%" PRIi16 " ", i); 
+void print_sequence(FILE *stream, const std::vector<bin_int> &seq) {
+    for (const bin_int &i: seq) {
+        fprintf(stream, "%" PRIi16 " ", i);
     }
     fprintf(stream, "\n");
 }
 
 
-template <bool PARAM> void print_if(const char *format, ...)
-{
-    if (PARAM)
-    {
-	va_list argptr;
-	va_start(argptr, format);
-	vfprintf(stderr, format, argptr);
-	va_end(argptr);
+template<bool PARAM>
+void print_if(const char *format, ...) {
+    if (PARAM) {
+        va_list argptr;
+        va_start(argptr, format);
+        vfprintf(stderr, format, argptr);
+        va_end(argptr);
     }
 }
 
 // A smarter assertion function, from https://stackoverflow.com/a/37264642 .
-void assert_with_message(const char* expression, bool evaluation, const char* message)
-{
-    if (!evaluation)
-    {
+void assert_with_message(const char *expression, bool evaluation, const char *message) {
+    if (!evaluation) {
         fprintf(stderr, "Assert failed:\t%s\n", message);
-	fprintf(stderr, "Expression:\t%s\n", expression);
+        fprintf(stderr, "Expression:\t%s\n", expression);
         abort();
     }
 }

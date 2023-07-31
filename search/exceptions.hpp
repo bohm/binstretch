@@ -1,9 +1,5 @@
-#ifndef _EXCEPTIONS_HPP
-#define _EXCEPTIONS_HPP
+#pragma once
 
-struct computation_irrelevant: public std::exception
-{
+struct computation_irrelevant : public std::exception {
 
 };
-
-#endif

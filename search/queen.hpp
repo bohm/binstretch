@@ -27,34 +27,33 @@ int losing_saplings = 0;
 binconf losing_binconf; // A global bin configuration for output purposes.
 
 // Queen has a formal class 
-class queen_class
-{
+class queen_class {
 public:
     std::atomic<bool> updater_running = false;
     char root_binconf_file[256];
     bool load_root_binconf = false;
 
-    WEIGHT_HEURISTICS* weight_heurs = nullptr;
-    minibs<MINIBS_SCALE_QUEEN>* mbs = nullptr;
+    WEIGHT_HEURISTICS *weight_heurs = nullptr;
+    minibs<MINIBS_SCALE_QUEEN> *mbs = nullptr;
 
     queen_class(int argc, char **argv);
+
     void updater(sapling job);
+
     int start();
 
     // Returns true if the updater thread should do an update, since
     // there are sufficiently many tasks collected.
-    inline bool update_recommendation()
-	{
-	    return qmemory::collected_now >= 1;
-	}
+    inline bool update_recommendation() {
+        return qmemory::collected_now >= 1;
+    }
 
-    inline void reset_collected_now()
-	{
-	    qmemory::collected_now.store(0, std::memory_order_release);
-	}
+    inline void reset_collected_now() {
+        qmemory::collected_now.store(0, std::memory_order_release);
+    }
 };
 
 // A global pointer to *the* queen. It is NULL everywhere
 // except on the main two threads.
-queen_class* queen = NULL;
+queen_class *queen = NULL;
 #endif

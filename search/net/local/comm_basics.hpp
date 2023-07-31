@@ -35,61 +35,51 @@
 
 // First, machine name. This is surprisingly tricky, so we hardcode it for now.
 
-std::string communicator::machine_name()
-{
+std::string communicator::machine_name() {
     return std::string("t1000");
 }
 
 // Next, Zobrist functions. Since Zobrist arrays are computed in advance and afterwards
 // only used in a read-only mode, we can just access them concurrently with no worries.
 // Thus, the functions do nothing.
-void communicator::bcast_send_zobrist(zobrist_quintuple zq)
-{
+void communicator::bcast_send_zobrist(zobrist_quintuple zq) {
 }
 
-void communicator::bcast_recv_and_assign_zobrist()
-{
+void communicator::bcast_recv_and_assign_zobrist() {
 }
 
 
-bool communicator::round_start_and_finality()
-{
+bool communicator::round_start_and_finality() {
     int final_flag_int;
     MPI_Bcast(&final_flag_int, 1, MPI_INT, QUEEN, MPI_COMM_WORLD);
     return (bool) final_flag_int;
 }
 
 // function that starts the round (called by queen, finality set to true when round is final)
-void communicator::round_start_and_finality(bool finality)
-{
+void communicator::round_start_and_finality(bool finality) {
     round_finality.send(finality);
 }
 
 // function that waits for round start (called by overseers)
-bool communicator::round_start_and_finality()
-{
+bool communicator::round_start_and_finality() {
     bool finality = round_finality.recv();
     return finality;
 }
 
-void communicator::sync_after_round_end()
-{
+void communicator::sync_after_round_end() {
     round_end.sync_up();
 }
 
-void communicator::sync_after_initialization()
-{
+void communicator::sync_after_initialization() {
     initialization_end.sync_up();
 }
 
 
-void communicator::bcast_send_tcount(int tc)
-{
+void communicator::bcast_send_tcount(int tc) {
     tcount_broadcaster.send(tc);
 }
 
-int communicator::bcast_recv_tcount()
-{
+int communicator::bcast_recv_tcount() {
     return tcount_broadcaster.recv();
 }
 
