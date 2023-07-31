@@ -1,21 +1,12 @@
-﻿################################################################################
-# This .gitignore file was automatically created by Microsoft(R) Visual Studio.
-################################################################################
-
-/.vs
-/algorithm/.vs/binstretch/v15
-/algorithm/x64/Debug
-/algorithm/Debug
-/algorithm/binstretch.vcxproj.user
-/algorithm/binstretch.vcxproj.filters
-/algorithm/binstretch.vcxproj
-/algorithm/binstretch.sln
-/algorithm/x64/Release
+﻿/.vs
 *.psess
 *.vspx
 *.cpp~
 *.hpp~
 experiments/*
+results/*
+logs/*
+build/*
 /x64
 /bs-dagtest.vcxproj.user
 /bs-dagtest.vcxproj.filters

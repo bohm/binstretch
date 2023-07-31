@@ -1,0 +1,124 @@
+cmake_minimum_required(VERSION 3.26)
+project(clion)
+
+find_package(MPI)
+
+set(CMAKE_CXX_STANDARD 20)
+
+include_directories(search)
+include_directories(search/cache)
+include_directories(search/dag)
+include_directories(search/dynprog)
+include_directories(search/minibs)
+include_directories(search/minimax)
+include_directories(search/net)
+include_directories(search/net/local)
+include_directories(search/net/mpi)
+include_directories(search/poset)
+include_directories(search/strategies)
+include_directories(search/weights)
+include_directories(${MPI_INCLUDE_PATH})
+include_directories(${MPI_CXX_INCLUDE_PATH})
+include_directories(../parallel-hashmap)
+
+add_compile_definitions(IBINS=6)
+add_compile_definitions(IR=19)
+add_compile_definitions(IS=14)
+
+
+add_executable(clion
+        search/cache/guar64.hpp
+        search/cache/guar_locks.hpp
+        search/cache/guarantee.hpp
+        search/cache/loadconf.hpp
+        search/cache/state.hpp
+        search/dag/basics.hpp
+        search/dag/class.hpp
+        search/dag/cloning.hpp
+        search/dag/consistency.hpp
+        search/dag/dag.hpp
+        search/dag/partial.hpp
+        search/dag/print.hpp
+        search/dynprog/algo.hpp
+        search/dynprog/wrappers.hpp
+        search/minibs/binary_storage.hpp
+        search/minibs/feasibility.hpp
+        search/minibs/itemconfig.hpp
+        search/minibs/minibs.hpp
+        search/minibs/minidp.hpp
+        search/minimax/auxiliary.hpp
+        search/minimax/computation.hpp
+        search/minimax/recursion.hpp
+        search/minimax/sequencing.hpp
+        search/net/local/broadcaster.hpp
+        search/net/local/comm_basics.hpp
+        search/net/local/communicator.hpp
+        search/net/local/message.hpp
+        search/net/local/message_arrays.hpp
+        search/net/local/synchronizer.hpp
+        search/net/local/threadsafe_printer.hpp
+        search/net/mpi/comm_basics.hpp
+        search/net/mpi/communicator.hpp
+        search/net/mpi/multiprocess.hpp
+        search/net/mpi/ocomm.hpp
+        search/net/mpi/qcomm.hpp
+        search/net/batches.hpp
+        search/net/local_basics.hpp
+        search/net/local_structures.hpp
+        search/net/mpi.hpp
+        search/poset/poset.hpp
+        search/strategies/abstract.hpp
+        search/strategies/basic.hpp
+        search/strategies/heuristical.hpp
+        search/strategies/insight.hpp
+        search/strategies/insight_methods.hpp
+        search/weights/scale_halves.hpp
+        search/weights/scale_quarters.hpp
+        search/weights/scale_quintiles.hpp
+        search/weights/scale_thirds.hpp
+        search/weights/weight_heuristics.hpp
+        search/weights/weights_basics.hpp
+        search/advisor.hpp
+        search/assumptions.hpp
+        search/binconf.hpp
+        search/cleanup.hpp
+        search/common.hpp
+        search/constants.hpp
+        search/dfs.hpp
+        search/exceptions.hpp
+        search/filetools.hpp
+        search/fits.hpp
+        search/functions.hpp
+        search/gs.hpp
+        search/hash.hpp
+        search/heur_adv.hpp
+        search/heur_alg_knownsum.hpp
+        search/heur_alg_weights.hpp
+        search/heur_classes.hpp
+        search/layers.hpp
+        search/loadfile.hpp
+        search/main.cpp
+        search/maxfeas.hpp
+        search/measure_structures.hpp
+        search/optconf.hpp
+        search/overseer.hpp
+        search/overseer_methods.hpp
+        search/performance_timer.hpp
+        search/positional.hpp
+        search/queen.hpp
+        search/queen_methods.hpp
+        search/sapling_manager.hpp
+        search/saplings.hpp
+        search/savefile.hpp
+        search/server_properties.hpp
+        search/small_classes.hpp
+        search/strategy.hpp
+        search/tasks.hpp
+        search/thread_attr.hpp
+        search/tree_print.hpp
+        search/updater.hpp
+        search/worker.hpp
+        search/worker_methods.hpp)
+
+target_link_libraries(clion ${MPI_C_LIBRARIES})
+target_link_libraries(clion ${MPI_CXX_LIBRARIES})
