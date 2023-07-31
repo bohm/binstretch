@@ -1,5 +1,4 @@
-#ifndef _CONSTANTS_HPP
-#define _CONSTANTS_HPP 1
+#pragma once
 
 // System constants that do not need to be modified often.
 
@@ -102,12 +101,6 @@ const int TASK_RECEIVED = 1;
 #define STRATEGY_BOUNDED 2
 #define STRATEGY_BASIC_LIMIT 3
 
-// Medium TODO: This weighting only works for 19/14. It is strongly discouraged to run
-// FURTHER_MEASURE = true or USING_HEUR_WEIGHTSUM = true for other ratios.
-
-#define ITEMWEIGHT quintile_weight
-#define LARGEST_WITH_WEIGHT quintile_largest_with_weight
-
 // maximum number of items
 constexpr bin_int MAX_ITEMS = S * BINS;
 
@@ -167,6 +160,3 @@ const int RECOMMENDED_MONOTONICITY = 5;
 #else
 const int RECOMMENDED_MONOTONICITY = IS - 1;
 #endif
-
-
-#endif // _CONSTANTS_HPP

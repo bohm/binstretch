@@ -3,7 +3,7 @@
 // Auxiliary functions that make the minimax code cleaner.
 
 template<minimax MODE, int MINIBS_SCALE>
-void computation<MODE, MINIBS_SCALE>::check_messages(int task_id) {
+void computation<MODE, MINIBS_SCALE>::check_messages() {
     // check_termination();
     // fetch_irrelevant_tasks();
     if (this->flags != nullptr && this->flags->root_solved) {
@@ -208,10 +208,6 @@ void algorithm_descend(computation<MODE, MINIBS_SCALE> *comp,
     notes.bc_new_load_position = comp->bstate.assign_and_rehash(item, target_bin);
     notes.ol_new_load_position = onlineloads_assign(comp->ol, item);
 
-    if (USING_HEURISTIC_WEIGHTSUM) {
-        comp->weight_heurs->increase_weights(comp->bstate_weight_array, item);
-    }
-
     if (USING_MINIBINSTRETCHING) {
         int shrunk_item = comp->mbs->shrink_item(item);
         if (shrunk_item > 0) {
@@ -230,10 +226,6 @@ void algorithm_ascend(computation<MODE, MINIBS_SCALE> *comp,
     // care of that.
 
     onlineloads_unassign(comp->ol, item, notes.ol_new_load_position);
-
-    if (USING_HEURISTIC_WEIGHTSUM) {
-        comp->weight_heurs->decrease_weights(comp->bstate_weight_array, item);
-    }
 
     if (USING_MINIBINSTRETCHING) {
         int shrunk_item = comp->mbs->shrink_item(item);

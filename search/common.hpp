@@ -106,13 +106,8 @@ const bool USING_HEURISTIC_VISITS = true;
 constexpr bool USING_HEURISTIC_KNOWNSUM = false; // Recommend turning off when WEIGHTSUM is true.
 constexpr bool USING_HEURISTIC_GS = false;
 constexpr bool USING_KNOWNSUM_LOWSEND = false;
-
-// Currently too slow to be worth it (only a few second improvement), but I am not giving up just yet.
-constexpr bool USING_HEURISTIC_WEIGHTSUM = false && (!USING_HEURISTIC_KNOWNSUM) && (!USING_KNOWNSUM_LOWSEND);
-
-#define WEIGHT_HEURISTICS weight_heuristics<scale_halves, scale_thirds>
-
 constexpr bool USING_MINIBINSTRETCHING = true;
+
 constexpr int MINIBS_SCALE_QUEEN = 12; // Minibinstretching scale for the DAG generation phase.
 constexpr int MINIBS_SCALE_WORKER = 12; // Minibinstretching scale for the exploration phase.
 

@@ -66,10 +66,6 @@ victory worker::solve(const task *t, const int &task_id) {
     comp.task_id = task_id;
     computation_root = NULL; // we do not run GENERATE or EXPAND on the workers currently
 
-    if (USING_HEURISTIC_WEIGHTSUM) {
-        comp.weight_heurs = ov->weight_heurs;
-    }
-
     if (USING_MINIBINSTRETCHING) {
         comp.mbs = ov->mbs;
     }

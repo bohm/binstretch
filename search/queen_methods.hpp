@@ -138,10 +138,6 @@ int queen_class::start() {
     // Init queen memory (the queen does not use the main solved cache):
     dpc = new guar_cache(dplog);
 
-    if (USING_HEURISTIC_WEIGHTSUM) {
-        weight_heurs = new WEIGHT_HEURISTICS;
-        weight_heurs->init_weight_bounds();
-    }
 
     if (USING_MINIBINSTRETCHING) {
         print_if<PROGRESS>("Queen: allocating cache minibs<%d>.\n", MINIBS_SCALE_QUEEN);
@@ -227,10 +223,6 @@ int queen_class::start() {
 
         if (USING_ASSUMPTIONS) {
             comp.assumer = assumer;
-        }
-
-        if (USING_HEURISTIC_WEIGHTSUM) {
-            comp.weight_heurs = weight_heurs;
         }
 
         if (USING_MINIBINSTRETCHING) {
@@ -463,11 +455,6 @@ int queen_class::start() {
     // Print measurements and clean up.
     MEASURE_ONLY(g_meas.print());
     // delete_running_lows(); happens upon comm destruction.
-
-    if (USING_HEURISTIC_WEIGHTSUM) {
-        delete weight_heurs;
-    }
-
 
     if (USING_MINIBINSTRETCHING) {
         print_if<PROGRESS>("Queen: freeing minibinstretching cache.\n");

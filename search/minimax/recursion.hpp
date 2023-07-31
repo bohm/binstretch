@@ -100,14 +100,6 @@ victory computation<MODE, MINIBS_SCALE>::heuristic_visit_alg(int pres_item) {
                 if (!result_known) {
                     int knownsum_response = query_knownsum_heur(loadhash_if_descending);
 
-                    if (FURTHER_MEASURE) {
-                        int wght = weight(&bstate) + ITEMWEIGHT(pres_item);
-                        if (knownsum_response == 0) {
-                            meas.kns_visit_hit_by_weight[wght]++;
-                        } else {
-                            meas.kns_visit_miss_by_weight[wght]++;
-                        }
-                    }
 
                     if (knownsum_response == 0) {
                         ret = victory::alg;
@@ -280,19 +272,6 @@ victory computation<MODE, MINIBS_SCALE>::adversary(
     if (EXPLORING && USING_HEURISTIC_KNOWNSUM) {
         int knownsum_response = query_knownsum_heur(bstate.loadhash);
 
-        // We first perform measurements, if needed.
-        if (FURTHER_MEASURE) {
-            int wght = weight(&bstate);
-            if (knownsum_response == 0) {
-                meas.kns_full_hit_by_weight[wght]++;
-            } else if (knownsum_response != -1) {
-
-                meas.kns_partial_hit_by_weight[wght]++;
-            } else {
-                meas.kns_miss_by_weight[wght]++;
-            }
-        }
-
         // Now we parse the output proper.
         if (knownsum_response == 0) {
             MEASURE_ONLY(meas.knownsum_full_hit++);
@@ -453,13 +432,7 @@ victory computation<MODE, MINIBS_SCALE>::adversary(
     if (EXPLORING) {
         this->iterations++;
         if (this->iterations % 1000 == 0) {
-
-            // print_if<DEBUG>("Explore: Adversary considering binconf of weight %d (true %d) ",
-            //                  bstate_weight, weight(&bstate));
-            // print_binconf<DEBUG>(&bstate);
-
-
-            check_messages(this->task_id);
+            check_messages();
         }
     }
 

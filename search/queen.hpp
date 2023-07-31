@@ -28,7 +28,6 @@ public:
     char root_binconf_file[256];
     bool load_root_binconf = false;
 
-    WEIGHT_HEURISTICS *weight_heurs = nullptr;
     minibs<MINIBS_SCALE_QUEEN> *mbs = nullptr;
 
     queen_class(int argc, char **argv);

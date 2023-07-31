@@ -136,11 +136,6 @@ void overseer::start() {
                            knownsum_ub.size());
     }
 
-    if (USING_HEURISTIC_WEIGHTSUM) {
-        weight_heurs = new WEIGHT_HEURISTICS;
-        weight_heurs->init_weight_bounds();
-    }
-
     if (USING_KNOWNSUM_LOWSEND) {
         init_knownsum_with_lowest_sendable();
     }
@@ -313,10 +308,6 @@ void overseer::start() {
             comm.sync_after_round_end();
             break;
         }
-    }
-
-    if (USING_HEURISTIC_WEIGHTSUM) {
-        delete weight_heurs;
     }
 
     if (USING_MINIBINSTRETCHING) {

@@ -100,7 +100,7 @@ public:
         }
     }
 
-    void check_messages(int task_id);
+    void check_messages();
 
     victory heuristic_visit_alg(int pres_item);
 
