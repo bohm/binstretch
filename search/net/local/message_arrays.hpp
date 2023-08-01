@@ -3,6 +3,7 @@
 #include <thread>
 #include <mutex>
 #include <condition_variable>
+#include <vector>
 
 // Message arrays for non-blocking sending and receiving objects of one type.
 // They need to be cleared manually.

@@ -16,12 +16,12 @@ class heuristic_strategy_list : public heuristic_strategy {
 private:
     std::vector<int> itemlist;
 public:
-    void init(const std::vector<int> &list) {
+    void init(const std::vector<int> &list) override {
         itemlist = list;
     }
 
-    heuristic_strategy *clone() {
-        heuristic_strategy_list *copy = new heuristic_strategy_list();
+    heuristic_strategy *clone() override {
+        auto *copy = new heuristic_strategy_list();
         copy->init(itemlist);
         copy->set_depth(relative_depth);
         return copy;
@@ -30,7 +30,7 @@ public:
     // Parse the string and get the itemlist from it.
     // We currently use the "slow" stringstreams, but this is never used
     // in the main search code and thus should be fine.
-    void init_from_string(const std::string &heurstring) {
+    void init_from_string(const std::string &heurstring) override {
         std::string _;
         std::istringstream hsstream(heurstring);
         itemlist.clear();
@@ -43,7 +43,7 @@ public:
         }
     }
 
-    int next_item(const binconf *current_conf) {
+    int next_item(const binconf *current_conf) override {
         if ((int) itemlist.size() <= relative_depth) {
             fprintf(stderr, "Itemlist is shorter %lu than the item we ask for %d:\n",
                     itemlist.size(), relative_depth);
@@ -59,7 +59,7 @@ public:
     }
 
     // Create a printable form of the strategy based on the current configuration.
-    std::string print(const binconf *_) {
+    std::string print(const binconf *_) override {
         std::ostringstream os;
         bool first = true;
 
@@ -79,7 +79,7 @@ public:
     // A helper function which exposes the data in a unified way -- as a list of integers.
     // Similar to print() and used for a similar thing.
 
-    std::vector<int> contents() {
+    std::vector<int> contents() override {
         return itemlist;
     }
 };
@@ -114,7 +114,7 @@ std::pair<int, int> fn_should_send(const binconf *current_conf) {
     int above_five = first_with_load(c, 5);
     // If you can send BINS - above_five + 1 items of size 14, do so.
     if (pack_compute(c, 14, BINS - above_five + 1)) {
-        return std::pair(14, BINS - above_five + 1);
+        return {14, BINS - above_five + 1};
     }
 
     // If not, find first bin above ten.
@@ -127,20 +127,20 @@ std::pair<int, int> fn_should_send(const binconf *current_conf) {
     // to send BINS - above_ten + 1 nines.
     if (above_ten != -1) {
         // assert(pack_query_compute(c, 9, BINS - above_ten + 1));
-        return std::pair(9, BINS - above_ten + 1);
+        return {9, BINS - above_ten + 1};
     }
 
     // If there is no bin above ten and we cannot send 14's,
     // we must still be sending 5's.
 
-    return std::pair(5, 1);
+    return {5, 1};
 }
 
 class heuristic_strategy_fn : public heuristic_strategy {
 private:
     int fives = 0;
 public:
-    void init(const std::vector<int> &list) {
+    void init(const std::vector<int> &list) override {
         if (list.size() != 1) {
             fprintf(stderr, "Heuristic strategy FN is given a list of size %zu.\n", list.size());
             assert(list.size() == 1);
@@ -157,13 +157,13 @@ public:
         fives = f;
     }
 
-    heuristic_strategy *clone() {
+    heuristic_strategy *clone() override {
         heuristic_strategy_fn *copy = new heuristic_strategy_fn();
         copy->set_fives(fives);
         return copy;
     }
 
-    void init_from_string(const std::string &heurstring) {
+    void init_from_string(const std::string &heurstring) override {
         int f = 0;
         sscanf(heurstring.c_str(), "FN(%d)", &f);
         if (f <= 0) {
@@ -177,7 +177,7 @@ public:
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-variable"
 
-    int next_item(const binconf *current_conf) {
+    int next_item(const binconf *current_conf) override {
         auto [item, _] = fn_should_send(current_conf);
 
         if (item == 5) {
@@ -189,7 +189,7 @@ public:
 
 #pragma GCC diagnostic pop
 
-    std::string print(const binconf *current_conf) {
+    std::string print(const binconf *current_conf) override {
         std::ostringstream os;
 
         auto [item, multiplicity] = fn_should_send(current_conf);
@@ -216,7 +216,7 @@ public:
     }
 
 
-    std::vector<int> contents() {
+    std::vector<int> contents() override {
         std::vector<int> ret;
         ret.push_back(fives);
         return ret;

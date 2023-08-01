@@ -7,7 +7,7 @@
 // A blocking message channel between several threads.
 // After a send() call is made, the same channel can be reused again.
 // We assume the reader count is the same for repeated calls of the broadcast.
-template<int COMMUNICATORS, class DATA>
+template<int READERS, class DATA>
 class broadcaster {
 private:
     std::mutex sender_mutex;
@@ -36,11 +36,11 @@ public:
         while (in_use) {
             comm_lk.lock();
             // We need to check the condition on which we are waiting first.
-            if (readers_accepted < COMMUNICATORS) {
+            if (readers_accepted < READERS) {
                 comm_cv.wait(comm_lk);
             }
 
-            if (readers_accepted == COMMUNICATORS) {
+            if (readers_accepted == READERS) {
                 // All threads accepted, release them and terminate.
                 fprintf(stderr, "All readers accepted.\n");
                 in_use = false;

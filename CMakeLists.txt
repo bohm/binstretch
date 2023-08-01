@@ -52,14 +52,14 @@ add_executable(clion
         search/minimax/sequencing.hpp
         search/net/local/broadcaster.hpp
         search/net/local/comm_basics.hpp
-        search/net/local/communicator.hpp
+        search/net/local/local_communicator.hpp
         search/net/local/message.hpp
         search/net/local/message_arrays.hpp
         search/net/local/synchronizer.hpp
         search/net/local/threadsafe_printer.hpp
         search/net/mpi/comm_basics.hpp
-        search/net/mpi/communicator.hpp
-        search/net/mpi/multiprocess.hpp
+        search/net/mpi/mpi_communicator.hpp
+        search/net/mpi/mpi_multiprocess.hpp
         search/net/mpi/ocomm.hpp
         search/net/mpi/qcomm.hpp
         search/net/batches.hpp

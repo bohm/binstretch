@@ -164,7 +164,7 @@
     <ClInclude Include="search\minimax\sequencing.hpp" />
     <ClInclude Include="search\net\batches.hpp" />
     <ClInclude Include="search\net\local\broadcaster.hpp" />
-    <ClInclude Include="search\net\local\communicator.hpp" />
+    <ClInclude Include="search\net\local\mpi_communicator.hpp" />
     <ClInclude Include="search\net\local\comm_basics.hpp" />
     <ClInclude Include="search\net\local\message.hpp" />
     <ClInclude Include="search\net\local\message_arrays.hpp" />
@@ -173,7 +173,7 @@
     <ClInclude Include="search\net\local_basics.hpp" />
     <ClInclude Include="search\net\local_structures.hpp" />
     <ClInclude Include="search\net\mpi.hpp" />
-    <ClInclude Include="search\net\mpi\communicator.hpp" />
+    <ClInclude Include="search\net\mpi\mpi_communicator.hpp" />
     <ClInclude Include="search\net\mpi\comm_basics.hpp" />
     <ClInclude Include="search\net\mpi\multiprocess.hpp" />
     <ClInclude Include="search\net\mpi\ocomm.hpp" />

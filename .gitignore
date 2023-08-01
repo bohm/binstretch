@@ -7,6 +7,8 @@ experiments/*
 results/*
 logs/*
 build/*
+cache/*
+cmake-build-debug/*
 /x64
 /bs-dagtest.vcxproj.user
 /bs-dagtest.vcxproj.filters

@@ -2,16 +2,16 @@
 #define _NET_MPI_QCOMM_HPP 1
 
 // MPI networking methods specialized and exclusive for the queen.
-// Some queen-exclusive methods might also be present in the generic communicator,
+// Some queen-exclusive methods might also be present in the generic mpi_communicator,
 // but the assumption is that they are quite similar from the point of the queen
 // and overseers.
 
-void communicator::send_batch(int *batch, int target_overseer) {
+void mpi_communicator::send_batch(int *batch, int target_overseer) {
     MPI_Send(batch, BATCH_SIZE, MPI_INT, target_overseer, net::SENDING_BATCH, MPI_COMM_WORLD);
 }
 
 
-void communicator::collect_runlows() {
+void mpi_communicator::collect_runlows() {
     int running_low_received = 0;
     MPI_Status stat;
     int irrel;
@@ -27,7 +27,7 @@ void communicator::collect_runlows() {
 
 
 // Queen fetches and ignores the remaining tasks from the previous iteration.
-void communicator::ignore_additional_solutions() {
+void mpi_communicator::ignore_additional_solutions() {
     int solution_received = 0;
     int solution_pair[2] = {0, 0};
     MPI_Status stat;
