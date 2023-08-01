@@ -152,7 +152,7 @@ constexpr int RECOMMENDED_MINIBS_SCALE = 6;
 const int RECOMMENDED_MONOTONICITY = 6;
 // #elif IBINS == 4 && IR == 60 && IS == 44
 // const int RECOMMENDED_MONOTONICITY = 43;
-#elif IBINS >= 8 && IR == 19 && IS == 14
+#elif IBINS >= 7 && IR == 19 && IS == 14
 const int RECOMMENDED_MONOTONICITY = 1;
 constexpr int RECOMMENDED_MINIBS_SCALE = 3;
 #elif IBINS == 6 && IR == 15 && IS == 11
