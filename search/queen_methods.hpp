@@ -14,7 +14,7 @@
 #include "queen.hpp"
 #include "sapling_manager.hpp"
 #include "measure_structures.hpp"
-#include "consistency.hpp"
+#include "dag/consistency.hpp"
 #include "cleanup.hpp"
 
 /*
@@ -233,7 +233,9 @@ int queen_class::start() {
         }
 
 
-        clear_task_structures();
+        all_tasks_status_temporary.clear();
+        all_tasks_temporary.clear();
+        task_map.clear();
 
         comm.reset_runlows(); // reset_running_lows();
         qdag->clear_visited();
@@ -285,18 +287,19 @@ int queen_class::start() {
             comm.round_start_and_finality(false);
 
             collect_tasks(computation_root);
-            init_tstatus(tstatus_temporary);
-            tstatus_temporary.clear();
-            init_tarray(tarray_temporary);
-            tarray_temporary.clear();
+
+            init_all_tasks(all_tasks_temporary);
+            all_tasks_temporary.clear();
+            init_task_status(all_tasks_status_temporary);
+            all_tasks_status_temporary.clear();
 
             // 2022-05-30: It is still not clear to me what is the right absolute order here.
             // In the future, it makes sense to do some prioritization in the task queue.
             // Until then, we just reverse the queue (largest items go first). This leads
             // to a lot of failures early, but these failures will be quick.
 
-            // permute_tarray_tstatus(); // We do not permute currently.
-            reverse_tarray_tstatus();
+            // queen_permute_tarray_tstatus(); // We do not permute currently.
+            queen_reverse_tarray_tstatus();
 
             // print_tasks(); // Large debug print.
 
@@ -304,21 +307,21 @@ int queen_class::start() {
             // note: do not push into irrel_taskq before permutation is done;
             // the numbers will not make any sense.
 
-            print_if<PROGRESS>("Queen: Generated %d tasks.\n", tcount);
-            comm.bcast_send_tcount(tcount);
+            print_if<PROGRESS>("Queen: Generated %d tasks.\n", all_task_count);
+            comm.bcast_send_tcount(all_task_count);
             // Synchronize tarray.
-            for (int i = 0; i < tcount; i++) {
-                flat_task transport = tarray[i].flatten();
+            for (unsigned int i = 0; i < all_task_count; i++) {
+                flat_task transport = all_tasks[i].flatten();
                 comm.bcast_send_flat_task(transport);
             }
 
             // Synchronize tstatus.
-            int *tstatus_transport_copy = new int[tcount];
-            for (int i = 0; i < tcount; i++) {
-                tstatus_transport_copy[i] = static_cast<int>(tstatus[i].load());
+            int *tstatus_transport_copy = new int[all_task_count];
+            for (unsigned int i = 0; i < all_task_count; i++) {
+                tstatus_transport_copy[i] = static_cast<int>(all_tasks_status[i].load());
             }
             // After "de-atomizing" it, pass it to all overseers.
-            comm.bcast_send_tstatus_transport(tstatus_transport_copy, tcount);
+            comm.bcast_send_tstatus_transport(tstatus_transport_copy, all_task_count);
             delete[] tstatus_transport_copy;
 
             print_if<PROGRESS>("Queen: Tasks synchronized.\n");
@@ -332,15 +335,15 @@ int queen_class::start() {
 
             // Main loop of this thread (the variable is updated by the other thread).
             while (updater_running.load()) {
-                collect_worker_tasks();
+                collect_worker_tasks(queen->all_tasks_status);
                 comm.collect_runlows(); // collect_running_lows();
 
                 // We wish to have the loop here, so that net/ is independent on compose_batch().
                 for (int overseer = 1; overseer <= multiprocess::overseer_count(); overseer++) {
                     if (comm.is_running_low(overseer)) {
                         //check_batch_finished(overseer);
-                        batching.compose_batch(overseer, taskpointer, tcount,
-                                               tstatus);
+                        batching.compose_batch(overseer, taskpointer, all_task_count,
+                                               all_tasks_status);
                         comm.send_batch(batching.b[overseer], overseer);
                         comm.satisfied_runlow(overseer);
                     }
@@ -358,8 +361,8 @@ int queen_class::start() {
             // that process tasks.
             comm.send_root_solved();
             // collect remaining, unnecessary solutions
-            destroy_tarray();
-            destroy_tstatus();
+            delete_all_tasks();
+            delete_task_status();
             comm.sync_after_round_end();
             comm.ignore_additional_solutions();
 

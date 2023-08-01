@@ -25,153 +25,32 @@ dag *qdag = nullptr;
 // the root of the current computation,
 // may differ from the actual root of the graph.
 adversary_vertex *computation_root;
-adversary_vertex *expansion_root;
-
-
-
-// a queue where one sapling can put its own tasks
-std::queue<sapling> regrow_queue; // This potentially does not work currently.
-
-std::atomic<task_status> *tstatus;
-std::vector<task_status> tstatus_temporary;
-
-std::vector<task> tarray_temporary; // temporary array used for building
-task *tarray; // tarray used after we know the size
-
-// Mapping from hashes to status indices.
-std::map<uint64_t, int> tmap;
-
-
-int tcount = 0;
-int thead = 0; // head of the tarray queue which queen uses to send tasks
-int tpruned = 0; // number of tasks which are pruned
 
 // --- END GLOBALS ---
 
 
-void init_tarray() {
-    assert(tcount > 0);
-    tarray = new task[tcount];
-}
-
-void init_tarray(const std::vector<task> &taq) {
-    tcount = taq.size();
-    init_tarray();
-    for (int i = 0; i < tcount; i++) {
-        tarray[i] = taq[i];
-    }
-}
-
-void destroy_tarray() {
-    delete[] tarray;
-    tarray = nullptr;
-}
-
-void init_tstatus() {
-    assert(tcount > 0);
-    tstatus = new std::atomic<task_status>[tcount];
-    for (int i = 0; i < tcount; i++) {
-        tstatus[i].store(task_status::available);
-    }
-}
-
-// call before tstatus is permuted
-void init_tstatus(const std::vector<task_status> &tstatus_temp) {
-    init_tstatus();
-    for (int i = 0; i < tcount; i++) {
-        tstatus[i].store(tstatus_temp[i]);
-    }
-}
-
-void destroy_tstatus() {
-    delete[] tstatus;
-    tstatus = nullptr;
-
-    // if (BEING_QUEEN)
-    // {
-    tstatus_temporary.clear();
-    // }
-}
-
-// builds an inverse task map after all tasks are inserted into the task array.
-void rebuild_tmap() {
-    tmap.clear();
-    for (int i = 0; i < tcount; i++) {
-        tmap.insert(std::make_pair(tarray[i].bc.hash_with_last(), i));
-    }
-
-}
-
-// returns the task map value or -1 if it doesn't exist
-int tstatus_id(const adversary_vertex *v) {
-    if (v == nullptr) {
-        return -1;
-    }
-
-    if (tmap.find(v->bc.hash_with_last()) != tmap.end()) {
-        return tmap[v->bc.hash_with_last()];
-    }
-
-    return -1;
-}
-
-// Printing the full task queue for analysis/debugging purposes.
-void print_tasks() {
-    for (int i = 0; i < tcount; i++) {
-        fprintf(stderr, "Task %6d", i);
-        tarray[i].print();
-    }
-}
-
-// permutes tarray and tstatus (with the same permutation), rebuilds tmap.
-void permute_tarray_tstatus() {
-    assert(tcount > 0);
-    std::vector<int> perm;
-
-    for (int i = 0; i < tcount; i++) {
-        perm.push_back(i);
-    }
-
-    // permutes the tasks 
-    std::shuffle(perm.begin(), perm.end(), std::mt19937(std::random_device()()));
-    task *tarray_new = new task[tcount];
-    auto *tstatus_new = new std::atomic<task_status>[tcount];
-    for (int i = 0; i < tcount; i++) {
-        tarray_new[perm[i]] = tarray[i];
-        tstatus_new[perm[i]].store(tstatus[i]);
-    }
-
-    delete[] tarray;
-    delete[] tstatus;
-    tarray = tarray_new;
-    tstatus = tstatus_new;
-
-    rebuild_tmap();
-}
-
 // Reverses tarray and tstatus, rebuilds tmap.
-// The code is a bit wonky, as we just modify permute_tarray_tstatus().
-void reverse_tarray_tstatus() {
-    assert(tcount > 0);
+// The code is a bit wonky, as we just modify queen_permute_tarray_tstatus().
+void queen_reverse_tarray_tstatus() {
     std::vector<int> perm;
 
-    for (int i = 0; i < tcount; i++) {
-        perm.push_back((tcount - 1) - i);
+    for (unsigned int i = 0; i < queen->all_task_count; i++) {
+        perm.push_back((queen->all_task_count - 1) - i);
     }
 
-    task *tarray_new = new task[tcount];
-    auto *tstatus_new = new std::atomic<task_status>[tcount];
-    for (int i = 0; i < tcount; i++) {
-        tarray_new[perm[i]] = tarray[i];
-        tstatus_new[perm[i]].store(tstatus[i]);
+    task *tarray_new = new task[queen->all_task_count];
+    auto *tstatus_new = new std::atomic<task_status>[queen->all_task_count];
+    for (unsigned int i = 0; i < queen->all_task_count; i++) {
+        tarray_new[perm[i]] = queen->all_tasks[i];
+        tstatus_new[perm[i]].store(queen->all_tasks_status[i]);
     }
 
-    delete[] tarray;
-    delete[] tstatus;
-    tarray = tarray_new;
-    tstatus = tstatus_new;
+    queen->delete_all_tasks();
+    queen->delete_task_status();
+    queen->all_tasks = tarray_new;
+    queen->all_tasks_status = tstatus_new;
 
-    rebuild_tmap();
+    queen->build_task_map();
 }
 
 
@@ -264,10 +143,10 @@ void collect_tasks_adv(adversary_vertex *v) {
         }
 
         task newtask(v->bc);
-        tmap.insert(std::make_pair(newtask.bc.hash_with_last(), tarray_temporary.size()));
-        tarray_temporary.push_back(newtask);
-        tstatus_temporary.push_back(task_status::available);
-        tcount++;
+        queen->task_map.insert(std::make_pair(newtask.bc.hash_with_last(), queen->all_tasks_temporary.size()));
+        queen->all_tasks_temporary.push_back(newtask);
+        queen->all_tasks_status_temporary.push_back(task_status::available);
+        queen->all_task_count++;
     } else {
         for (auto &outedge: v->out) {
             collect_tasks_alg(outedge->to);
@@ -289,27 +168,19 @@ void collect_tasks_alg(algorithm_vertex *v) {
 
 void collect_tasks(adversary_vertex *r) {
     qdag->clear_visited();
-    tcount = 0;
+    queen->all_task_count = 0;
     collect_tasks_adv(r);
 }
-
-void clear_task_structures() {
-    tcount = 0;
-    thead = 0;
-    tstatus_temporary.clear();
-    tarray_temporary.clear();
-    tmap.clear();
-}
-
 // Does not actually remove a task, just marks it as completed.
 // Only run when UPDATING; in GENERATING you just mark a vertex as not a task.
-void remove_task(uint64_t hash) {
-    tstatus[tmap[hash]].store(task_status::pruned, std::memory_order_release);
+void queen_remove_task(uint64_t hash) {
+    queen->all_tasks_status[queen->task_map[hash]].store(task_status::pruned, std::memory_order_release);
 }
 
-// Check if a given task is complete, return its value. 
-victory completion_check(uint64_t hash) {
-    task_status query = tstatus[tmap[hash]].load(std::memory_order_acquire);
+// Check if a given task is complete, return its value.
+// Can be only run by queen.
+victory queen_completion_check(uint64_t hash) {
+    task_status query = queen->all_tasks_status[queen->task_map[hash]].load(std::memory_order_acquire);
     if (query == task_status::adv_win) {
         return victory::adv;
     } else if (query == task_status::alg_win) {
@@ -327,4 +198,54 @@ victory completion_check(uint64_t hash) {
     v->regrow_level = regrow_level;
 }
 
+*/
+
+/* Currently unused:
+ *
+// returns the task map value or -1 if it doesn't exist
+int tstatus_id(const adversary_vertex *v) {
+    if (v == nullptr) {
+        return -1;
+    }
+
+    if (tmap.find(v->bc.hash_with_last()) != tmap.end()) {
+        return tmap[v->bc.hash_with_last()];
+    }
+
+    return -1;
+}
+
+// Printing the full task queue for analysis/debugging purposes.
+void print_tasks() {
+    for (int i = 0; i < tcount; i++) {
+        fprintf(stderr, "Task %6d", i);
+        tarray[i].print();
+    }
+}
+
+// permutes tarray and tstatus (with the same permutation), rebuilds tmap.
+void queen_permute_tarray_tstatus() {
+    assert(tcount > 0);
+    std::vector<int> perm;
+
+    for (int i = 0; i < tcount; i++) {
+        perm.push_back(i);
+    }
+
+    // permutes the tasks
+    std::shuffle(perm.begin(), perm.end(), std::mt19937(std::random_device()()));
+    task *tarray_new = new task[tcount];
+    auto *tstatus_new = new std::atomic<task_status>[tcount];
+    for (int i = 0; i < tcount; i++) {
+        tarray_new[perm[i]] = queen->all_tasks[i];
+        tstatus_new[perm[i]].store(queen->all_tasks_status[i]);
+    }
+
+    queen->delete_all_tasks();
+    queen->delete_task_status();
+    queen->all_tasks = tarray_new;
+    queen->all_tasks_status = tstatus_new;
+
+    queen->build_task_map();
+}
 */

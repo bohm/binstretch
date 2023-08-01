@@ -20,7 +20,9 @@ public:
     int worker_count = 0;
 
     // List of all tasks in the system.
-    task *all_tasks = nullptr; // Formerly tarray.
+    size_t all_task_count = 0;
+    task* all_tasks = nullptr; // Formerly tarray.
+    std::atomic<task_status> *all_tasks_status = nullptr; // Formerly tstatus.
 
 
     // A list of tasks assigned to an overseer.
@@ -56,6 +58,45 @@ public:
         return tasks.size() <= next_task.load() + BATCH_THRESHOLD;
     }
 
+    // all_tasks and all_tasks_status functions.
+    void init_all_tasks(size_t atc) {
+        all_task_count = atc;
+        all_tasks = new task[all_task_count];
+    }
+
+    void init_all_tasks(const std::vector<task> &taq) {
+        all_task_count = taq.size();
+        init_all_tasks(all_task_count);
+        for (unsigned int i = 0; i < all_task_count; i++) {
+            all_tasks[i] = taq[i];
+        }
+    }
+
+    void delete_all_tasks() {
+        delete[] all_tasks;
+        all_tasks = nullptr;
+    }
+
+    void init_task_status(size_t atc) {
+        assert(atc == all_task_count);
+        all_tasks_status = new std::atomic<task_status>[all_task_count];
+        for (unsigned int i = 0; i < all_task_count; i++) {
+            all_tasks_status[i].store(task_status::available);
+        }
+    }
+
+    void init_task_status(const std::vector<task_status> &tstatus_temp) {
+        assert(all_task_count == tstatus_temp.size());
+        init_task_status(tstatus_temp.size());
+        for (unsigned int i = 0; i < tstatus_temp.size(); i++) {
+            all_tasks_status[i].store(tstatus_temp[i]);
+        }
+    }
+
+    void delete_task_status() {
+        delete[] all_tasks_status;
+        all_tasks_status = nullptr;
+    }
 };
 
 // A global variable hosting the local overseer.

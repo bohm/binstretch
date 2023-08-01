@@ -65,6 +65,16 @@ void print(FILE *stream, const heuristic &type) {
 enum class minimax {
     generating, exploring, updating
 };
+
+// Some helper macros:
+
+#define GENERATING (MODE == minimax::generating)
+#define EXPLORING (MODE == minimax::exploring)
+
+#define GEN_ONLY(x) if (MODE == minimax::generating) {x;}
+#define EXP_ONLY(x) if (MODE == minimax::exploring) {x;}
+
+
 // States of a task.
 enum class task_status {
     available, batched, pruned, alg_win, adv_win, irrelevant

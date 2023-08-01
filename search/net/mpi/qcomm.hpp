@@ -50,7 +50,8 @@ void mpi_communicator::ignore_additional_solutions() {
     }
 }
 
-void collect_worker_tasks() {
+// To avoid importing queen.hpp or tasks.hpp, we use a pointer to the task status array here.
+void collect_worker_tasks(std::atomic<task_status> *task_statuses) {
     int solution_received = 0;
     int solution_pair[2] = {0, 0};
     MPI_Status stat;
@@ -65,10 +66,10 @@ void collect_worker_tasks() {
         //printf("Queen: received solution %d.\n", solution);
         // add it to the collected set of the queen
         if (static_cast<task_status>(solution_pair[1]) != task_status::irrelevant) {
-            if (tstatus[solution_pair[0]].load(std::memory_order_acquire) == task_status::pruned) {
+            if (task_statuses[solution_pair[0]].load(std::memory_order_acquire) == task_status::pruned) {
                 g_meas.pruned_collision++;
             }
-            tstatus[solution_pair[0]].store(static_cast<task_status>(solution_pair[1]),
+            task_statuses[solution_pair[0]].store(static_cast<task_status>(solution_pair[1]),
                                             std::memory_order_release);
             // transmit the solution_pair[0] as solved
             // transmit_irrelevant_task(solution_pair[0]);

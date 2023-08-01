@@ -46,7 +46,7 @@ std::pair<int, int *> mpi_communicator::bcast_recv_int_array(int root_sender) {
     MPI_Bcast(&length, 1, MPI_INT, root_sender, MPI_COMM_WORLD);
     int *arr = new int[length];
     MPI_Bcast(arr, length, MPI_INT, root_sender, MPI_COMM_WORLD);
-    return std::pair(length, arr);
+    return {length, arr};
 }
 
 void mpi_communicator::bcast_send_uint64_array(int root_sender, uint64_t *array, int length) {

@@ -9,9 +9,8 @@
 // in multiple places.
 
 void overseer::cleanup() {
-    assert(tarray != nullptr && tstatus != nullptr);
-    destroy_tarray();
-    destroy_tstatus();
+    delete_all_tasks();
+    delete_task_status();
     tasks.clear();
     next_task.store(0);
 
@@ -80,7 +79,7 @@ void overseer::process_finished_tasks() {
         while (ftask_id != -1) {
             // print_if<true>("Popped task id %d for worker %d.\n", ftask_id, p);
 
-            task_status solution = tstatus[ftask_id].load();
+            task_status solution = ov->all_tasks_status[ftask_id].load();
             if (solution == task_status::alg_win || solution == task_status::adv_win) {
                 comm.send_solution_pair(ftask_id, static_cast<int>(solution));
             }
@@ -176,20 +175,20 @@ void overseer::start() {
             // receive (new) task array
 
             // Attention: this potentially writes the same variable it reads in the local communication model.
-            tcount = comm.bcast_recv_tcount();
-            init_tarray();
-            init_tstatus();
+            all_task_count = comm.bcast_recv_tcount();
+            init_all_tasks(all_task_count);
+            init_task_status(all_task_count);
 
             // Synchronize tarray.
-            for (int i = 0; i < tcount; i++) {
+            for (unsigned int i = 0; i < all_task_count; i++) {
                 flat_task transport = comm.bcast_recv_flat_task();
-                tarray[i].load(transport);
+                all_tasks[i].load(transport);
             }
 
             int *tstatus_transport_copy = nullptr;
             comm.bcast_recv_allocate_tstatus_transport(&tstatus_transport_copy);
-            for (int i = 0; i < tcount; i++) {
-                tstatus[i].store(static_cast<task_status>(tstatus_transport_copy[i]));
+            for (unsigned int i = 0; i < all_task_count; i++) {
+                all_tasks_status[i].store(static_cast<task_status>(tstatus_transport_copy[i]));
             }
 
             comm.delete_tstatus_transport(&tstatus_transport_copy);
@@ -207,7 +206,7 @@ void overseer::start() {
 
             // Reserve space for finished tasks.
             for (int w = 0; w < worker_count; w++) {
-                finished_tasks[w].init(tcount);
+                finished_tasks[w].init(all_task_count);
             }
 
             // Wake up all workers and wait for them to set up and go back to sleep.

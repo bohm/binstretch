@@ -193,8 +193,8 @@ void dag::clear_visited_secondary() {
  * a for loop in C++ through a list and erase from the list at the same time.
  */
 
-/* Forward declaration of remove_task for inclusion purposes. */
-void remove_task(uint64_t hash);
+/* Forward declaration of queen_remove_task for inclusion purposes. */
+void queen_remove_task(uint64_t hash);
 
 template<minimax MODE>
 void dag::remove_inedge(adv_outedge *e) {
@@ -220,7 +220,7 @@ void dag::remove_inedge(alg_outedge *e) {
         remove_outedges<MODE>(e->to);
         // when updating the tree, if e->to is task, remove it from the queue
         if (MODE == minimax::updating && e->to->task && e->to->win == victory::uncertain) {
-            remove_task(e->to->bc.hash_with_last());
+            queen_remove_task(e->to->bc.hash_with_last());
         }
 
         del_adv_vertex(e->to);
