@@ -1,6 +1,6 @@
 #pragma once
 
-#include "net/mpi.hpp"
+#include "net/local.hpp"
 #include "worker.hpp"
 #include "overseer.hpp"
 #include "heur_alg_knownsum.hpp"

@@ -333,7 +333,7 @@ int queen_class::start() {
 
             // Main loop of this thread (the variable is updated by the other thread).
             while (updater_running.load()) {
-                collect_worker_tasks(queen->all_tasks_status);
+                comm.collect_worker_tasks(queen->all_tasks_status);
                 comm.collect_runlows(); // collect_running_lows();
 
                 // We wish to have the loop here, so that net/ is independent on compose_batch().
@@ -466,7 +466,7 @@ int queen_class::start() {
         // malloc_trim(0);
     }
 
-    delete dpc;
+    // delete dpc; // 2023-08-01: This should be returned, but overseer and queen could touch the same memory now.
 
     delete qdag;
     return ret;

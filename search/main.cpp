@@ -3,7 +3,7 @@
 #include <csignal>
 #include <inttypes.h>
 
-#include "net/mpi.hpp"
+#include "net/local.hpp"
 
 #include "common.hpp"
 #include "functions.hpp"

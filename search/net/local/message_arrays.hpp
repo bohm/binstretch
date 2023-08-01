@@ -7,31 +7,29 @@
 
 // Message arrays for non-blocking sending and receiving objects of one type.
 // They need to be cleared manually.
-template<class DATA>
+template<int THREAD_COUNT, class DATA>
 class message_arrays {
 private:
-    int reader_count;
     std::mutex *access;
     std::vector<DATA> *arrays;
-    size_t *positions;
+    std::array<size_t, THREAD_COUNT> positions = {0};
 public:
-    void deferred_construction(int tc) {
-        reader_count = tc;
-        arrays = new std::vector<DATA>[tc];
-        positions = new size_t[tc];
-        access = new std::mutex[tc];
+
+    message_arrays() {
+        arrays = new std::vector<DATA>[THREAD_COUNT];
+        access = new std::mutex[THREAD_COUNT];
     }
 
     ~message_arrays() {
         delete[] arrays;
         delete[] access;
-        delete[] positions;
     }
 
     void clear() {
-        for (int i = 0; i < reader_count; i++) {
+        for (int i = 0; i < THREAD_COUNT; i++) {
             std::unique_lock<std::mutex> lk(access[i]);
             arrays[i].clear();
+            positions[i] = 0;
             lk.unlock();
         }
     }

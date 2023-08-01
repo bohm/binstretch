@@ -1,8 +1,6 @@
 cmake_minimum_required(VERSION 3.26)
 project(clion)
 
-find_package(MPI)
-
 set(CMAKE_CXX_STANDARD 20)
 
 include_directories(search)
@@ -17,11 +15,9 @@ include_directories(search/net/mpi)
 include_directories(search/poset)
 include_directories(search/strategies)
 include_directories(search/weights)
-include_directories(${MPI_INCLUDE_PATH})
-include_directories(${MPI_CXX_INCLUDE_PATH})
 include_directories(../parallel-hashmap)
 
-add_compile_definitions(IBINS=6)
+add_compile_definitions(IBINS=8)
 add_compile_definitions(IR=19)
 add_compile_definitions(IS=14)
 
@@ -53,19 +49,10 @@ add_executable(clion
         search/net/local/broadcaster.hpp
         search/net/local/comm_basics.hpp
         search/net/local/local_communicator.hpp
-        search/net/local/message.hpp
         search/net/local/message_arrays.hpp
         search/net/local/synchronizer.hpp
         search/net/local/threadsafe_printer.hpp
-        search/net/mpi/comm_basics.hpp
-        search/net/mpi/mpi_communicator.hpp
-        search/net/mpi/mpi_multiprocess.hpp
-        search/net/mpi/ocomm.hpp
-        search/net/mpi/qcomm.hpp
         search/net/batches.hpp
-        search/net/local_basics.hpp
-        search/net/local_structures.hpp
-        search/net/mpi.hpp
         search/poset/poset.hpp
         search/strategies/abstract.hpp
         search/strategies/basic.hpp
@@ -111,6 +98,3 @@ add_executable(clion
         search/updater.hpp
         search/worker.hpp
         search/worker_methods.hpp)
-
-target_link_libraries(clion ${MPI_C_LIBRARIES})
-target_link_libraries(clion ${MPI_CXX_LIBRARIES})

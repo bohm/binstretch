@@ -35,6 +35,7 @@ private:
     broadcaster<READERS, int> tcount_broadcaster;
     broadcaster<READERS, int> number_of_workers;
     broadcaster<READERS, std::vector<task>> task_vector_broadcast;
+    broadcaster<READERS, std::vector<int>> task_status_broadcast;
 
     broadcaster<READERS, measure_attr> measurement_broadcast;
 
@@ -43,8 +44,8 @@ private:
     synchronizer<TOTAL_THREADS> round_end;
 
     std::array<std::atomic<bool>, TOTAL_THREADS> running_low;
-    message_arrays<std::pair<int, int>> solution_messages;
-    message_arrays<std::array<int, BATCH_SIZE>> batch_messages;
+    message_arrays<TOTAL_THREADS, std::pair<int, int>> solution_messages;
+    message_arrays<TOTAL_THREADS, std::array<int, BATCH_SIZE>> batch_messages;
 
     // Root solved -- a non-blocking signal.
     std::atomic<bool> root_solved_signal;
@@ -106,32 +107,38 @@ public:
         tcount_broadcaster.send(tc);
     }
 
-    int bcast_recv_tcount()
-    {
+    int bcast_recv_tcount() {
         return tcount_broadcaster.receive();
     }
 
     // Since zobrist values are immutable at this point and both threads have access to them, we do not
     // need to do anything here.
-    void bcast_send_zobrist(zobrist_quintuple zq)
-    {
+    void bcast_send_zobrist(zobrist_quintuple zq) {
 
     }
 
     // Same as above.
-    void bcast_recv_and_assign_zobrist()
-    {
+    void bcast_recv_and_assign_zobrist() {
 
     }
 
-    void bcast_send_tstatus_transport(int *tstatus, int tstatus_length);
+    void bcast_send_tstatus_transport(int *tstatus, int tstatus_length) {
+        std::vector<int> tstatus_transport(tstatus, tstatus + tstatus_length);
+        task_status_broadcast.send(tstatus_transport);
 
-    void bcast_recv_allocate_tstatus_transport(int **tstatus_transport_pointer);
+    }
+
+    void bcast_recv_allocate_tstatus_transport(int **tstatus_transport_pointer) {
+        std::vector<int> tstatus_transport = task_status_broadcast.receive();
+        *tstatus_transport_pointer = new int[tstatus_transport.size()];
+        for (unsigned int i = 0; i < tstatus_transport.size(); i++) {
+            (*tstatus_transport_pointer)[i] = tstatus_transport[i];
+        }
+    }
 
     // We delete the local copy via mpi_communicator as a "hack" that allows
     // the local mode to just pass and not delete anything.
-    void overseer_delete_tstatus_transport(int **tstatus_transport)
-    {
+    void overseer_delete_tstatus_transport(int **tstatus_transport) {
         delete[] *tstatus_transport;
         *tstatus_transport = nullptr;
     }
@@ -145,22 +152,23 @@ public:
     void ignore_additional_signals() {}
 
     bool check_root_solved(std::vector<worker_flags *> &w_flags) {
-        if (root_solved_signal.load())
-        {
-            for (unsigned int i = 0; i < w_flags.size(); i++)
-            {
+        if (root_solved_signal.load()) {
+            for (unsigned int i = 0; i < w_flags.size(); i++) {
                 w_flags[i]->root_solved = true;
             }
         }
+
+        return root_solved_signal.load();
     }
 
     void send_solution_pair(int ftask_id, int solution) {
-        std::pair<int,int> spair = {ftask_id, solution};
+        std::pair<int, int> spair = {ftask_id, solution};
+        // fprintf(stderr, "Sending (%d, %d) as a solution pair.\n", spair.first, spair.second);
         solution_messages.send(0, spair);
     }
 
-    void request_new_batch(int _)
-    {
+    void request_new_batch(int _) {
+        // fprintf(stderr, "Local overseer requesting a new batch.\n");
         running_low[1].store(true);
     }
 
@@ -169,12 +177,14 @@ public:
 
         if (success) {
             upcoming_batch = batch;
+        } else {
+            // fprintf(stderr, "Overseer: No batch in sight    .\n");
         }
 
         return success;
     }
 
-    void bcast_recv_all_tasks(task* all_task_array, size_t atc) {
+    void bcast_recv_all_tasks(task *all_task_array, size_t atc) {
         std::vector<task> received_vector = task_vector_broadcast.receive();
         assert(atc == received_vector.size());
         for (unsigned int i = 0; i < atc; i++) {
@@ -183,34 +193,57 @@ public:
     }
 
     // local_qcomm.hpp
-    void send_batch(int *batch, int target_overseer)
-    {
-        std::array<int, BATCH_SIZE> batch_transport;
-        for (unsigned int i = 0; i < BATCH_SIZE; i++)
-        {
+    void send_batch(int *batch, int target_overseer) {
+        std::array<int, BATCH_SIZE> batch_transport = {0};
+        for (unsigned int i = 0; i < BATCH_SIZE; i++) {
             batch_transport[i] = batch[i];
         }
+        // fprintf(stderr, "Queen: Sending a batch to overseer %d.\n", target_overseer);
         batch_messages.send(target_overseer, batch_transport);
     }
 
     // Local communication edits the running low directly, and so this function just passes.
-    void collect_runlows()
-    {
+    void collect_runlows() {
 
     }
 
-    void ignore_additional_solutions()
-    {
+    void ignore_additional_solutions() {
 
     }
 
-    void bcast_send_all_tasks(task* all_task_array, size_t atc)
-    {
+    void bcast_send_all_tasks(task *all_task_array, size_t atc) {
         std::vector<task> task_vector_transport(all_task_array, all_task_array + atc);
         task_vector_broadcast.send(task_vector_transport);
     }
 
-};
+    void collect_worker_tasks(std::atomic<task_status> *task_statuses);
 
+};
 // A global variable facilitating the communication in local mode.
 local_communicator comm;
+
+// To avoid importing queen.hpp or tasks.hpp, we use a pointer to the task status array here.
+void local_communicator::collect_worker_tasks(std::atomic<task_status> *task_statuses) {
+
+    auto [success, spair] = solution_messages.try_pop(0);
+
+    while (success) {
+        // fprintf(stderr, "Received a message containing (%d, %d).\n", spair.first, spair.second);
+        success = false;
+        qmemory::collected_now++;
+        qmemory::collected_cumulative++;
+        //printf("Queen: received solution %d.\n", solution);
+        // add it to the collected set of the queen
+        if (static_cast<task_status>(spair.second) != task_status::irrelevant) {
+            if (task_statuses[spair.first].load(std::memory_order_acquire) == task_status::pruned) {
+                g_meas.pruned_collision++;
+            }
+            task_statuses[spair.first].store(static_cast<task_status>(spair.second),
+                                                  std::memory_order_release);
+            // transmit the solution_pair[0] as solved
+            // transmit_irrelevant_task(solution_pair[0]);
+        }
+
+        std::tie(success, spair) = solution_messages.try_pop(0);
+    }
+}
