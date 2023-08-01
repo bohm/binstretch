@@ -4,9 +4,9 @@
 #include <unordered_map>
 #include <cstdint>
 
-#define IBINS 3
-#define IR 329
-#define IS 240
+#define IBINS 4
+#define IR 112
+#define IS 82
 
 #include "minibs/minibs.hpp"
 #include "gs.hpp"
@@ -114,13 +114,13 @@ template <int SCALE> void alg_losing_table(std::pair<loadconf, itemconfig<SCALE>
 int main(int argc, char** argv)
 {
 
-    if (argc < 4)
+    if (argc < BINS+1)
     {
 	ERRORPRINT("all-losing error: Needs the minibinstretching configuration as a parameter.\n");
     }
 
     bool only_load = false;
-    if (argc == 4)
+    if (argc == BINS+1)
     {
 	only_load = true;
     }

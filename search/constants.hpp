@@ -149,6 +149,8 @@ const int RECOMMENDED_MONOTONICITY = 2;
 const int RECOMMENDED_MONOTONICITY = 6;
 // #elif IBINS == 4 && IR == 60 && IS == 44
 // const int RECOMMENDED_MONOTONICITY = 43;
+#elif IBINS == 4 && IR == 112 && IS == 82
+const int RECOMMENDED_MONOTONICITY = 16;
 #elif IBINS >= 8 && IR == 19 && IS == 14
 const int RECOMMENDED_MONOTONICITY = 1;
 #elif IBINS == 6 && IR == 15 && IS == 11

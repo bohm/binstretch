@@ -66,8 +66,8 @@ const std::vector<int> INITIAL_ITEMS = {};
 
 
 // Monotonicity limiting the adversarial instance.
-// const int monotonicity = RECOMMENDED_MONOTONICITY;
-constexpr int monotonicity = std::max(70, S-1);
+constexpr int monotonicity = RECOMMENDED_MONOTONICITY;
+// constexpr int monotonicity = std::min(30, S-1);
 
 // const int monotonicity = 0; // A non-decreasing instance.
 // const int monotonicity = S-1; // Full generality.
@@ -108,8 +108,8 @@ constexpr bool USING_HEURISTIC_GS = false;
 constexpr bool USING_KNOWNSUM_LOWSEND = false;
 constexpr bool USING_MINIBINSTRETCHING = true;
 
-constexpr int MINIBS_SCALE_QUEEN = 12; // Minibinstretching scale for the DAG generation phase.
-constexpr int MINIBS_SCALE_WORKER = 12; // Minibinstretching scale for the exploration phase.
+constexpr int MINIBS_SCALE_QUEEN = 3; // Minibinstretching scale for the DAG generation phase.
+constexpr int MINIBS_SCALE_WORKER = 3; // Minibinstretching scale for the exploration phase.
 
 // batching constants
 const int BATCH_SIZE = 50;
