@@ -67,8 +67,6 @@ const std::vector<int> INITIAL_ITEMS = {};
 
 // Monotonicity limiting the adversarial instance.
 constexpr int monotonicity = RECOMMENDED_MONOTONICITY;
-// constexpr int monotonicity = std::min(30, S-1);
-
 // const int monotonicity = 0; // A non-decreasing instance.
 // const int monotonicity = S-1; // Full generality.
 
@@ -108,8 +106,12 @@ constexpr bool USING_HEURISTIC_GS = false;
 constexpr bool USING_KNOWNSUM_LOWSEND = false;
 constexpr bool USING_MINIBINSTRETCHING = true;
 
+<<<<<<< HEAD
 constexpr int MINIBS_SCALE_QUEEN = 3; // Minibinstretching scale for the DAG generation phase.
 constexpr int MINIBS_SCALE_WORKER = 3; // Minibinstretching scale for the exploration phase.
+=======
+constexpr int MINIBS_SCALE = RECOMMENDED_MINIBS_SCALE;
+>>>>>>> origin/clion
 
 // batching constants
 const int BATCH_SIZE = 50;
@@ -175,14 +177,6 @@ uint64_t *Zlast;
 uint64_t *Zalg;
 
 uint64_t **Zlbig;
-
-
-// thread rank idea:
-// if worker has thread rank 3 and reported thread count 5, it is assigned worker ranks 3,4,5,6,7.
-//
-int worker_count = 0;
-int thread_rank = 0;
-int thread_rank_size = 0;
 
 
 // A bin configuration consisting of three loads and a list of items that have arrived so far.

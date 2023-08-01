@@ -11,7 +11,7 @@
 #include "fits.hpp"
 #include "dynprog/wrappers.hpp"
 #include "gs.hpp"
-#include "tasks.hpp"
+#include "tasks/tasks.hpp"
 #include "queen.hpp"
 
 /* To facilitate faster updates and better decreases, I have moved
@@ -125,7 +125,7 @@ victory updater_computation::update_adv(adversary_vertex *v) {
 
     if (v->task) {
         uint64_t hash = v->bc.hash_with_last();
-        result = completion_check(hash);
+        result = queen_completion_check(hash);
         if (result == victory::uncertain) {
             unfinished_tasks++;
         } else {

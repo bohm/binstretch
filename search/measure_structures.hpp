@@ -41,7 +41,9 @@ struct cache_measurements {
 struct measure_attr {
 
     // Measurements which are collected in one place by all worker threads, and thus need to be atomic.
-    std::atomic<uint64_t> loadconf_hashinit_calls = 0;
+    // Reverted to maintain the copy constructor. We should check for any mistakes here.
+    // std::atomic<uint64_t> loadconf_hashinit_calls = 0;
+    uint64_t loadconf_hashinit_calls = 0;
 
     uint64_t dp_hit = 0;
     uint64_t dp_partial_nf = 0;
@@ -179,7 +181,7 @@ struct measure_attr {
 
     void print() {
         fprintf(stderr, "Total hashinit() calls for loadconf objects: %" PRIu64 ".\n",
-                loadconf_hashinit_calls.load(std::memory_order_relaxed));
+                loadconf_hashinit_calls);
         fprintf(stderr, " --- maximum_feasible() --- \n");
         fprintf(stderr, "maximum_feasible() calls: %" PRIu64 ", infeasible returns: %" PRIu64 ".\n",
                 maxfeas_calls, maxfeas_infeasibles);

@@ -43,7 +43,7 @@ int worker::get_task() {
             continue;
         } else if (assigned_tid == NO_MORE_TASKS) {
             return NO_MORE_TASKS;
-        } else if (tstatus[assigned_tid].load() == task_status::pruned) {
+        } else if (ov->all_tasks_status[assigned_tid].load() == task_status::pruned) {
             // print_if<true>("Worker %d skipping task %d, PRUNED.\n", thread_rank + tid, assigned_tid);
             continue;
         } else {
@@ -55,7 +55,7 @@ int worker::get_task() {
 victory worker::solve(const task *t, const int &task_id) {
     victory ret = victory::uncertain;
 
-    computation<minimax::exploring, MINIBS_SCALE_WORKER> comp;
+    computation<minimax::exploring, MINIBS_SCALE> comp;
 
     if (FURTHER_MEASURE) {
         dlog = new debug_logger(tid);
@@ -84,7 +84,7 @@ victory worker::solve(const task *t, const int &task_id) {
         ret = explore(&task_copy, &comp);
         measurements.add(comp.meas);
     } catch (computation_irrelevant &e) {
-        print_if<PROGRESS>("Worked %d: finishing computation, it is irrelevant.\n", thread_rank + tid);
+        print_if<PROGRESS>("Worker %d: finishing computation, it is irrelevant.\n", tid);
         ret = victory::irrelevant;
     }
 
@@ -132,21 +132,21 @@ void worker::start(worker_flags *assigned_flags) {
             // print_if<true>("Worker %d processing task %d.\n", thread_rank + tid, current_task_id);
 
             if (flags->root_solved) {
-                print_if<TASK_DEBUG>("Worker %d: root solved, breaking.\n", thread_rank + tid);
+                print_if<TASK_DEBUG>("Worker %d: root solved, breaking.\n", tid);
                 break;
             }
 
             if (current_task_id == NO_MORE_TASKS) {
-                print_if<TASK_DEBUG>("Worker %d: No more tasks, breaking.\n", thread_rank + tid);
+                print_if<TASK_DEBUG>("Worker %d: No more tasks, breaking.\n", tid);
 
                 // no_more_tasks = true;
                 break;
             } else {
-                print_if<TASK_DEBUG>("Worker %d: Taken up task %d.\n", thread_rank + tid, current_task_id);
+                print_if<TASK_DEBUG>("Worker %d: Taken up task %d.\n", tid, current_task_id);
 
             }
-            assert(current_task_id >= 0 && current_task_id < tcount);
-            current_task = tarray[current_task_id];
+            assert(current_task_id >= 0 && current_task_id < (int) ov->all_task_count);
+            current_task = ov->all_tasks[current_task_id];
             // current_task.bc.hash_loads_init(); // should not be necessary
 
             if (TASKLOG) {
@@ -154,7 +154,7 @@ void worker::start(worker_flags *assigned_flags) {
             }
 
             victory solution = victory::irrelevant;
-            if (tstatus[current_task_id].load() != task_status::pruned) {
+            if (ov->all_tasks_status[current_task_id].load() != task_status::pruned) {
                 // print_if<true>("Worker %d processing task %d.\n", thread_rank + tid, current_task_id);
                 solution = solve(&current_task, current_task_id);
             } else {
@@ -174,10 +174,10 @@ void worker::start(worker_flags *assigned_flags) {
             assert(solution == victory::alg || solution == victory::adv || solution == victory::irrelevant);
 
             if (solution == victory::adv) {
-                tstatus[current_task_id].store(task_status::adv_win);
+                ov->all_tasks_status[current_task_id].store(task_status::adv_win);
                 ov->finished_tasks[tid].push(current_task_id);
             } else if (solution == victory::alg) {
-                tstatus[current_task_id].store(task_status::alg_win);
+                ov->all_tasks_status[current_task_id].store(task_status::alg_win);
                 ov->finished_tasks[tid].push(current_task_id);
             }
         }

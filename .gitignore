@@ -5,8 +5,7 @@
 *.hpp~
 experiments/*
 results/*
-logs/*
-build/*
+cmake-build-debug/*
 /x64
 /bs-dagtest.vcxproj.user
 /bs-dagtest.vcxproj.filters

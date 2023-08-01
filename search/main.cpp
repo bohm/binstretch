@@ -3,7 +3,7 @@
 #include <csignal>
 #include <inttypes.h>
 
-#include "net/mpi.hpp"
+#include "net/local.hpp"
 
 #include "common.hpp"
 #include "functions.hpp"
@@ -155,7 +155,7 @@ void queen_main_thread(int argc, char **argv) {
     }
 
     print_if<MEASURE>("Number of tasks: %d, collected tasks: %u,  pruned tasks %" PRIu64 ".\n,",
-                      tcount, qmemory::collected_cumulative.load(), removed_task_count);
+                      queen->all_task_count, qmemory::collected_cumulative.load(), removed_task_count);
     print_if<MEASURE>("Pruned & transmitted tasks: %" PRIu64 "\n", irrel_transmitted_count);
     print_if<MEASURE>("Number of winning saplings %d.\n", winning_saplings);
 

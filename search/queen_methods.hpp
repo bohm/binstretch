@@ -5,14 +5,18 @@
 #include "common.hpp"
 #include "updater.hpp"
 #include "minimax/sequencing.hpp"
-#include "tasks.hpp"
+#include "tasks/tasks.hpp"
 #include "net/batches.hpp"
 #include "server_properties.hpp"
-// #include "loadfile.hpp"
 #include "saplings.hpp"
 #include "savefile.hpp"
 #include "performance_timer.hpp"
 #include "queen.hpp"
+#include "sapling_manager.hpp"
+#include "measure_structures.hpp"
+#include "dag/consistency.hpp"
+#include "cleanup.hpp"
+
 /*
 
 Message sequence:
@@ -128,7 +132,6 @@ int queen_class::start() {
     zobrist_init();
     comm.bcast_send_zobrist(zobrist_quintuple(Zi, Zl, Zlow, Zlast, Zalg));
 
-    comm.compute_thread_ranks();
     // init_running_lows();
     batches batching(multiprocess::overseer_count());
 
@@ -140,8 +143,8 @@ int queen_class::start() {
 
 
     if (USING_MINIBINSTRETCHING) {
-        print_if<PROGRESS>("Queen: allocating cache minibs<%d>.\n", MINIBS_SCALE_QUEEN);
-        mbs = new minibs<MINIBS_SCALE_QUEEN>();
+        print_if<PROGRESS>("Queen: allocating cache minibs<%d>.\n", MINIBS_SCALE);
+        mbs = new minibs<MINIBS_SCALE>();
         // Note: the next command is not executed by the overseer, as we wish to backup
         // the calculations only by one process, and not have two write to a file at the same time.
         mbs->backup_calculations();
@@ -218,7 +221,7 @@ int queen_class::start() {
 
         GRAPH_DEBUG_ONLY(qdag->log_graph("./logs/before-generation.log"));
 
-        computation<minimax::generating, MINIBS_SCALE_QUEEN> comp;
+        computation<minimax::generating, MINIBS_SCALE> comp;
         comp.regrow_level = job.regrow_level;
 
         if (USING_ASSUMPTIONS) {
@@ -230,7 +233,9 @@ int queen_class::start() {
         }
 
 
-        clear_task_structures();
+        all_tasks_status_temporary.clear();
+        all_tasks_temporary.clear();
+        task_map.clear();
 
         comm.reset_runlows(); // reset_running_lows();
         qdag->clear_visited();
@@ -282,18 +287,19 @@ int queen_class::start() {
             comm.round_start_and_finality(false);
 
             collect_tasks(computation_root);
-            init_tstatus(tstatus_temporary);
-            tstatus_temporary.clear();
-            init_tarray(tarray_temporary);
-            tarray_temporary.clear();
+
+            init_all_tasks(all_tasks_temporary);
+            all_tasks_temporary.clear();
+            init_task_status(all_tasks_status_temporary);
+            all_tasks_status_temporary.clear();
 
             // 2022-05-30: It is still not clear to me what is the right absolute order here.
             // In the future, it makes sense to do some prioritization in the task queue.
             // Until then, we just reverse the queue (largest items go first). This leads
             // to a lot of failures early, but these failures will be quick.
 
-            // permute_tarray_tstatus(); // We do not permute currently.
-            reverse_tarray_tstatus();
+            // queen_permute_tarray_tstatus(); // We do not permute currently.
+            queen_reverse_tarray_tstatus();
 
             // print_tasks(); // Large debug print.
 
@@ -301,21 +307,19 @@ int queen_class::start() {
             // note: do not push into irrel_taskq before permutation is done;
             // the numbers will not make any sense.
 
-            print_if<PROGRESS>("Queen: Generated %d tasks.\n", tcount);
-            comm.bcast_send_tcount(tcount);
+            print_if<PROGRESS>("Queen: Generated %d tasks.\n", all_task_count);
+            comm.bcast_send_tcount(all_task_count);
+
             // Synchronize tarray.
-            for (int i = 0; i < tcount; i++) {
-                flat_task transport = tarray[i].flatten();
-                comm.bcast_send_flat_task(transport);
-            }
+            comm.bcast_send_all_tasks(all_tasks, all_task_count);
 
             // Synchronize tstatus.
-            int *tstatus_transport_copy = new int[tcount];
-            for (int i = 0; i < tcount; i++) {
-                tstatus_transport_copy[i] = static_cast<int>(tstatus[i].load());
+            int *tstatus_transport_copy = new int[all_task_count];
+            for (unsigned int i = 0; i < all_task_count; i++) {
+                tstatus_transport_copy[i] = static_cast<int>(all_tasks_status[i].load());
             }
             // After "de-atomizing" it, pass it to all overseers.
-            comm.bcast_send_tstatus_transport(tstatus_transport_copy, tcount);
+            comm.bcast_send_tstatus_transport(tstatus_transport_copy, all_task_count);
             delete[] tstatus_transport_copy;
 
             print_if<PROGRESS>("Queen: Tasks synchronized.\n");
@@ -329,15 +333,15 @@ int queen_class::start() {
 
             // Main loop of this thread (the variable is updated by the other thread).
             while (updater_running.load()) {
-                collect_worker_tasks();
+                comm.collect_worker_tasks(queen->all_tasks_status);
                 comm.collect_runlows(); // collect_running_lows();
 
                 // We wish to have the loop here, so that net/ is independent on compose_batch().
                 for (int overseer = 1; overseer <= multiprocess::overseer_count(); overseer++) {
                     if (comm.is_running_low(overseer)) {
                         //check_batch_finished(overseer);
-                        batching.compose_batch(overseer, taskpointer, tcount,
-                                               tstatus);
+                        batching.compose_batch(overseer, taskpointer, all_task_count,
+                                               all_tasks_status);
                         comm.send_batch(batching.b[overseer], overseer);
                         comm.satisfied_runlow(overseer);
                     }
@@ -355,8 +359,8 @@ int queen_class::start() {
             // that process tasks.
             comm.send_root_solved();
             // collect remaining, unnecessary solutions
-            destroy_tarray();
-            destroy_tstatus();
+            delete_all_tasks();
+            delete_task_status();
             comm.sync_after_round_end();
             comm.ignore_additional_solutions();
 
@@ -415,7 +419,7 @@ int queen_class::start() {
     // We are terminating, start final round.
     print_if<COMM_DEBUG>("Queen: starting final round.\n");
     comm.round_start_and_finality(true);
-    comm.receive_measurements();
+    // comm.receive_measurements(); // 2023-08-01: Temporarily disabled.
     comm.sync_after_round_end();
 
     // Global post-evaluation checks belong here.
@@ -462,7 +466,7 @@ int queen_class::start() {
         // malloc_trim(0);
     }
 
-    delete dpc;
+    // delete dpc; // 2023-08-01: This should be returned, but overseer and queen could touch the same memory now.
 
     delete qdag;
     return ret;

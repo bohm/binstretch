@@ -2,6 +2,8 @@
 
 // Auxiliary functions that make the minimax code cleaner.
 
+#include "small_classes.hpp"
+
 template<minimax MODE, int MINIBS_SCALE>
 void computation<MODE, MINIBS_SCALE>::check_messages() {
     // check_termination();
@@ -11,17 +13,21 @@ void computation<MODE, MINIBS_SCALE>::check_messages() {
         throw computation_irrelevant();
     }
 
-    if (tstatus[task_id].load() == task_status::pruned) {
-        //print_if<true>("Worker %d works on an irrelevant thread.\n", world_rank);
-        // return victory::irrelevant;
-        throw computation_irrelevant();
+    // The following code also make sense for EXPLORING, but only once proper relevancy passing is implemented.
+    // Since we are GENERATING, we can query the queen directly.
+    if (GENERATING) {
+        if (queen->all_tasks_status[task_id].load() == task_status::pruned) {
+            //print_if<true>("Worker %d works on an irrelevant thread.\n", world_rank);
+            // return victory::irrelevant;
+            throw computation_irrelevant();
 
+        }
     }
 }
 
 
 // Computes moves that adversary wishes to make. There may be a strategy
-// involved or we may be in a heuristic situation, where we know what to do.
+// involved, or we may be in a heuristic situation, where we know what to do.
 
 void compute_next_moves_heur(std::vector<int> &cands, const binconf *b, heuristic_strategy *strat) {
     cands.push_back(strat->next_item(b));

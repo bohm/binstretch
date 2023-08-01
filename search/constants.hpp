@@ -141,22 +141,27 @@ const int RECOMMENDED_MONOTONICITY = 15;
 const int RECOMMENDED_MONOTONICITY = 35;
 #elif IBINS == 3 && IR == 411 && IS == 300
 const int RECOMMENDED_MONOTONICITY = 15;
-
+#elif IBINS == 3 && IR == 821 && IS == 600
+const int RECOMMENDED_MONOTONICITY = 70;
+constexpr int RECOMMENDED_MINIBS_SCALE = 6;
 // 4 bins:
 #elif IBINS == 4 && IR == 19 && IS == 14
 const int RECOMMENDED_MONOTONICITY = 2;
+constexpr int RECOMMENDED_MINIBS_SCALE = 6;
 #elif IBINS == 4 && IR == 72 && IS == 53
 const int RECOMMENDED_MONOTONICITY = 6;
 // #elif IBINS == 4 && IR == 60 && IS == 44
 // const int RECOMMENDED_MONOTONICITY = 43;
 #elif IBINS == 4 && IR == 112 && IS == 82
 const int RECOMMENDED_MONOTONICITY = 16;
-#elif IBINS >= 8 && IR == 19 && IS == 14
+#elif IBINS >= 7 && IR == 19 && IS == 14
 const int RECOMMENDED_MONOTONICITY = 1;
+constexpr int RECOMMENDED_MINIBS_SCALE = 3;
 #elif IBINS == 6 && IR == 15 && IS == 11
 const int RECOMMENDED_MONOTONICITY = 3;
 #elif IBINS >= 7 && IR == 15 && IS == 11
 const int RECOMMENDED_MONOTONICITY = 5;
 #else
 const int RECOMMENDED_MONOTONICITY = IS - 1;
+constexpr int RECOMMENDED_MINIBS_SCALE = 6;
 #endif

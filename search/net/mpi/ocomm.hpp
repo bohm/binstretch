@@ -1,9 +1,10 @@
-#ifndef _NET_MPI_OCOMM_HPP
-#define _NET_MPI_OCOMM_HPP 1
+#pragma once
 
+#include "mpi_multiprocess.hpp"
+#include "mpi_communicator.hpp"
 
 // Workers fetch and ignore additional signals about root solved (since it may arrive in two places).
-void communicator::ignore_additional_signals() {
+void mpi_communicator::ignore_additional_signals() {
     MPI_Status stat;
     int signal_present = 0;
     int irrel = 0;
@@ -31,7 +32,7 @@ void communicator::ignore_additional_signals() {
 
 }
 
-bool communicator::check_root_solved(std::vector<worker_flags *> &w_flags) {
+bool mpi_communicator::check_root_solved(std::vector<worker_flags *> &w_flags) {
     MPI_Status stat;
     int root_solved_flag = 0;
     MPI_Iprobe(multiprocess::QUEEN_ID, net::ROOT_SOLVED, MPI_COMM_WORLD, &root_solved_flag, &stat);
@@ -48,27 +49,27 @@ bool communicator::check_root_solved(std::vector<worker_flags *> &w_flags) {
     return false;
 }
 
-void communicator::send_solution_pair(int ftask_id, int solution) {
+void mpi_communicator::send_solution_pair(int ftask_id, int solution) {
     int solution_pair[2] = {ftask_id, solution};
     // solution_pair[0] = ftask_id; solution_pair[1] = solution;
     MPI_Send(&solution_pair, 2, MPI_INT, multiprocess::QUEEN_ID, net::SOLUTION, MPI_COMM_WORLD);
 }
 
-void communicator::request_new_batch(int _) {
+void mpi_communicator::request_new_batch(int overseer_rank) {
     int irrel = 0;
     MPI_Send(&irrel, 1, MPI_INT, multiprocess::QUEEN_ID, net::RUNNING_LOW, MPI_COMM_WORLD);
 }
 
-bool communicator::try_receiving_batch(std::array<int, BATCH_SIZE> &upcoming_batch) {
+bool mpi_communicator::try_receiving_batch(std::array<int, BATCH_SIZE> &upcoming_batch) {
     print_if<TASK_DEBUG>("Overseer %d: Attempting to receive a new batch. \n",
-                         multiprocess::world_rank);
+                         multiprocess::overseer_rank());
 
 
     int batch_incoming = 0;
     MPI_Status stat;
     MPI_Iprobe(multiprocess::QUEEN_ID, net::SENDING_BATCH, MPI_COMM_WORLD, &batch_incoming, &stat);
     if (batch_incoming) {
-        print_if<COMM_DEBUG>("Overseer %d receives the new batch.\n", multiprocess::world_rank);
+        print_if<COMM_DEBUG>("Overseer %d receives the new batch.\n", multiprocess::overseer_rank());
         MPI_Recv(upcoming_batch.data(), BATCH_SIZE, MPI_INT, multiprocess::QUEEN_ID, net::SENDING_BATCH, MPI_COMM_WORLD,
                  &stat);
         return true;
@@ -77,5 +78,12 @@ bool communicator::try_receiving_batch(std::array<int, BATCH_SIZE> &upcoming_bat
     }
 }
 
-
-#endif
+void mpi_communicator::bcast_recv_all_tasks(task* all_task_array, size_t atc) {
+    for (unsigned int i = 0; i < atc; i++) {
+        // Formerly bcast_recv_flat_task().
+        flat_task transport;
+        MPI_Bcast(transport.shorts, BINS + S + 6, MPI_int, multiprocess::QUEEN_ID, MPI_COMM_WORLD);
+        MPI_Bcast(transport.longs, 2, MPI_UNSIGNED_LONG, multiprocess::QUEEN_ID, MPI_COMM_WORLD);
+        all_task_array[i].store(transport);
+    }
+}

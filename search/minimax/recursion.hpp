@@ -24,7 +24,7 @@
 #include "heur_adv.hpp"
 #include "heur_alg_knownsum.hpp"
 #include "gs.hpp"
-#include "tasks.hpp"
+#include "tasks/tasks.hpp"
 #include "strategy.hpp"
 #include "queen.hpp"
 #include "minimax/auxiliary.hpp"
@@ -190,13 +190,6 @@ victory computation<MODE, MINIBS_SCALE>::heuristic_visit_alg(int pres_item) {
     * EXPLORING (general exploration done by individual threads)
 */
 
-// Some helper macros:
-
-#define GENERATING (MODE == minimax::generating)
-#define EXPLORING (MODE == minimax::exploring)
-
-#define GEN_ONLY(x) if (MODE == minimax::generating) {x;}
-#define EXP_ONLY(x) if (MODE == minimax::exploring) {x;}
 
 
 // TODO: not complete (and I am not sure it is worth completing).

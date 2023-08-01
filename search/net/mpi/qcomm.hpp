@@ -1,17 +1,16 @@
-#ifndef _NET_MPI_QCOMM_HPP
-#define _NET_MPI_QCOMM_HPP 1
+#pragma once
 
 // MPI networking methods specialized and exclusive for the queen.
-// Some queen-exclusive methods might also be present in the generic communicator,
+// Some queen-exclusive methods might also be present in the generic mpi_communicator,
 // but the assumption is that they are quite similar from the point of the queen
 // and overseers.
 
-void communicator::send_batch(int *batch, int target_overseer) {
+void mpi_communicator::send_batch(int *batch, int target_overseer) {
     MPI_Send(batch, BATCH_SIZE, MPI_INT, target_overseer, net::SENDING_BATCH, MPI_COMM_WORLD);
 }
 
 
-void communicator::collect_runlows() {
+void mpi_communicator::collect_runlows() {
     int running_low_received = 0;
     MPI_Status stat;
     int irrel;
@@ -27,7 +26,7 @@ void communicator::collect_runlows() {
 
 
 // Queen fetches and ignores the remaining tasks from the previous iteration.
-void communicator::ignore_additional_solutions() {
+void mpi_communicator::ignore_additional_solutions() {
     int solution_received = 0;
     int solution_pair[2] = {0, 0};
     MPI_Status stat;
@@ -50,7 +49,8 @@ void communicator::ignore_additional_solutions() {
     }
 }
 
-void collect_worker_tasks() {
+// To avoid importing queen.hpp or tasks.hpp, we use a pointer to the task status array here.
+void collect_worker_tasks(std::atomic<task_status> *task_statuses) {
     int solution_received = 0;
     int solution_pair[2] = {0, 0};
     MPI_Status stat;
@@ -65,10 +65,10 @@ void collect_worker_tasks() {
         //printf("Queen: received solution %d.\n", solution);
         // add it to the collected set of the queen
         if (static_cast<task_status>(solution_pair[1]) != task_status::irrelevant) {
-            if (tstatus[solution_pair[0]].load(std::memory_order_acquire) == task_status::pruned) {
+            if (task_statuses[solution_pair[0]].load(std::memory_order_acquire) == task_status::pruned) {
                 g_meas.pruned_collision++;
             }
-            tstatus[solution_pair[0]].store(static_cast<task_status>(solution_pair[1]),
+            task_statuses[solution_pair[0]].store(static_cast<task_status>(solution_pair[1]),
                                             std::memory_order_release);
             // transmit the solution_pair[0] as solved
             // transmit_irrelevant_task(solution_pair[0]);
@@ -78,4 +78,12 @@ void collect_worker_tasks() {
     }
 }
 
-#endif
+void mpi_communicator::bcast_send_all_tasks(task* all_task_array, size_t atc)
+{
+    for (unsigned int i = 0; i < atc; i++) {
+        flat_task transport = all_task_array[i].flatten();
+        // Formerly comm.bcast_send_flat_task(transport);
+        MPI_Bcast(transport.shorts, BINS + S + 6, MPI_int, multiprocess::QUEEN_ID, MPI_COMM_WORLD);
+        MPI_Bcast(transport.longs, 2, MPI_UNSIGNED_LONG, multiprocess::QUEEN_ID, MPI_COMM_WORLD);
+    }
+}

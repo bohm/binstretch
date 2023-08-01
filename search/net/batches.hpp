@@ -36,7 +36,7 @@ public:
         int i = 0;
         while (i < BATCH_SIZE) {
 
-            if (task_status_pointer >= tcount) {
+            if (task_status_pointer >= task_count) {
                 // no more tasks to send out
                 b[batch_index][i] = NO_MORE_TASKS;
             } else {
@@ -51,7 +51,7 @@ public:
                     continue;
                 }
             }
-            assert(b[batch_index][i] >= -1 && b[batch_index][i] < tcount);
+            assert(b[batch_index][i] >= -1 && b[batch_index][i] < task_count);
             i++;
         }
     }

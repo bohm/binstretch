@@ -14,7 +14,7 @@
 #include "../../measure_structures.hpp"
 #include "../../dag/dag.hpp"
 #include "../../hash.hpp"
-#include "../../tasks.hpp"
+#include "tasks/tasks.hpp"
 
 namespace net {
     // Communication constants. We keep them as const int (as opposed to enum class) to avoid static cast everywhere.
@@ -47,14 +47,12 @@ const int ROOT_SOLVED_SIGNAL = -2;
 const int ROOT_UNSOLVED_SIGNAL = -3;
 
 // The wrapper for queen-overseer communication.
-// In the MPI regime, it is assumed each process has its own communicator
+// In the MPI regime, it is assumed each process has its own mpi_communicator
 // and it calls MPI in its methods.
-class communicator {
+class mpi_communicator {
     int worker_world_size = 0;
     int num_of_workers = 0;
-    bool *running_low = NULL;
-    int *workers_per_overseer = NULL; // number of worker threads for each worker
-    int *overseer_map = NULL; // a quick map from workers to overseer
+    bool *running_low = nullptr;
 
 // Unlike essentially everywhere in the code, here we stick to the principle
 // of hiding the internal functions and exposing only those which need to be
@@ -78,28 +76,17 @@ private:
 public:
 
     void deferred_construction() {
-        running_low = new bool[multiprocess::world_size];
-        workers_per_overseer = new int[multiprocess::world_size];
+        running_low = new bool[multiprocess::world_size()];
 
-        std::string name = gethost();
-        print_if<PROGRESS>("Queen: reporting for duty: %s, rank %d out of %d instances\n",
-                           name.c_str(), multiprocess::world_rank,
-                           multiprocess::world_size);
+        multiprocess::queen_announcement();
     }
 
-    void allocate_overseer_map() {
-        assert(worker_world_size > 0);
-        overseer_map = new int[worker_world_size];
-    }
-
-    ~communicator() {
+    ~mpi_communicator() {
         delete running_low;
-        delete workers_per_overseer;
-        delete overseer_map;
     }
 
     void reset_runlows() {
-        for (int i = 0; i < multiprocess::world_size; i++) {
+        for (int i = 0; i < multiprocess::world_size(); i++) {
             running_low[i] = false;
         }
     }
@@ -122,8 +109,6 @@ public:
 
     void sync_after_round_end();
 
-    // void bcast_send_monotonicity(int m);
-    // int bcast_recv_monotonicity();
     void bcast_send_tcount(int tc);
 
     int bcast_recv_tcount();
@@ -132,31 +117,22 @@ public:
 
     void bcast_recv_allocate_tstatus_transport(int **tstatus_transport_pointer);
 
-    // We delete the local copy via communicator as a "hack" that allows
+    // We delete the local copy via mpi_communicator as a "hack" that allows
     // the local mode to just pass and not delete anything.
-    void delete_tstatus_transport(int **tstatus_transport);
-
-    flat_task bcast_recv_flat_task();
-
-    void bcast_send_flat_task(flat_task &ft);
+    void overseer_delete_tstatus_transport(int **tstatus_transport);
 
 
     void bcast_send_zobrist(zobrist_quintuple zq);
 
     void bcast_recv_and_assign_zobrist();
 
-    void send_number_of_workers(int num_workers);
+    // Temporarily disabled.
 
-    std::pair<int, int> learn_worker_rank();
+    // void transmit_measurements(measure_attr &meas);
 
-    void compute_thread_ranks();
-
-    void transmit_measurements(measure_attr &meas);
-
-    void receive_measurements();
+    // void receive_measurements();
 
     void send_root_solved();
-
 
     // mpi_ocomm.hpp
     void ignore_additional_signals();
@@ -169,6 +145,8 @@ public:
 
     bool try_receiving_batch(std::array<int, BATCH_SIZE> &upcoming_batch);
 
+    void bcast_recv_all_tasks(task* all_task_array, size_t atc);
+
     // mpi_qcomm.hpp
     void send_batch(int *batch, int target_overseer);
 
@@ -176,9 +154,10 @@ public:
 
     void ignore_additional_solutions();
 
+    void bcast_send_all_tasks(task* all_task_array, size_t atc);
 };
 
-// Currently (MPI is the only option), we store the communicator as a global variable.
-// This will be also beneficial in the local mode, where communicator holds the shared data for
+// Currently (MPI is the only option), we store the mpi_communicator as a global variable.
+// This will be also beneficial in the local mode, where mpi_communicator holds the shared data for
 // both threads.
-communicator comm;
+mpi_communicator comm;
