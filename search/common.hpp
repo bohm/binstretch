@@ -106,12 +106,7 @@ constexpr bool USING_HEURISTIC_GS = false;
 constexpr bool USING_KNOWNSUM_LOWSEND = false;
 constexpr bool USING_MINIBINSTRETCHING = true;
 
-<<<<<<< HEAD
-constexpr int MINIBS_SCALE_QUEEN = 3; // Minibinstretching scale for the DAG generation phase.
-constexpr int MINIBS_SCALE_WORKER = 3; // Minibinstretching scale for the exploration phase.
-=======
 constexpr int MINIBS_SCALE = RECOMMENDED_MINIBS_SCALE;
->>>>>>> origin/clion
 
 // batching constants
 const int BATCH_SIZE = 50;
