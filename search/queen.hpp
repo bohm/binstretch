@@ -28,7 +28,7 @@ public:
     char root_binconf_file[256];
     bool load_root_binconf = false;
 
-    minibs<MINIBS_SCALE_QUEEN> *mbs = nullptr;
+    minibs<MINIBS_SCALE> *mbs = nullptr;
 
     queen_class(int argc, char **argv);
 

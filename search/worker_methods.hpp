@@ -55,7 +55,7 @@ int worker::get_task() {
 victory worker::solve(const task *t, const int &task_id) {
     victory ret = victory::uncertain;
 
-    computation<minimax::exploring, MINIBS_SCALE_WORKER> comp;
+    computation<minimax::exploring, MINIBS_SCALE> comp;
 
     if (FURTHER_MEASURE) {
         dlog = new debug_logger(tid);
@@ -84,7 +84,7 @@ victory worker::solve(const task *t, const int &task_id) {
         ret = explore(&task_copy, &comp);
         measurements.add(comp.meas);
     } catch (computation_irrelevant &e) {
-        print_if<PROGRESS>("Worked %d: finishing computation, it is irrelevant.\n", thread_rank + tid);
+        print_if<PROGRESS>("Worker %d: finishing computation, it is irrelevant.\n", tid);
         ret = victory::irrelevant;
     }
 
@@ -132,17 +132,17 @@ void worker::start(worker_flags *assigned_flags) {
             // print_if<true>("Worker %d processing task %d.\n", thread_rank + tid, current_task_id);
 
             if (flags->root_solved) {
-                print_if<TASK_DEBUG>("Worker %d: root solved, breaking.\n", thread_rank + tid);
+                print_if<TASK_DEBUG>("Worker %d: root solved, breaking.\n", tid);
                 break;
             }
 
             if (current_task_id == NO_MORE_TASKS) {
-                print_if<TASK_DEBUG>("Worker %d: No more tasks, breaking.\n", thread_rank + tid);
+                print_if<TASK_DEBUG>("Worker %d: No more tasks, breaking.\n", tid);
 
                 // no_more_tasks = true;
                 break;
             } else {
-                print_if<TASK_DEBUG>("Worker %d: Taken up task %d.\n", thread_rank + tid, current_task_id);
+                print_if<TASK_DEBUG>("Worker %d: Taken up task %d.\n", tid, current_task_id);
 
             }
             assert(current_task_id >= 0 && current_task_id < tcount);

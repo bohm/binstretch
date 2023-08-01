@@ -115,9 +115,6 @@ void overseer::start() {
                       multiprocess::overseer_rank(), hostname.c_str(), conflog, dplog, worker_count);
     comm.bcast_recv_and_assign_zobrist();
 
-    // compute_thread_ranks();
-    comm.send_number_of_workers(worker_count);
-    comm.learn_worker_rank();
     finished_tasks = new semiatomic_q[worker_count];
     auto *threads = new std::thread[worker_count];
 
@@ -145,7 +142,7 @@ void overseer::start() {
     if (USING_MINIBINSTRETCHING) {
         comm.sync_midpoint_of_initialization();
         print_if<PROGRESS>("Overseer %d: allocating minibinstretching cache.\n", multiprocess::overseer_rank());
-        mbs = new minibs<MINIBS_SCALE_WORKER>();
+        mbs = new minibs<MINIBS_SCALE>();
         // mbs->init();
     }
 

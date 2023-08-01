@@ -59,12 +59,17 @@ public:
     }
 
     void reset_runlows() {
+        for (int ov = 1; ov < multiprocess::world_size(); ov++) {
+            running_low[ov].store(false, std::memory_order_acquire);
+        }
     }
 
     bool is_running_low(int target_overseer) {
+        return running_low[target_overseer].load(std::memory_order_acquire);
     }
 
     void satisfied_runlow(int target_overseer) {
+        running_low[target_overseer].store(false, std::memory_order_acquire);
     }
 
     void sync_midpoint_of_initialization() {
@@ -121,13 +126,6 @@ public:
 
     void bcast_send_flat_task(flat_task &ft);
 
-
-
-    void send_number_of_workers(int num_workers);
-
-    std::pair<int, int> learn_worker_rank();
-
-    void compute_thread_ranks();
 
     void transmit_measurements(measure_attr &meas);
 

@@ -103,11 +103,10 @@ const bool FIVE_NINE_ACTIVE_EVERYWHERE = true;
 const bool USING_HEURISTIC_VISITS = true;
 constexpr bool USING_HEURISTIC_KNOWNSUM = false; // Recommend turning off when WEIGHTSUM is true.
 constexpr bool USING_HEURISTIC_GS = false;
-constexpr bool USING_KNOWNSUM_LOWSEND = true;
-constexpr bool USING_MINIBINSTRETCHING = false;
+constexpr bool USING_KNOWNSUM_LOWSEND = false;
+constexpr bool USING_MINIBINSTRETCHING = true;
 
-constexpr int MINIBS_SCALE_QUEEN = RECOMMENDED_MINIBS_SCALE; // Minibinstretching scale for the DAG generation phase.
-constexpr int MINIBS_SCALE_WORKER = RECOMMENDED_MINIBS_SCALE; // Minibinstretching scale for the exploration phase.
+constexpr int MINIBS_SCALE = RECOMMENDED_MINIBS_SCALE;
 
 // batching constants
 const int BATCH_SIZE = 50;
@@ -173,14 +172,6 @@ uint64_t *Zlast;
 uint64_t *Zalg;
 
 uint64_t **Zlbig;
-
-
-// thread rank idea:
-// if worker has thread rank 3 and reported thread count 5, it is assigned worker ranks 3,4,5,6,7.
-//
-int worker_count = 0;
-int thread_rank = 0;
-int thread_rank_size = 0;
 
 
 // A bin configuration consisting of three loads and a list of items that have arrived so far.

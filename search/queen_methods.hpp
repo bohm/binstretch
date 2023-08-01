@@ -128,7 +128,6 @@ int queen_class::start() {
     zobrist_init();
     comm.bcast_send_zobrist(zobrist_quintuple(Zi, Zl, Zlow, Zlast, Zalg));
 
-    comm.compute_thread_ranks();
     // init_running_lows();
     batches batching(multiprocess::overseer_count());
 
@@ -140,8 +139,8 @@ int queen_class::start() {
 
 
     if (USING_MINIBINSTRETCHING) {
-        print_if<PROGRESS>("Queen: allocating cache minibs<%d>.\n", MINIBS_SCALE_QUEEN);
-        mbs = new minibs<MINIBS_SCALE_QUEEN>();
+        print_if<PROGRESS>("Queen: allocating cache minibs<%d>.\n", MINIBS_SCALE);
+        mbs = new minibs<MINIBS_SCALE>();
         // Note: the next command is not executed by the overseer, as we wish to backup
         // the calculations only by one process, and not have two write to a file at the same time.
         mbs->backup_calculations();
@@ -218,7 +217,7 @@ int queen_class::start() {
 
         GRAPH_DEBUG_ONLY(qdag->log_graph("./logs/before-generation.log"));
 
-        computation<minimax::generating, MINIBS_SCALE_QUEEN> comp;
+        computation<minimax::generating, MINIBS_SCALE> comp;
         comp.regrow_level = job.regrow_level;
 
         if (USING_ASSUMPTIONS) {

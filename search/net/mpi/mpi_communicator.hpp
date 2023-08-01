@@ -53,8 +53,6 @@ class mpi_communicator {
     int worker_world_size = 0;
     int num_of_workers = 0;
     bool *running_low = nullptr;
-    int *workers_per_overseer = nullptr; // number of worker threads for each worker
-    int *overseer_map = nullptr; // a quick map from workers to overseer
 
 // Unlike essentially everywhere in the code, here we stick to the principle
 // of hiding the internal functions and exposing only those which need to be
@@ -79,15 +77,12 @@ public:
 
     void deferred_construction() {
         running_low = new bool[multiprocess::world_size()];
-        workers_per_overseer = new int[multiprocess::world_size()];
 
         multiprocess::queen_announcement();
     }
 
     ~mpi_communicator() {
         delete running_low;
-        delete workers_per_overseer;
-        delete overseer_map;
     }
 
     void reset_runlows() {
@@ -135,18 +130,11 @@ public:
 
     void bcast_recv_and_assign_zobrist();
 
-    void send_number_of_workers(int num_workers);
-
-    std::pair<int, int> learn_worker_rank();
-
-    void compute_thread_ranks();
-
     void transmit_measurements(measure_attr &meas);
 
     void receive_measurements();
 
     void send_root_solved();
-
 
     // mpi_ocomm.hpp
     void ignore_additional_signals();

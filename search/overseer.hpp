@@ -16,12 +16,15 @@ public:
     std::vector<worker_flags *> w_flags; // array of overseer-worker communication flags.
     std::array<int, BATCH_SIZE> upcoming_batch;
 
+    // Number of worker threads for this overseer.
+    int worker_count = 0;
+
     // A list of tasks assigned to an overseer.
     std::vector<int> tasks;
     // A semiatomic queue of finished tasks.
     semiatomic_q *finished_tasks;
 
-    minibs<MINIBS_SCALE_WORKER> *mbs = nullptr;
+    minibs<MINIBS_SCALE> *mbs = nullptr;
 
     // An index to the overseer tasklist that shows the next available task.
     // Will be accessed concurrently.

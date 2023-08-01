@@ -28,18 +28,6 @@ void local_communicator::send_number_of_workers(int num_workers)
 }
 
 void local_communicator::compute_thread_ranks() {
-    int worker_count = number_of_workers.receive();
-    thread_rank_size = worker_count;
+    thread_rank_size = number_of_workers.receive();
 
-    // Create overseer map.
-    overseer_map = new int[thread_rank_size];
-    int cur_thread = 0;
-    int partial_sum = 0;
-    for (int overseer = 1; overseer < multiprocess::world_size(); overseer++) {
-        partial_sum += workers_per_overseer[overseer];
-        while (cur_thread < partial_sum) {
-            overseer_map[cur_thread] = overseer;
-            cur_thread++;
-        }
-    }
 }

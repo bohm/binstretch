@@ -153,54 +153,6 @@ void mpi_communicator::send_root_solved() {
     }
 }
 
-// Overseers use the next two functions to learn the size of the overall worker pool.
-void mpi_communicator::send_number_of_workers(int num_workers) {
-    this->num_of_workers = num_workers;
-    MPI_Send(&num_workers, 1, MPI_INT, multiprocess::QUEEN_ID, net::THREAD_COUNT, MPI_COMM_WORLD);
-}
-
-std::pair<int, int> mpi_communicator::learn_worker_rank() {
-    int worker_rank = 0;
-    MPI_Status stat;
-
-    MPI_Recv(&worker_rank, 1, MPI_INT, multiprocess::QUEEN_ID, net::THREAD_RANK, MPI_COMM_WORLD, &stat);
-    MPI_Bcast(&worker_world_size, 1, MPI_INT, multiprocess::QUEEN_ID, MPI_COMM_WORLD);
-    print_if<VERBOSE>("Overseer %d has %d threads, ranked [%d,%d] of %d total.\n",
-                      multiprocess::overseer_rank(), this->num_of_workers, worker_rank,
-                      worker_rank + worker_count - 1, worker_world_size);
-    return {worker_rank, worker_world_size};
-}
-
-// The queen uses the analogous method to compute the thread ranking and tranmits this info.
-void mpi_communicator::compute_thread_ranks() {
-    MPI_Status stat;
-    int worker_rank = 0;
-
-    for (int overseer = 1; overseer < multiprocess::world_size(); overseer++) {
-        MPI_Recv(&workers_per_overseer[overseer], 1, MPI_INT, overseer, net::THREAD_COUNT, MPI_COMM_WORLD, &stat);
-    }
-
-    for (int overseer = 1; overseer < multiprocess::world_size(); overseer++) {
-        MPI_Send(&worker_rank, 1, MPI_INT, overseer, net::THREAD_RANK, MPI_COMM_WORLD);
-        worker_rank += workers_per_overseer[overseer];
-    }
-
-    thread_rank_size = worker_rank;
-    MPI_Bcast(&thread_rank_size, 1, MPI_INT, multiprocess::QUEEN_ID, MPI_COMM_WORLD);
-
-    // compute overseer map
-    overseer_map = new int[thread_rank_size];
-    int cur_thread = 0;
-    int partial_sum = 0;
-    for (int overseer = 1; overseer < multiprocess::world_size(); overseer++) {
-        partial_sum += workers_per_overseer[overseer];
-        while (cur_thread < partial_sum) {
-            overseer_map[cur_thread] = overseer;
-            cur_thread++;
-        }
-    }
-}
-
 void mpi_communicator::bcast_send_tcount(int tc) {
     bcast_send_int(multiprocess::QUEEN_ID, tc);
 }
