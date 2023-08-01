@@ -8,11 +8,15 @@
 #include "tasks.hpp"
 #include "net/batches.hpp"
 #include "server_properties.hpp"
-// #include "loadfile.hpp"
 #include "saplings.hpp"
 #include "savefile.hpp"
 #include "performance_timer.hpp"
 #include "queen.hpp"
+#include "sapling_manager.hpp"
+#include "measure_structures.hpp"
+#include "consistency.hpp"
+#include "cleanup.hpp"
+
 /*
 
 Message sequence:

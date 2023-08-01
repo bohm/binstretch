@@ -4,24 +4,17 @@
 queue update code. */
 
 #include <cstdio>
+#include <random>
 #include <vector>
 #include <algorithm>
 
 #include "common.hpp"
 #include "dag/dag.hpp"
 #include "dfs.hpp"
-// #include "queen.hpp"
-
-// Global variables that are already needed for tasks.
-// These belong more to queen.hpp, but queen needs to include tasks also.
-
-namespace qmemory {
-    // Global measure of queen's collected tasks.
-    std::atomic<unsigned int> collected_cumulative{0};
-    std::atomic<unsigned int> collected_now{0};
+#include "queen.hpp"
 
 
-};
+// --- GLOBALS ---
 
 // A global pointer to the main/queen dag.
 dag *qdag = nullptr;
@@ -199,7 +192,7 @@ void init_tstatus(const std::vector<task_status> &tstatus_temp) {
 
 void destroy_tstatus() {
     delete[] tstatus;
-    tstatus = NULL;
+    tstatus = nullptr;
 
     // if (BEING_QUEEN)
     // {
@@ -218,7 +211,9 @@ void rebuild_tmap() {
 
 // returns the task map value or -1 if it doesn't exist
 int tstatus_id(const adversary_vertex *v) {
-    if (v == NULL) { return -1; }
+    if (v == nullptr) {
+        return -1;
+    }
 
     if (tmap.find(v->bc.hash_with_last()) != tmap.end()) {
         return tmap[v->bc.hash_with_last()];
@@ -245,9 +240,9 @@ void permute_tarray_tstatus() {
     }
 
     // permutes the tasks 
-    std::random_shuffle(perm.begin(), perm.end());
+    std::shuffle(perm.begin(), perm.end(), std::mt19937(std::random_device()()));
     task *tarray_new = new task[tcount];
-    std::atomic<task_status> *tstatus_new = new std::atomic<task_status>[tcount];
+    auto *tstatus_new = new std::atomic<task_status>[tcount];
     for (int i = 0; i < tcount; i++) {
         tarray_new[perm[i]] = tarray[i];
         tstatus_new[perm[i]].store(tstatus[i]);

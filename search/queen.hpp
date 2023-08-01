@@ -3,13 +3,6 @@
 #include <atomic>
 
 #include "common.hpp"
-#include "measure_structures.hpp"
-
-#include "dag/dag.hpp"
-#include "tasks.hpp"
-#include "saplings.hpp"
-#include "sapling_manager.hpp"
-#include "cleanup.hpp"
 #include "minibs/minibs.hpp"
 
 // Queen global variables and declarations.
@@ -20,6 +13,17 @@ std::atomic<victory> updater_result(victory::uncertain);
 int winning_saplings = 0;
 int losing_saplings = 0;
 binconf losing_binconf; // A global bin configuration for output purposes.
+
+// Global variables from tasks.hpp.
+
+namespace qmemory {
+    // Global measure of queen's collected tasks.
+    std::atomic<unsigned int> collected_cumulative{0};
+    std::atomic<unsigned int> collected_now{0};
+
+
+};
+
 
 // Queen has a formal class 
 class queen_class {

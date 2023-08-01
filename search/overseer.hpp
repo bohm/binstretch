@@ -19,6 +19,10 @@ public:
     // Number of worker threads for this overseer.
     int worker_count = 0;
 
+    // List of all tasks in the system.
+    task *all_tasks = nullptr; // Formerly tarray.
+
+
     // A list of tasks assigned to an overseer.
     std::vector<int> tasks;
     // A semiatomic queue of finished tasks.

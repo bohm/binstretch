@@ -202,7 +202,7 @@ void overseer::start() {
             // trouble.
 
             batch_requested = false;
-            assert(tasks.size() == 0);
+            assert(tasks.empty());
             next_task.store(0);
 
             // Reserve space for finished tasks.
