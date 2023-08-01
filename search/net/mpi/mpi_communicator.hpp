@@ -119,11 +119,7 @@ public:
 
     // We delete the local copy via mpi_communicator as a "hack" that allows
     // the local mode to just pass and not delete anything.
-    void delete_tstatus_transport(int **tstatus_transport);
-
-    flat_task bcast_recv_flat_task();
-
-    void bcast_send_flat_task(flat_task &ft);
+    void overseer_delete_tstatus_transport(int **tstatus_transport);
 
 
     void bcast_send_zobrist(zobrist_quintuple zq);
@@ -147,6 +143,8 @@ public:
 
     bool try_receiving_batch(std::array<int, BATCH_SIZE> &upcoming_batch);
 
+    void bcast_recv_all_tasks(task* all_task_array, size_t atc);
+
     // mpi_qcomm.hpp
     void send_batch(int *batch, int target_overseer);
 
@@ -154,6 +152,7 @@ public:
 
     void ignore_additional_solutions();
 
+    void bcast_send_all_tasks(task* all_task_array, size_t atc);
 };
 
 // Currently (MPI is the only option), we store the mpi_communicator as a global variable.

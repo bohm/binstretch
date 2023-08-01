@@ -1,5 +1,4 @@
-#ifndef _NET_MPI_QCOMM_HPP
-#define _NET_MPI_QCOMM_HPP 1
+#pragma once
 
 // MPI networking methods specialized and exclusive for the queen.
 // Some queen-exclusive methods might also be present in the generic mpi_communicator,
@@ -79,4 +78,12 @@ void collect_worker_tasks(std::atomic<task_status> *task_statuses) {
     }
 }
 
-#endif
+void mpi_communicator::bcast_send_all_tasks(task* all_task_array, size_t atc)
+{
+    for (unsigned int i = 0; i < atc; i++) {
+        flat_task transport = all_task_array[i].flatten();
+        // Formerly comm.bcast_send_flat_task(transport);
+        MPI_Bcast(transport.shorts, BINS + S + 6, MPI_int, multiprocess::QUEEN_ID, MPI_COMM_WORLD);
+        MPI_Bcast(transport.longs, 2, MPI_UNSIGNED_LONG, multiprocess::QUEEN_ID, MPI_COMM_WORLD);
+    }
+}

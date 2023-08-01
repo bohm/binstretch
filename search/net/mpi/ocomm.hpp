@@ -1,6 +1,7 @@
-#ifndef _NET_MPI_OCOMM_HPP
-#define _NET_MPI_OCOMM_HPP 1
+#pragma once
 
+#include "mpi_multiprocess.hpp"
+#include "mpi_communicator.hpp"
 
 // Workers fetch and ignore additional signals about root solved (since it may arrive in two places).
 void mpi_communicator::ignore_additional_signals() {
@@ -77,5 +78,12 @@ bool mpi_communicator::try_receiving_batch(std::array<int, BATCH_SIZE> &upcoming
     }
 }
 
-
-#endif
+void mpi_communicator::bcast_recv_all_tasks(task* all_task_array, size_t atc) {
+    for (unsigned int i = 0; i < atc; i++) {
+        // Formerly bcast_recv_flat_task().
+        flat_task transport;
+        MPI_Bcast(transport.shorts, BINS + S + 6, MPI_int, multiprocess::QUEEN_ID, MPI_COMM_WORLD);
+        MPI_Bcast(transport.longs, 2, MPI_UNSIGNED_LONG, multiprocess::QUEEN_ID, MPI_COMM_WORLD);
+        all_task_array[i].store(transport);
+    }
+}

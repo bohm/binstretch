@@ -120,12 +120,7 @@ public:
 
     // We delete the local copy via mpi_communicator as a "hack" that allows
     // the local mode to just pass and not delete anything.
-    void delete_tstatus_transport(int **tstatus_transport);
-
-    flat_task bcast_recv_flat_task();
-
-    void bcast_send_flat_task(flat_task &ft);
-
+    void overseer_delete_tstatus_transport(int **tstatus_transport);
 
     void transmit_measurements(measure_attr &meas);
 
@@ -134,7 +129,7 @@ public:
     void send_root_solved();
 
 
-    // ocomm.hpp
+    // local_ocomm.hpp
     void ignore_additional_signals();
 
     bool check_root_solved(std::vector<worker_flags *> &w_flags);
@@ -145,12 +140,16 @@ public:
 
     bool try_receiving_batch(std::array<int, BATCH_SIZE> &upcoming_batch);
 
-    // qcomm.hpp
+    void bcast_recv_all_tasks(task* all_task_array, size_t atc);
+
+    // local_qcomm.hpp
     void send_batch(int *batch, int target_overseer);
 
     void collect_runlows();
 
     void ignore_additional_solutions();
+
+    void bcast_send_all_tasks(task* all_task_array, size_t atc);
 
 };
 

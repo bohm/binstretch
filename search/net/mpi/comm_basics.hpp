@@ -161,17 +161,7 @@ int mpi_communicator::bcast_recv_tcount() {
     return bcast_recv_int(multiprocess::QUEEN_ID);
 }
 
-void mpi_communicator::bcast_send_flat_task(flat_task &ft) {
-    MPI_Bcast(ft.shorts, BINS + S + 6, MPI_int, multiprocess::QUEEN_ID, MPI_COMM_WORLD);
-    MPI_Bcast(ft.longs, 2, MPI_UNSIGNED_LONG, multiprocess::QUEEN_ID, MPI_COMM_WORLD);
-}
 
-flat_task mpi_communicator::bcast_recv_flat_task() {
-    flat_task ret;
-    MPI_Bcast(ret.shorts, BINS + S + 6, MPI_int, multiprocess::QUEEN_ID, MPI_COMM_WORLD);
-    MPI_Bcast(ret.longs, 2, MPI_UNSIGNED_LONG, multiprocess::QUEEN_ID, MPI_COMM_WORLD);
-    return ret;
-}
 
 void mpi_communicator::bcast_send_tstatus_transport(int *tstatus_transport, int tstatus_length) {
     comm.bcast_send_int_array(multiprocess::QUEEN_ID, tstatus_transport, tstatus_length);
@@ -182,6 +172,6 @@ void mpi_communicator::bcast_recv_allocate_tstatus_transport(int **tstatus_trans
     *tstatus_transport_memory = tstatus_transport_copy;
 }
 
-void mpi_communicator::delete_tstatus_transport(int **tstatus_transport) {
+void mpi_communicator::overseer_delete_tstatus_transport(int **tstatus_transport) {
     delete[] *tstatus_transport;
 }

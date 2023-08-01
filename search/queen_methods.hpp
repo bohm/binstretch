@@ -309,11 +309,9 @@ int queen_class::start() {
 
             print_if<PROGRESS>("Queen: Generated %d tasks.\n", all_task_count);
             comm.bcast_send_tcount(all_task_count);
+
             // Synchronize tarray.
-            for (unsigned int i = 0; i < all_task_count; i++) {
-                flat_task transport = all_tasks[i].flatten();
-                comm.bcast_send_flat_task(transport);
-            }
+            comm.bcast_send_all_tasks(all_tasks, all_task_count);
 
             // Synchronize tstatus.
             int *tstatus_transport_copy = new int[all_task_count];

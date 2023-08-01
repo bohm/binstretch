@@ -18,7 +18,7 @@ public:
 
     }
 
-    void load(const flat_task &ft) {
+    void store(const flat_task &ft) {
 
         // copy task
         bc.last_item = ft.shorts[0];

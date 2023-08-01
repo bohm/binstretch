@@ -7,7 +7,7 @@
 
 // 1. void bcast_send_tstatus_transport(int *tstatus, int tstatus_length);
 // 2. void bcast_recv_allocate_tstatus_transport(int **tstatus_transport_pointer);
-// 3. void delete_tstatus_transport(int **tstatus_transport);
+// 3. void overseer_delete_tstatus_transport(int **tstatus_transport);
 // 4. flat_task bcast_recv_flat_task();
 // 5. void bcast_send_flat_task(flat_task &ft);
 // 6. void send_number_of_workers(int num_workers);

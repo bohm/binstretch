@@ -1,5 +1,6 @@
 #pragma once
 
+#include "net/mpi.hpp"
 #include "worker.hpp"
 #include "overseer.hpp"
 #include "heur_alg_knownsum.hpp"
@@ -26,7 +27,7 @@ void overseer::cleanup() {
 
 bool overseer::all_workers_waiting() {
     for (worker *w: wrkr) {
-        if (w->waiting.load() == false) {
+        if (!w->waiting.load()) {
             return false;
         }
     }
@@ -180,10 +181,7 @@ void overseer::start() {
             init_task_status(all_task_count);
 
             // Synchronize tarray.
-            for (unsigned int i = 0; i < all_task_count; i++) {
-                flat_task transport = comm.bcast_recv_flat_task();
-                all_tasks[i].load(transport);
-            }
+            comm.bcast_recv_all_tasks(all_tasks, all_task_count);
 
             int *tstatus_transport_copy = nullptr;
             comm.bcast_recv_allocate_tstatus_transport(&tstatus_transport_copy);
@@ -191,7 +189,7 @@ void overseer::start() {
                 all_tasks_status[i].store(static_cast<task_status>(tstatus_transport_copy[i]));
             }
 
-            comm.delete_tstatus_transport(&tstatus_transport_copy);
+            comm.overseer_delete_tstatus_transport(&tstatus_transport_copy);
 
             print_if<COMM_DEBUG>("Tarray + tstatus initialized.\n");
 
