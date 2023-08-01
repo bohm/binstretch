@@ -419,7 +419,7 @@ int queen_class::start() {
     // We are terminating, start final round.
     print_if<COMM_DEBUG>("Queen: starting final round.\n");
     comm.round_start_and_finality(true);
-    comm.receive_measurements();
+    // comm.receive_measurements(); // 2023-08-01: Temporarily disabled.
     comm.sync_after_round_end();
 
     // Global post-evaluation checks belong here.

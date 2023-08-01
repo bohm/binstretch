@@ -33,14 +33,18 @@ private:
 
     broadcaster<READERS, bool> round_finality;
     broadcaster<READERS, int> tcount_broadcaster;
-    broadcaster<READERS, flat_task> flat_task_broadcaster;
     broadcaster<READERS, int> number_of_workers;
+    broadcaster<READERS, std::vector<task>> task_vector_broadcast;
+
+    broadcaster<READERS, measure_attr> measurement_broadcast;
 
     synchronizer<TOTAL_THREADS> initialization_end;
     synchronizer<TOTAL_THREADS> initialization_midpoint;
     synchronizer<TOTAL_THREADS> round_end;
 
-    std::array<std::atomic<bool>, READERS> running_low;
+    std::array<std::atomic<bool>, TOTAL_THREADS> running_low;
+    message_arrays<std::pair<int, int>> solution_messages;
+    message_arrays<std::array<int, BATCH_SIZE>> batch_messages;
 
     // Root solved -- a non-blocking signal.
     std::atomic<bool> root_solved_signal;
@@ -90,6 +94,12 @@ public:
 
     void sync_after_round_end() {
         round_end.sync_up();
+
+        // Make this queen only, potentially.
+        batch_messages.clear();
+        solution_messages.clear();
+        // Reset broadcasters, if need be.
+
     }
 
     void bcast_send_tcount(int tc) {
@@ -120,36 +130,85 @@ public:
 
     // We delete the local copy via mpi_communicator as a "hack" that allows
     // the local mode to just pass and not delete anything.
-    void overseer_delete_tstatus_transport(int **tstatus_transport);
+    void overseer_delete_tstatus_transport(int **tstatus_transport)
+    {
+        delete[] *tstatus_transport;
+        *tstatus_transport = nullptr;
+    }
 
-    void transmit_measurements(measure_attr &meas);
-
-    void receive_measurements();
-
-    void send_root_solved();
+    void send_root_solved() {
+        root_solved_signal.store(true);
+    }
 
 
     // local_ocomm.hpp
-    void ignore_additional_signals();
+    void ignore_additional_signals() {}
 
-    bool check_root_solved(std::vector<worker_flags *> &w_flags);
+    bool check_root_solved(std::vector<worker_flags *> &w_flags) {
+        if (root_solved_signal.load())
+        {
+            for (unsigned int i = 0; i < w_flags.size(); i++)
+            {
+                w_flags[i]->root_solved = true;
+            }
+        }
+    }
 
-    void send_solution_pair(int ftask_id, int solution);
+    void send_solution_pair(int ftask_id, int solution) {
+        std::pair<int,int> spair = {ftask_id, solution};
+        solution_messages.send(0, spair);
+    }
 
-    void request_new_batch(int _);
+    void request_new_batch(int _)
+    {
+        running_low[1].store(true);
+    }
 
-    bool try_receiving_batch(std::array<int, BATCH_SIZE> &upcoming_batch);
+    bool try_receiving_batch(std::array<int, BATCH_SIZE> &upcoming_batch) {
+        auto [success, batch] = batch_messages.try_pop(1);
 
-    void bcast_recv_all_tasks(task* all_task_array, size_t atc);
+        if (success) {
+            upcoming_batch = batch;
+        }
+
+        return success;
+    }
+
+    void bcast_recv_all_tasks(task* all_task_array, size_t atc) {
+        std::vector<task> received_vector = task_vector_broadcast.receive();
+        assert(atc == received_vector.size());
+        for (unsigned int i = 0; i < atc; i++) {
+            all_task_array[i] = received_vector[i];
+        }
+    }
 
     // local_qcomm.hpp
-    void send_batch(int *batch, int target_overseer);
+    void send_batch(int *batch, int target_overseer)
+    {
+        std::array<int, BATCH_SIZE> batch_transport;
+        for (unsigned int i = 0; i < BATCH_SIZE; i++)
+        {
+            batch_transport[i] = batch[i];
+        }
+        batch_messages.send(target_overseer, batch_transport);
+    }
 
-    void collect_runlows();
+    // Local communication edits the running low directly, and so this function just passes.
+    void collect_runlows()
+    {
 
-    void ignore_additional_solutions();
+    }
 
-    void bcast_send_all_tasks(task* all_task_array, size_t atc);
+    void ignore_additional_solutions()
+    {
+
+    }
+
+    void bcast_send_all_tasks(task* all_task_array, size_t atc)
+    {
+        std::vector<task> task_vector_transport(all_task_array, all_task_array + atc);
+        task_vector_broadcast.send(task_vector_transport);
+    }
 
 };
 

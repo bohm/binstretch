@@ -126,9 +126,11 @@ public:
 
     void bcast_recv_and_assign_zobrist();
 
-    void transmit_measurements(measure_attr &meas);
+    // Temporarily disabled.
 
-    void receive_measurements();
+    // void transmit_measurements(measure_attr &meas);
+
+    // void receive_measurements();
 
     void send_root_solved();
 

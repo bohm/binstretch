@@ -55,7 +55,7 @@ void mpi_communicator::send_solution_pair(int ftask_id, int solution) {
     MPI_Send(&solution_pair, 2, MPI_INT, multiprocess::QUEEN_ID, net::SOLUTION, MPI_COMM_WORLD);
 }
 
-void mpi_communicator::request_new_batch(int _) {
+void mpi_communicator::request_new_batch(int overseer_rank) {
     int irrel = 0;
     MPI_Send(&irrel, 1, MPI_INT, multiprocess::QUEEN_ID, net::RUNNING_LOW, MPI_COMM_WORLD);
 }

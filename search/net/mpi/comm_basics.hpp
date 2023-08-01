@@ -131,6 +131,7 @@ void mpi_communicator::sync_after_round_end() {
     sync_up();
 }
 
+/*
 void mpi_communicator::transmit_measurements(measure_attr &meas) {
     MPI_Send(meas.serialize(), sizeof(measure_attr), MPI_CHAR, multiprocess::QUEEN_ID, net::MEASUREMENTS,
              MPI_COMM_WORLD);
@@ -145,6 +146,7 @@ void mpi_communicator::receive_measurements() {
         g_meas.add(recv);
     }
 }
+*/
 
 void mpi_communicator::send_root_solved() {
     for (int i = 1; i < multiprocess::world_size(); i++) {

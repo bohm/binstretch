@@ -292,7 +292,7 @@ void overseer::start() {
                             dpc->meas.empty_positions));
 
 
-            comm.transmit_measurements(ov_meas);
+            // comm.transmit_measurements(ov_meas); // 2023-08-01: Temporarily disabled.
 
             delete dpc;
             delete adv_cache;

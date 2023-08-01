@@ -20,14 +20,3 @@
 // 6. void send_number_of_workers(int num_workers);
 // 7. std::pair<int, int> learn_worker_rank();
 // 8. void compute_thread_ranks();
-
-// In the local mode, there is exactly one overseer, so there is no need for complicated messaging.
-void local_communicator::send_number_of_workers(int num_workers)
-{
-    number_of_workers.send(num_workers);
-}
-
-void local_communicator::compute_thread_ranks() {
-    thread_rank_size = number_of_workers.receive();
-
-}
