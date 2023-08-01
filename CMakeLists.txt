@@ -106,7 +106,7 @@ add_executable(clion
         search/server_properties.hpp
         search/small_classes.hpp
         search/strategy.hpp
-        search/tasks.hpp
+        search/tasks/tasks.hpp
         search/thread_attr.hpp
         search/updater.hpp
         search/worker.hpp

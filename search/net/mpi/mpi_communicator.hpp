@@ -14,7 +14,7 @@
 #include "../../measure_structures.hpp"
 #include "../../dag/dag.hpp"
 #include "../../hash.hpp"
-#include "../../tasks.hpp"
+#include "tasks/tasks.hpp"
 
 namespace net {
     // Communication constants. We keep them as const int (as opposed to enum class) to avoid static cast everywhere.

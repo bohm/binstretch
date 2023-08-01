@@ -13,6 +13,9 @@ queue update code. */
 #include "dfs.hpp"
 #include "queen.hpp"
 
+#include "tasks/flat_task.hpp"
+#include "tasks/semiatomic_queue.hpp"
+#include "tasks/task.hpp"
 
 // --- GLOBALS ---
 
@@ -24,119 +27,6 @@ dag *qdag = nullptr;
 adversary_vertex *computation_root;
 adversary_vertex *expansion_root;
 
-// --- END GLOBALS ---
-
-// task but in a flat form; used for MPI
-struct flat_task {
-    int shorts[BINS + 1 + S + 1 + 4];
-    uint64_t longs[2];
-};
-
-
-// a strictly size-based tasker
-class task {
-public:
-    binconf bc;
-    // int last_item = 1;
-    int expansion_depth = 0;
-
-    task() {
-    }
-
-    task(const binconf &other) : bc(other) {
-
-    }
-
-    void load(const flat_task &ft) {
-
-        // copy task
-        bc.last_item = ft.shorts[0];
-        expansion_depth = ft.shorts[1];
-        bc._totalload = ft.shorts[2];
-        bc._itemcount = ft.shorts[3];
-
-        bc.loadhash = ft.longs[0];
-        bc.itemhash = ft.longs[1];
-
-        for (int i = 0; i <= BINS; i++) {
-            bc.loads[i] = ft.shorts[4 + i];
-        }
-
-        for (int i = 0; i <= S; i++) {
-            bc.items[i] = ft.shorts[5 + BINS + i];
-        }
-    }
-
-    flat_task flatten() {
-        flat_task ret;
-        ret.shorts[0] = bc.last_item;
-        ret.shorts[1] = expansion_depth;
-        ret.shorts[2] = bc._totalload;
-        ret.shorts[3] = bc._itemcount;
-        ret.longs[0] = bc.loadhash;
-        ret.longs[1] = bc.itemhash;
-
-        for (int i = 0; i <= BINS; i++) {
-            ret.shorts[4 + i] = bc.loads[i];
-        }
-
-        for (int i = 0; i <= S; i++) {
-            ret.shorts[5 + BINS + i] = bc.items[i];
-        }
-
-        return ret;
-    }
-
-    void print() const {
-        fprintf(stderr, "(Exp. depth: %2d) ", expansion_depth);
-        print_binconf_stream(stderr, bc);
-    }
-};
-
-// semi-atomic queue: one pusher, one puller, no resize
-class semiatomic_q {
-//private:
-public:
-    int *data = nullptr;
-    std::atomic<int> qsize{0};
-    int reserve = 0;
-    std::atomic<int> qhead{0};
-
-public:
-    ~semiatomic_q() {
-        if (data != nullptr) {
-            delete[] data;
-        }
-    }
-
-    void init(const int &r) {
-        data = new int[r];
-        reserve = r;
-    }
-
-
-    void push(const int &n) {
-        assert(qsize < reserve);
-        data[qsize] = n;
-        qsize++;
-    }
-
-    int pop_if_able() {
-        if (qhead >= qsize) {
-            return -1;
-        } else {
-            return data[qhead++];
-        }
-    }
-
-    void clear() {
-        qsize.store(0);
-        qhead.store(0);
-        reserve = 0;
-        delete[] data;
-        data = nullptr;
-    }
-};
 
 
 // a queue where one sapling can put its own tasks
@@ -155,6 +45,9 @@ std::map<uint64_t, int> tmap;
 int tcount = 0;
 int thead = 0; // head of the tarray queue which queen uses to send tasks
 int tpruned = 0; // number of tasks which are pruned
+
+// --- END GLOBALS ---
+
 
 void init_tarray() {
     assert(tcount > 0);

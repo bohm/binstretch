@@ -5,7 +5,7 @@
 #include "common.hpp"
 #include "updater.hpp"
 #include "minimax/sequencing.hpp"
-#include "tasks.hpp"
+#include "tasks/tasks.hpp"
 #include "net/batches.hpp"
 #include "server_properties.hpp"
 #include "saplings.hpp"

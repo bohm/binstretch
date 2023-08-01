@@ -11,7 +11,7 @@
 #include "fits.hpp"
 #include "dynprog/wrappers.hpp"
 #include "gs.hpp"
-#include "tasks.hpp"
+#include "tasks/tasks.hpp"
 #include "queen.hpp"
 
 /* To facilitate faster updates and better decreases, I have moved

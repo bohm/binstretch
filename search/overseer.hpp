@@ -4,7 +4,7 @@
 #include "measure_structures.hpp"
 #include "dag/dag.hpp"
 #include "thread_attr.hpp"
-#include "tasks.hpp"
+#include "tasks/tasks.hpp"
 #include "server_properties.hpp"
 #include "worker.hpp"
 #include "minibs/minibs.hpp"

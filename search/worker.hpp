@@ -8,7 +8,7 @@
 #include "dag/dag.hpp"
 #include "thread_attr.hpp"
 #include "minimax/computation.hpp"
-#include "tasks.hpp"
+#include "tasks/tasks.hpp"
 #include "minimax/recursion.hpp"
 
 std::mutex worker_needed;

@@ -24,7 +24,7 @@
 #include "heur_adv.hpp"
 #include "heur_alg_knownsum.hpp"
 #include "gs.hpp"
-#include "tasks.hpp"
+#include "tasks/tasks.hpp"
 #include "strategy.hpp"
 #include "queen.hpp"
 #include "minimax/auxiliary.hpp"

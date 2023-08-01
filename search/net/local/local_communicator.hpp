@@ -15,7 +15,7 @@
 #include "../../common.hpp"
 #include "../../dag/dag.hpp"
 #include "../../hash.hpp"
-#include "../../tasks.hpp"
+#include "tasks/tasks.hpp"
 
 #include "broadcaster.hpp"
 #include "synchronizer.hpp"
