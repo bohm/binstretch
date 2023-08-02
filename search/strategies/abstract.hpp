@@ -1,8 +1,10 @@
 #pragma once
 
+#include "small_classes.hpp"
+
 // A virtual class that sets the methods required for an adversarial strategy.
 // Essentially an interface.
-template<minimax MODE> adversarial_strategy
+template<minimax MODE> class adversarial_strategy
 {
 
 public:

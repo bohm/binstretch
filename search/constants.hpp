@@ -33,20 +33,9 @@ namespace fs = std::filesystem;
 namespace fs = std::experimental::filesystem;
 #endif
 
-// Use this type for values of loads and items.
-// Reasonable settings are int8_t, int16_t or int (depending in part on whether a bin can contain more
-// than 127 items or not. We allow it to go negative for signalling -1/-2.
-
-//typedef int16_t int;
-//#define MPI_int MPI_SHORT
-
-#define MPI_int MPI_INT
-
 constexpr int S = IS;
 constexpr int R = IR;
 constexpr int BINS = IBINS;
-
-typedef signed char tiny;
 
 
 // Output types are no longer used.

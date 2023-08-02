@@ -83,7 +83,7 @@ public:
 
 
         ht = new std::atomic<conf_el>[htsize];
-        assert(ht != NULL);
+        assert(ht != nullptr);
 
         uint64_t segment = htsize / threads;
         uint64_t start = 0;
@@ -91,7 +91,7 @@ public:
 
         std::vector<std::thread> th;
         for (int w = 0; w < threads; w++) {
-            th.push_back(std::thread(&state_cache::parallel_init_segment, this, start, end, htsize));
+            th.emplace_back(&state_cache::parallel_init_segment, this, start, end, htsize);
             start += segment;
             end += segment;
             start = std::min(start, htsize);

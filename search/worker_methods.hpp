@@ -94,7 +94,7 @@ victory worker::solve(const task *t, const int &task_id) {
 }
 
 // Selects new tasks until they run out.
-// It assumes tarray, tstatus etc are constructed (by the networking thread).
+// It assumes tarray, tstatus etc. are constructed (by the networking thread).
 // Terminates with root_solved.
 void worker::start(worker_flags *assigned_flags) {
 

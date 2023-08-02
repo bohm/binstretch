@@ -113,4 +113,4 @@ public:
 
 // A global pointer to *the* queen. It is NULL everywhere
 // except on the main two threads.
-queen_class *queen = NULL;
+queen_class *queen = nullptr;

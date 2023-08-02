@@ -1,5 +1,7 @@
 #pragma once
 
+#include "abstract.hpp"
+
 template<minimax MODE>
 class adversarial_strategy_basic
         : public adversarial_strategy {
