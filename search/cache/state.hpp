@@ -256,9 +256,6 @@ void state_cache::analysis() {
 
 
 
-// Global pointer to the adversary position cache.
-
-state_cache *adv_cache = NULL;
 
 // Algorithmic positional cache is less useful in the following sense:
 // unlike the adversary position cache, every algorithmic vertex has
@@ -269,18 +266,16 @@ state_cache *adv_cache = NULL;
 // adversarial vertices have larger indegrees and the cache makes thus
 // much more sense.
 
-// state_cache *alg_cache = NULL;
-
-void adv_cache_encache_adv_win(const binconf *d) {
+void adv_cache_encache_adv_win(state_cache *cache, const binconf *d) {
     uint64_t bchash = d->statehash();
     conf_el new_item;
     new_item.set(bchash, 0);
-    adv_cache->insert(new_item, bchash);
+    cache->insert(new_item, bchash);
 }
 
-void adv_cache_encache_alg_win(const binconf *d) {
+void adv_cache_encache_alg_win(state_cache *cache, const binconf *d) {
     uint64_t bchash = d->statehash();
     conf_el new_item;
     new_item.set(bchash, 1);
-    adv_cache->insert(new_item, bchash);
+    cache->insert(new_item, bchash);
 }

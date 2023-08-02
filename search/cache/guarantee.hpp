@@ -6,4 +6,3 @@
 
 //typedef guar_cache_64 guar_cache;
 typedef guar_cache_locks guar_cache;
-guar_cache *dpc = NULL;

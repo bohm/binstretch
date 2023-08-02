@@ -4,6 +4,7 @@
 #include "../search/thread_attr.hpp"
 #include "../dag/dag.hpp"
 #include "../minibs/minibs.hpp"
+#include "cache/state.hpp"
 
 template<minimax MODE, int MINIBS_SCALE>
 class computation {
@@ -72,7 +73,7 @@ public:
     // To save time allocating this array, we allocate it at construction time, essentially.
     // We only need to memset it inside algorithm().
 
-    std::array<std::array<int, BINS + 1>, MAX_ITEMS> alg_uncertain_moves;
+    std::array<std::array<int, BINS + 1>, MAX_ITEMS> alg_uncertain_moves = {0};
 
     // --- measure attributes ---
     measure_attr meas; // measurements for one computation
@@ -83,10 +84,17 @@ public:
     bool lih_hit = false;
     loadconf lih_match;
 
+    // Caches for the current computation. These will differ whether this is the queen or the workers.
+    guar_cache* dpcache = nullptr;
+    state_cache* stcache = nullptr;
+
     // --- debug ---
     int maxfeas_return_point = -1;
 
-    computation() {
+    computation(guar_cache* d, state_cache* s)
+    {
+        dpcache = d;
+        stcache = s;
         dpdata = new dynprog_data;
         if (USING_MINIBINSTRETCHING) {
             scaled_items = new itemconfig<MINIBS_SCALE>();

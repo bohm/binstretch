@@ -55,7 +55,7 @@ int worker::get_task() {
 victory worker::solve(const task *t, const int &task_id) {
     victory ret = victory::uncertain;
 
-    computation<minimax::exploring, MINIBS_SCALE> comp;
+    computation<minimax::exploring, MINIBS_SCALE> comp(ov->dpcache, ov->stcache);
 
     if (FURTHER_MEASURE) {
         dlog = new debug_logger(tid);

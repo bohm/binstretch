@@ -12,6 +12,11 @@
 class overseer {
 public:
 
+    // Dynamic programming cache, exclusive to overseer and its workers.
+    guar_cache* dpcache = nullptr;
+    // Winning and losing positions cache, exclusive to overseer and its workers.
+    state_cache* stcache = nullptr;
+
     std::vector<worker *> wrkr; // array of worker pointers.
     std::vector<worker_flags *> w_flags; // array of overseer-worker communication flags.
     std::array<int, BATCH_SIZE> upcoming_batch;

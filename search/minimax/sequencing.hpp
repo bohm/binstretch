@@ -35,9 +35,9 @@ victory sequencing_algorithm(binconf *b, int k, unsigned int depth, computation<
 
 
 // Generates a tree with saplings (not tasks) from a sequence of items
-victory sequencing(binconf &root, adversary_vertex *root_vertex) {
+victory sequencing(binconf &root, adversary_vertex *root_vertex, guar_cache* dpcache) {
 
-    computation<minimax::generating, 0> comp;
+    computation<minimax::generating, 0> comp(dpcache, nullptr);
 
     onlineloads_init(comp.ol, &root);
     advisor simple_advis;
@@ -98,7 +98,7 @@ victory sequencing_adversary(binconf *b, unsigned int depth, computation<MODE, M
 
     if (ADVERSARY_HEURISTICS) {
         // The procedure may generate the vertex in question.
-        auto [vic, strategy] = adversary_heuristics<minimax::generating>(b, comp->dpdata, &(comp->meas),
+        auto [vic, strategy] = adversary_heuristics<minimax::generating>(comp->dpcache, b, comp->dpdata, &(comp->meas),
                                                                          adv_to_evaluate);
 
         if (vic == victory::adv) {

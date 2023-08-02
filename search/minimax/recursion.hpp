@@ -80,7 +80,7 @@ victory computation<MODE, MINIBS_SCALE>::heuristic_visit_alg(int pres_item) {
             // In principle, other quick heuristics make sense here.
             // We should avoid running them twice, ideally.
             // For now, we only do state cache lookup.
-            auto [found, value] = adv_cache->lookup(statehash_if_descending);
+            auto [found, value] = stcache->lookup(statehash_if_descending);
 
             if (found) {
                 if (value == 1) {
@@ -306,7 +306,7 @@ victory computation<MODE, MINIBS_SCALE>::adversary(
     // a heuristic
 
     if (ADVERSARY_HEURISTICS && !this->heuristic_regime) {
-        auto [vic, strategy] = adversary_heuristics<MODE>(&bstate, this->dpdata, &(this->meas), adv_to_evaluate);
+        auto [vic, strategy] = adversary_heuristics<MODE>(dpcache, &bstate, this->dpdata, &(this->meas), adv_to_evaluate);
 
         if (vic == victory::adv) {
             if (GENERATING) {
@@ -434,7 +434,7 @@ victory computation<MODE, MINIBS_SCALE>::adversary(
     // when generating we want the whole lower bound tree to be generated.
     if (EXPLORING && !DISABLE_CACHE) {
 
-        auto [found, value] = adv_cache->lookup(bstate.statehash());
+        auto [found, value] = stcache->lookup(bstate.statehash());
 
         if (found) {
             if (value == 0) {
@@ -498,13 +498,11 @@ victory computation<MODE, MINIBS_SCALE>::adversary(
 
 
     if (EXPLORING && !DISABLE_CACHE) {
-        // TODO: Make this cleaner.
         if (win == victory::adv) {
-            adv_cache_encache_adv_win(&bstate);
+            adv_cache_encache_adv_win(stcache, &bstate);
         } else if (win == victory::alg) {
-            adv_cache_encache_alg_win(&bstate);
+            adv_cache_encache_alg_win(stcache, &bstate);
         }
-
     }
 
     // If we were in heuristics mode, switch back to normal.

@@ -9,13 +9,13 @@
 #define MAXIMUM_FEASIBLE maximum_feasible
 
 // improves lb and ub via querying the cache
-std::tuple<int, int, bool> improve_bounds(binconf *b, int lb, int ub, bool lb_certainly_feasible) {
+std::tuple<int, int, bool> improve_bounds(guar_cache *dpcache, binconf *b, int lb, int ub, bool lb_certainly_feasible) {
     if (DISABLE_DP_CACHE) {
         return std::make_tuple(lb, ub, lb_certainly_feasible);
     }
 
     for (int q = ub; q >= lb; q--) {
-        auto [located, feasible] = pack_and_query(*b, q);
+        auto [located, feasible] = pack_and_query(dpcache, *b, q);
         if (located) {
             if (feasible) {
                 lb = q;
@@ -31,6 +31,7 @@ std::tuple<int, int, bool> improve_bounds(binconf *b, int lb, int ub, bool lb_ce
     return std::make_tuple(lb, ub, lb_certainly_feasible);
 }
 
+/*
 // improves lb and ub via querying the cache
 std::tuple<int, int, bool>
 improve_bounds_binary(binconf *b, int lb, int ub, bool lb_certainly_feasible) {
@@ -62,7 +63,7 @@ improve_bounds_binary(binconf *b, int lb, int ub, bool lb_certainly_feasible) {
     }
     return std::make_tuple(lb, ub, lb_certainly_feasible);
 }
-
+*/
 
 // uses onlinefit, bestfit and dynprog
 // initial_ub -- upper bound from above (previously maximum feasible item)
@@ -105,7 +106,7 @@ int maximum_feasible(binconf *b, const int depth, const int cannot_send_less, in
 
         // query lb first
         if (!DISABLE_DP_CACHE) {
-            auto [located, feasible] = pack_and_query(*b, lb);
+            auto [located, feasible] = pack_and_query(comp->dpcache, *b, lb);
             if (located) {
                 if (feasible) {
                     lb_certainly_feasible = true;
@@ -126,11 +127,10 @@ int maximum_feasible(binconf *b, const int depth, const int cannot_send_less, in
 
 
     int cache_lb, cache_ub;
-    std::tie(cache_lb, cache_ub, lb_certainly_feasible) =
-// 	improve_bounds_binary(b,lb,ub,tat, lb_certainly_feasible);
-            improve_bounds(b, lb, ub, lb_certainly_feasible);
+    std::tie(cache_lb, cache_ub, lb_certainly_feasible) = improve_bounds(comp->dpcache, b,
+                                                                         lb, ub, lb_certainly_feasible);
 
-    // lb may change further but we store the cache results so that we push into
+    // lb may change further, but we store the cache results so that we push into
     // the cache the new results we have learned
     lb = cache_lb;
     ub = cache_ub;
@@ -158,7 +158,7 @@ int maximum_feasible(binconf *b, const int depth, const int cannot_send_less, in
                 lb, ub, bestfit, DYNPROG_MAX<false>(*b, comp->dpdata, &(comp->meas)), initial_ub);
         fprintf(stderr, "ihash %" PRIu64 ", pack_and_query [%" PRIi16 ", %" PRIi16 "]:", b->ihash(), ub, initial_ub);
         for (int dbug = ub; dbug <= initial_ub; dbug++) {
-            auto [located, feasible] = pack_and_query(*b, dbug);
+            auto [located, feasible] = pack_and_query(comp->dpcache, *b, dbug);
             fprintf(stderr, "(%d,%d),", located, feasible);
         }
         fprintf(stderr, "\nhashes: [");
@@ -178,7 +178,7 @@ int maximum_feasible(binconf *b, const int depth, const int cannot_send_less, in
         if (!DISABLE_DP_CACHE) {
             for (int x = lb; x <= bestfit; x++) {
                 // disabling information about empty bins
-                pack_and_encache(*b, x, true);
+                pack_and_encache(comp->dpcache, *b, x, true);
                 //pack_and_hash<PERMANENT>(b, x, empty_by_bestfit, FEASIBLE, tat);
             }
         }
@@ -221,11 +221,11 @@ int maximum_feasible(binconf *b, const int depth, const int cannot_send_less, in
 
     if (!DISABLE_DP_CACHE) {
         for (int i = maximum_feasible + 1; i <= cache_ub; i++) {
-            pack_and_encache(*b, i, false);
+            pack_and_encache(comp->dpcache, *b, i, false);
         }
 
         for (int i = cache_lb; i <= maximum_feasible; i++) {
-            pack_and_encache(*b, i, true);
+            pack_and_encache(comp->dpcache, *b, i, true);
         }
     }
 

@@ -217,7 +217,7 @@ public:
     }
 
     // Recognizes a type of heuristic from the heurstring (e.g. when reading an already produced tree).
-    // Currently very trivial rules, as we only have two kinds of heuristics.
+    // Currently, very trivial rules, as we only have two kinds of heuristics.
     static heuristic recognizeType(const std::string &heurstring) {
         if (heurstring.length() == 0) {
             fprintf(stderr, "Currently there are no heuristic strings of length 0.");

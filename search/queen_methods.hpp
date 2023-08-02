@@ -139,7 +139,7 @@ int queen_class::start() {
     // out of the settings, queen does not spawn workers or use ht, only dpht
     dplog = QUEEN_DPLOG;
     // Init queen memory (the queen does not use the main solved cache):
-    dpc = new guar_cache(dplog);
+    dpcache = new guar_cache(dplog);
 
 
     if (USING_MINIBINSTRETCHING) {
@@ -164,12 +164,12 @@ int queen_class::start() {
         binconf root = loadbinconf_singlefile(ROOT_FILENAME);
         root.consistency_check();
         qdag->add_root(root);
-        sequencing(root, qdag->root);
+        sequencing(root, qdag->root, dpcache);
     } else { // Sequence the treetop.
         qdag = new dag;
         binconf root = {INITIAL_LOADS, INITIAL_ITEMS};
         qdag->add_root(root);
-        sequencing(root, qdag->root);
+        sequencing(root, qdag->root, dpcache);
     }
 
     sapling_manager sap_man(qdag);
@@ -221,7 +221,7 @@ int queen_class::start() {
 
         GRAPH_DEBUG_ONLY(qdag->log_graph("./logs/before-generation.log"));
 
-        computation<minimax::generating, MINIBS_SCALE> comp;
+        computation<minimax::generating, MINIBS_SCALE> comp(dpcache, nullptr);
         comp.regrow_level = job.regrow_level;
 
         if (USING_ASSUMPTIONS) {
@@ -466,7 +466,7 @@ int queen_class::start() {
         // malloc_trim(0);
     }
 
-    // delete dpc; // 2023-08-01: This should be returned, but overseer and queen could touch the same memory now.
+    delete dpcache;
 
     delete qdag;
     return ret;

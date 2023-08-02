@@ -147,7 +147,7 @@ std::pair<bool, loadconf> large_item_heuristic(const binconf &b, const std::vect
 
 // Idea of the heuristic: send items of size 5 until either
 // * one bin accepts two or * all bins have load > 5.
-std::pair<bool, int> five_nine_heuristic(binconf *b, dynprog_data *dpdata, measure_attr *meas) {
+std::pair<bool, int> five_nine_heuristic(guar_cache *dpcache, binconf *b, dynprog_data *dpdata, measure_attr *meas) {
     // print_if<true>("Computing FN for: "); print_binconf<true>(b);
 
     // It doesn't make too much sense to send BINS times 5, so we disallow it.
@@ -163,7 +163,7 @@ std::pair<bool, int> five_nine_heuristic(binconf *b, dynprog_data *dpdata, measu
     // uint64_t loadhash_start = b->loadhash;
     // uint64_t itemhash_start = b->itemhash;
 
-    bool bins_times_nine_threat = pack_query_compute(*b, 9, BINS, dpdata, meas);
+    bool bins_times_nine_threat = pack_query_compute(dpcache, *b, 9, BINS, dpdata, meas);
     bool fourteen_feasible = false;
     if (bins_times_nine_threat) {
         // First, compute the last bin which is above five.
@@ -178,7 +178,7 @@ std::pair<bool, int> five_nine_heuristic(binconf *b, dynprog_data *dpdata, measu
         int fives = 0; // how many fives are we sending
         int fourteen_sequence = BINS - last_bin_above_five + 1;
         while (bins_times_nine_threat && fourteen_sequence >= 1 && last_bin_above_five <= BINS) {
-            fourteen_feasible = pack_query_compute(*b, 14, fourteen_sequence, dpdata, meas);
+            fourteen_feasible = pack_query_compute(dpcache, *b, 14, fourteen_sequence, dpdata, meas);
             //print_if<true>("Itemhash after pack 14: %" PRIu64 ".\n", b->itemhash);
 
             if (fourteen_feasible) {
@@ -192,7 +192,7 @@ std::pair<bool, int> five_nine_heuristic(binconf *b, dynprog_data *dpdata, measu
             add_item_inplace(*b, 5);
             fives++;
 
-            bins_times_nine_threat = pack_query_compute(*b, 9, BINS, dpdata, meas);
+            bins_times_nine_threat = pack_query_compute(dpcache, *b, 9, BINS, dpdata, meas);
         }
 
         // return b to normal
@@ -204,7 +204,8 @@ std::pair<bool, int> five_nine_heuristic(binconf *b, dynprog_data *dpdata, measu
 
 template<minimax MODE>
 std::pair<victory, heuristic_strategy *>
-adversary_heuristics(binconf *b, dynprog_data *dpdata, measure_attr *meas, adversary_vertex *adv_to_evaluate) {
+adversary_heuristics(guar_cache *dpcache, binconf *b, dynprog_data *dpdata,
+                     measure_attr *meas, adversary_vertex *adv_to_evaluate) {
     //A much weaker variant of large item heuristic, but takes O(1) time.
     heuristic_strategy *str = nullptr;
     if (b->totalload() <= S && b->loads[2] >= R - S) {
@@ -251,7 +252,7 @@ adversary_heuristics(binconf *b, dynprog_data *dpdata, measure_attr *meas, adver
     // one heuristic specific for 19/14
     if (S == 14 && R == 19 && FIVE_NINE_ACTIVE && (MODE == minimax::generating || FIVE_NINE_ACTIVE_EVERYWHERE)) {
 
-        auto [fnh, fives_to_send] = five_nine_heuristic(b, dpdata, meas);
+        auto [fnh, fives_to_send] = five_nine_heuristic(dpcache, b, dpdata, meas);
         MEASURE_ONLY(meas->five_nine_calls++);
         if (fnh) {
             MEASURE_ONLY(meas->five_nine_hits++);
