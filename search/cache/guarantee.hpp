@@ -4,5 +4,5 @@
 #include "../cache/guar64.hpp"
 #include "../cache/guar_locks.hpp"
 
-//typedef guar_cache_64 guar_cache;
-typedef guar_cache_locks guar_cache;
+typedef guar_cache_64 guar_cache;
+//typedef guar_cache_locks guar_cache;

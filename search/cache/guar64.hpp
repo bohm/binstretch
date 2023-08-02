@@ -145,7 +145,7 @@ std::pair<bool, bool> guar_cache_64::lookup(const binconf &itemlist) {
     uint64_t pos = trim(hash);
 
     // Use linear probing to check for the hashed value.
-    for (int i = 0; i < LINPROBE_LIMIT; i++) {
+    for (uint64_t i = 0; i < LINPROBE_LIMIT; i++) {
         assert(pos + i < size());
         candidate = access(pos + i);
 

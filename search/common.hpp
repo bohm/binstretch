@@ -116,7 +116,7 @@ const int BATCH_THRESHOLD = BATCH_SIZE / 2;
 constexpr uint64_t LOADSIZE = (1ULL << LOADLOG);
 
 // linear probing limit
-const int LINPROBE_LIMIT = 8;
+constexpr uint64_t LINPROBE_LIMIT = 8;
 
 const int DEFAULT_DP_SIZE = 100000;
 const int BESTFIT_THRESHOLD = (1 * S) / 10;
