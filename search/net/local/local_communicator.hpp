@@ -90,6 +90,7 @@ public:
     }
 
     void round_start_and_finality(bool finality) {
+        root_solved_signal.store(false);
         return round_finality.send(finality);
     }
 
