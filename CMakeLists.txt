@@ -97,4 +97,5 @@ add_executable(clion
         search/thread_attr.hpp
         search/updater.hpp
         search/worker.hpp
-        search/worker_methods.hpp)
+        search/worker_methods.hpp
+        search/minimax/heuristic_visits.hpp)

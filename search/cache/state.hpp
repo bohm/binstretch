@@ -25,8 +25,9 @@ public:
         return zero_last_bit(_data);
     }
 
-    inline bool match(const uint64_t &hash) const {
-        return (zero_last_bit(_data) == zero_last_bit(hash));
+    inline bool match(const uint64_t hash) const {
+        return (_data ^ hash) <= 1;
+        //return (zero_last_bit(_data) == zero_last_bit(hash));
     }
 
     inline bool removed() const {
@@ -83,7 +84,7 @@ public:
 
 
         ht = new std::atomic<conf_el>[htsize];
-        assert(ht != NULL);
+        assert(ht != nullptr);
 
         uint64_t segment = htsize / threads;
         uint64_t start = 0;
@@ -91,7 +92,7 @@ public:
 
         std::vector<std::thread> th;
         for (int w = 0; w < threads; w++) {
-            th.push_back(std::thread(&state_cache::parallel_init_segment, this, start, end, htsize));
+            th.emplace_back(&state_cache::parallel_init_segment, this, start, end, htsize);
             start += segment;
             end += segment;
             start = std::min(start, htsize);
@@ -193,8 +194,9 @@ std::pair<bool, bool> state_cache::lookup(uint64_t h) {
     conf_el candidate;
     uint64_t pos = trim(h);
     // Use linear probing to check for the hashed value.
-    for (int i = 0; i < LINPROBE_LIMIT; i++) {
-        assert(pos + i < size());
+    uint64_t limit = std::min(size()-pos, LINPROBE_LIMIT);
+    for (uint64_t i = 0; i < limit; i++) {
+        // assert(pos + i < size());
         candidate = access(pos + i);
 
         if (candidate.empty()) {
@@ -204,17 +206,17 @@ std::pair<bool, bool> state_cache::lookup(uint64_t h) {
 
         if (candidate.match(h)) {
             MEASURE_ONLY(meas.lookup_hit++);
-            return std::make_pair(true, candidate.value());
+            return {true, candidate.value()};
         }
 
         // bounds check (the second case is so that measurements are okay)
-        if (pos + i + 1 == size() || i == LINPROBE_LIMIT - 1) {
-            MEASURE_ONLY(meas.lookup_miss_full++);
-            break;
-        }
+        // if (pos + i + 1 == size() || i == LINPROBE_LIMIT - 1) {
+        //     MEASURE_ONLY(meas.lookup_miss_full++);
+        //    break;
+        // }
     }
 
-    return std::make_pair(false, false);
+    return {false, false};
 }
 
 void state_cache::insert(conf_el e, uint64_t h) {
@@ -256,9 +258,6 @@ void state_cache::analysis() {
 
 
 
-// Global pointer to the adversary position cache.
-
-state_cache *adv_cache = NULL;
 
 // Algorithmic positional cache is less useful in the following sense:
 // unlike the adversary position cache, every algorithmic vertex has
@@ -269,18 +268,16 @@ state_cache *adv_cache = NULL;
 // adversarial vertices have larger indegrees and the cache makes thus
 // much more sense.
 
-// state_cache *alg_cache = NULL;
-
-void adv_cache_encache_adv_win(const binconf *d) {
+void adv_cache_encache_adv_win(state_cache *cache, const binconf *d) {
     uint64_t bchash = d->statehash();
     conf_el new_item;
     new_item.set(bchash, 0);
-    adv_cache->insert(new_item, bchash);
+    cache->insert(new_item, bchash);
 }
 
-void adv_cache_encache_alg_win(const binconf *d) {
+void adv_cache_encache_alg_win(state_cache *cache, const binconf *d) {
     uint64_t bchash = d->statehash();
     conf_el new_item;
     new_item.set(bchash, 1);
-    adv_cache->insert(new_item, bchash);
+    cache->insert(new_item, bchash);
 }

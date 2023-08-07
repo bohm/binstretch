@@ -24,11 +24,11 @@ as of 2023-06-29. The table also contains unpublished results. Please let me kno
 The term *granularity* indicates parameters of the lower bound search or construction. For example, if the granularity is
 164/120, all items appearing in the lower bound are multiples of 1/120.
 
-| # of bins  | Lower Bound | Granularity | Status | Comment |
-| --- | --- | --- | --- | ---|
-| 2 | 4/3 ~ 1.333 | 4/3 | published, verified | Bound is tight, classical result.|
-| 3 | 41/30 ~ 1.366 | 164/120 | unpublished, verified | Results in preparation (Böhm), verified by Coq. |
-| 4 - 5 | 19/14 ~ 1.357 | 19/14 | published, verified | Böhm, Simon: https://www.sciencedirect.com/science/article/pii/S030439752200593X | 
-| 6 - 8 | 15/11 ~ 1.363 | 15/11 | preprint, verified | Lhomme, Romane, Catusse, Brauner: https://arxiv.org/abs/2207.04931, verified by Coq independently. |
-| 9-12 | 19/14 ~ 1.357 | 19/14 | unpublished, unverified | Results in preparation (Böhm), currently not verified. |
-| 13+ | 4/3 ~ 1.333 | 4/3 | published, verified | Classical lower bound. | 
+| # of bins | Lower Bound   | Granularity | Status                  | Comment                                                                                            |
+|-----------|---------------|-------------|-------------------------|----------------------------------------------------------------------------------------------------|
+| 2         | 4/3 ~ 1.333   | 4/3         | published, verified     | Bound is tight, classical result.                                                                  |
+| 3         | 41/30 ~ 1.366 | 164/120     | unpublished, verified   | Results in preparation (Böhm), verified by Coq.                                                    |
+| 4 - 5     | 19/14 ~ 1.357 | 19/14       | published, verified     | Böhm, Simon: https://www.sciencedirect.com/science/article/pii/S030439752200593X                   | 
+| 6 - 8     | 15/11 ~ 1.363 | 15/11       | preprint, verified      | Lhomme, Romane, Catusse, Brauner: https://arxiv.org/abs/2207.04931, verified by Coq independently. |
+| 9-12      | 19/14 ~ 1.357 | 19/14       | unpublished, unverified | Results in preparation (Böhm), currently not verified.                                             |
+| 13+       | 4/3 ~ 1.333   | 4/3         | published, verified     | Classical lower bound.                                                                             | 

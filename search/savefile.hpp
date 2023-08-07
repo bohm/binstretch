@@ -32,7 +32,7 @@ void savefile(const char *filename, dag *d, adversary_vertex *r) {
     print_if<PROGRESS>("Printing the game graph into %s.\n", filename);
 
     FILE *out = fopen(filename, "w");
-    assert(out != NULL);
+    assert(out != nullptr);
 
     preamble(out);
     d->print_lowerbound_bfs(out);
@@ -43,7 +43,7 @@ void savefile(const char *filename, dag *d, adversary_vertex *r) {
 
 // save to a default path
 void savefile(dag *d, adversary_vertex *r) {
-    std::time_t t = std::time(0);   // Get time now.
+    std::time_t t = std::time(nullptr);   // Get time now.
     std::tm *now = std::localtime(&t);
     std::string filename = build_output_filename(now);
     print_if<PROGRESS>("Printing the game graph in DOT format into %s.\n", filename.c_str());

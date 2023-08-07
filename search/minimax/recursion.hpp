@@ -28,152 +28,11 @@
 #include "strategy.hpp"
 #include "queen.hpp"
 #include "minimax/auxiliary.hpp"
+#include "minimax/heuristic_visits.hpp"
+
 // #include "strategies/abstract.hpp"
 // #include "strategies/heuristical.hpp"
 
-// Idea: The minimax algorithm normally behaves like a DFS, choosing
-// one uncertain path and following it. However, since the sheer size
-// of the cache, it might be smarter to just quickly visit all lower
-// vertices and check them in the cache.  If any of the vertices is
-// victory::alg (quite possible) or all are victory::adv (unlikely),
-// we can return immediately.
-
-template<minimax MODE, int MINIBS_SCALE>
-victory computation<MODE, MINIBS_SCALE>::heuristic_visit_alg(int pres_item) {
-    victory ret = victory::adv;
-    bool position_solved = false;
-    algorithm_notes notes; // Potentially turn off notes for now, they are not used.
-
-    int next_uncertain_position = 0;
-
-    uint64_t next_layer_hash = 0;
-    int shrunk_itemtype = 0;
-
-    if (USING_MINIBINSTRETCHING) {
-        shrunk_itemtype = mbs->shrink_item(pres_item);
-        if (shrunk_itemtype == 0) {
-            next_layer_hash = scaled_items->itemhash;
-        } else {
-            next_layer_hash = scaled_items->virtual_increase(shrunk_itemtype);
-        }
-    }
-
-    // Repeating the code from the algorithm() section.
-    int i = 1;
-    while (i <= BINS && !position_solved) {
-        // Skip a step where two bins have the same load.
-        if (i > 1 && bstate.loads[i] == bstate.loads[i - 1]) {
-            i++;
-            continue;
-        }
-
-        if ((bstate.loads[i] + pres_item < R)) {
-            uint64_t statehash_if_descending = bstate.virtual_hash_with_low(pres_item, i);
-            uint64_t loadhash_if_descending = bstate.virtual_loadhash(pres_item, i);
-            bool result_known = false;
-
-            // Equivalent but hopefully faster to:
-            // algorithm_descend<MODE>(this, notes, pres_item, i);
-
-            // Heuristic visit begins.
-
-            // In principle, other quick heuristics make sense here.
-            // We should avoid running them twice, ideally.
-            // For now, we only do state cache lookup.
-            auto [found, value] = adv_cache->lookup(statehash_if_descending);
-
-            if (found) {
-                if (value == 1) {
-
-                    position_solved = true;
-                    result_known = true;
-                    ret = victory::alg;
-                } else {
-                    result_known = true; // But position not yet solved.
-                }// else, it is victory::adv, and we just continue.
-            }
-
-            // In addition, try the query to the known sum heuristic and if there
-            // is a winning move, go there.
-
-            if (USING_HEURISTIC_KNOWNSUM) {
-                if (!result_known) {
-                    int knownsum_response = query_knownsum_heur(loadhash_if_descending);
-
-
-                    if (knownsum_response == 0) {
-                        ret = victory::alg;
-                        position_solved = true;
-                        result_known = true;
-                    }
-                        // An experimental heuristic based on monotonicity.
-                        // In principle, weightsum or knownsum gives us an upper bound on an item that can be sent.
-                        // If the lowest sendable item is above that, then the algorithm wins.
-                    else if (knownsum_response > 0 && lowest_sendable(pres_item) > knownsum_response) {
-                        ret = victory::alg;
-                        position_solved = true;
-                        result_known = true;
-                    } else {
-                        // Position truly unknown.
-                    }
-
-
-// No need for else { ret = victory::uncertain;} here.
-                }
-            }
-
-            // Same as above, but we use monotonicity to strengthen the known sum table.
-            if (USING_KNOWNSUM_LOWSEND) {
-                if (!result_known) {
-                    int knownsum_response = query_knownsum_lowest_sendable(loadhash_if_descending, pres_item);
-
-                    if (knownsum_response == 0) {
-                        ret = victory::alg;
-                        result_known = true;
-                        position_solved = true;
-                    } else {
-                        // Position truly unknown.
-                    }
-                }
-            }
-
-            if (USING_MINIBINSTRETCHING) {
-                if (!result_known) {
-                    int next_item_layer = mbs->feasible_map[next_layer_hash];
-                    bool alg_mbs_query = mbs->query_itemconf_winning(bstate, next_item_layer,
-                                                                     pres_item, i);
-
-                    if (alg_mbs_query) {
-                        ret = victory::alg;
-                        result_known = true;
-                        position_solved = true;
-                    }
-                }
-            }
-
-            if (!result_known) {
-                // At least one uncertainty happened, we set the outcome to uncertain.
-                ret = victory::uncertain;
-                // Store the fact that we still need to recurse on placing the item into bin i.
-                alg_uncertain_moves[calldepth][next_uncertain_position++] = i;
-            }
-
-            // Heuristic visit ends.
-            // algorithm_ascend<MODE>(this, notes, pres_item);
-        }
-
-        i++;
-    }
-
-    // A classic C-style trick: instead of zeroing, set the last position to be 0.
-
-    if (!position_solved && next_uncertain_position < BINS) {
-        alg_uncertain_moves[calldepth][next_uncertain_position] = 0;
-
-    }
-
-    return ret;
-}
 
 /* return values: 0: player 1 cannot pack the sequence starting with binconf b
  * 1: player 1 can pack all possible sequences starting with b.
@@ -257,56 +116,19 @@ victory computation<MODE, MINIBS_SCALE>::adversary(
         }
     }
 
-    // We test the algorithm-side heuristic coming from computing the DP table
-    // for scheduling with known sums of processing times.
-    // Currently we only use it in exploration, but there is no real reason to
-    // avoid it in generation. It only needs to be integrated well into the generation
-    // mechanisms.
-    if (EXPLORING && USING_HEURISTIC_KNOWNSUM) {
-        int knownsum_response = query_knownsum_heur(bstate.loadhash);
-
-        // Now we parse the output proper.
-        if (knownsum_response == 0) {
-            MEASURE_ONLY(meas.knownsum_full_hit++);
-            return victory::alg;
-        } else if (knownsum_response != -1) {
-            MEASURE_ONLY(meas.knownsum_partial_hit++);
-            heuristical_ub = knownsum_response;
-        } else {
-            MEASURE_ONLY(meas.knownsum_miss++);
-
-        }
-    }
-
-
     if (USING_MINIBINSTRETCHING) {
         bool alg_winning_heuristically = mbs->query_itemconf_winning(bstate, *scaled_items);
         if (alg_winning_heuristically) {
             return victory::alg;
         }
     }
-    // One more knownsum-type heuristic.
-    if (EXPLORING && USING_KNOWNSUM_LOWSEND) {
-        int knownsum_response = query_knownsum_lowest_sendable(bstate.loadhash, bstate.last_item);
-
-        if (knownsum_response == 0) {
-            return victory::alg;
-        } else if (knownsum_response != -1) {
-            heuristical_ub = knownsum_response;
-        } else {
-            // MEASURE_ONLY(meas.knownsum_miss++);
-        }
-    }
-
-
-
 
     // Turn off adversary heuristics if convenient (e.g. for machine verification).
     // We also do not need to compute heuristics further if we are already following
     // a heuristic
 
     if (ADVERSARY_HEURISTICS && !this->heuristic_regime) {
-        auto [vic, strategy] = adversary_heuristics<MODE>(&bstate, this->dpdata, &(this->meas), adv_to_evaluate);
+        auto [vic, strategy] = adversary_heuristics<MODE>(dpcache, &bstate, this->dpdata, &(this->meas), adv_to_evaluate);
 
         if (vic == victory::adv) {
             if (GENERATING) {
@@ -432,9 +254,10 @@ victory computation<MODE, MINIBS_SCALE>::adversary(
     // Check cache here (after we have solved trivial cases).
     // We only do this in exploration mode; while this could be also done
     // when generating we want the whole lower bound tree to be generated.
+
     if (EXPLORING && !DISABLE_CACHE) {
 
-        auto [found, value] = adv_cache->lookup(bstate.statehash());
+        auto [found, value] = stcache->lookup(bstate.statehash());
 
         if (found) {
             if (value == 0) {
@@ -498,13 +321,11 @@ victory computation<MODE, MINIBS_SCALE>::adversary(
 
 
     if (EXPLORING && !DISABLE_CACHE) {
-        // TODO: Make this cleaner.
         if (win == victory::adv) {
-            adv_cache_encache_adv_win(&bstate);
+            adv_cache_encache_adv_win(stcache, &bstate);
         } else if (win == victory::alg) {
-            adv_cache_encache_alg_win(&bstate);
+            adv_cache_encache_alg_win(stcache, &bstate);
         }
-
     }
 
     // If we were in heuristics mode, switch back to normal.

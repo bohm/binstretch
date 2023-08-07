@@ -37,27 +37,27 @@ bool compute_feasibility(const binconf &h, dynprog_data *dpdata = nullptr, measu
     return (DYNPROG_MAX<true>(h) != MAX_INFEASIBLE);
 }
 
-void pack_and_encache(binconf &h, const int item, const bool feasibility, const int multiplicity = 1) {
+void pack_and_encache(guar_cache *dpcache, binconf &h, const int item, const bool feasibility, const int multiplicity = 1) {
     add_item_inplace(h, item, multiplicity);
-    dpc->insert(h, feasibility);
+    dpcache->insert(h, feasibility);
     remove_item_inplace(h, item, multiplicity);
 }
 
-std::pair<bool, bool> pack_and_query(binconf &h, const int item, const int multiplicity = 1) {
+std::pair<bool, bool> pack_and_query(guar_cache *dpcache, binconf &h, const int item, const int multiplicity = 1) {
     add_item_inplace(h, item, multiplicity);
-    auto retpair = dpc->lookup(h);
+    auto retpair = dpcache->lookup(h);
     remove_item_inplace(h, item, multiplicity);
     return retpair;
 }
 
-bool pack_query_compute(binconf &h, const int item, const int multiplicity = 1, dynprog_data *dpdata = nullptr,
+bool pack_query_compute(guar_cache *dpcache, binconf &h, const int item, const int multiplicity = 1, dynprog_data *dpdata = nullptr,
                         measure_attr *meas = nullptr) {
     add_item_inplace(h, item, multiplicity);
-    auto [located, feasible] = dpc->lookup(h);
+    auto [located, feasible] = dpcache->lookup(h);
     bool ret;
     if (!located) {
         ret = compute_feasibility(h, dpdata, meas);
-        dpc->insert(h, ret);
+        dpcache->insert(h, ret);
     } else { // Found in cache.
         ret = feasible;
     }
@@ -74,6 +74,7 @@ bool pack_compute(binconf &h, const int item, const int multiplicity = 1) {
 
 }
 
+/*
 void dp_cache_print(binconf &h) {
     auto [located, feasible] = dpc->lookup(h);
     fprintf(stderr, "Cache print without item: (%d, %d), with items [0,S]: ", located, feasible);
@@ -86,7 +87,7 @@ void dp_cache_print(binconf &h) {
     fprintf(stderr, "\n");
 
 }
-
+*/
 
 // Computes a maximum feasible packing (if it exists) and returns it.
 // A function currently used only for Coq output.

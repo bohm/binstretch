@@ -12,9 +12,9 @@
 #include <thread>
 #include <chrono>
 
-#include "../../common.hpp"
-#include "../../dag/dag.hpp"
-#include "../../hash.hpp"
+#include "common.hpp"
+#include "dag/dag.hpp"
+#include "hash.hpp"
 #include "tasks/tasks.hpp"
 
 #include "broadcaster.hpp"
@@ -65,7 +65,7 @@ public:
 
     void reset_runlows() {
         for (int ov = 1; ov < multiprocess::world_size(); ov++) {
-            running_low[ov].store(false, std::memory_order_acquire);
+            running_low[ov].store(false, std::memory_order_release);
         }
     }
 
@@ -74,7 +74,7 @@ public:
     }
 
     void satisfied_runlow(int target_overseer) {
-        running_low[target_overseer].store(false, std::memory_order_acquire);
+        running_low[target_overseer].store(false, std::memory_order_release);
     }
 
     void sync_midpoint_of_initialization() {

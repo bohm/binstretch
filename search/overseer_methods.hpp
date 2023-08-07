@@ -119,10 +119,10 @@ void overseer::start() {
     auto *threads = new std::thread[worker_count];
 
     // conf_el::parallel_init(&ht, ht_size, worker_count); // Init worker cache in parallel.
-    dpc = new guar_cache(dplog);
+    dpcache = new guar_cache(dplog);
 
     // Initialize the adversary position (state) cache.
-    adv_cache = new state_cache(conflog, worker_count, "adversarial");
+    stcache = new state_cache(conflog, worker_count, "adversarial");
 
     // Initialize the known sum of processing times heuristic, if using it.
     if (USING_HEURISTIC_KNOWNSUM) {
@@ -276,26 +276,26 @@ void overseer::start() {
 
             // Before transmitting measurements, add the atomically collected
             // cache measurements to the whole meas collection.
-            ov_meas.state_meas.add(adv_cache->meas);
-            ov_meas.dpht_meas.add(dpc->meas);
+            ov_meas.state_meas.add(stcache->meas);
+            ov_meas.dpht_meas.add(dpcache->meas);
 
-            MEASURE_ONLY(adv_cache->analysis());
+            MEASURE_ONLY(stcache->analysis());
             MEASURE_ONLY(print_if<true>("Overseer %d: Adversarial state cache size: %" PRIu64
                                  ", filled elements: %" PRIu64 " and empty: %" PRIu64 ".\n",
-                            multiprocess::overseer_rank(), adv_cache->size(), adv_cache->meas.filled_positions,
-                            adv_cache->meas.empty_positions));
+                            multiprocess::overseer_rank(), stcache->size(), stcache->meas.filled_positions,
+                            stcache->meas.empty_positions));
 
-            MEASURE_ONLY(dpc->analysis());
+            MEASURE_ONLY(dpcache->analysis());
             MEASURE_ONLY(print_if<true>("Overseer %d: d.p. cache size: %" PRIu64
                                  ", filled elements: %" PRIu64 " and empty: %" PRIu64 ".\n",
-                            multiprocess::overseer_rank(), dpc->size(), dpc->meas.filled_positions,
-                            dpc->meas.empty_positions));
+                            multiprocess::overseer_rank(), dpcache->size(), dpcache->meas.filled_positions,
+                            dpcache->meas.empty_positions));
 
 
             // comm.transmit_measurements(ov_meas); // 2023-08-01: Temporarily disabled.
 
-            delete dpc;
-            delete adv_cache;
+            delete dpcache;
+            delete stcache;
             delete[] finished_tasks;
             comm.sync_after_round_end();
             break;

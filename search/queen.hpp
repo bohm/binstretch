@@ -5,6 +5,7 @@
 #include "common.hpp"
 #include "minibs/minibs.hpp"
 #include "tasks/task.hpp"
+#include "cache/state.hpp"
 
 // Queen global variables and declarations.
 
@@ -41,6 +42,9 @@ public:
     std::vector<task> all_tasks_temporary;
     std::vector<task_status> all_tasks_status_temporary;
     flat_hash_map<uint64_t, int> task_map;
+
+    // Dynamic programming cache, exclusive to the queen.
+    guar_cache* dpcache = nullptr;
 
     minibs<MINIBS_SCALE> *mbs = nullptr;
 
@@ -113,4 +117,4 @@ public:
 
 // A global pointer to *the* queen. It is NULL everywhere
 // except on the main two threads.
-queen_class *queen = NULL;
+queen_class *queen = nullptr;

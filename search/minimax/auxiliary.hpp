@@ -51,7 +51,7 @@ int compute_next_moves_genstrat(std::vector<int> &cands,
     int lower_bound = lowest_sendable(b->last_item);
 
     // finds the maximum feasible item that can be added using dyn. prog.
-    int maxfeas = maximum_feasible<MODE>(b, depth, lower_bound, feasibility_ub, comp);
+    int maxfeas = maximum_feasible<MODE, MINIBS_SCALE>(b, depth, lower_bound, feasibility_ub, comp);
 
     int stepcounter = 0;
     for (int item_size = gen_strategy_start(maxfeas, (int) b->last_item);

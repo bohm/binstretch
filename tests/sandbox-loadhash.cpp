@@ -210,7 +210,7 @@ inline uint64_t independent_hash(std::array<int, BINS> loads)
 inline uint64_t lookup_hash(std::array<int, BINS> loads)
 {
     uint64_t hash = 0;
-    int pos = 0;
+    int pos;
 
     // Normal blocks.
     for (int bl = 0; bl <= ZOBRIST_LOAD_BLOCKS - 2; bl++)

@@ -116,7 +116,7 @@ const int BATCH_THRESHOLD = BATCH_SIZE / 2;
 constexpr uint64_t LOADSIZE = (1ULL << LOADLOG);
 
 // linear probing limit
-const int LINPROBE_LIMIT = 8;
+constexpr uint64_t LINPROBE_LIMIT = 8;
 
 const int DEFAULT_DP_SIZE = 100000;
 const int BESTFIT_THRESHOLD = (1 * S) / 10;
@@ -217,7 +217,7 @@ public:
     }
 
     // Recognizes a type of heuristic from the heurstring (e.g. when reading an already produced tree).
-    // Currently very trivial rules, as we only have two kinds of heuristics.
+    // Currently, very trivial rules, as we only have two kinds of heuristics.
     static heuristic recognizeType(const std::string &heurstring) {
         if (heurstring.length() == 0) {
             fprintf(stderr, "Currently there are no heuristic strings of length 0.");
