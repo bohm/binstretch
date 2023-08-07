@@ -192,3 +192,21 @@ Still slow nodes in slowdown-4-root:
 [4 2 2 2 1 1 0 0 0] (8 0 0 1 0 0 0 0 0 0 0 0 0 0) 4
 [5 4 4 3 2 1 1 0 0] (8 0 0 3 0 0 0 0 0 0 0 0 0 0) 4
 
+
+Performance (with v3-advice-9-19-14.txt):
+
+Begin root cleanup.
+Queen: One final update run.
+Full evaluation time: 3391.808095s.
+Printing the game graph into ./logs/9bins-19-14--2023-06-30--14-16-38-treetop.log.
+Lower bound for 19/14 Bin Stretching on 9 bins with monotonicity 1 from the empty configuration.
+
+Performance (2023-07-06, minibs<3> with consistency checks turned off & phmap): 332.696658s.
+
+New minibs-experiments performance (minibs<3>, with v3-advice): 394.661798s.
+  (Interestingly, slightly slower. Also, consistency needs to be enforced.)
+
+
+Performance (2023-08-07, local mode, minibs<3>, advice v3): 338.786370s.
+  -- same as above, but TASK_DEPTH_INIT 8 and TASK_LOAD_INIT S: 392.240707s.
+  -- clearly, there is some bottleneck in generation that could be removed.
