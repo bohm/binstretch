@@ -76,7 +76,7 @@ victory computation<MODE, MINIBS_SCALE>::adversary(
             return adv_to_evaluate->win;
         }
         adv_to_evaluate->visited = true;
-        MEASURE_ONLY(meas.adv_vertices_visited++); // For performance measurement only.
+        MEASURE_ONLY(meas.adv_vertices_visited++);
 
         // We do not proceed further with expandable or finished vertices. The expandable ones need to be visited
         // again, but the single one being expanded will be relabeled as "expanding".
@@ -132,6 +132,7 @@ victory computation<MODE, MINIBS_SCALE>::adversary(
 
         if (vic == victory::adv) {
             if (GENERATING) {
+
                 print_if<DEBUG>("GEN: Adversary heuristic ");
                 print_if<DEBUG>("%d", static_cast<int>(strategy->type));
                 print_if<DEBUG>(" is successful.\n");
@@ -149,7 +150,7 @@ victory computation<MODE, MINIBS_SCALE>::adversary(
         }
     }
 
-    // If we have entered or we are inside a heuristic regime,
+    // If we have entered, or we are inside a heuristic regime,
     // mark the vertex as heuristical with the current strategy.
     if (GENERATING && this->heuristic_regime) {
         adv_to_evaluate->mark_as_heuristical(this->current_strategy);
@@ -157,6 +158,21 @@ victory computation<MODE, MINIBS_SCALE>::adversary(
         // whether not to do it later.
         adv_to_evaluate->win = victory::adv;
         adv_to_evaluate->leaf = leaf_type::heuristical; // It may or may not be a leaf in the true sense.
+
+        // We do not look any further, if we are not expanding heuristics.
+        if (!EXPAND_HEURISTICS)
+        {
+            // Do not forget to undo the heuristic regime before jumping up, if we just switched.
+            if (switch_to_heuristic)
+            {
+                this->heuristic_regime = false;
+                this->heuristic_starting_depth = 0;
+                this->current_strategy = nullptr;
+            }
+
+            return victory::adv;
+        }
+
     }
 
     if (GENERATING) {

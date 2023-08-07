@@ -3,6 +3,7 @@
 *.vspx
 *.cpp~
 *.hpp~
+*.swp
 experiments/*
 results/*
 cmake-build-debug/*

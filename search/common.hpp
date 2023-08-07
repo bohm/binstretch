@@ -32,9 +32,9 @@ constexpr bool FURTHER_MEASURE = false; // Whether to collect more detailed data
 // const int REGROW_LIMIT = 65535;
 const int REGROW_LIMIT = 4;
 
-const int TASK_LOAD_INIT = 30; // A bound on total load of a configuration before we split it into a task.
+const int TASK_LOAD_INIT = S; // A bound on total load of a configuration before we split it into a task.
 const int TASK_LOAD_STEP = 0; // The amount by which the load can increase when regrowing the tree.
-const int TASK_DEPTH_INIT = 4; //The maximum depth of a vertex in the tree before it is made into a task.
+const int TASK_DEPTH_INIT = 8; //The maximum depth of a vertex in the tree before it is made into a task.
 const int TASK_DEPTH_STEP = 0; // The amount by which the depth is increased when regrowing.
 
 // const int TASK_LOAD_INIT = 0;
@@ -93,12 +93,12 @@ const unsigned int LOADLOG = 12;
 const bool PRINT_HEURISTICS_IN_FULL = true;
 
 // Heuristic constants:
-const bool ADVERSARY_HEURISTICS = true;
-// const bool EXPAND_HEURISTICS = true; // We now always expand heuristics.
-const bool LARGE_ITEM_ACTIVE = true;
-const bool LARGE_ITEM_ACTIVE_EVERYWHERE = false;
-const bool FIVE_NINE_ACTIVE = true;
-const bool FIVE_NINE_ACTIVE_EVERYWHERE = true;
+constexpr bool ADVERSARY_HEURISTICS = true;
+constexpr bool EXPAND_HEURISTICS = false;
+constexpr bool LARGE_ITEM_ACTIVE = true;
+constexpr bool LARGE_ITEM_ACTIVE_EVERYWHERE = false;
+constexpr bool FIVE_NINE_ACTIVE = true;
+constexpr bool FIVE_NINE_ACTIVE_EVERYWHERE = false;
 
 const bool USING_HEURISTIC_VISITS = true;
 constexpr bool USING_HEURISTIC_KNOWNSUM = false; // Recommend turning off when WEIGHTSUM is true.

@@ -86,7 +86,6 @@ struct measure_attr {
     uint64_t tub = 0;
     uint64_t large_item_hits = 0;
     uint64_t large_item_calls = 0;
-    uint64_t large_item_misses = 0;
 
     uint64_t knownsum_full_hit = 0;
     uint64_t knownsum_partial_hit = 0;
@@ -160,7 +159,6 @@ struct measure_attr {
 
         //    uint64_t tub = 0;
         large_item_hits += other.large_item_hits;
-        large_item_misses += other.large_item_misses;
 
         heuristic_visit_hit += other.heuristic_visit_hit;
         heuristic_visit_miss += other.heuristic_visit_miss;
@@ -226,8 +224,6 @@ struct measure_attr {
                     gsmiss[i]);
         }
 
-        fprintf(stderr, "Large item hits: %" PRIu64 " and misses: %" PRIu64 ".\n", large_item_hits, large_item_misses);
-
         fprintf(stderr, "Game state cache:\n");
         state_meas.print();
         fprintf(stderr, "Dyn. prog. cache:\n");
@@ -238,11 +234,30 @@ struct measure_attr {
     void print_generation_stats() {
         fprintf(stderr, "Generation: Visited %" PRIu64 " adversary and %" PRIu64 " algorithmic vertices.\n",
                 adv_vertices_visited, alg_vertices_visited);
+        if (LARGE_ITEM_ACTIVE)
+        {
+            long double ratio = large_item_hits / (long double) large_item_calls;
+            fprintf(stderr, "Large item hits: %" PRIu64 ", misses %" PRIu64", ratio: %Lf.\n",
+                    large_item_hits, large_item_calls - large_item_hits, ratio);
+        }
+
+        if (FIVE_NINE_ACTIVE)
+        {
+            long double ratio = five_nine_hits / (long double) five_nine_calls;
+            fprintf(stderr, "Five/nine heur. hits: %" PRIu64 ", misses %" PRIu64", ratio: %Lf.\n",
+                    five_nine_hits, five_nine_calls - five_nine_hits, ratio);
+        }
+
+
     }
 
     void clear_generation_stats() {
         adv_vertices_visited = 0;
         alg_vertices_visited = 0;
+        large_item_hits = 0;
+        large_item_calls = 0;
+        five_nine_hits = 0;
+        five_nine_calls = 0;
     }
 };
 
