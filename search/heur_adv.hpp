@@ -63,6 +63,15 @@ void print_lih_choices(const binconf &b, std::vector<loadconf> choices) {
     }
 }
 
+template <bool oddness> bool instance_possible(int loadsum, int items_to_send, int proposed_item_size)
+{
+    if (oddness) {
+        return loadsum + (proposed_item_size-1) * (items_to_send) + (items_to_send-1) <= S*BINS;
+    } else {
+        return loadsum + proposed_item_size * items_to_send <= S*BINS;
+    }
+}
+
 // Build load configurations (essentially sequences of items) which work for the LI heuristic.
 std::vector<loadconf> build_lih_choices(const binconf &b) {
     std::vector<loadconf> large_choices;
@@ -89,20 +98,24 @@ std::vector<loadconf> build_lih_choices(const binconf &b) {
         }
 
         if (oddness && not_once_into_current <= not_twice_into_last - 1) {
-            loadconf large;
-            for (int j = 1; j <= items_to_send - 1; j++) {
-                large.assign_and_rehash(not_twice_into_last, j);
+            if (instance_possible<true>(b.totalload(), items_to_send, not_twice_into_last)) {
+                loadconf large;
+                for (int j = 1; j <= items_to_send - 1; j++) {
+                    large.assign_and_rehash(not_twice_into_last, j);
+                }
+                // The last item can be smaller in this case.
+                large.assign_and_rehash(not_twice_into_last - 1, items_to_send);
+                large_choices.push_back(large);
             }
-            // The last item can be smaller in this case.
-            large.assign_and_rehash(not_twice_into_last - 1, items_to_send);
-            large_choices.push_back(large);
         } else {
-            loadconf large;
             int item = std::max(not_twice_into_last, not_once_into_current);
-            for (int j = 1; j <= items_to_send; j++) {
-                large.assign_and_rehash(item, j);
+            if (instance_possible<false>(b.totalload(), items_to_send, item)) {
+                loadconf large;
+                for (int j = 1; j <= items_to_send; j++) {
+                    large.assign_and_rehash(item, j);
+                }
+                large_choices.push_back(large);
             }
-            large_choices.push_back(large);
         }
     }
     return large_choices;

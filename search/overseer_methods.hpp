@@ -15,7 +15,7 @@ void overseer::cleanup() {
     tasks.clear();
     next_task.store(0);
 
-    for (int p = 0; p < worker_count; p++) { finished_tasks[p].clear(); }
+    for (unsigned int p = 0; p < worker_count; p++) { finished_tasks[p].clear(); }
     comm.ignore_additional_signals();
 
     // root_solved.store(false);
@@ -71,7 +71,7 @@ void overseer::sleep_until_all_workers_ready() {
 }
 
 void overseer::process_finished_tasks() {
-    for (int p = 0; p < worker_count; p++) {
+    for (unsigned int p = 0; p < worker_count; p++) {
         int ftask_id = finished_tasks[p].pop_if_able();
         if (ftask_id == -1) {
             //print_if<true>("Queue empty for worker %d.\n", p);
@@ -156,7 +156,7 @@ void overseer::start() {
 
     // Spawn solver processes. We set them to be active but they immediately
     // go to waiting mode for next round.
-    for (int i = 0; i < worker_count; i++) {
+    for (unsigned int i = 0; i < worker_count; i++) {
         wrkr.push_back(new worker(i));
         w_flags.push_back(new worker_flags());
         threads[i] = std::thread(&worker::start, wrkr[i], w_flags[i]);
@@ -203,7 +203,7 @@ void overseer::start() {
             next_task.store(0);
 
             // Reserve space for finished tasks.
-            for (int w = 0; w < worker_count; w++) {
+            for (unsigned int w = 0; w < worker_count; w++) {
                 finished_tasks[w].init(all_task_count);
             }
 
@@ -265,7 +265,7 @@ void overseer::start() {
             print_if<COMM_DEBUG>("Overseer %d: received final round, terminating.\n", multiprocess::overseer_rank());
             worker_needed_cv.notify_all();
 
-            for (int w = 0; w < worker_count; w++) {
+            for (unsigned int w = 0; w < worker_count; w++) {
                 threads[w].join();
                 print_if<DEBUG>("Worker %d joined back.\n", w);
                 ov_meas.add(wrkr[w]->measurements);

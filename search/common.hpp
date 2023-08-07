@@ -97,7 +97,7 @@ constexpr bool ADVERSARY_HEURISTICS = true;
 constexpr bool EXPAND_HEURISTICS = false;
 constexpr bool LARGE_ITEM_ACTIVE = true;
 constexpr bool LARGE_ITEM_ACTIVE_EVERYWHERE = false;
-constexpr bool FIVE_NINE_ACTIVE = true;
+constexpr bool FIVE_NINE_ACTIVE = false;
 constexpr bool FIVE_NINE_ACTIVE_EVERYWHERE = false;
 
 const bool USING_HEURISTIC_VISITS = true;
