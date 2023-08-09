@@ -438,7 +438,7 @@ victory computation<MODE, MINIBS_SCALE>::algorithm(int pres_item, algorithm_vert
 
     if (GENERATING) {
         if (alg_to_evaluate->state == vert_state::fixed) {
-            std::list<alg_outedge *>::iterator it = alg_to_evaluate->out.begin();
+            auto it = alg_to_evaluate->out.begin();
             while (it != alg_to_evaluate->out.end()) {
                 upcoming_adv = (*it)->to;
                 int target_bin = (*it)->target_bin;
@@ -545,7 +545,7 @@ victory computation<MODE, MINIBS_SCALE>::algorithm(int pres_item, algorithm_vert
         alg_to_evaluate->win = win;
 
         // If the vertex has degree zero and no descendants, it is a true leaf -- no move for algorithm is allowed.
-        if (win == victory::adv && alg_to_evaluate->out.size() == 0) {
+        if (win == victory::adv && alg_to_evaluate->out.empty()) {
             alg_to_evaluate->leaf = leaf_type::trueleaf;
         }
     }
