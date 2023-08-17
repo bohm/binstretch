@@ -22,8 +22,8 @@
 
 constexpr bool PROGRESS = true; // Whether to print progress info to stderr.
 constexpr bool VERBOSE = true; // Further information about progress.
-constexpr bool OUTPUT = false; // Whether to produce output.
-constexpr bool REGROW = false; // Whether to regrow or just terminate after first iteration.
+constexpr bool OUTPUT = true; // Whether to produce output.
+constexpr bool REGROW = true; // Whether to regrow or just terminate after first iteration.
 constexpr bool MEASURE = false; // Whether to collect and print measurements to stderr.
 constexpr bool FURTHER_MEASURE = false; // Whether to collect more detailed data that is not needed often.
 
@@ -32,9 +32,9 @@ constexpr bool FURTHER_MEASURE = false; // Whether to collect more detailed data
 // const int REGROW_LIMIT = 65535;
 const int REGROW_LIMIT = 4;
 
-const int TASK_LOAD_INIT = S; // A bound on total load of a configuration before we split it into a task.
+const int TASK_LOAD_INIT = 10; // A bound on total load of a configuration before we split it into a task.
 const int TASK_LOAD_STEP = 0; // The amount by which the load can increase when regrowing the tree.
-const int TASK_DEPTH_INIT = 8; //The maximum depth of a vertex in the tree before it is made into a task.
+const int TASK_DEPTH_INIT = 6; //The maximum depth of a vertex in the tree before it is made into a task.
 const int TASK_DEPTH_STEP = 0; // The amount by which the depth is increased when regrowing.
 
 // const int TASK_LOAD_INIT = 0;
@@ -66,9 +66,9 @@ const std::vector<int> INITIAL_ITEMS = {};
 
 
 // Monotonicity limiting the adversarial instance.
-constexpr int monotonicity = RECOMMENDED_MONOTONICITY;
-// const int monotonicity = 0; // A non-decreasing instance.
-// const int monotonicity = S-1; // Full generality.
+// constexpr int monotonicity = RECOMMENDED_MONOTONICITY;
+constexpr int monotonicity = 40; // A non-decreasing instance.
+// constexpr int monotonicity = S-1; // Full generality.
 
 // constants used for good situations
 const int RMOD = (R - 1);
@@ -94,7 +94,7 @@ const bool PRINT_HEURISTICS_IN_FULL = true;
 
 // Heuristic constants:
 constexpr bool ADVERSARY_HEURISTICS = true;
-constexpr bool EXPAND_HEURISTICS = false;
+constexpr bool EXPAND_HEURISTICS = true;
 constexpr bool LARGE_ITEM_ACTIVE = true;
 constexpr bool LARGE_ITEM_ACTIVE_EVERYWHERE = false;
 constexpr bool FIVE_NINE_ACTIVE = false;

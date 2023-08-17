@@ -102,8 +102,6 @@ constexpr int ZL_SIZE = (BINS + 1) * (R + 1);
 // 3 bins:
 #if IBINS == 3 && IR == 45 && IS == 33
 const int RECOMMENDED_MONOTONICITY = 5;
-#elif IBINS == 3 && IR == 56 && IS == 41
-const int RECOMMENDED_MONOTONICITY = 40;
 #elif IBINS == 3 && IR == 72 && IS == 53
 const int RECOMMENDED_MONOTONICITY = 6; // Works, but of course better fractions are also lower bounds.
 #elif IBINS == 3 && IR == 86 && IS == 63
@@ -152,5 +150,5 @@ const int RECOMMENDED_MONOTONICITY = 3;
 const int RECOMMENDED_MONOTONICITY = 5;
 #else
 const int RECOMMENDED_MONOTONICITY = IS - 1;
-constexpr int RECOMMENDED_MINIBS_SCALE = 6;
+constexpr int RECOMMENDED_MINIBS_SCALE = 3;
 #endif

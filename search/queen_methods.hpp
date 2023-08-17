@@ -61,6 +61,10 @@ void queen_class::updater(sapling job) {
             reset_collected_now();
             cycle_counter++;
             ucomp.update();
+
+            if (PROGRESS) {
+                ucomp.outedge_change_in_job_root();
+            }
             if (cycle_counter >= 100) {
                 print_if<VERBOSE>("Update: Visited %" PRIu64 " verts, unfinished tasks in tree: %" PRIu64 ".\n",
                                   ucomp.vertices_visited, ucomp.unfinished_tasks);

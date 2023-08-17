@@ -39,6 +39,10 @@ public:
     // bool evaluation = false;
     bool expansion = false;
 
+    // Progress related
+    uint64_t last_observed_outedge_size = 0;
+    flat_hash_set<int> last_observed_outedges;
+
     updater_computation(dag *graph, const sapling &job) {
         d = graph;
         this->job = job;
@@ -48,6 +52,13 @@ public:
         count_tasks();
 
         expansion = job.expansion;
+
+        // The two lines below are progress related, but should not hamper performance.
+        last_observed_outedge_size = job.root->out.size();
+        last_observed_outedges = job_root_outedge_labels();
+        if(PROGRESS) {
+            print_potential_outedges();
+        }
     }
 
     // A reduced constructor, when we wish to only update from root.
@@ -101,7 +112,44 @@ public:
         return (unfinished_tasks > 0);
     }
 
+    // Progress-related methods.
+    flat_hash_set<int> job_root_outedge_labels() {
+        flat_hash_set<int> ret;
+        for (adv_outedge *e: job.root->out)
+        {
+            ret.insert(e->item);
+        }
+        return ret;
+    }
 
+    void print_potential_outedges() {
+        fprintf(stderr, "It is uncertain how to solve ");
+        print_binconf_stream(stderr, job.root->bc, false);
+        fprintf(stderr, " when sending items:");
+        for (int item: last_observed_outedges)
+        {
+            fprintf(stderr, " %d", item);
+        }
+        fprintf(stderr, "\n");
+    }
+
+    void outedge_change_in_job_root() {
+        if (job.root->out.size() != last_observed_outedge_size)
+        {
+            auto new_outedge_labels = job_root_outedge_labels();
+            for (int item: last_observed_outedges)
+            {
+                if (!new_outedge_labels.contains(item))
+                {
+                    fprintf(stderr, "Sending item %d leads to algorithmic victory from configuration ", item);
+                    print_binconf_stream(stderr, job.root->bc, true);
+                }
+            }
+
+            last_observed_outedge_size = job.root->out.size();
+            last_observed_outedges = new_outedge_labels;
+        }
+    }
 };
 
 victory updater_computation::update_adv(adversary_vertex *v) {
