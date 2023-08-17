@@ -126,7 +126,9 @@ public:
         fprintf(stderr, "It is uncertain how to solve ");
         print_binconf_stream(stderr, job.root->bc, false);
         fprintf(stderr, " when sending items:");
-        for (int item: last_observed_outedges)
+        std::vector<int> observed_outedges_vec(last_observed_outedges.begin(), last_observed_outedges.end());
+        std::sort(observed_outedges_vec.begin(), observed_outedges_vec.end());
+        for (int item: observed_outedges_vec)
         {
             fprintf(stderr, " %d", item);
         }
