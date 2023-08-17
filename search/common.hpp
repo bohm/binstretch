@@ -66,8 +66,8 @@ const std::vector<int> INITIAL_ITEMS = {};
 
 
 // Monotonicity limiting the adversarial instance.
-// constexpr int monotonicity = RECOMMENDED_MONOTONICITY;
-constexpr int monotonicity = 40; // A non-decreasing instance.
+constexpr int monotonicity = RECOMMENDED_MONOTONICITY;
+// constexpr int monotonicity = 40; // A non-decreasing instance.
 // constexpr int monotonicity = S-1; // Full generality.
 
 // constants used for good situations
