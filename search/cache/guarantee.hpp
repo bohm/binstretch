@@ -4,5 +4,8 @@
 #include "../cache/guar64.hpp"
 #include "../cache/guar_locks.hpp"
 
-typedef guar_cache_64 guar_cache;
-//typedef guar_cache_locks guar_cache;
+// Note: For most inputs, the full guar cache needs to be used; using just 64-bits leads to false positives
+// and inconsistencies.
+
+//typedef guar_cache_64 guar_cache;
+typedef guar_cache_locks guar_cache;

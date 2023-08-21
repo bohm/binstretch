@@ -57,7 +57,7 @@ public:
         last_observed_outedge_size = job.root->out.size();
         last_observed_outedges = job_root_outedge_labels();
         if(PROGRESS) {
-            print_potential_outedges();
+            print_uncertain_outedges();
         }
     }
 
@@ -122,10 +122,10 @@ public:
         return ret;
     }
 
-    void print_potential_outedges() {
-        fprintf(stderr, "It is uncertain how to solve ");
-        print_binconf_stream(stderr, job.root->bc, false);
-        fprintf(stderr, " when sending items:");
+    void print_uncertain_outedges() {
+        // fprintf(stderr, "It is uncertain how to solve ");
+        // print_binconf_stream(stderr, job.root->bc, false);
+        fprintf(stderr, "Uncertain edges from root: ");
         std::vector<int> observed_outedges_vec(last_observed_outedges.begin(), last_observed_outedges.end());
         std::sort(observed_outedges_vec.begin(), observed_outedges_vec.end());
         for (int item: observed_outedges_vec)
@@ -150,6 +150,7 @@ public:
 
             last_observed_outedge_size = job.root->out.size();
             last_observed_outedges = new_outedge_labels;
+            print_uncertain_outedges();
         }
     }
 };
