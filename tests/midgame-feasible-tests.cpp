@@ -49,16 +49,23 @@ template<unsigned int STACKSIZE, unsigned int ARRLEN>
 void multiknapsack_rec(int stack_pos,
 		       std::array<partition_container<ARRLEN>, STACKSIZE> &part_cons,
 			       std::array< std::array<int, ARRLEN>*, STACKSIZE> &stack,
-			       flat_hash_set<uint64_t>& unique_partitions) {
+		       flat_hash_set<uint64_t>& unique_partitions,
+		       partition_container<ARRLEN>& output_unique_con) {
     if (stack_pos == STACKSIZE) {
 	std::array<int, ARRLEN> merged = merge_arrays<STACKSIZE, ARRLEN>(stack);
-	unique_partitions.insert(itemhash_standalone<ARRLEN>(merged));
+	uint64_t merged_hash = itemhash_standalone<ARRLEN>(merged);
+	if (!unique_partitions.contains(merged_hash)) {
+	    unique_partitions.insert(merged_hash);
+	    output_unique_con.emplace_back(merged); 
+	    }
+	    
     } else
     {
 	for (auto& part: part_cons[stack_pos])
 	{
 	    stack[stack_pos] = &part;
-	    multiknapsack_rec<STACKSIZE, ARRLEN>(stack_pos+1, part_cons, stack, unique_partitions);
+	    multiknapsack_rec<STACKSIZE, ARRLEN>(stack_pos+1, part_cons, stack, unique_partitions,
+		output_unique_con);
 	}
     }
 }
@@ -128,60 +135,113 @@ template<int INTEGER> void enumerate_subpartitions(
 }
 
 template<unsigned int STACKSIZE, unsigned int ARRLEN>
-unsigned int multiknapsack_partitions(const std::array<unsigned int, STACKSIZE>& limits) {
+void multiknapsack_partitions(const std::array<unsigned int, STACKSIZE>& limits,
+				      partition_container<ARRLEN> &output_con,
+				      flat_hash_set<uint64_t> &output_set) {
     std::array<partition_container<ARRLEN>, STACKSIZE> part_cons;
     for (unsigned int s = 0; s < STACKSIZE; s++)
     {
 	enumerate_subpartitions<ARRLEN>(part_cons[s], limits[s]);
     }
-    flat_hash_set<uint64_t> unique_multipartitions;
     std::array< std::array<int, ARRLEN>*, STACKSIZE> stack;
     for (unsigned int i = 0; i < STACKSIZE; i++) {
 	stack[i] = nullptr;
     }
 
-    multiknapsack_rec<STACKSIZE, ARRLEN>(0, part_cons, stack, unique_multipartitions);
-    return unique_multipartitions.size();
+    multiknapsack_rec<STACKSIZE, ARRLEN>(0, part_cons, stack, output_set, output_con);
+}
+
+template<unsigned int ARRLEN>
+std::array<int, ARRLEN+1> shift(const std::array<int, ARRLEN>& compact_itemconfig) {
+    std::array<int, ARRLEN+1> ret;
+    ret[0] = 0;
+    for (unsigned int i = 0; i < ARRLEN; i++)
+    {
+	ret[i+1] = compact_itemconfig[i];
+    }
+    return ret;
+}
+
+template<unsigned int ARRLEN>
+void endgame_adjacent(const partition_container<ARRLEN> &midgame_feasible,
+			      const flat_hash_set<uint64_t> &midgame_set,
+			      partition_container<ARRLEN> &endgame_adjacent) {
+
+    minidp<ARRLEN+1> mdp;
+    flat_hash_set<uint64_t> endgame_set;
+    for (std::array<int, ARRLEN> mf: midgame_feasible) {
+
+	unsigned int item = 1;
+
+	// Filter all partitions which (after sending the item) are still present in the midgame.
+	while (item <= ARRLEN) {
+	    mf[item-1]++;
+	    uint64_t midgame_hash = itemhash_standalone<ARRLEN>(mf);
+	    bool midgame_presence = midgame_set.contains(midgame_hash);
+	    mf[item-1]--;
+	    if (!midgame_presence) {
+		break;
+	    }
+	    item++;
+	}
+
+        // From now on, we only deal in item configurations which are not midgame feasible.
+	std::array<int, ARRLEN+1> shifted = shift<ARRLEN>(mf);
+	unsigned int maxfeas = (unsigned int) mdp.maximum_feasible(shifted);
+	assert(maxfeas <= ARRLEN);
+
+	while (item <= maxfeas) {
+	    mf[item-1]++;
+	    uint64_t endgame_hash = itemhash_standalone<ARRLEN>(mf);
+ 	    bool endgame_presence = endgame_set.contains(endgame_hash);
+   
+	    if (!endgame_presence) {
+		endgame_set.insert(endgame_hash);
+		endgame_adjacent.emplace_back(mf); 
+	    }
+	    mf[item-1]--;
+	    item++;
+	}
+    }
 }
 
 
-template<int DENOMINATOR>
-uint64_t compute_feasible_itemconfs_with_midgame(std::vector<itemconfig<DENOMINATOR> > &out_feasible_itemconfs) {
-        minidp<DENOMINATOR> mdp;
-	uint64_t midgame_feasible_counter = 0;
-        std::array<int, DENOMINATOR> itemconf = minibs_feasibility<DENOMINATOR>::create_max_itemconf();
-        fprintf(stderr, "Computing feasible itemconfs for minibs from scratch.\n");
-        do {
-            bool feasible = false;
+template <int ARRLEN> void endgame_hints(const partition_container<ARRLEN> &endgames,
+					 flat_hash_map<uint64_t, unsigned short> &out_hints) {
 
-            if (minibs_feasibility<DENOMINATOR>::no_items(itemconf)) {
-                feasible = true;
-            } else {
-                if (minibs_feasibility<DENOMINATOR>::feasibility_plausible(itemconf)) {
-                    feasible = mdp.compute_feasibility(itemconf);
-                }
-            }
-
-            if (feasible) {
-		if (midgame_feasible<DENOMINATOR>(itemconf, mdp)) {
-		    midgame_feasible_counter++;
-		}
-                itemconfig<DENOMINATOR> feasible_itemconf(itemconf);
-                out_feasible_itemconfs.push_back(feasible_itemconf);
-            }
-        } while (minibs_feasibility<DENOMINATOR>::decrease_itemconf(itemconf));
-
-	return midgame_feasible_counter;
- }
-
-int main(int argc, char** argv)
-{
+    minidp<ARRLEN+1> mdp;
+    for (const auto& end_part: endgames) {
+	uint64_t endgame_hash = itemhash_standalone<ARRLEN>(end_part);
+	std::array<int, ARRLEN+1> shifted = shift<ARRLEN>(end_part);
+	unsigned short maxfeas = (unsigned short) mdp.maximum_feasible(shifted);
+	out_hints[endgame_hash] = maxfeas;
+    }
+}
+						 
+int main(int argc, char** argv) {
     zobrist_init();
 
     // Partition tests.
     std::vector<std::array<int, 15>> test_container;
     enumerate_partitions<15>(15, test_container);
     fprintf(stderr, "The partition number of %d is %zu.\n", 15, test_container.size());
+
+     
+    // All feasible tests.
+    /* std::array<unsigned int, BINS> no_limits = {0};
+    for (unsigned int i = 0; i < BINS; i++) {
+           no_limits[i] = TEST_SCALE-1;
+    }
+
+    partition_container<TEST_SCALE-1> all_feasible_cont;
+    flat_hash_set<uint64_t> all_feasible_set;
+    multiknapsack_partitions<BINS, TEST_SCALE-1>(no_limits, all_feasible_cont, all_feasible_set);
+    unsigned int feasible_itemconfs = all_feasible_cont.size();
+    fprintf(stderr, "The recursive enumeration approach found %u feasible partitions.\n",
+           feasible_itemconfs);
+
+    */
+    // Midgame feasible tests.
 
     std::array<unsigned int, BINS> limits = {0};
     limits[0] = TEST_SCALE-1;
@@ -192,10 +252,23 @@ int main(int argc, char** argv)
 	unsigned int remaining_cap = TEST_SCALE-1 - shrunk_three_halves;
 	limits[i] = remaining_cap;
     }
-    
-    unsigned int feasible_itemconfs = multiknapsack_partitions<BINS, TEST_SCALE-1>(limits);
+
+    partition_container<TEST_SCALE-1> midgame_feasible_cont;
+    flat_hash_set<uint64_t> midgame_feasible_set;
+
+    multiknapsack_partitions<BINS, TEST_SCALE-1>(limits, midgame_feasible_cont, midgame_feasible_set);
+    unsigned int midgame_feasible = midgame_feasible_cont.size();
     fprintf(stderr, "The recursive enumeration approach found %u midgame feasible partitions.\n",
-	    feasible_itemconfs);
+	    midgame_feasible);
+
+    partition_container<TEST_SCALE-1> ea;
+    endgame_adjacent<TEST_SCALE-1>(midgame_feasible_cont, midgame_feasible_set,
+					   ea);
+    fprintf(stderr, "The recursive enumeration approach found %zu endgame adjacent partitions.\n",
+	    ea.size());
+
+    flat_hash_map<uint64_t, unsigned short> endgame_adjacent_hints;
+    endgame_hints<TEST_SCALE-1>(ea, endgame_adjacent_hints);
 
     /*
     std::vector<itemconfig<TEST_SCALE> > test_itemconfs;
