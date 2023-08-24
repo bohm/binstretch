@@ -126,10 +126,20 @@ const int RECOMMENDED_MONOTONICITY = 15;
 const int RECOMMENDED_MONOTONICITY = 15;
 #elif IBINS == 3 && IR == 329 && IS == 240 // For some specific configurations.
 const int RECOMMENDED_MONOTONICITY = 35;
+constexpr int RECOMMENDED_MINIBS_SCALE = 6;
 #elif IBINS == 3 && IR == 411 && IS == 300
 const int RECOMMENDED_MONOTONICITY = 15;
+#elif IBINS == 3 && IR == 657 && IS == 480
+const int RECOMMENDED_MONOTONICITY = 60;
+constexpr int RECOMMENDED_MINIBS_SCALE = 6;
 #elif IBINS == 3 && IR == 821 && IS == 600
 const int RECOMMENDED_MONOTONICITY = 70;
+constexpr int RECOMMENDED_MINIBS_SCALE = 6;
+#elif IBINS == 3 && IR == 985 && IS == 720
+const int RECOMMENDED_MONOTONICITY = 60;
+constexpr int RECOMMENDED_MINIBS_SCALE = 6;
+#elif IBINS == 3 // Default on 3 bins.
+const int RECOMMENDED_MONOTONICITY = IS - 1;
 constexpr int RECOMMENDED_MINIBS_SCALE = 6;
 // 4 bins:
 #elif IBINS == 4 && IR == 19 && IS == 14

@@ -109,7 +109,8 @@ public:
 
     bool continue_updating() {
         // fprintf(stderr, "Updater: seeing %ld tasks.\n", unfinished_tasks);
-        return (unfinished_tasks > 0);
+        // return (unfinished_tasks > 0);
+	return (updater_result == victory::uncertain);
     }
 
     // Progress-related methods.
@@ -125,7 +126,7 @@ public:
     void print_uncertain_outedges() {
         // fprintf(stderr, "It is uncertain how to solve ");
         // print_binconf_stream(stderr, job.root->bc, false);
-        fprintf(stderr, "Uncertain edges from root: ");
+        fprintf(stderr, "Uncertain edges from job root: ");
         std::vector<int> observed_outedges_vec(last_observed_outedges.begin(), last_observed_outedges.end());
         std::sort(observed_outedges_vec.begin(), observed_outedges_vec.end());
         for (int item: observed_outedges_vec)
@@ -143,8 +144,7 @@ public:
             {
                 if (!new_outedge_labels.contains(item))
                 {
-                    fprintf(stderr, "Sending item %d leads to algorithmic victory from configuration ", item);
-                    print_binconf_stream(stderr, job.root->bc, true);
+                    fprintf(stderr, "Sending item %d leads to algorithmic victory from job root.\n", item);
                 }
             }
 
