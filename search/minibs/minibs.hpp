@@ -64,7 +64,7 @@ public:
 
     minidp<DENOMINATOR> mdp;
 
-    inline int shrink_item(int larger_item) {
+    static inline int shrink_item(int larger_item) {
         if ((larger_item * DENOMINATOR) % S == 0) {
             return ((larger_item * DENOMINATOR) / S) - 1;
         } else {
@@ -73,7 +73,7 @@ public:
     }
 
     // Computes with sharp lower bounds, so item size 5 corresponds to (5,6].
-    inline int grow_item(int scaled_itemsize) {
+    static inline int grow_item(int scaled_itemsize) {
         return ((scaled_itemsize * S) / DENOMINATOR) + 1;
     }
 
