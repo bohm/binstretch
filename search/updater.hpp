@@ -109,7 +109,8 @@ public:
 
     bool continue_updating() {
         // fprintf(stderr, "Updater: seeing %ld tasks.\n", unfinished_tasks);
-        return (unfinished_tasks > 0);
+        // return (unfinished_tasks > 0);
+	return (updater_result == victory::uncertain);
     }
 
     // Progress-related methods.

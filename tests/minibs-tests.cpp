@@ -5,8 +5,8 @@
 #include <cstdint>
 
 #define IBINS 3
-#define IR 821
-#define IS 600
+#define IR 657
+#define IS 480
 
 #include "minibs/minibs.hpp"
 
