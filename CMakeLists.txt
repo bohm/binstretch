@@ -39,7 +39,7 @@ add_executable(clion
         search/dynprog/wrappers.hpp
         search/minibs/binary_storage.hpp
         search/minibs/feasibility.hpp
-        search/minibs/itemconfig.hpp
+        search/itemconf.hpp
         search/minibs/minibs.hpp
         search/minibs/minidp.hpp
         search/minimax/auxiliary.hpp
@@ -119,7 +119,7 @@ add_executable(listsaplings minitools/listsaplings.cpp
         search/dynprog/wrappers.hpp
         search/minibs/binary_storage.hpp
         search/minibs/feasibility.hpp
-        search/minibs/itemconfig.hpp
+        search/itemconf.hpp
         search/minibs/minibs.hpp
         search/minibs/minidp.hpp
         search/minimax/auxiliary.hpp

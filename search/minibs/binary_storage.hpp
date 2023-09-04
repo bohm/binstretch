@@ -8,7 +8,7 @@
 
 #include "../common.hpp"
 #include "../functions.hpp"
-#include "itemconfig.hpp"
+#include "itemconf.hpp"
 
 using phmap::flat_hash_set;
 using phmap::flat_hash_map;
@@ -425,22 +425,22 @@ public:
         return nofc;
     }
 
-    void write_itemconf(itemconfig<DENOMINATOR> &ic) {
+    void write_itemconf(itemconf<DENOMINATOR> &ic) {
         fwrite(ic.items.data(), sizeof(int), DENOMINATOR, storage_file);
     }
 
 
-    void read_itemconf(itemconfig<DENOMINATOR> &out_ic) {
+    void read_itemconf(itemconf<DENOMINATOR> &out_ic) {
         int ic_read = 0;
         ic_read = fread(out_ic.items.data(), sizeof(int), DENOMINATOR, storage_file);
 
         if (ic_read != DENOMINATOR) {
-            ERRORPRINT("Binary storage error: failed to read one itemconfig.\n");
+            ERRORPRINT("Binary storage error: failed to read one itemconf.\n");
         }
     }
 
 
-    void write_feasible_itemconfs(std::vector<itemconfig<DENOMINATOR> > &feasible_ics) {
+    void write_feasible_itemconfs(std::vector<itemconf<DENOMINATOR> > &feasible_ics) {
         write_number_of_feasible_itemconfs(feasible_ics.size());
         write_delimeter();
         for (unsigned int i = 0; i < feasible_ics.size(); ++i) {
@@ -449,11 +449,11 @@ public:
         write_delimeter();
     }
 
-    void read_feasible_itemconfs(std::vector<itemconfig<DENOMINATOR> > &feasible_ics) {
+    void read_feasible_itemconfs(std::vector<itemconf<DENOMINATOR> > &feasible_ics) {
         unsigned int nofc = read_number_of_feasible_itemconfs();
         read_delimeter();
         for (unsigned int i = 0; i < nofc; ++i) {
-            itemconfig<DENOMINATOR> new_ic;
+            itemconf<DENOMINATOR> new_ic;
             read_itemconf(new_ic);
             new_ic.hashinit();
             feasible_ics.push_back(new_ic);
@@ -466,7 +466,7 @@ public:
                  std::vector<flat_hash_set<unsigned int> *> &out_fingerprints,
                  std::vector<flat_hash_set<unsigned int> *> &out_unique_fps,
                  flat_hash_set<uint64_t> &out_knownsum_set,
-                 std::vector<itemconfig<DENOMINATOR> > &out_feasible_ics) {
+                 std::vector<itemconf<DENOMINATOR> > &out_feasible_ics) {
         open_for_reading();
         bool check = check_signature();
         if (!check) {
@@ -491,7 +491,7 @@ public:
             std::vector<flat_hash_set<unsigned int> *> &fingerprints,
             std::vector<flat_hash_set<unsigned int> *> &unique_fps,
             flat_hash_set<uint64_t> &knownsum_set,
-            std::vector<itemconfig<DENOMINATOR> > &feasible_ics) {
+            std::vector<itemconf<DENOMINATOR> > &feasible_ics) {
         open_for_writing();
         write_signature();
         write_zobrist_table();

@@ -44,7 +44,7 @@ public:
     // dynamic programming data
     dynprog_data *dpdata;
     minibs<MINIBS_SCALE> *mbs = nullptr;
-    itemconfig<MINIBS_SCALE> *scaled_items = nullptr;
+    itemconf<MINIBS_SCALE> *scaled_items = nullptr;
 
     optconf oc;
     loadconf ol;
@@ -107,7 +107,7 @@ public:
         stcache = s;
         dpdata = new dynprog_data;
         if (USING_MINIBINSTRETCHING) {
-            scaled_items = new itemconfig<MINIBS_SCALE>();
+            scaled_items = new itemconf<MINIBS_SCALE>();
         }
     }
 

@@ -158,7 +158,7 @@ public:
     void init(const binconf &b) {
         clear();
         for (int size = 1; size <= S; size++) {
-            int k = b.items[size];
+            int k = b.ic.items[size];
             while (k > 0) {
                 onlinefit_assign(size);
                 k--;

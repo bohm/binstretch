@@ -593,7 +593,7 @@ victory explore(binconf *b, computation<MODE, MINIBS_SCALE> *comp) {
     comp->bstate = *b;
 
     if (USING_MINIBINSTRETCHING) {
-        comp->scaled_items->initialize(comp->bstate);
+        comp->scaled_items->initialize(comp->bstate.ic);
     }
 
     // compute the first maximum feasible value.
@@ -619,7 +619,7 @@ victory generate(sapling start_sapling,
     comp->bstate.hashinit();
 
     if (USING_MINIBINSTRETCHING) {
-        comp->scaled_items->initialize(comp->bstate);
+        comp->scaled_items->initialize(comp->bstate.ic);
     }
 
     if (start_sapling.expansion) {

@@ -163,7 +163,7 @@ void algorithm_vertex::print(FILE *stream, bool debug) {
         binconf with_new_item(bc);
         // The following creates an inconsistent bin configuration, but that is okay,
         // we discard it immediately after.
-        with_new_item.items[next_item]++;
+        with_new_item.ic.items[next_item]++;
         auto [feasible, packing] = dynprog_feasible_with_output(with_new_item);
 
         assert(feasible);

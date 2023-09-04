@@ -15,7 +15,7 @@ int bestfitalg(const binconf *orig) {
     // a quick trick: keep track of totalload and terminate when it is 0
     int tl = orig->totalload();
     for (int size = S; size > 0; size--) {
-        int k = orig->items[size];
+        int k = orig->ic.items[size];
         while (k > 0) {
             bool packed = false;
             for (int i = 1; i <= BINS; i++) {
@@ -46,9 +46,9 @@ int bestfitalg(const binconf *orig) {
 std::pair<int, int> bestfit_cut_interval(const binconf *orig) {
     loadconf b;
     // a quick trick: keep track of totalload and terminate when it is 0
-    int tl = orig->totalload() - S * orig->items[S] - orig->items[1];
+    int tl = orig->totalload() - S * orig->ic.items[S] - orig->ic.items[1];
     for (int size = S - 1; size > 1; size--) {
-        int k = orig->items[size];
+        int k = orig->ic.items[size];
         while (k > 0) {
             bool packed = false;
             for (int i = 1; i <= BINS; i++) {
@@ -103,7 +103,7 @@ std::pair<int, int> bestfit_cut_interval(const binconf *orig) {
 void onlineloads_init(loadconf &ol, const binconf *bc) {
     std::fill(ol.loads.begin(), ol.loads.end(), 0);
     for (int size = S; size > 0; size--) {
-        int k = bc->items[size];
+        int k = bc->ic.items[size];
         while (k > 0) {
             bool packed = false;
             for (int i = 1; i <= BINS; i++) {
@@ -158,7 +158,7 @@ int firstfit(const binconf *orig) {
     std::array<uint8_t, BINS> ar = {};
 
     for (int size = S; size > 0; size--) {
-        int k = orig->items[size];
+        int k = orig->ic.items[size];
         while (k > 0) {
             bool packed = false;
             for (int i = 0; i < BINS; i++) {

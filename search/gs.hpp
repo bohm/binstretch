@@ -107,7 +107,7 @@ int gs5(const binconf *b, measure_attr *meas) {
     int blowerbound = (int) ceil((double) (3 * S - 7 * ALPHA) / (double) 2);
     if (b->loads[2] >= blowerbound && b->loads[2] <= ALPHA && b->loads[3] == 0) {
         for (int j = (ALPHA + 1); j <= S; j++) {
-            if (b->items[j] > 0) {
+            if (b->ic.items[j] > 0) {
                 MEASURE_ONLY(meas->gshit[GS5]++);
                 return 1;
             }
@@ -498,9 +498,9 @@ int gsheuristic(binconf *b, int k, measure_attr *meas) {
     for (int i = 1; i <= BINS; i++) {
         if ((b->loads[i] + k) < R) {
             int previously_last_item = b->last_item;
-            moved_load = b->assign_item(k, i);
+            moved_load = b->assign_and_rehash(k, i);
             int value = testgs(b, meas);
-            b->unassign_item(k, moved_load, previously_last_item);
+            b->unassign_and_rehash(k, moved_load, previously_last_item);
             if (value == 1) {
                 MEASURE_ONLY(meas->gsheurhit++);
                 return 1;

@@ -40,8 +40,8 @@ public:
         ihash = b.ihash();
         il[0] = 0;
         for (int i = 1; i <= S; i++) {
-            assert(b.items[i] >= SHRT_MIN && b.items[i] <= SHRT_MAX);
-            il[i] = b.items[i];
+            assert(b.ic.items[i] >= SHRT_MIN && b.ic.items[i] <= SHRT_MAX);
+            il[i] = b.ic.items[i];
         }
     }
 

@@ -5,6 +5,7 @@
 #include "positional.hpp"
 #include "measure_structures.hpp"
 #include "loadconf.hpp"
+#include "itemconf.hpp"
 
 #include <sstream>
 #include <string>
@@ -15,11 +16,12 @@
 class binconf : public loadconf {
 public:
 
-    std::array<int, S + 1> items = {};
+    itemconf<S+1> ic;
+
     int _totalload = 0;
     // hash related properties
-    uint64_t itemhash = 0;
-    int _itemcount = 0;
+    // uint64_t itemhash = 0;
+    // int _itemcount = 0;
     int last_item = 1; // last item inserted. Normally this is not needed, but with monotonicity it becomes necessary.
 
     binconf() {}
@@ -29,14 +31,13 @@ public:
         assert(initial_loads.size() <= BINS);
         assert(initial_items.size() <= S);
         std::copy(initial_loads.begin(), initial_loads.end(), loads.begin() + 1);
-        std::copy(initial_items.begin(), initial_items.end(), items.begin() + 1);
+        std::copy(initial_items.begin(), initial_items.end(), ic.items.begin() + 1);
 
         last_item = initial_last_item;
-        _itemcount = itemcount_explicit();
         _totalload = totalload_explicit();
         int totalload_items = 0;
         for (int i = 1; i <= S; i++) {
-            totalload_items += i * items[i];
+            totalload_items += i * ic.items[i];
         }
         assert(totalload_items == _totalload);
 
@@ -48,7 +49,7 @@ public:
     binconf(const std::array<int, BINS + 1> initial_loads, const std::array<int, S + 1> initial_items,
             int initial_last_item = 1) {
         loads = initial_loads;
-        items = initial_items;
+        ic.items = initial_items;
         last_item = initial_last_item;
 
         hash_loads_init();
@@ -72,26 +73,23 @@ public:
             loads[i] = 0;
         }
         for (int i = 0; i <= S; i++) {
-            items[i] = 0;
+            ic.items[i] = 0;
         }
         _totalload = 0;
-        _itemcount = 0;
+        ic._itemcount_explicit = 0;
+        ic.hashinit();
         hashinit();
     }
 
     void hashinit() {
         loadconf::hashinit();
-        itemhash = 0;
-
-        for (int j = 1; j <= S; j++) {
-            itemhash ^= Zi[j * (MAX_ITEMS + 1) + items[j]];
-        }
+        ic.hashinit();
     }
 
 
     void hash_loads_init() {
         _totalload = totalload_explicit();
-        _itemcount = itemcount_explicit();
+        ic._itemcount_explicit = ic.itemcount_explicit();
         hashinit();
     }
 
@@ -106,77 +104,67 @@ public:
     void unassign_and_rehash(int item, int bin, int previously_last_item);
 
     int itemcount() const {
-        return _itemcount;
-    }
-
-    int itemcount_explicit() const {
-        int total = 0;
-        for (int i = 1; i <= S; i++) {
-            total += items[i];
-        }
-        return total;
+        return ic.itemcount();
     }
 
     void rehash_increased_range(int item, int from, int to) {
         // rehash loads, then items
         rehash_loads_increased_range(item, from, to);
-        itemhash ^= Zi[item * (MAX_ITEMS + 1) + items[item] - 1];
-        itemhash ^= Zi[item * (MAX_ITEMS + 1) + items[item]];
+        // TODO: call some function from itemconf here.
+        ic.itemhash ^= Zi[item * (MAX_ITEMS + 1) + ic.items[item] - 1];
+        ic.itemhash ^= Zi[item * (MAX_ITEMS + 1) + ic.items[item]];
     }
 
     void rehash_decreased_range(int item, int from, int to) {
         rehash_loads_decreased_range(item, from, to);
-        itemhash ^= Zi[item * (MAX_ITEMS + 1) + items[item] + 1];
-        itemhash ^= Zi[item * (MAX_ITEMS + 1) + items[item]];
+        ic.itemhash ^= Zi[item * (MAX_ITEMS + 1) + ic.items[item] + 1];
+        ic.itemhash ^= Zi[item * (MAX_ITEMS + 1) + ic.items[item]];
     }
 
     // Returns the hash used for querying feasibility (the adversary guarantee) of an item list.
     uint64_t ihash() const {
-        return itemhash;
+        return ic.itemhash;
     }
 
     void i_changehash(int dynitem, int old_count, int new_count) {
-        itemhash ^= Zi[dynitem * (MAX_ITEMS + 1) + old_count];
-        itemhash ^= Zi[dynitem * (MAX_ITEMS + 1) + new_count];
+        ic.itemhash ^= Zi[dynitem * (MAX_ITEMS + 1) + old_count];
+        ic.itemhash ^= Zi[dynitem * (MAX_ITEMS + 1) + new_count];
     }
 
     // Rehash for dynamic programming purposes, assuming we have added
     // one item of size "dynitem".
     void i_hash_as_if_added(int dynitem) {
-        itemhash ^= Zi[dynitem * (MAX_ITEMS + 1) + items[dynitem] - 1];
-        itemhash ^= Zi[dynitem * (MAX_ITEMS + 1) + items[dynitem]];
+        ic.itemhash ^= Zi[dynitem * (MAX_ITEMS + 1) + ic.items[dynitem] - 1];
+        ic.itemhash ^= Zi[dynitem * (MAX_ITEMS + 1) + ic.items[dynitem]];
     }
 
     // Rehashes as if removing one item "dynitem".
     void i_hash_as_if_removed(int dynitem) {
-        itemhash ^= Zi[dynitem * (MAX_ITEMS + 1) + items[dynitem] + 1];
-        itemhash ^= Zi[dynitem * (MAX_ITEMS + 1) + items[dynitem]];
+        ic.itemhash ^= Zi[dynitem * (MAX_ITEMS + 1) + ic.items[dynitem] + 1];
+        ic.itemhash ^= Zi[dynitem * (MAX_ITEMS + 1) + ic.items[dynitem]];
     }
 
 
     uint64_t hash_with_low() const {
-        return (loadhash ^ itemhash ^ Zlow[lowest_sendable(last_item)]);
+        return (loadhash ^ ic.itemhash ^ Zlow[lowest_sendable(last_item)]);
     }
 
     uint64_t virtual_hash_with_low(int item, int bin) {
         uint64_t ret = virtual_loadhash(item, bin);
         // hash as if item added
-        ret ^= itemhash;
-        ret ^= Zi[item * (MAX_ITEMS + 1) + items[item]];
-        ret ^= Zi[item * (MAX_ITEMS + 1) + items[item] + 1];
-
+        ret ^= ic.virtual_increase(item);
         return ret ^ Zlow[lowest_sendable(item)];
     }
 
 
     uint64_t hash_with_last() const {
-        return (loadhash ^ itemhash ^ Zlast[last_item]);
+        return (loadhash ^ ic.itemhash ^ Zlast[last_item]);
     }
 
     // A hash that ignores next item. This is used by some post-processing functions
     // but should be avoided in the main lower bound search.
     uint64_t loaditemhash() const {
-        return loadhash ^ itemhash;
+        return loadhash ^ ic.itemhash;
     }
 
     // Returns (winning/losing state) hash.
@@ -187,7 +175,7 @@ public:
     // Returns a hash that also encodes the next upcoming item. This allows
     // us to uniquely index algorithm's vertices.
     uint64_t alghash(int next_item) const {
-        return (loadhash ^ itemhash ^ Zalg[next_item]);
+        return (loadhash ^ ic.itemhash ^ Zalg[next_item]);
     }
 
     void consistency_check() const;
@@ -196,14 +184,10 @@ public:
 void duplicate(binconf *t, const binconf *s) {
     for (int i = 1; i <= BINS; i++)
         t->loads[i] = s->loads[i];
-    for (int j = 1; j <= S; j++)
-        t->items[j] = s->items[j];
-
     t->last_item = s->last_item;
     t->loadhash = s->loadhash;
-    t->itemhash = s->itemhash;
     t->_totalload = s->_totalload;
-    t->_itemcount = s->_itemcount;
+    t->ic = s->ic;
 }
 
 // returns true if two binconfs are item-wise and load-wise equal
@@ -215,15 +199,15 @@ bool binconf_equal(const binconf *a, const binconf *b) {
     }
 
     for (int j = 1; j <= S; j++) {
-        if (a->items[j] != b->items[j]) {
+        if (a->ic.items[j] != b->ic.items[j]) {
             return false;
         }
     }
 
-    if (a->loadhash != b->loadhash) { return false; }
-    if (a->itemhash != b->itemhash) { return false; }
-    if (a->_totalload != b->_totalload) { return false; }
-    if (a->_itemcount != b->_itemcount) { return false; }
+    assert(a->loadhash == b->loadhash);
+    assert(a->ic.itemhash == b->ic.itemhash);
+    assert(a->_totalload == b->_totalload);
+    assert(a->ic._itemcount_explicit == b->ic._itemcount_explicit);
 
     return true;
 }
@@ -244,10 +228,10 @@ void print_binconf_stream(FILE *stream, const binconf &b, bool newline = true) {
     first = true;
     for (int j = 1; j <= S; j++) {
         if (first) {
-            fprintf(stream, "(%d", b.items[j]);
+            fprintf(stream, "(%d", b.ic.items[j]);
             first = false;
         } else {
-            fprintf(stream, " %d", b.items[j]);
+            fprintf(stream, " %d", b.ic.items[j]);
         }
     }
 
@@ -296,11 +280,11 @@ void print_binconf_if(const binconf *b, bool newline = true) {
 }
 
 void binconf::consistency_check() const {
-    assert(_itemcount == itemcount_explicit());
+    assert(ic._itemcount_explicit == ic.itemcount_explicit());
     assert(_totalload == totalload_explicit());
     int totalload_items = 0;
     for (int i = 1; i <= S; i++) {
-        totalload_items += i * items[i];
+        totalload_items += i * ic.items[i];
     }
     if (totalload_items != _totalload) {
         fprintf(stderr, "Total load in the items section does not match the total load from loads.\n");
@@ -309,47 +293,13 @@ void binconf::consistency_check() const {
     }
 }
 
-// Caution: assign_item forgets the last assigned item, so you need
+// Caution: assign_and_rehash forgets the last item, so you need
 // to take care of it manually, if you want to unassign later.
-int binconf::assign_item(int item, int bin) {
-    loads[bin] += item;
-    _totalload += item;
-    items[item]++;
-    _itemcount++;
-
-    last_item = item;
-
-    return sortloads_one_increased(bin);
-}
-
-int binconf::assign_multiple(int item, int bin, int count) {
-    loads[bin] += count * item;
-    _totalload += count * item;
-    items[item] += count;
-    _itemcount += count;
-
-    last_item = item;
-
-    return sortloads_one_increased(bin);
-}
-
-
-void binconf::unassign_item(int item, int bin, int item_before_last) {
-    loads[bin] -= item;
-    _totalload -= item;
-    items[item]--;
-    _itemcount--;
-
-    last_item = item_before_last;
-
-    sortloads_one_decreased(bin);
-}
-
 int binconf::assign_and_rehash(int item, int bin) {
     loads[bin] += item;
     _totalload += item;
-    items[item]++;
-    _itemcount++;
+    ic.items[item]++;
+    ic._itemcount_explicit++;
     int from = sortloads_one_increased(bin);
     rehash_increased_range(item, from, bin);
 
@@ -361,8 +311,8 @@ int binconf::assign_and_rehash(int item, int bin) {
 void binconf::unassign_and_rehash(int item, int bin, int item_before_last) {
     loads[bin] -= item;
     _totalload -= item;
-    items[item]--;
-    _itemcount--;
+    ic.items[item]--;
+    ic._itemcount_explicit--;
     int from = sortloads_one_decreased(bin);
 
     last_item = item_before_last;

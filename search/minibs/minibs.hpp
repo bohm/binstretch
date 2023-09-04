@@ -38,7 +38,7 @@ public:
 
     // Non-static section.
 
-    std::vector<itemconfig<DENOMINATOR> > feasible_itemconfs;
+    std::vector<itemconf<DENOMINATOR> > feasible_itemconfs;
 
     flat_hash_map<uint64_t, unsigned int> feasible_map;
     std::vector<flat_hash_set<uint64_t> > alg_winning_positions;
@@ -77,7 +77,7 @@ public:
         return ((scaled_itemsize * S) / DENOMINATOR) + 1;
     }
 
-    int lb_on_volume(const itemconfig<DENOMINATOR> &ic) {
+    int lb_on_volume(const itemconf<DENOMINATOR> &ic) {
         if (ic.no_items()) {
             return 0;
         }
@@ -251,7 +251,7 @@ public:
     }
 
 
-    bool query_itemconf_winning(const loadconf &lc, const itemconfig<DENOMINATOR> &ic) {
+    bool query_itemconf_winning(const loadconf &lc, const itemconf<DENOMINATOR> &ic) {
         // Also checks basic tests.
         if (query_knownsum_layer(lc)) {
             return true;
@@ -298,7 +298,7 @@ public:
 
     void init_itemconf_layer(long unsigned int layer_index) {
 
-        itemconfig<DENOMINATOR> layer = feasible_itemconfs[layer_index];
+        itemconf<DENOMINATOR> layer = feasible_itemconfs[layer_index];
 
         bool last_layer = (layer_index == (feasible_itemconfs.size() - 1));
 

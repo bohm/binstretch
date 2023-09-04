@@ -188,8 +188,8 @@ public:
     }
 
     void log_binconf_with_move(binconf *b, int pres_item, int target_bin) {
-        binconf copy(b->loads, b->items, b->last_item);
-        copy.assign_item(pres_item, target_bin);
+        binconf copy(b->loads, b->ic.items, b->last_item);
+        copy.assign_and_rehash(pres_item, target_bin);
         print_binconf_stream(logfile, &copy, true);
     }
 

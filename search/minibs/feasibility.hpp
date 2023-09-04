@@ -32,7 +32,7 @@ public:
 
     static constexpr uint64_t LAYERS_UB = upper_bound_layers();
 
-    // A duplication of itemconfig::no_items(), but only for the array itself.
+    // A duplication of itemconf::no_items(), but only for the array itself.
 
     static bool no_items(std::array<int, DENOMINATOR> &itemconfig_array) {
         for (int i = 1; i < DENOMINATOR; i++) {
@@ -95,25 +95,25 @@ public:
         }
     }
 
-    static void compute_feasible_itemconfs(std::vector<itemconfig<DENOMINATOR> > &out_feasible_itemconfs) {
+    static void compute_feasible_itemconfs(std::vector<itemconf<DENOMINATOR> > &out_feasible_itemconfs) {
         minidp<DENOMINATOR> mdp;
-        std::array<int, DENOMINATOR> itemconf = create_max_itemconf();
+        std::array<int, DENOMINATOR> itemconf_iterator = create_max_itemconf();
         fprintf(stderr, "Computing feasible itemconfs for minibs from scratch.\n");
         do {
             bool feasible = false;
 
-            if (no_items(itemconf)) {
+            if (no_items(itemconf_iterator)) {
                 feasible = true;
             } else {
-                if (feasibility_plausible(itemconf)) {
-                    feasible = mdp.compute_feasibility(itemconf);
+                if (feasibility_plausible(itemconf_iterator)) {
+                    feasible = mdp.compute_feasibility(itemconf_iterator);
                 }
             }
 
             if (feasible) {
-                itemconfig<DENOMINATOR> feasible_itemconf(itemconf);
+                itemconf<DENOMINATOR> feasible_itemconf(itemconf_iterator);
                 out_feasible_itemconfs.push_back(feasible_itemconf);
             }
-        } while (decrease_itemconf(itemconf));
+        } while (decrease_itemconf(itemconf_iterator));
     }
 };

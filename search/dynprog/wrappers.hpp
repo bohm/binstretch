@@ -17,17 +17,11 @@ int dynprog_max_via_vector(const binconf &conf, dynprog_data *dpdata) {
 // --- Packing procedures. ---
 
 void add_item_inplace(binconf &h, const int item, const int multiplicity = 1) {
-    h.i_changehash(item, h.items[item], h.items[item] + multiplicity);
-    h.items[item] += multiplicity; // in some sense, it is an inconsistent state, since "item" is not packed in "h"
-    h._itemcount += multiplicity;
-    h._totalload += multiplicity * item;
+    h.ic.increase(item, multiplicity);
 }
 
 void remove_item_inplace(binconf &h, const int item, const int multiplicity = 1) {
-    h._totalload -= multiplicity * item;
-    h._itemcount -= multiplicity;
-    h.items[item] -= multiplicity;
-    h.i_changehash(item, h.items[item] + multiplicity, h.items[item]);
+    h.ic.decrease(item, multiplicity);
 }
 
 bool compute_feasibility(const binconf &h, dynprog_data *dpdata = nullptr, measure_attr *meas = nullptr) {
@@ -108,14 +102,14 @@ std::pair<bool, fullconf> dynprog_feasible_with_output(const binconf &conf) {
     fullconf ret;
 
     for (int i = 1; i <= S; i++) {
-        if (conf.items[i] > 0) {
+        if (conf.ic.items[i] > 0) {
             smallest_item = i;
             break;
         }
     }
 
     for (int size = S; size >= 1; size--) {
-        int k = conf.items[size];
+        int k = conf.ic.items[size];
         while (k > 0) {
             if (initial_phase) {
                 fullconf first;

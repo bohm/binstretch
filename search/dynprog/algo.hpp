@@ -34,15 +34,15 @@ int dynprog_max_direct(const binconf &conf, dynprog_data *dpdata = nullptr, meas
     int max_overall = MAX_INFEASIBLE;
     int smallest_item = -1;
     for (int i = 1; i <= S; i++) {
-        if (conf.items[i] > 0) {
+        if (conf.ic.items[i] > 0) {
             smallest_item = i;
             break;
         }
     }
 
     // handle items of size S separately
-    if (conf.items[S] > 0) {
-        if (conf.items[S] > BINS) {
+    if (conf.ic.items[S] > 0) {
+        if (conf.ic.items[S] > BINS) {
             STANDALONE_CLEANUP();
             return MAX_INFEASIBLE;
         }
@@ -50,7 +50,7 @@ int dynprog_max_direct(const binconf &conf, dynprog_data *dpdata = nullptr, meas
         if (smallest_item == S) {
 
             STANDALONE_CLEANUP();
-            if (conf.items[S] == BINS) {
+            if (conf.ic.items[S] == BINS) {
                 return 0; // feasible, but nothing can be sent
             } else {
                 return S; // at least one bin completely empty
@@ -58,11 +58,11 @@ int dynprog_max_direct(const binconf &conf, dynprog_data *dpdata = nullptr, meas
         }
 
         loadconf first;
-        for (int i = 1; i <= conf.items[S]; i++) {
+        for (int i = 1; i <= conf.ic.items[S]; i++) {
             first.loads[i] = S;
         }
 
-        for (int i = conf.items[S] + 1; i <= BINS; i++) {
+        for (int i = conf.ic.items[S] + 1; i <= BINS; i++) {
             first.loads[i] = 0;
         }
 
@@ -75,7 +75,7 @@ int dynprog_max_direct(const binconf &conf, dynprog_data *dpdata = nullptr, meas
     }
 
     for (int size = S - 1; size >= 2; size--) {
-        int k = conf.items[size];
+        int k = conf.ic.items[size];
         while (k > 0) {
             if (initial_phase) {
                 loadconf first;
@@ -140,7 +140,7 @@ int dynprog_max_direct(const binconf &conf, dynprog_data *dpdata = nullptr, meas
 
     // handle items of size one separately
 
-    if (conf.items[1] > 0) {
+    if (conf.ic.items[1] > 0) {
         int free_volume = S * BINS - conf.totalload();
 
         if (free_volume < 0) {
@@ -178,7 +178,7 @@ std::vector<loadconf> dynprog(const binconf &conf, dynprog_data *dpdata) {
 
     // We currently avoid the heuristics of handling separate sizes.
     for (int size = S; size >= 1; size--) {
-        int k = conf.items[size];
+        int k = conf.ic.items[size];
         while (k > 0) {
             if (initial_phase) {
                 loadconf first;

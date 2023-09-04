@@ -1,24 +1,40 @@
 #pragma once
 
 template<int DENOMINATOR>
-class itemconfig {
+class itemconf {
 public:
     std::array<int, DENOMINATOR> items = {};
     uint64_t itemhash = 0;
+    int _itemcount_explicit = 0;
 
     // We do not initialize the hash by default, but maybe we should. 
-    itemconfig() {
+    itemconf() {
     }
 
-    itemconfig(const std::array<int, DENOMINATOR> &content) {
+    itemconf(const std::array<int, DENOMINATOR> &content) {
         items = content;
+        _itemcount_explicit = itemcount_explicit();
         hashinit();
     }
 
-    itemconfig(const itemconfig &copy) {
+    itemconf(const itemconf &copy) {
         items = copy.items;
         itemhash = copy.itemhash;
+        _itemcount_explicit = copy.itemcount();
     }
+
+    int itemcount_explicit() const {
+        int total = 0;
+        for (int i = 1; i < DENOMINATOR; i++) {
+            total += items[i];
+        }
+        return total;
+    }
+
+    int itemcount() const {
+        return _itemcount_explicit;
+    }
+
 
     inline static int shrink_item(int larger_item) {
         if ((larger_item * DENOMINATOR) % S == 0) {
@@ -28,8 +44,8 @@ public:
         }
     }
 
-    // We might wish to use itemconfig for the full spectrum of item sizes.
-    // If we do, we hit the problem of alignment -- itemconfig only has DENOMINATOR
+    // We might wish to use itemconf for the full spectrum of item sizes.
+    // If we do, we hit the problem of alignment -- itemconf only has DENOMINATOR
     // positions, and uses the [0] position too.
 
     // Align stores items of size 1 in [0].
@@ -43,7 +59,7 @@ public:
     }
 
 
-    void initialize(const binconf &larger_bc) {
+    void initialize(itemconf<S+1> &larger_bc) {
         for (int i = 1; i <= S; i++) {
             int shrunk_item = shrink_item(i);
             if (shrunk_item > 0) {
@@ -62,7 +78,7 @@ public:
 	}
 
     */
-    int operator==(const itemconfig &other) const {
+    int operator==(const itemconf &other) const {
         return itemhash == other.itemhash && items == other.items;
     }
 
@@ -75,27 +91,20 @@ public:
 
     }
 
-    // Increases itemtype's count by one and rehashes.
-    void increase(int itemtype) {
-        itemhash ^= Zi[itemtype * (MAX_ITEMS + 1) + items[itemtype]];
-        itemhash ^= Zi[itemtype * (MAX_ITEMS + 1) + items[itemtype] + 1];
-        items[itemtype]++;
-    }
-
-    void increase(int itemtype, int amount) {
+    void increase(int itemtype, int amount = 1) {
         itemhash ^= Zi[itemtype * (MAX_ITEMS + 1) + items[itemtype]];
         itemhash ^= Zi[itemtype * (MAX_ITEMS + 1) + items[itemtype] + amount];
         items[itemtype] += amount;
+        _itemcount_explicit += amount;
     }
 
-    // Decreases itemtype's count by one and rehashes.
-
-    void decrease(int itemtype) {
-        assert(items[itemtype] >= 1);
+    void decrease(int itemtype, int amount = 1) {
         itemhash ^= Zi[itemtype * (MAX_ITEMS + 1) + items[itemtype]];
-        itemhash ^= Zi[itemtype * (MAX_ITEMS + 1) + items[itemtype] - 1];
-        items[itemtype]--;
+        itemhash ^= Zi[itemtype * (MAX_ITEMS + 1) + items[itemtype] - amount];
+        items[itemtype] -= amount;
+        _itemcount_explicit -= amount;
     }
+
 
     // Does not affect the object, only prints the new itemhash.
     uint64_t virtual_increase(int itemtype) const {
@@ -103,7 +112,7 @@ public:
                         ^ Zi[itemtype * (MAX_ITEMS + 1) + items[itemtype] + 1]);
 
 
-        // itemconfig<DENOMINATOR> copy(items);
+        // itemconf<DENOMINATOR> copy(items);
         // copy.increase(itemtype);
         // assert(copy.itemhash == ret);
         return ret;
@@ -111,7 +120,7 @@ public:
     }
 
     // Tests inclusion of this class and the other object. Only in one direction (\subseteq).
-    bool inclusion(itemconfig *other) {
+    bool inclusion(itemconf *other) {
         for (int j = 0; j < DENOMINATOR; ++j) {
             if (items[j] > other->items[j]) {
                 return false;
@@ -131,7 +140,7 @@ public:
         return true;
     }
 
-    // Checks if the itemconfig is "basic", meaning that it only has values in at most one
+    // Checks if the itemconf is "basic", meaning that it only has values in at most one
     // field. (2 0 0 0 0) is basic, (0 0 0 0 0) is basic, (2 1 0 1 0) is not.
 
     bool basic() const {

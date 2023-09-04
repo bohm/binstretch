@@ -163,7 +163,7 @@ int maximum_feasible(binconf *b, const int depth, const int cannot_send_less, in
         }
         fprintf(stderr, "\nhashes: [");
         for (int dbug = ub; dbug <= initial_ub; dbug++) {
-            int dbug_items = b->items[dbug];
+            int dbug_items = b->ic.items[dbug];
             // print itemhash as if there was one more item of type dbug
             fprintf(stderr, "%" PRIu64 ", ",
                     b->ihash() ^ Zi[dbug * (MAX_ITEMS + 1) + dbug_items] ^ Zi[dbug * (MAX_ITEMS + 1) + dbug_items + 1]);
