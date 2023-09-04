@@ -98,8 +98,9 @@ victory sequencing_adversary(binconf *b, unsigned int depth, computation<MODE, M
 
     if (ADVERSARY_HEURISTICS) {
         // The procedure may generate the vertex in question.
+        // Note: we pass S as the maximum_feasible_next, which effectively turns it off.
         auto [vic, strategy] = adversary_heuristics<minimax::generating>(comp->dpcache, b, comp->dpdata, &(comp->meas),
-                                                                         adv_to_evaluate);
+                                                                         adv_to_evaluate, S);
 
         if (vic == victory::adv) {
             print_if<DEBUG>("Sequencing: Adversary heuristic ");

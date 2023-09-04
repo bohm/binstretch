@@ -126,7 +126,9 @@ victory computation<MODE, MINIBS_SCALE>::adversary(
     // a heuristic
 
     if (ADVERSARY_HEURISTICS && !this->heuristic_regime) {
-        auto [vic, strategy] = adversary_heuristics<MODE>(dpcache, &bstate, this->dpdata, &(this->meas), adv_to_evaluate);
+        auto [vic, strategy] = adversary_heuristics<MODE>(dpcache, &bstate, this->dpdata,
+                                                          &(this->meas), adv_to_evaluate,
+                                                          maximum_feasible_with_next_item[itemdepth-1]);
 
         if (vic == victory::adv) {
             if (GENERATING) {

@@ -218,9 +218,23 @@ std::pair<bool, int> five_nine_heuristic(guar_cache *dpcache, binconf *b, dynpro
 template<minimax MODE>
 std::pair<victory, heuristic_strategy *>
 adversary_heuristics(guar_cache *dpcache, binconf *b, dynprog_data *dpdata,
-                     measure_attr *meas, adversary_vertex *adv_to_evaluate) {
-    //A much weaker variant of large item heuristic, but takes O(1) time.
+                     measure_attr *meas, adversary_vertex *adv_to_evaluate, int maximum_feasible_next) {
     heuristic_strategy *str = nullptr;
+
+    // A heuristic that works since we know the maximum feasible item in advance.
+    if (b->loads[BINS] + maximum_feasible_next >= R) {
+        if (MODE == minimax::generating) {
+            str = new heuristic_strategy_list;
+            std::vector<int> itemlist;
+            itemlist.push_back(maximum_feasible_next);
+            str->init(itemlist);
+            str->type = heuristic::large_item;
+        }
+
+        return {victory::adv, str};
+    }
+
+    // A much weaker variant of large item heuristic, but takes O(1) time.
     if (b->totalload() <= S && b->loads[2] >= R - S) {
         if (MODE == minimax::generating) {
             // Build strategy.
@@ -232,7 +246,7 @@ adversary_heuristics(guar_cache *dpcache, binconf *b, dynprog_data *dpdata,
             str->init(itemlist);
             str->type = heuristic::large_item;
         }
-        return std::pair(victory::adv, str);
+        return {victory::adv, str};
     }
 
     if (LARGE_ITEM_ACTIVE && (MODE == minimax::generating || LARGE_ITEM_ACTIVE_EVERYWHERE)) {
