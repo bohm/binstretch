@@ -98,7 +98,8 @@ add_executable(clion
         search/updater.hpp
         search/worker.hpp
         search/worker_methods.hpp
-        search/minimax/heuristic_visits.hpp)
+        search/minimax/heuristic_visits.hpp
+        search/minimax/descend_ascend.hpp)
 
 add_executable(listsaplings minitools/listsaplings.cpp
         search/cache/guar64.hpp
@@ -175,4 +176,5 @@ add_executable(listsaplings minitools/listsaplings.cpp
         search/updater.hpp
         search/worker.hpp
         search/worker_methods.hpp
-        search/minimax/heuristic_visits.hpp)
+        search/minimax/heuristic_visits.hpp
+        search/minimax/descend_ascend.hpp)

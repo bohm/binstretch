@@ -75,7 +75,7 @@ int maximum_feasible(binconf *b, const int depth, const int cannot_send_less, in
                          computation<MODE, MINIBS_SCALE> *comp) {
     MEASURE_ONLY(comp->meas.maxfeas_calls++);
     print_if<DEBUG>("Starting dynprog maximization of configuration:\n");
-    print_binconf<DEBUG>(b);
+    print_binconf_if<DEBUG>(b);
     print_if<DEBUG>("\n");
 
     comp->maxfeas_return_point = -1;
@@ -214,7 +214,7 @@ int maximum_feasible(binconf *b, const int depth, const int cannot_send_less, in
     /* int check = dynprog_max_safe(*b,tat);
     if (maximum_feasible != check)
     {
-	print_binconf<true>(b);
+	print_binconf_if<true>(b);
 	print_if<true>("dynprog_max: %" PRIi16 "; safe value: % " PRIi16 ".\n", maximum_feasible, check);
 	assert(maximum_feasible == check);
     } */
@@ -236,4 +236,23 @@ int maximum_feasible(binconf *b, const int depth, const int cannot_send_less, in
 
     comp->maxfeas_return_point = 7;
     return maximum_feasible;
+}
+
+// Calls maximum feasible with one extra item. It currently is a big hack, essentially packing the item to the smallest
+// position in b and then going forward with that. A clean solution would be if maximum_feasible only worked with the
+// item configuration, and so did not need to pack the item. But that would need a lot of refactoring.
+template<minimax MODE, int MINIBS_SCALE>
+int maxfeas_with_known_next_item(binconf *b, int next_item, const int depth,
+                                          const int cannot_send_less, int initial_ub,
+                                          computation<MODE, MINIBS_SCALE> *comp) {
+    assert(b->loads[BINS] + next_item < R); // The item is unpackable otherwise.
+    // Some items of course can be unpackable, but we hope that these will be caught early enough.
+    int last_item = b->last_item;
+    int new_bin = b->assign_and_rehash(next_item, BINS);
+    int ol_new_load_position = onlineloads_assign(comp->ol, next_item);
+
+    int maxfeas = maximum_feasible(b, depth, cannot_send_less, initial_ub, comp);
+    b->unassign_and_rehash(next_item, new_bin, last_item);
+    onlineloads_unassign(comp->ol, next_item, ol_new_load_position);
+    return maxfeas;
 }

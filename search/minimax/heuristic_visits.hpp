@@ -1,6 +1,7 @@
 #pragma once
 
 #include "minimax/computation.hpp"
+#include "minimax/descend_ascend.hpp"
 
 // Idea: The minimax algorithm normally behaves like a DFS, choosing
 // one uncertain path and following it. However, since the sheer size

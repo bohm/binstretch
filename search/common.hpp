@@ -151,6 +151,7 @@ constexpr bool TASK_DEBUG = false; // Debugging creation of tasks, batching, etc
 constexpr bool GRAPH_DEBUG = false; // Debugging the DAG creation and adding/removing edges.
 // GRAPH_DEBUG also prints intermediary graphs into the ./logs/ folder.
 constexpr bool PARSING_DEBUG = false; // Debugging loading and saving a file.
+constexpr bool MINIMAX_DEBUG = false; // Debugging the minimax algorithm (recursion).
 
 // completely disable dynamic programming or binconf cache
 // (useful to debug soundness of cache algs)
@@ -296,3 +297,4 @@ void assert_with_message(const char *expression, bool evaluation, const char *me
 #define REGROW_ONLY(x) if (REGROW) {x;}
 #define CONSISTENCY_ONLY(x) if (CONSISTENCY) {x;}
 #define GRAPH_DEBUG_ONLY(x) if (GRAPH_DEBUG) {x;}
+#define MINIMAX_DEBUG_ONLY(x) if (MINIMAX_DEBUG) {x;}

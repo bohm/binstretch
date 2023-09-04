@@ -13,7 +13,7 @@ std::tuple<unsigned int, unsigned int, unsigned int> server_properties(const cha
     } else if ((strcmp(server_name, "nasturcja") == 0)) {
         return {34, 34, thread_hint};
     } else {
-        return {31, 31, thread_hint};
+        return {30, 30, thread_hint};
     }
 
 }

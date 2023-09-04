@@ -10,6 +10,7 @@ template<minimax MODE, int MINIBS_SCALE>
 class computation {
 public:
     constexpr static unsigned int MAX_RECURSION_DEPTH = MAX_ITEMS; // Potentially improve the upper bound here.
+    constexpr static unsigned int MAX_ITEMDEPTH = MAX_ITEMS;
     // --- persistent thread attributes ---
     int monotonicity = 0;
 
@@ -23,14 +24,22 @@ public:
     // will be edited in place.
     binconf bstate;
 
+
     // Depth counted in the number of new items packed into the bstate.
     // Note that this may not be the *number* of items in the bin configuration,
     // because there can be some items at the start.
-    int itemdepth = 0;
+    // Item depth starts at one to allow for itemdepth-1 to also be viable.
+    int itemdepth = 1;
 
     // Call depth -- number of recursive calls (above the current one).
     int calldepth = 0;
 
+    // Experimental: We try to compute the next maximum feasible item early, as soon as the next item to be sent
+    // is decided. This means that the following information is only useful with both bstate and the next item.
+
+    // It also means that it makes sense to store it in the computation. We can store it either as a single variable
+    // or like this, as an array, which makes it easier to unroll the recursion should we want to.
+    std::array<int, MAX_ITEMDEPTH> maximum_feasible_with_next_item = {0};
 
     // dynamic programming data
     dynprog_data *dpdata;
@@ -75,6 +84,7 @@ public:
 
     std::array<std::array<int, BINS + 1>, MAX_ITEMS> alg_uncertain_moves = {0};
 
+
     // --- measure attributes ---
     measure_attr meas; // measurements for one computation
     measure_attr g_meas; // persistent measurements per process
@@ -113,9 +123,9 @@ public:
     victory heuristic_visit_alg(int pres_item);
 
     // An experimental unroll of the recursion.
-    std::array<int, MAX_RECURSION_DEPTH> unpacked_items = {};
-    std::array<adversary_vertex *, MAX_RECURSION_DEPTH> adv_to_evaluate;
-    std::array<adversary_vertex *, MAX_RECURSION_DEPTH> alg_to_evaluate;
+    // std::array<int, MAX_RECURSION_DEPTH> unpacked_items = {};
+    // std::array<adversary_vertex *, MAX_RECURSION_DEPTH> adv_to_evaluate;
+    // std::array<adversary_vertex *, MAX_RECURSION_DEPTH> alg_to_evaluate;
 
     victory minimax();
 
@@ -134,4 +144,7 @@ public:
 				 algorithm_vertex *alg_to_evaluate, adversary_vertex *parent_adv,
 				 const std::vector<int>& seq);
     */
+    void next_moves_genstrat_without_maxfeas(std::vector<int> &cands);
+
+    void next_moves_expstrat_without_maxfeas(std::vector<int> &cands);
 };

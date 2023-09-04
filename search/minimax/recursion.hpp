@@ -29,6 +29,7 @@
 #include "queen.hpp"
 #include "minimax/auxiliary.hpp"
 #include "minimax/heuristic_visits.hpp"
+#include "minimax/descend_ascend.hpp"
 
 // #include "strategies/abstract.hpp"
 // #include "strategies/heuristical.hpp"
@@ -67,9 +68,6 @@ victory computation<MODE, MINIBS_SCALE>::adversary(
     victory win = victory::alg;
     bool switch_to_heuristic = false;
     adversary_notes notes;
-
-    int maximum_feasible = this->prev_max_feasible;
-    int heuristical_ub = S;
 
     if (GENERATING) {
         if (adv_to_evaluate->visited) {
@@ -133,9 +131,9 @@ victory computation<MODE, MINIBS_SCALE>::adversary(
         if (vic == victory::adv) {
             if (GENERATING) {
 
-                print_if<DEBUG>("GEN: Adversary heuristic ");
-                print_if<DEBUG>("%d", static_cast<int>(strategy->type));
-                print_if<DEBUG>(" is successful.\n");
+                print_if<MINIMAX_DEBUG>("GEN: Adversary heuristic ");
+                print_if<MINIMAX_DEBUG>("%d", static_cast<int>(strategy->type));
+                print_if<MINIMAX_DEBUG>(" is successful.\n");
             }
 
             if (EXPLORING) {
@@ -230,7 +228,7 @@ victory computation<MODE, MINIBS_SCALE>::adversary(
         if (!this->heuristic_regime && this->regrow_level < REGROW_LIMIT
             && POSSIBLE_TASK(adv_to_evaluate, this->largest_since_computation_root, calldepth)
             && adv_to_evaluate->out.empty()) {
-            if (DEBUG) {
+            if (MINIMAX_DEBUG) {
                 fprintf(stderr,
                         "Gen: Current conf is a possible task (itemdepth %d, task_depth %d, load %d, task_load %d, comp. root load: %d.\n ",
                         itemdepth, task_depth, bstate.totalload(), task_load, computation_root->bc.totalload());
@@ -293,23 +291,23 @@ victory computation<MODE, MINIBS_SCALE>::adversary(
     if (this->heuristic_regime) {
         compute_next_moves_heur(candidate_moves, &bstate, this->current_strategy);
     } else if (GENERATING) {
-        maximum_feasible = compute_next_moves_genstrat<MODE, MINIBS_SCALE>(candidate_moves, &bstate, itemdepth,
-                                                                           heuristical_ub, this);
+        next_moves_genstrat_without_maxfeas(candidate_moves);
+        // maximum_feasible = compute_next_moves_genstrat<MODE, MINIBS_SCALE>(candidate_moves, &bstate, itemdepth, this);
     } else {
-        maximum_feasible = compute_next_moves_expstrat<MODE, MINIBS_SCALE>(candidate_moves, &bstate, itemdepth,
-                                                                           heuristical_ub, this);
+        next_moves_expstrat_without_maxfeas(candidate_moves);
+        // maximum_feasible = compute_next_moves_expstrat<MODE, MINIBS_SCALE>(candidate_moves, &bstate, itemdepth, this);
     }
 
-    // print_if<DEBUG>("Trying player zero choices, with maxload starting at %d\n", maximum_feasible);
+    // print_if<MINIMAX_DEBUG>("Trying player zero choices, with maxload starting at %d\n", maximum_feasible);
     for (int item_size: candidate_moves) {
 
-        print_if<DEBUG>("Sending item %d to algorithm.\n", item_size);
+        print_if<MINIMAX_DEBUG>("Sending item %d to algorithm.\n", item_size);
 
         if (GENERATING) {
             std::tie(upcoming_alg, new_edge) = attach_matching_vertex(qdag, adv_to_evaluate, item_size);
         }
 
-        adversary_descend<MODE, MINIBS_SCALE>(this, notes, item_size, maximum_feasible);
+        adversary_descend<MODE, MINIBS_SCALE>(this, notes, item_size);
         below = algorithm(item_size, upcoming_alg, adv_to_evaluate);
         adversary_ascend<MODE, MINIBS_SCALE>(this, notes);
 
@@ -369,11 +367,11 @@ victory computation<MODE, MINIBS_SCALE>::algorithm(int pres_item, algorithm_vert
     victory win = victory::adv; // Who wins this configuration.
     algorithm_notes notes;
 
-    GEN_ONLY(print_if<DEBUG>("GEN: "));
-    EXP_ONLY(print_if<DEBUG>("EXP: "));
+    GEN_ONLY(print_if<MINIMAX_DEBUG>("GEN: "));
+    EXP_ONLY(print_if<MINIMAX_DEBUG>("EXP: "));
 
-    print_if<DEBUG>("Algorithm evaluating the position with new item %d and bin configuration: ", pres_item);
-    print_binconf<DEBUG>(&bstate);
+    print_if<MINIMAX_DEBUG>("Algorithm evaluating the position with new item %d and bin configuration: ", pres_item);
+    print_binconf_if<MINIMAX_DEBUG>(&bstate);
 
 
     if (GENERATING) {
@@ -471,8 +469,6 @@ victory computation<MODE, MINIBS_SCALE>::algorithm(int pres_item, algorithm_vert
     win = victory::adv;
     below = victory::adv;
 
-    // while(i <= BINS)
-
     int uncertain_pos = 0;
     int i = alg_uncertain_moves[calldepth][uncertain_pos++];
     /*if (i == 0)
@@ -483,6 +479,25 @@ victory computation<MODE, MINIBS_SCALE>::algorithm(int pres_item, algorithm_vert
 	print_uncertain_moves();
     }
     */
+
+    // Solve the following only if there is an uncertain position to be solved, i.e., i != 0.
+    if (i != 0) {
+        // We compute the maximum feasible value here, so that it is available for adversary heuristics and also
+        // it is shared among all the branches of ALG (they all have the same value).
+
+        int lower_bound = lowest_sendable(bstate.last_item);
+
+        maximum_feasible_with_next_item[itemdepth] =
+                maxfeas_with_known_next_item<MODE, MINIBS_SCALE>(&bstate, pres_item, itemdepth,
+                                                                 lower_bound,
+                                                                 maximum_feasible_with_next_item[itemdepth-1],
+                                                                 this );
+
+        print_if<MINIMAX_DEBUG>("Recursion: Nextitem %d, itemdepth %d, binconf ", pres_item, itemdepth);
+        print_binconf_if<MINIMAX_DEBUG>(bstate, false);
+        print_if<MINIMAX_DEBUG>(" has the maximum feasible item calculated to be %d.\n",
+                                maximum_feasible_with_next_item[itemdepth]);
+    }
 
     while (i != 0) {
         // assert(uncertain_pos <= BINS); // Can be checked to make sure, but
@@ -500,11 +515,11 @@ victory computation<MODE, MINIBS_SCALE>::algorithm(int pres_item, algorithm_vert
         below = adversary(upcoming_adv, alg_to_evaluate);
         algorithm_ascend(this, notes, pres_item);
 
-        print_if<DEBUG>("Alg packs into bin %d, the new configuration is:", i);
-        print_binconf<DEBUG>(&bstate);
-        print_if<DEBUG>("Resulting in: ");
-        print_if<DEBUG>("%d", static_cast<int>(below));
-        print_if<DEBUG>(".\n");
+        print_if<MINIMAX_DEBUG>("Alg packs into bin %d, the new configuration is: ", i);
+        print_binconf_if<MINIMAX_DEBUG>(&bstate);
+        print_if<MINIMAX_DEBUG>("Resulting in: ");
+        print_if<MINIMAX_DEBUG>("%d", static_cast<int>(below));
+        print_if<MINIMAX_DEBUG>(".\n");
 
         // send signal that we should terminate immediately upwards
         if (below == victory::irrelevant) {
@@ -579,6 +594,16 @@ victory explore(binconf *b, computation<MODE, MINIBS_SCALE> *comp) {
         comp->scaled_items->initialize(comp->bstate);
     }
 
+    // compute the first maximum feasible value.
+    int cannot_send_less = lowest_sendable(comp->bstate.last_item);
+    comp->maximum_feasible_with_next_item[0] = maximum_feasible<MODE, MINIBS_SCALE>(
+            &(comp->bstate), 0, cannot_send_less, S, comp);
+
+    print_if<MINIMAX_DEBUG>("Exploration: For root binconf ");
+    print_binconf_if<MINIMAX_DEBUG>(comp->bstate, false);
+    print_if<MINIMAX_DEBUG>(" is the initial maximum feasible item is calculated to be %d.\n",
+                            comp->maximum_feasible_with_next_item[0]);
+
     victory ret = comp->adversary(NULL, NULL);
     assert(ret != victory::uncertain);
     return ret;
@@ -590,7 +615,6 @@ victory generate(sapling start_sapling,
                  computation<MODE, MINIBS_SCALE> *comp) {
     duplicate(&(comp->bstate), &start_sapling.root->bc);
     comp->bstate.hashinit();
-    comp->itemdepth = comp->bstate.itemcount_explicit();
 
     if (USING_MINIBINSTRETCHING) {
         comp->scaled_items->initialize(comp->bstate);
@@ -602,6 +626,16 @@ victory generate(sapling start_sapling,
     }
 
     onlineloads_init(comp->ol, &(comp->bstate));
+
+    // compute the first maximum feasible value.
+    int cannot_send_less = lowest_sendable(comp->bstate.last_item);
+    comp->maximum_feasible_with_next_item[0] = maximum_feasible<MODE, MINIBS_SCALE>(
+            &(comp->bstate), 0, cannot_send_less, S, comp);
+
+    print_if<MINIMAX_DEBUG>("Generation: root binconf ");
+    print_binconf_if<MINIMAX_DEBUG>(comp->bstate, false);
+    print_if<MINIMAX_DEBUG>(" is the initial maximum feasible item is calculated to be %d.\n",
+                            comp->maximum_feasible_with_next_item[0]);
 
     victory ret = comp->adversary(start_sapling.root, NULL);
     return ret;

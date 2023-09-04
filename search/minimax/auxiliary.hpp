@@ -41,20 +41,16 @@ void compute_next_moves_sequence(std::vector<int> &cands, const binconf *b, int 
 void compute_next_moves_fixed(std::vector<int> &cands, adversary_vertex *fixed_vertex_to_evaluate) {
 }
 
-// We also return maximum feasible value that was computed.
 template<minimax MODE, int MINIBS_SCALE>
-int compute_next_moves_genstrat(std::vector<int> &cands,
-                                binconf *b,
-                                int depth, int feasibility_ub, computation<MODE, MINIBS_SCALE> *comp) {
-
-    // Idea: start with monotonicity 0 (non-decreasing), and move towards S (full generality).
-    int lower_bound = lowest_sendable(b->last_item);
-
-    // finds the maximum feasible item that can be added using dyn. prog.
-    int maxfeas = maximum_feasible<MODE, MINIBS_SCALE>(b, depth, lower_bound, feasibility_ub, comp);
-
+void computation<MODE, MINIBS_SCALE>::next_moves_genstrat_without_maxfeas(std::vector<int> &cands)
+{
+    int lower_bound = lowest_sendable(bstate.last_item);
+    int maxfeas = maximum_feasible_with_next_item[itemdepth-1];
     int stepcounter = 0;
-    for (int item_size = gen_strategy_start(maxfeas, (int) b->last_item);
+    print_if<MINIMAX_DEBUG>("Item depth %d, stored maxfeas value %d for itemdepth-1, binconf ", itemdepth, maxfeas);
+    print_binconf_if<MINIMAX_DEBUG>(bstate, true);
+
+    for (int item_size = gen_strategy_start(maxfeas, lower_bound);
          !gen_strategy_end(maxfeas, lower_bound, stepcounter, item_size);
          gen_strategy_step(maxfeas, lower_bound, stepcounter, item_size)) {
         if (!gen_strategy_skip(maxfeas, lower_bound, stepcounter, item_size)) {
@@ -62,34 +58,33 @@ int compute_next_moves_genstrat(std::vector<int> &cands,
         }
     }
 
-    return maxfeas;
+    if (MINIMAX_DEBUG) {
+        fprintf(stderr, "Valid moves are: [");
+        for (unsigned int j = 0; j < cands.size(); j++) {
+            if (j != 0) {
+                fprintf(stderr, ", ");
+            }
+            fprintf(stderr, "%d", cands[j]);
+        }
+        fprintf(stderr, "].\n");
+    }
 }
 
-// A slight hack: we have two separate strategies for exploration (where heuristics are turned
-// off) and generation (where heuristics are turned on)
+// Note: currently same as genstrat. There is some potential for heuristical improvements here.
+
 template<minimax MODE, int MINIBS_SCALE>
-int compute_next_moves_expstrat(std::vector<int> &cands,
-                                binconf *b,
-                                int depth, int heuristical_ub, computation<MODE, MINIBS_SCALE> *comp) {
-    // Idea: start with monotonicity 0 (non-decreasing), and move towards S (full generality).
-    int lower_bound = lowest_sendable(b->last_item);
-
-    // finds the maximum feasible item that can be added using dyn. prog.
-    int maxfeas = maximum_feasible<MODE, MINIBS_SCALE>(b, depth, lower_bound, comp->prev_max_feasible, comp);
-
-    // Hack: After computing the "old" maximum feasible, update with the heuristical upper-bound.
-    int max_move = std::min(maxfeas, heuristical_ub);
-
+void computation<MODE, MINIBS_SCALE>::next_moves_expstrat_without_maxfeas(std::vector<int> &cands)
+{
+    int lower_bound = lowest_sendable(bstate.last_item);
+    int maxfeas = maximum_feasible_with_next_item[itemdepth-1];
     int stepcounter = 0;
-    for (int item_size = exp_strategy_start(max_move, (int) b->last_item);
-         !exp_strategy_end(max_move, lower_bound, stepcounter, item_size);
-         exp_strategy_step(max_move, lower_bound, stepcounter, item_size)) {
-        if (!exp_strategy_skip(max_move, lower_bound, stepcounter, item_size)) {
+    for (int item_size = exp_strategy_start(maxfeas, lower_bound);
+         !exp_strategy_end(maxfeas, lower_bound, stepcounter, item_size);
+         exp_strategy_step(maxfeas, lower_bound, stepcounter, item_size)) {
+        if (!exp_strategy_skip(maxfeas, lower_bound, stepcounter, item_size)) {
             cands.push_back(item_size);
         }
     }
-
-    return maxfeas;
 }
 
 // Find the matching algorithm vertex that corresponds to moving by next_item from
@@ -163,83 +158,6 @@ std::pair<adversary_vertex *, alg_outedge *> attach_matching_vertex(dag *d,
     }
 
     return std::pair(upcoming_adv, connecting_outedge);
-}
-
-// Two functions which perform revertable edits on the computation data. We call them
-// immediately before and after calling algorithm() and adversary().
-struct adversary_notes {
-    int old_largest = 0;
-    int old_max_feasible = 0;
-};
-
-template<minimax MODE, int MINIBS_SCALE>
-void
-adversary_descend(computation<MODE, MINIBS_SCALE> *comp, adversary_notes &notes, int next_item, int maximum_feasible) {
-    comp->calldepth++;
-    notes.old_largest = comp->largest_since_computation_root;
-    notes.old_max_feasible = comp->prev_max_feasible;
-
-    comp->largest_since_computation_root = std::max(next_item, comp->largest_since_computation_root);
-    comp->prev_max_feasible = maximum_feasible;
-    if (comp->current_strategy != nullptr) {
-        comp->current_strategy->increase_depth();
-    }
-
-}
-
-template<minimax MODE, int MINIBS_SCALE>
-void adversary_ascend(computation<MODE, MINIBS_SCALE> *comp, const adversary_notes &notes) {
-    comp->calldepth--;
-    comp->largest_since_computation_root = notes.old_largest;
-    comp->prev_max_feasible = notes.old_max_feasible;
-
-    if (comp->current_strategy != nullptr) {
-        comp->current_strategy->decrease_depth();
-    }
-}
-
-struct algorithm_notes {
-    int previously_last_item = 0;
-    int bc_new_load_position = 0;
-    int ol_new_load_position = 0;
-};
-
-
-template<minimax MODE, int MINIBS_SCALE>
-void algorithm_descend(computation<MODE, MINIBS_SCALE> *comp,
-                       algorithm_notes &notes, int item, int target_bin) {
-    comp->calldepth++;
-    comp->itemdepth++;
-    notes.previously_last_item = comp->bstate.last_item;
-    notes.bc_new_load_position = comp->bstate.assign_and_rehash(item, target_bin);
-    notes.ol_new_load_position = onlineloads_assign(comp->ol, item);
-
-    if (USING_MINIBINSTRETCHING) {
-        int shrunk_item = comp->mbs->shrink_item(item);
-        if (shrunk_item > 0) {
-            comp->scaled_items->increase(shrunk_item);
-        }
-    }
-}
-
-template<minimax MODE, int MINIBS_SCALE>
-void algorithm_ascend(computation<MODE, MINIBS_SCALE> *comp,
-                      const algorithm_notes &notes, int item) {
-    comp->calldepth--;
-    comp->itemdepth--;
-    comp->bstate.unassign_and_rehash(item, notes.bc_new_load_position, notes.previously_last_item);
-    // b->last_item = notes.previously_last_item; -- not necessary, unassign and rehash takes
-    // care of that.
-
-    onlineloads_unassign(comp->ol, item, notes.ol_new_load_position);
-
-    if (USING_MINIBINSTRETCHING) {
-        int shrunk_item = comp->mbs->shrink_item(item);
-        if (shrunk_item > 0) {
-            comp->scaled_items->decrease(shrunk_item);
-        }
-    }
-
 }
 
 template<minimax MODE, int MINIBS_SCALE>

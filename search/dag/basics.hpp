@@ -28,7 +28,7 @@
 algorithm_vertex *
 dag::add_alg_vertex(const binconf &b, int next_item, std::string optimal = "", bool allow_duplicates = false) {
     // print_if<GRAPH_DEBUG>("Adding a new ALG vertex with bc:");
-    // print_binconf<GRAPH_DEBUG>(b, false);
+    // print_binconf_if<GRAPH_DEBUG>(b, false);
     // print_if<GRAPH_DEBUG>("and next item %d.\n", next_item);
 
     uint64_t new_id = vertex_counter++;
@@ -59,7 +59,7 @@ dag::add_alg_vertex(const binconf &b, int next_item, std::string optimal = "", b
 
 adversary_vertex *dag::add_adv_vertex(const binconf &b, std::string heurstring = "", bool allow_duplicates = false) {
     // print_if<GRAPH_DEBUG>("Adding a new ADV vertex with bc:");
-    // print_binconf<GRAPH_DEBUG>(b);
+    // print_binconf_if<GRAPH_DEBUG>(b);
 
     uint64_t new_id = vertex_counter++;
     adversary_vertex *ptr = new adversary_vertex(b, new_id, heurstring);

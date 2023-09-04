@@ -632,16 +632,16 @@ void print_loadconf_stream(FILE *stream, const loadconf *b, bool newline = true)
 
 
 template<bool MODE>
-void print_binconf(const binconf &b, bool newline = true) {
+void print_binconf_if(const binconf &b, bool newline = true) {
     if (MODE) {
         print_binconf_stream(stderr, b, newline);
     }
 }
 
 template<bool MODE>
-void print_binconf(const binconf *b, bool newline = true) {
+void print_binconf_if(const binconf *b, bool newline = true) {
     if (MODE) {
-        print_binconf<MODE>(*b, newline);
+        print_binconf_if<MODE>(*b, newline);
     }
 }
 

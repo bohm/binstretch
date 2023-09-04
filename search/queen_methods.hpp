@@ -193,7 +193,7 @@ int queen_class::start() {
 
         print_if<PROGRESS>("Queen: Monotonicity %d, Sapling count: %ld, current sapling of regrow level %d:\n",
                            monotonicity, sapling_counter, job.regrow_level);
-        print_binconf<PROGRESS>(job.root->bc);
+        print_binconf_if<PROGRESS>(job.root->bc);
 
 
         computation_root = job.root;
@@ -212,7 +212,7 @@ int queen_class::start() {
             {
             fprintf(stderr, "Uncertain status.\n");
             }
-            print_binconf<PROGRESS>(computation_root->bc);
+            print_binconf_if<PROGRESS>(computation_root->bc);
             exit(-1);
 
         }

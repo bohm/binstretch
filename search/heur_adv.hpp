@@ -161,7 +161,7 @@ std::pair<bool, loadconf> large_item_heuristic(const binconf &b, const std::vect
 // Idea of the heuristic: send items of size 5 until either
 // * one bin accepts two or * all bins have load > 5.
 std::pair<bool, int> five_nine_heuristic(guar_cache *dpcache, binconf *b, dynprog_data *dpdata, measure_attr *meas) {
-    // print_if<true>("Computing FN for: "); print_binconf<true>(b);
+    // print_if<true>("Computing FN for: "); print_binconf_if<true>(b);
 
     // It doesn't make too much sense to send BINS times 5, so we disallow it.
     // Also, b->loads[BINS] has to be non-zero, so that two nines do not fit together into

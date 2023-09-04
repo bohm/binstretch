@@ -365,7 +365,7 @@ int testgs(const binconf *b, measure_attr *meas) {
         if (!knownsum_ub.empty())
         {
             print_if<true>("The following binconf hits GS1:\n");
-            print_binconf<true>(b);
+            print_binconf_if<true>(b);
             print_if<true>("The loadsum query of this state is %d.\n", query_knownsum_heur(b->loadhash));
         }
         */
@@ -380,7 +380,7 @@ int testgs(const binconf *b, measure_attr *meas) {
             b->loads[7] == 0)
         {
             fprintf(stderr, "Considering the wrongly judged position.\n");
-            print_binconf<true>(b);
+            print_binconf_if<true>(b);
             print_if<true>("The loadsum query of this state, with loadhash %" PRIu64 ", is %d.\n",
                    b->loadhash, query_knownsum_heur(b->loadhash));
             fprintf(stderr, "Debug recomputation of loadhash: %" PRIu64 ".\n", b->recompute_loadhash());
@@ -396,25 +396,25 @@ int testgs(const binconf *b, measure_attr *meas) {
         // GS2, GS3 and GS5 are never hit for BINS == 3 now, it seems.
         if (gs2(b, meas) == 1) {
             print_if<DEBUG>("The following binconf hits GS2:\n");
-            print_binconf<DEBUG>(b);
+            print_binconf_if<DEBUG>(b);
             return 1;
         }
 
         if (gs3(b, meas) == 1) {
             print_if<DEBUG>("The following binconf hits GS3:\n");
-            print_binconf<DEBUG>(b);
+            print_binconf_if<DEBUG>(b);
             return 1;
         }
 
         if (gs4(b, meas) == 1) {
             print_if<DEBUG>("The following binconf hits GS4:\n");
-            print_binconf<DEBUG>(b);
+            print_binconf_if<DEBUG>(b);
             return 1;
         }
 
         if (gs5(b, meas) == 1) {
             print_if<DEBUG>("The following binconf hits GS5:\n");
-            print_binconf<DEBUG>(b);
+            print_binconf_if<DEBUG>(b);
             return 1;
         }
 
@@ -431,7 +431,7 @@ int testgs(const binconf *b, measure_attr *meas) {
     if (BINS > 3) {
         if (gs2variant(b, meas) == 1) {
             print_if<DEBUG>("The following binconf hits GS2variant:\n");
-            print_binconf<DEBUG>(b);
+            print_binconf_if<DEBUG>(b);
             return 1;
         }
 

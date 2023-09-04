@@ -101,7 +101,7 @@ public:
         const auto lookup = victory_map.find(bc.hash_with_last());
         if (lookup != victory_map.end()) {
             // print_if<PROGRESS>("Assumption found for binconf ");
-            // print_binconf<PROGRESS>(bc);
+            // print_binconf_if<PROGRESS>(bc);
             return (lookup->second);
         }
         return victory::uncertain;

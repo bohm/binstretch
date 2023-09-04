@@ -28,7 +28,7 @@ public:
         auto new_sapling_end_t = std::chrono::system_clock::now();
         std::chrono::duration<long double> new_sapling_time = new_sapling_end_t - new_sapling_start_t;
         print_if<PROGRESS>("Eval time of sapling:");
-        print_binconf<PROGRESS>(job.root->bc, false);
+        print_binconf_if<PROGRESS>(job.root->bc, false);
         print_if<PROGRESS>(" was %Lfs.\n", new_sapling_time.count());
     }
 

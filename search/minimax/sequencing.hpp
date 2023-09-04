@@ -264,7 +264,7 @@ victory sequencing_algorithm(binconf *b, int k, unsigned int depth, computation<
             if (!already_generated) {
                 below = sequencing_adversary<MODE>(b, depth, comp, upcoming_adv, alg_to_evaluate, advis);
                 print_if<DEBUG>("SEQ: Alg packs into bin %d, the new configuration is:", i);
-                print_binconf<DEBUG>(b);
+                print_binconf_if<DEBUG>(b);
                 print_if<DEBUG>("Resulting in: ");
                 if (DEBUG) {
                     print(stderr, below);

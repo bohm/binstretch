@@ -51,7 +51,7 @@ public:
                 fprintf(stderr, "%d,", item);
             }
             fprintf(stderr, "\n");
-            print_binconf<true>(current_conf);
+            print_binconf_if<true>(current_conf);
         }
 
         assert((int) itemlist.size() > relative_depth);
