@@ -177,28 +177,28 @@ struct measure_attr {
         return static_cast<char *>(static_cast<void *>(this));
     }
 
-    void print() {
-        fprintf(stderr, "Total hashinit() calls for loadconf objects: %" PRIu64 ".\n",
-                loadconf_hashinit_calls);
+    void print(const char* prefix) {
+        fprintf(stderr, "%s: Total hashinit() calls for loadconf objects: %" PRIu64 ".\n",
+                prefix, loadconf_hashinit_calls);
         fprintf(stderr, " --- maximum_feasible() --- \n");
-        fprintf(stderr, "maximum_feasible() calls: %" PRIu64 ", infeasible returns: %" PRIu64 ".\n",
-                maxfeas_calls, maxfeas_infeasibles);
+        fprintf(stderr, "%s: maximum_feasible() calls: %" PRIu64 ", infeasible returns: %" PRIu64 ".\n",
+                prefix, maxfeas_calls, maxfeas_infeasibles);
         fprintf(stderr,
-                "Onlinefit sufficient in: %" PRIu64 ", bestfit calls: %" PRIu64 ", bestfit sufficient: %" PRIu64 ".\n",
-                onlinefit_sufficient, bestfit_calls, bestfit_sufficient);
+                "%s: Onlinefit sufficient in: %" PRIu64 ", bestfit calls: %" PRIu64 ", bestfit sufficient: %" PRIu64 ".\n",
+                prefix, onlinefit_sufficient, bestfit_calls, bestfit_sufficient);
 
         fprintf(stderr, "--- dynamic programming --- \n");
-        fprintf(stderr, "Dynprog calls: %" PRIu64 ".\n", dynprog_calls);
-        fprintf(stderr, "Largest queue observed: %" PRIu64 "\n", largest_queue_observed);
+        fprintf(stderr, "%s: Dynprog calls: %" PRIu64 ".\n", prefix, dynprog_calls);
+        fprintf(stderr, "%s: Largest queue observed: %" PRIu64 "\n", prefix, largest_queue_observed);
 
         fprintf(stderr, "--- heuristics --- \n");
         double heuristic_visit_ratio = heuristic_visit_hit / (double) (heuristic_visit_miss + heuristic_visit_hit);
-        fprintf(stderr, "Heuristic visit deeper (by alg): hit: %" PRIu64 ", miss: %" PRIu64 ", ratio %lf.\n",
-                heuristic_visit_hit, heuristic_visit_miss, heuristic_visit_ratio);
+        fprintf(stderr, "%s: Heuristic visit deeper (by alg): hit: %" PRIu64 ", miss: %" PRIu64 ", ratio %lf.\n",
+                prefix, heuristic_visit_hit, heuristic_visit_miss, heuristic_visit_ratio);
 
         fprintf(stderr,
-                "Heuristic using known sum of processing times: %" PRIu64 " full hits, %" PRIu64 " partials, %" PRIu64 " misses.\n",
-                knownsum_full_hit, knownsum_partial_hit, knownsum_miss);
+                "%s: Heuristic using known sum of processing times: %" PRIu64 " full hits, %" PRIu64 " partials, %" PRIu64 " misses.\n",
+                prefix, knownsum_full_hit, knownsum_partial_hit, knownsum_miss);
 
         if (FURTHER_MEASURE) {
             for (int i = 0; i <= MAX_TOTAL_WEIGHT; i++) {
@@ -217,16 +217,19 @@ struct measure_attr {
         }
 
         // gs
-        fprintf(stderr, "Good situation info: full hits %" PRIu64 ", full misses %" PRIu64 ", specifically:\n",
-                gsheurhit, gsheurmiss);
-        for (int i = 0; i < SITUATIONS; i++) {
-            fprintf(stderr, "Good situation %s: hits %" PRIu64 ", misses %" PRIu64 ".\n", gsnames[i].c_str(), gshit[i],
-                    gsmiss[i]);
+        if (USING_HEURISTIC_GS) {
+            fprintf(stderr, "Good situation info: full hits %" PRIu64 ", full misses %" PRIu64 ", specifically:\n",
+                    gsheurhit, gsheurmiss);
+            for (int i = 0; i < SITUATIONS; i++) {
+                fprintf(stderr, "Good situation %s: hits %" PRIu64 ", misses %" PRIu64 ".\n", gsnames[i].c_str(),
+                        gshit[i],
+                        gsmiss[i]);
+            }
         }
 
-        fprintf(stderr, "Game state cache:\n");
+        fprintf(stderr, "%s: Game state cache:\n", prefix);
         state_meas.print();
-        fprintf(stderr, "Dyn. prog. cache:\n");
+        fprintf(stderr, "%s: Dyn. prog. cache:\n", prefix);
         dpht_meas.print(); // caching
     }
 

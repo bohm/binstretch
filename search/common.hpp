@@ -24,7 +24,7 @@ constexpr bool PROGRESS = true; // Whether to print progress info to stderr.
 constexpr bool VERBOSE = true; // Further information about progress.
 constexpr bool OUTPUT = false; // Whether to produce output.
 constexpr bool REGROW = false; // Whether to regrow or just terminate after first iteration.
-constexpr bool MEASURE = false; // Whether to collect and print measurements to stderr.
+constexpr bool MEASURE = true; // Whether to collect and print measurements to stderr.
 constexpr bool FURTHER_MEASURE = false; // Whether to collect more detailed data that is not needed often.
 
 // When producing output, how many times should a tree be regrown.

@@ -448,7 +448,7 @@ int queen_class::start() {
     perf_timer.queen_end();
 
     // Print the treetop of the tree (with tasks offloaded) for logging purposes.
-    if (ret != 1) {
+    if (OUTPUT && ret != 1) {
         std::time_t t = std::time(0);   // Get time now.
         std::tm *now = std::localtime(&t);
         savefile(build_treetop_filename(now).c_str(), qdag, qdag->root);
@@ -461,7 +461,7 @@ int queen_class::start() {
 
 
     // Print measurements and clean up.
-    MEASURE_ONLY(g_meas.print());
+    MEASURE_ONLY(g_meas.print("Queen"));
     // delete_running_lows(); happens upon comm destruction.
 
     if (USING_MINIBINSTRETCHING) {

@@ -293,6 +293,7 @@ void overseer::start() {
 
 
             // comm.transmit_measurements(ov_meas); // 2023-08-01: Temporarily disabled.
+            MEASURE_ONLY(ov_meas.print("Overseer"));
 
             delete dpcache;
             delete stcache;
