@@ -91,6 +91,16 @@ public:
 
     }
 
+    // This is the same as above, but used in places where a full itemconf is not initialized, and we only
+    // have an array.
+    static uint64_t static_hash(const std::array<int, DENOMINATOR>& items) {
+        uint64_t ret = 0;
+        for (int j = 1; j < DENOMINATOR; j++) {
+            ret ^= Zi[j * (MAX_ITEMS + 1) + items[j]];
+        }
+        return ret;
+    }
+
     void increase(int itemtype, int amount = 1) {
         itemhash ^= Zi[itemtype * (MAX_ITEMS + 1) + items[itemtype]];
         itemhash ^= Zi[itemtype * (MAX_ITEMS + 1) + items[itemtype] + amount];
