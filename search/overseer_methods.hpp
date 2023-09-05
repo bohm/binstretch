@@ -142,7 +142,7 @@ void overseer::start() {
     if (USING_MINIBINSTRETCHING) {
         comm.sync_midpoint_of_initialization();
         print_if<PROGRESS>("Overseer %d: allocating minibinstretching cache.\n", multiprocess::overseer_rank());
-        mbs = new minibs<MINIBS_SCALE>();
+        mbs = new minibs<MINIBS_SCALE, BINS>();
         // mbs->init();
     }
 

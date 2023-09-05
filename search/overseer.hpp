@@ -8,6 +8,8 @@
 #include "server_properties.hpp"
 #include "worker.hpp"
 #include "minibs/minibs.hpp"
+#include "minibs/minibs-three.hpp"
+
 
 class overseer {
 public:
@@ -35,7 +37,7 @@ public:
     // A semiatomic queue of finished tasks.
     semiatomic_q *finished_tasks;
 
-    minibs<MINIBS_SCALE> *mbs = nullptr;
+    minibs<MINIBS_SCALE, BINS> *mbs = nullptr;
 
     // An index to the overseer tasklist that shows the next available task.
     // Will be accessed concurrently.

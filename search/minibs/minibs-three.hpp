@@ -19,7 +19,8 @@
 using phmap::flat_hash_set;
 using phmap::flat_hash_map;
 
-template<int DENOMINATOR, int BIN_NUM> class minibs {
+template<int DENOMINATOR>
+class minibs<DENOMINATOR, 3> {
 public:
     static constexpr int DENOM = DENOMINATOR;
     // GS5+ extension. GS5+ is one of the currently only good situations which
@@ -466,6 +467,7 @@ public:
 
     // The init is now able to recover data from previous computations.
     minibs() {
+        print_if<PROGRESS>("Minibs<%d> used, specialized for three bins.\n", DENOM);
         fprintf(stderr, "Minibs<%d>: There will be %d item sizes tracked.\n", DENOM, DENOM - 1);
 
         binary_storage<DENOMINATOR> bstore;

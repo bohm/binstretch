@@ -148,7 +148,7 @@ int queen_class::start() {
 
     if (USING_MINIBINSTRETCHING) {
         print_if<PROGRESS>("Queen: allocating cache minibs<%d>.\n", MINIBS_SCALE);
-        mbs = new minibs<MINIBS_SCALE>();
+        mbs = new minibs<MINIBS_SCALE, BINS>();
         // Note: the next command is not executed by the overseer, as we wish to backup
         // the calculations only by one process, and not have two write to a file at the same time.
         mbs->backup_calculations();

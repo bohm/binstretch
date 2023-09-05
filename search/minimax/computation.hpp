@@ -43,7 +43,7 @@ public:
 
     // dynamic programming data
     dynprog_data *dpdata;
-    minibs<MINIBS_SCALE> *mbs = nullptr;
+    minibs<MINIBS_SCALE, BINS> *mbs = nullptr;
     itemconf<MINIBS_SCALE> *scaled_items = nullptr;
 
     optconf oc;

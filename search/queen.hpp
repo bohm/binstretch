@@ -4,6 +4,7 @@
 
 #include "common.hpp"
 #include "minibs/minibs.hpp"
+#include "minibs/minibs-three.hpp"
 #include "tasks/task.hpp"
 #include "cache/state.hpp"
 
@@ -46,7 +47,7 @@ public:
     // Dynamic programming cache, exclusive to the queen.
     guar_cache* dpcache = nullptr;
 
-    minibs<MINIBS_SCALE> *mbs = nullptr;
+    minibs<MINIBS_SCALE, BINS> *mbs = nullptr;
 
     queen_class(int argc, char **argv);
 

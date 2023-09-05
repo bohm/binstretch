@@ -100,7 +100,8 @@ add_executable(clion
         search/worker_methods.hpp
         search/minimax/heuristic_visits.hpp
         search/minimax/descend_ascend.hpp
-        search/loadconf.hpp)
+        search/loadconf.hpp
+        search/minibs/minibs-three.hpp)
 
 add_executable(listsaplings minitools/listsaplings.cpp
         search/cache/guar64.hpp
@@ -179,7 +180,8 @@ add_executable(listsaplings minitools/listsaplings.cpp
         search/worker_methods.hpp
         search/minimax/heuristic_visits.hpp
         search/minimax/descend_ascend.hpp
-        search/loadconf.hpp)
+        search/loadconf.hpp
+        search/minibs/minibs-three.hpp)
 
 add_executable(midgame-feasible-tests tests/midgame-feasible-tests.cpp
         search/cache/guar64.hpp
@@ -258,4 +260,5 @@ add_executable(midgame-feasible-tests tests/midgame-feasible-tests.cpp
         search/worker_methods.hpp
         search/minimax/heuristic_visits.hpp
         search/minimax/descend_ascend.hpp
-        search/loadconf.hpp)
+        search/loadconf.hpp
+        search/minibs/minibs-three.hpp)
