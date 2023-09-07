@@ -13,16 +13,25 @@
 using phmap::flat_hash_set;
 using phmap::flat_hash_map;
 
+
+template<unsigned int ARRLEN>
+using partition_container = std::vector<std::array<int, ARRLEN>>;
+
+
 template<int DENOMINATOR>
 class binary_storage {
 public:
 
-    const int VERSION = 4;
-    char storage_file_path[256];
+    const int VERSION = 5;
+    char storage_file_path[256]{};
     FILE *storage_file = nullptr;
 
     binary_storage() {
-        sprintf(storage_file_path, "./cache/minibs-%d-%d-%d-scale-%d-v%d.bin", BINS, R, S, DENOMINATOR, VERSION);
+        if (BINS == 3) {
+            sprintf(storage_file_path, "./cache/minibs-three-%d-%d-scale-%d-v%d.bin", R, S, DENOMINATOR, VERSION);
+        } else {
+            sprintf(storage_file_path, "./cache/minibs-%d-%d-%d-scale-%d-v%d.bin", BINS, R, S, DENOMINATOR, VERSION);
+        }
     }
 
     bool storage_exists() {
@@ -306,7 +315,7 @@ public:
         }
     }
 
-    void read_fingerprint_map(flat_hash_map<uint64_t, unsigned int> &out_fingerprint_map) {
+    void read_hash_map_to_int(flat_hash_map<uint64_t, unsigned int> &out_fingerprint_map) {
         unsigned int map_size = read_set_size();
         uint64_t *keys = new uint64_t[map_size];
         unsigned int *values = new unsigned int[map_size];
@@ -332,7 +341,7 @@ public:
     }
 
 
-    void write_fingerprint_map(flat_hash_map<uint64_t, unsigned int> &fingerprint_map) {
+    void write_hash_map_to_int(flat_hash_map<uint64_t, unsigned int> &fingerprint_map) {
         // Store the map as two arrays.
 
         uint64_t *keys = new uint64_t[fingerprint_map.size()];
@@ -367,7 +376,7 @@ public:
                                         out_fingerprints);
 
         delete[] pointerless;
-        read_fingerprint_map(out_fingerprint_map);
+        read_hash_map_to_int(out_fingerprint_map);
 
     }
 
@@ -397,7 +406,7 @@ public:
 
         delete pointerless_fingerprints;
 
-        write_fingerprint_map(fingerprint_map);
+        write_hash_map_to_int(fingerprint_map);
 
     }
 
@@ -486,18 +495,101 @@ public:
     }
 
 
-    void backup(
-            flat_hash_map<uint64_t, unsigned int> &fingerprint_map,
-            std::vector<flat_hash_set<unsigned int> *> &fingerprints,
-            std::vector<flat_hash_set<unsigned int> *> &unique_fps,
-            flat_hash_set<uint64_t> &knownsum_set,
-            std::vector<itemconf<DENOMINATOR> > &feasible_ics) {
+    void backup(flat_hash_map<uint64_t, unsigned int> &fingerprint_map,
+                std::vector<flat_hash_set<unsigned int> *> &fingerprints,
+                std::vector<flat_hash_set<unsigned int> *> &unique_fps,
+                flat_hash_set<uint64_t> &knownsum_set,
+                std::vector<itemconf<DENOMINATOR> > &feasible_ics) {
         open_for_writing();
         write_signature();
         write_zobrist_table();
         write_feasible_itemconfs(feasible_ics);
         write_knownsum_set(knownsum_set);
         write_fingerprint_system(fingerprint_map, fingerprints, unique_fps);
+        close();
+    }
+
+    // Backup specialization for three bins.
+
+
+    void write_partition(std::array<int, DENOMINATOR> &part) {
+        fwrite(part.data(), sizeof(int), DENOMINATOR, storage_file);
+    }
+
+    void read_partition(std::array<int, DENOMINATOR> &out_part) {
+        int ic_read = 0;
+        ic_read = fread(out_part.data(), sizeof(int), DENOMINATOR, storage_file);
+
+        if (ic_read != DENOMINATOR) {
+            ERRORPRINT("Binary storage error: failed to read one partition.\n");
+        }
+    }
+
+    void write_partition_container(partition_container<DENOMINATOR> &part_con) {
+        write_number_of_feasible_itemconfs(part_con.size());
+        write_delimeter();
+        for (unsigned int i = 0; i < part_con.size(); ++i) {
+            write_partition(part_con[i]);
+        }
+        write_delimeter();
+    }
+
+    void read_partition_container(partition_container<DENOMINATOR> &part_con) {
+        unsigned int nofc = read_number_of_feasible_itemconfs();
+        read_delimeter();
+        for (unsigned int i = 0; i < nofc; ++i) {
+            std::array<int, DENOMINATOR> new_ic{};
+            read_partition(new_ic);
+            part_con.emplace_back(new_ic);
+        }
+        read_delimeter();
+
+    }
+
+
+    void backup_three(partition_container<DENOMINATOR> &midgame_feasible_partitions,
+                      partition_container<DENOMINATOR> &endgame_adjacent_partitions,
+                      flat_hash_map<uint64_t, unsigned int> &endgame_adjacent_maxfeas,
+                      flat_hash_map<uint64_t, unsigned int> &fingerprint_map,
+                      std::vector<flat_hash_set<unsigned int> *> &fingerprints,
+                      std::vector<flat_hash_set<unsigned int> *> &unique_fps,
+                      flat_hash_set<uint64_t> &knownsum_set
+    ) {
+        open_for_writing();
+        write_signature();
+        write_zobrist_table();
+        write_partition_container(midgame_feasible_partitions);
+        write_partition_container(endgame_adjacent_partitions);
+        write_hash_map_to_int(endgame_adjacent_maxfeas);
+        write_knownsum_set(knownsum_set);
+        write_fingerprint_system(fingerprint_map, fingerprints, unique_fps);
+        close();
+    }
+
+    void restore_three(partition_container<DENOMINATOR> &midgame_feasible_partitions,
+                       partition_container<DENOMINATOR> &endgame_adjacent_partitions,
+                       flat_hash_map<uint64_t, unsigned int> &endgame_adjacent_maxfeas,
+                       flat_hash_map<uint64_t, unsigned int> &out_fingerprint_map,
+                       std::vector<flat_hash_set<unsigned int> *> &out_fingerprints,
+                       std::vector<flat_hash_set<unsigned int> *> &out_unique_fps,
+                       flat_hash_set<uint64_t> &out_knownsum_set) {
+        open_for_reading();
+        bool check = check_signature();
+        if (!check) {
+            ERRORPRINT("Error: Signature check failed!\n");
+        }
+
+        check = check_zobrist_table();
+        if (!check) {
+            ERRORPRINT("Error: The Zobrist table do not match!\n");
+        }
+
+        read_partition_container(midgame_feasible_partitions);
+        read_partition_container(endgame_adjacent_partitions);
+        read_hash_map_to_int(endgame_adjacent_maxfeas);
+        read_knownsum_set(out_knownsum_set);
+        // read_set_system(out_system);
+        read_fingerprint_system(out_fingerprint_map, out_fingerprints, out_unique_fps);
         close();
     }
 };

@@ -57,9 +57,14 @@ public:
     flat_hash_map<uint64_t, unsigned int> midgame_feasible_map;
     // flat_hash_set<uint64_t> midgame_feasible_hashes;
     partition_container<DENOMINATOR> endgame_adjacent_partitions;
-    flat_hash_map<uint64_t, unsigned short> endgame_adjacent_maxfeas;
+    flat_hash_map<uint64_t, unsigned int> endgame_adjacent_maxfeas;
 
     std::vector<flat_hash_set<uint64_t> > alg_winning_positions;
+
+    // Optimization:  instead of going through all knownsum loads in the itemconf layers, we only go through
+    // those which are not winning by knownsum and are actually valid.
+    // This can be cleared after construction (and is not used at all when restoring).
+    // std::vector<loadconf> loads_not_winning_by_knownsum;
 
     // Fingerprints on their own is just a transposition of the original minibs
     // approach. Instead of storing loadhashes for each item layer, we store
@@ -312,14 +317,15 @@ public:
                     alg_knownsum_winning.insert(iterated_lc.loadhash);
                 } else {
                     MEASURE_ONLY(losing_loadconfs++);
+                    // loads_not_winning_by_knownsum.emplace_back(iterated_lc);
                 }
             }
         } while (decrease(&iterated_lc));
 
         fprintf(stderr,
-                "Knownsum layer: Winning positions: %" PRIu64 " and %" PRIu64 " losing, elements in cache %zu\n",
-                winning_loadconfs, losing_loadconfs, alg_knownsum_winning.size());
-
+                "Knownsum layer: Winning positions: %zu.\n",
+                alg_knownsum_winning.size());
+        // , loads_not_winning_by_knownsum.size());
     }
 
     bool query_itemconf_winning(const loadconf &lc, const itemconf<DENOMINATOR> &ic) {
@@ -558,17 +564,15 @@ public:
 
     // Generates capacity random numbers for use in the sparsification.
     static std::vector<uint64_t> *create_random_hashes(unsigned int capacity) {
-        std::vector<uint64_t> *ret = new std::vector<uint64_t>();
+        auto *ret = new std::vector<uint64_t>();
         for (unsigned int i = 0; i < capacity; ++i) {
             ret->push_back(rand_64bit());
         }
         return ret;
     }
 
-    /*
     void sparsify() {
-        std::vector<uint64_t> *random_numbers = create_random_hashes(feasible_itemconfs.size());
-
+        std::vector<uint64_t> *random_numbers = create_random_hashes(midgame_feasible_partitions.size());
         flat_hash_map<uint64_t, flat_hash_set<unsigned int> *> unique_fingerprint_map;
 
         for (unsigned int i = 0; i < fingerprints.size(); ++i) {
@@ -591,8 +595,6 @@ public:
         delete random_numbers;
     }
 
-    */
-
     // Call after feasible_itemconfs exist, to build the inverse map.
     // While feasible_itemconfs will be stored to speed up computation, the map is easy to build.
     void populate_midgame_feasible_map() {
@@ -607,20 +609,22 @@ public:
         fprintf(stderr, "Minibs<%d>: There will be %d item sizes tracked.\n", DENOM, DENOM - 1);
 
         binary_storage<DENOMINATOR> bstore;
-        /* if (bstore.storage_exists()) {
-            bstore.restore(fingerprint_map, fingerprints, unique_fps,
-                           alg_knownsum_winning, feasible_itemconfs);
+        if (bstore.storage_exists()) {
+            bstore.restore_three(midgame_feasible_partitions, endgame_adjacent_partitions, endgame_adjacent_maxfeas,
+                           fingerprint_map, fingerprints, unique_fps, alg_knownsum_winning);
             populate_midgame_feasible_map();
             print_if<PROGRESS>("Minibs<%d>: Init complete via restoration.\n", DENOMINATOR);
-            fprintf(stderr, "Minibs<%d> from restoration: %zu itemconfs are feasible.\n", DENOM,
-                    feasible_itemconfs.size());
+            fprintf(stderr, "Minibs<%d> from restoration: %zu partitions are midgame feasible.\n", DENOM,
+                    midgame_feasible_partitions.size());
+            fprintf(stderr, "Minibs<%d> from restoration: %zu partitions are endgame adjacent.\n", DENOM,
+                    endgame_adjacent_partitions.size());
             fprintf(stderr, "Minibs<%d> from restoration: %zu unique fingerprints.\n",
                     DENOMINATOR, unique_fps.size());
-        } else { */
+        } else {
 
         print_if<PROGRESS>("Minibs<%d>: Initialization must happen from scratch.\n", DENOMINATOR);
         init_from_scratch();
-        // }
+        }
     }
 
     void init_from_scratch() {
@@ -664,19 +668,18 @@ public:
             init_itemconf_layer(i);
         }
 
-        // sparsify();
+        sparsify();
 
     }
 
     inline void backup_calculations() {
-        /*
         binary_storage<DENOMINATOR> bstore;
         if (!bstore.storage_exists()) {
             print_if<PROGRESS>("Queen: Backing up Minibs<%d> calculations.\n", DENOMINATOR);
-            bstore.backup(fingerprint_map, fingerprints, unique_fps,
-                          alg_knownsum_winning, feasible_itemconfs);
+            bstore.backup_three(midgame_feasible_partitions, endgame_adjacent_partitions,  endgame_adjacent_maxfeas,
+                    fingerprint_map, fingerprints, unique_fps,
+                          alg_knownsum_winning);
         }
-        */
     }
 
     void stats_by_layer() {

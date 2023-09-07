@@ -131,6 +131,7 @@ const int RECOMMENDED_MONOTONICITY = 35;
 constexpr int RECOMMENDED_MINIBS_SCALE = 6;
 #elif IBINS == 3 && IR == 411 && IS == 300
 const int RECOMMENDED_MONOTONICITY = 15;
+constexpr int RECOMMENDED_MINIBS_SCALE = 6;
 #elif IBINS == 3 && IR == 657 && IS == 480
 const int RECOMMENDED_MONOTONICITY = 60;
 constexpr int RECOMMENDED_MINIBS_SCALE = 6;

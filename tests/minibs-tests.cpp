@@ -5,10 +5,11 @@
 #include <cstdint>
 
 #define IBINS 3
-#define IR 657
-#define IS 480
+#define IR 411
+#define IS 300
 
 #include "minibs/minibs.hpp"
+#include "minibs/minibs-three.hpp"
 
 constexpr int TEST_SCALE = 6;
 constexpr int GS2BOUND = S - 2*ALPHA;
@@ -17,9 +18,10 @@ constexpr int GS2BOUND = S - 2*ALPHA;
 // Stores the winning position into the provided unordered_set.
 // This is useful for some later tests.
 
-template <int DENOMINATOR> void sand_winning(minibs<DENOMINATOR> &mb, std::unordered_set<int>& sand_winning, int fixed_sand_on_one)
+template <int DENOMINATOR, int SPECIALIZATION>
+void sand_winning(minibs<DENOMINATOR, SPECIALIZATION> &mb, std::unordered_set<int>& sand_winning, int fixed_sand_on_one)
 {
-    itemconfig<DENOMINATOR> ic;
+    itemconf<DENOMINATOR> ic;
     ic.hashinit();
 
     for (int sand = 1; sand < GS2BOUND; sand++)
@@ -53,13 +55,14 @@ template <int DENOMINATOR> void sand_winning(minibs<DENOMINATOR> &mb, std::unord
 
 // How many positions are winning if one "measurable" item arrives. That means
 // item of size at least 1/DENOMINATOR + 1.
-template <int DENOMINATOR> void one_measurable_item_winning(minibs<DENOMINATOR> &mb, std::unordered_set<int>& sand_winning)
+template <int DENOMINATOR, int SPECIALIZATION>
+void one_measurable_item_winning(minibs<DENOMINATOR, SPECIALIZATION> &mb, std::unordered_set<int>& sand_winning)
 {
     constexpr int GS2BOUND = S - 2*ALPHA;
-    itemconfig<DENOMINATOR> ic;
+    itemconf<DENOMINATOR> ic;
     ic.hashinit();
 
-    int smallest_measurable = mb.grow_item(1);
+    int smallest_measurable = mb.grow_to_lower_bound(1);
     ic.increase(1);
 
     // we start measuring from 1/DENOMINATOR + 1, otherwise it makes no sense.
@@ -85,7 +88,8 @@ template <int DENOMINATOR> void one_measurable_item_winning(minibs<DENOMINATOR> 
 }
 
 
-template <int DENOMINATOR> void single_items_winning(minibs<DENOMINATOR> &mb, std::unordered_set<int>& sand_winning)
+template <int DENOMINATOR, int SPECIALIZATION>
+void single_items_winning(minibs<DENOMINATOR, SPECIALIZATION> &mb, std::unordered_set<int>& sand_winning)
 {
     for (int item = 1; item < GS2BOUND; item++)
     {
@@ -97,7 +101,7 @@ template <int DENOMINATOR> void single_items_winning(minibs<DENOMINATOR> &mb, st
 	loadconf empty;
 	empty.hashinit();
 	empty.assign_and_rehash(item, 1);
-	itemconfig<DENOMINATOR> ic;
+	itemconf<DENOMINATOR> ic;
 	ic.hashinit();
 	int downscaled_item = mb.shrink_item(item);
 	// fprintf(stderr, "Shrunk item %d to scaled size %d.\n", item, downscaled_item);
@@ -121,11 +125,11 @@ template <int DENOMINATOR> void single_items_winning(minibs<DENOMINATOR> &mb, st
     }
 }
 
-template<int DENOM> void print_basic_components(minibs<DENOM> &mb)
+template<int DENOM, int SPECIALIZATION> void print_basic_components(minibs<DENOM, SPECIALIZATION> &mb)
 {
     for(unsigned int i = 0; i < mb.feasible_itemconfs.size(); ++i)
     {
-	itemconfig<DENOM> ic = mb.feasible_itemconfs[i];
+	itemconf<DENOM> ic = mb.feasible_itemconfs[i];
 	fprintf(stderr, "Printing basic components of itemconfig: ");
 	ic.print();
 	for (int j = 0; j < DENOM; ++j)
@@ -140,6 +144,7 @@ template<int DENOM> void print_basic_components(minibs<DENOM> &mb)
     }
 }
 
+/*
 template<int DENOM> void print_one_layer(minibs<DENOM> &mb, unsigned int layer)
 {
     assert(layer <= mb.feasible_itemconfs.size());
@@ -444,7 +449,7 @@ template <int DENOMINATOR> void itemconfig_backtrack(minibs<DENOMINATOR> &mb,
 
 	    bool alg_losing = true;
 	    int shrunk_item = mb.shrink_item(item);
-	    itemconfig<DENOMINATOR> new_ic(ic);
+	    itemconf<DENOMINATOR> new_ic(ic);
 	    if (shrunk_item > 0)
 	    {
 		new_ic.increase(shrunk_item);
@@ -480,7 +485,7 @@ template <int DENOMINATOR> void itemconfig_backtrack(minibs<DENOMINATOR> &mb,
 	    for (int item = start_item; item >= 1; item--)
 	    {
 		int shrunk_item = mb.shrink_item(item);
-		itemconfig<DENOMINATOR> new_ic(ic);
+		itemconf<DENOMINATOR> new_ic(ic);
 		if (shrunk_item > 0)
 		{
 		    new_ic.increase(shrunk_item);
@@ -509,7 +514,7 @@ template <int DENOMINATOR> void itemconfig_backtrack(minibs<DENOMINATOR> &mb,
 	{
 
 	    fprintf(stderr, "sending item %d is losing for alg.\n", losing_item);
-	    itemconfig<DENOMINATOR> next_step_ic(ic);
+	    itemconf<DENOMINATOR> next_step_ic(ic);
 	    int shrunk_item = mb.shrink_item(losing_item);
 	    if (shrunk_item > 0)
 	    {
@@ -536,8 +541,7 @@ template <int DENOMINATOR> void itemconfig_backtrack(minibs<DENOMINATOR> &mb,
 	}
     }
 }
-
-
+*/
 
 int main(int argc, char** argv)
 {
@@ -545,11 +549,11 @@ int main(int argc, char** argv)
 
     // maximum_feasible_tests();
     
-    minibs<TEST_SCALE> mb;
+    minibs<TEST_SCALE, 3> mb;
     // print_basic_components(mb);
     // mb.stats_by_layer();
     mb.backup_calculations();
-    mb.stats();
+    // mb.stats();
     // mb.prune_feasible_caches();
     // mb.stats_by_layer();
     // mb.stats();
@@ -597,11 +601,11 @@ int main(int argc, char** argv)
     
     std::unordered_set<int> sand_winning_for_alg;
     fprintf(stderr, "Sand winning positions (with one bin loaded to %d, interval [1,%d]):\n", fixed_load_on_one, GS2BOUND);
-    sand_winning<TEST_SCALE>(mb, sand_winning_for_alg, fixed_load_on_one);
+    sand_winning<TEST_SCALE, 3>(mb, sand_winning_for_alg, fixed_load_on_one);
     fprintf(stderr, "Single measurable item winning (interval [1,%d], ignoring sand wins):\n", GS2BOUND);
-    one_measurable_item_winning<TEST_SCALE>(mb, sand_winning_for_alg);
+    one_measurable_item_winning<TEST_SCALE, 3>(mb, sand_winning_for_alg);
     fprintf(stderr, "Single items winning (interval [1,%d], ignoring sand wins):\n", GS2BOUND);
-    single_items_winning<TEST_SCALE>(mb, sand_winning_for_alg);
+    single_items_winning<TEST_SCALE, 3>(mb, sand_winning_for_alg);
     
 
     return 0;

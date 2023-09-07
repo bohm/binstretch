@@ -176,12 +176,12 @@ public:
     }
 
     static void endgame_hints(const partition_container <ARRLEN> &endgames,
-                       flat_hash_map<uint64_t, unsigned short> &out_hints) {
+                       flat_hash_map<uint64_t, unsigned int> &out_hints) {
 
         minidp <ARRLEN> mdp;
         for (const auto &end_part: endgames) {
             uint64_t endgame_hash = itemconf<ARRLEN>::static_hash(end_part);
-            auto maxfeas = (unsigned short) mdp.maximum_feasible(end_part);
+            auto maxfeas = (unsigned int) mdp.maximum_feasible(end_part);
             out_hints[endgame_hash] = maxfeas;
         }
     }
