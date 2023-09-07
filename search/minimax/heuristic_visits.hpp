@@ -40,9 +40,7 @@ victory computation<MODE, MINIBS_SCALE>::heuristic_visit_alg(int pres_item) {
             if ((bstate.loads[i] + pres_item < R)) {
                 // If we wish to run a different heuristic, we would run it here. (Like knownsum or lowsend.)
 
-                int next_item_layer = mbs->feasible_map[next_layer_hash];
-                bool alg_mbs_query = mbs->query_itemconf_winning(bstate, next_item_layer,
-                                                                 pres_item, i);
+                bool alg_mbs_query = mbs->query_itemconf_winning(bstate, next_layer_hash, pres_item, i);
 
                 if (alg_mbs_query) {
                     return victory::alg;

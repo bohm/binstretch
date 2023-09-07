@@ -19,27 +19,22 @@
 using phmap::flat_hash_set;
 using phmap::flat_hash_map;
 
-template<int DENOMINATOR, int BIN_NUM> class minibs {
+template<int DENOMINATOR, int SPECIALIZATION> class minibs {
 public:
     static constexpr int DENOM = DENOMINATOR;
-    // GS5+ extension. GS5+ is one of the currently only good situations which
-    // makes use of tracking items -- in this case, items of size at least alpha
-    // and at most 1-alpha.
-
-    // Setting EXTENSION_GS5 to false makes the computation structurally cleaner,
-    // as there are no special cases, but the understanding of winning and losing
-    // positions does not match the human understanding exactly.
-
-    // Setting EXTENSION_GS5 to true should include more winning positions in the system,
-    // which helps performance.
     static constexpr bool EXTENSION_GS5 = true;
-
+    // We keep the EXTENSION_GS5 in (for now, at least) to be able to match the new specialized code
+    // exactly.
 
     // Non-static section.
 
     std::vector<itemconf<DENOMINATOR> > feasible_itemconfs;
 
+    // Map pointing from hashes to the index in feasible_itemconfs.
     flat_hash_map<uint64_t, unsigned int> feasible_map;
+
+
+
     std::vector<flat_hash_set<uint64_t> > alg_winning_positions;
 
     // Fingerprints on their own is just a transposition of the original minibs
@@ -72,8 +67,14 @@ public:
     }
 
     // Computes with sharp lower bounds, so item size 5 corresponds to (5,6].
-    static inline int grow_item(int scaled_itemsize) {
+    static inline int grow_to_lower_bound(int scaled_itemsize) {
         return ((scaled_itemsize * S) / DENOMINATOR) + 1;
+    }
+
+    // Computes the largest item that still fits into the scaled itemsize cathegory. So, for (5,6], this would be
+    // 6 times the scaling.
+    static inline int grow_to_upper_bound(int scaled_itemsize) {
+        return ((scaled_itemsize+1)*S) / DENOMINATOR;
     }
 
     int lb_on_volume(const itemconf<DENOMINATOR> &ic) {
@@ -83,7 +84,7 @@ public:
 
         int ret = 0;
         for (int itemsize = 1; itemsize < DENOMINATOR; itemsize++) {
-            ret += ic.items[itemsize] * grow_item(itemsize);
+            ret += ic.items[itemsize] * grow_to_lower_bound(itemsize);
         }
         return ret;
     }
@@ -151,6 +152,23 @@ public:
         }
 
         return false;
+    }
+
+    // Computes the maximum feasible item via querying which positions from the current one are also feasible.
+    // Thus, it only works once the feasible partitions are computed.
+    // Needs to be upscaled (grown to the upper bound) after the call.
+    int maximum_feasible_via_feasible_positions(const itemconf<DENOMINATOR> &ic) {
+
+        int item = DENOMINATOR-1;
+        for (; item >= 1; item--) {
+            uint64_t next_layer_hash = ic.virtual_increase(item);
+            if (feasible_map.contains(next_layer_hash))
+            {
+                break;
+            }
+        }
+
+        return item;
     }
 
     bool query_knownsum_layer(const loadconf &lc) const {
@@ -267,7 +285,7 @@ public:
         return fp->contains(layer_index);
     }
 
-    bool query_itemconf_winning(const loadconf &lc, int next_item_layer, int item, int bin) {
+    bool query_itemconf_winning(const loadconf &lc, uint64_t next_layer_itemhash, int item, int bin) {
         // We have to check the hash table if the position is winning.
         uint64_t hash_if_packed = lc.virtual_loadhash(item, bin);
 
@@ -279,6 +297,7 @@ public:
             return false;
         }
 
+        int next_item_layer = feasible_map[next_layer_itemhash];
         flat_hash_set<unsigned int> *fp = fingerprints[fingerprint_map[hash_if_packed]];
         return fp->contains(next_item_layer);
     }
@@ -316,12 +335,14 @@ public:
 
         if (!last_layer) {
             scaled_ub_from_dp = mdp.maximum_feasible(layer.items);
+            int scaled_ub_from_hashes = maximum_feasible_via_feasible_positions(layer);
+            assert(scaled_ub_from_dp == scaled_ub_from_hashes);
         }
 
         // The upper bound on maximum sendable from the DP is scaled by 1/DENOMINATOR.
         // So, a value of 5 means that any item from [0, 6*S/DENOMINATOR] can be sent.
-        assert(scaled_ub_from_dp <= DENOMINATOR);
-        int ub_from_dp = ((scaled_ub_from_dp + 1) * S) / DENOMINATOR;
+        assert(scaled_ub_from_dp <= DENOMINATOR-1);
+        int ub_from_dp = grow_to_upper_bound(scaled_ub_from_dp);
 
         if (MEASURE) {
             // fprintf(stderr, "Layer %d: maximum feasible item is scaled %d, and original %d.\n", layer_index,  scaled_ub_from_dp, ub_from_dp);
@@ -362,7 +383,7 @@ public:
             }
 
             if (loadsum < S * BINS) {
-                int start_item = std::min(ub_from_dp, S * BINS - iterated_lc.loadsum());
+                int start_item = std::min(ub_from_dp, S * BINS - loadsum);
                 bool losing_item_exists = false;
 
                 for (int item = start_item; item >= 1; item--) {
@@ -375,7 +396,7 @@ public:
                     }
 
                     assert(feasible_map.contains(next_layer_hash));
-                    int next_layer = feasible_map[next_layer_hash];
+                    // int next_layer = feasible_map[next_layer_hash];
 
                     for (int bin = 1; bin <= BINS; bin++) {
                         if (bin > 1 && iterated_lc.loads[bin] == iterated_lc.loads[bin - 1]) {
@@ -385,7 +406,8 @@ public:
                         if (item + iterated_lc.loads[bin] <= R - 1) // A plausible move.
                         {
                             // We have to check the hash table if the position is winning.
-                            bool alg_wins_next_position = query_itemconf_winning(iterated_lc, next_layer, item, bin);
+                            bool alg_wins_next_position = query_itemconf_winning(iterated_lc, next_layer_hash,
+                                                                                 item, bin);
                             if (alg_wins_next_position) {
                                 good_move_found = true;
                                 break;
