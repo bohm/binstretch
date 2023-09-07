@@ -7,6 +7,10 @@
 using phmap::flat_hash_set;
 using phmap::flat_hash_map;
 
+template <unsigned int ARRLEN> bool compare_partitions(const std::array<int, ARRLEN> &p1,
+        const std::array<int, ARRLEN> &p2) {
+    return (std::accumulate(p1.begin(), p1.end(), 0) > std::accumulate(p2.begin(), p2.end(), 0));
+}
 
 template<unsigned int ARRLEN>
 using partition_container = std::vector<std::array<int, ARRLEN>>;
@@ -127,6 +131,7 @@ public:
         }
 
         multiknapsack_rec(0, part_cons, stack, output_set, output_con);
+        std::sort(output_con.begin(), output_con.end(), compare_partitions<ARRLEN>);
     }
 
     static void endgame_adjacent(const partition_container <ARRLEN> &midgame_feasible,
