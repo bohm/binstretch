@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstring>
-#include <execution>
 #include <parallel_hashmap/phmap.h>
 
 // Notice: https://github.com/greg7mdp/parallel-hashmap is now required for the program to build.

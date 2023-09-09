@@ -451,6 +451,19 @@ void print_ranges(loadconf *lc) {
 
 }
 
+template<int DENOMINATOR> void print_input_form(const loadconf &lc, const itemconf<DENOMINATOR>& ic)
+{
+    lc.print(stderr);
+    fprintf(stderr, " \"(");
+    for (int i = 1; i < ic.items.size(); i++) {
+        fprintf(stderr, "%d", ic.items[i]);
+        if (i != ic.items.size() - 1) {
+            fprintf(stderr, " ");
+        }
+    }
+    fprintf(stderr, ")\"\n");
+}
+
 template<int SCALE>
 void adv_winning_description(std::pair<loadconf, itemconf<SCALE>> *pos, minibs<SCALE,3>*minibs) {
     bool pos_winning = minibs->query_itemconf_winning(pos->first, pos->second);
@@ -496,7 +509,24 @@ void adv_winning_description(std::pair<loadconf, itemconf<SCALE>> *pos, minibs<S
         // Report the largest item (first in the for loop) which is losing for ALG.
         if (good_moves.empty()) {
             print_minibs<SCALE>(pos);
-            fprintf(stderr, " is losing for ALG, adversary can send e.g. %d.\n", item);
+            fprintf(stderr, " is losing for ALG, adversary can send e.g. %d, scaled to %d.\n", item, shrunk_itemtype);
+            fprintf(stderr, "This leads to the following positions:\n");
+            for (int bin = 1; bin <= BINS; bin++) {
+                if (bin > 1 && pos->first.loads[bin] == pos->first.loads[bin - 1]) {
+                    continue;
+                }
+
+                if (item + pos->first.loads[bin] <= R - 1) {
+                    loadconf nextlc(pos->first);
+                    nextlc.assign_and_rehash(item, bin);
+                    itemconf<SCALE> nextic(pos->second);
+                    if (shrunk_itemtype != 0) {
+                        nextic.increase(shrunk_itemtype);
+                    }
+                    print_input_form<SCALE>(nextlc, nextic);
+                }
+            }
+
             return;
         }
     }
