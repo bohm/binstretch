@@ -108,7 +108,7 @@ const int RECOMMENDED_MONOTONICITY = 6; // Works, but of course better fractions
 const int RECOMMENDED_MONOTONICITY = 6;
 #elif IBINS == 3 && IR == 112 && IS == 82
 constexpr int RECOMMENDED_MONOTONICITY = 8;
-constexpr int RECOMMENDED_MINIBS_SCALE = 24;
+constexpr int RECOMMENDED_MINIBS_SCALE = 12;
 
 #elif IBINS == 3 && IR == 123 && IS == 90
 const int RECOMMENDED_MONOTONICITY = IS-1;

@@ -1,7 +1,9 @@
 #pragma once
 
 #include <cstring>
+#include <execution>
 #include <parallel_hashmap/phmap.h>
+
 // Notice: https://github.com/greg7mdp/parallel-hashmap is now required for the program to build.
 // This is a header-only hashmap/set that seems quicker and lower-memory than the unordered_set.
 
@@ -16,6 +18,7 @@
 #include "minidp.hpp"
 #include "feasibility.hpp"
 #include "minibs/midgame_feasibility.hpp"
+#include "server_properties.hpp"
 
 using phmap::flat_hash_set;
 using phmap::flat_hash_map;
@@ -88,7 +91,6 @@ public:
     minidp<DENOMINATOR> mdp;
 
 
-
     static inline int shrink_item(int larger_item) {
         if ((larger_item * DENOMINATOR) % S == 0) {
             return ((larger_item * DENOMINATOR) / S) - 1;
@@ -105,7 +107,7 @@ public:
     // Computes the largest item that still fits into the scaled itemsize cathegory. So, for (5,6], this would be
     // 6 times the scaling.
     static inline int grow_to_upper_bound(int scaled_itemsize) {
-        return ((scaled_itemsize+1)*S) / DENOMINATOR;
+        return ((scaled_itemsize + 1) * S) / DENOMINATOR;
     }
 
     int lb_on_volume(const itemconf<DENOMINATOR> &ic) {
@@ -123,7 +125,7 @@ public:
     // A helper (lambda) function.
     static int virtual_smallest_load(const loadconf &lc, int item, int bin) {
         if (bin == BINS) {
-            return std::min(lc.loads[BINS] + item, lc.loads[BINS-1]);
+            return std::min(lc.loads[BINS] + item, lc.loads[BINS - 1]);
         } else {
             return lc.loads[BINS];
         }
@@ -212,15 +214,14 @@ public:
     // Needs to be upscaled (grown to the upper bound) after the call.
     int maximum_feasible_via_feasible_positions(const itemconf<DENOMINATOR> &ic) {
 
-        if (endgame_adjacent(ic))
-        {
+        if (endgame_adjacent(ic)) {
             return endgame_adjacent_maxfeas[ic.itemhash];
         } else if (midgame_feasible(ic)) {
-            int item = DENOMINATOR-1;
+            int item = DENOMINATOR - 1;
             for (; item >= 1; item--) {
                 uint64_t next_layer_hash = ic.virtual_increase(item);
-                if (midgame_feasible_map.contains(next_layer_hash) || endgame_adjacent_maxfeas.contains(next_layer_hash))
-                {
+                if (midgame_feasible_map.contains(next_layer_hash) ||
+                    endgame_adjacent_maxfeas.contains(next_layer_hash)) {
                     break;
                 }
             }
@@ -331,9 +332,9 @@ public:
     bool query_itemconf_winning(const loadconf &lc, const itemconf<DENOMINATOR> &ic) {
 
         if (endgame_adjacent_maxfeas.contains(ic.itemhash)) {
-            int largest_sendable = std::min(BINS*S - lc.loadsum(),
+            int largest_sendable = std::min(BINS * S - lc.loadsum(),
                                             grow_to_upper_bound(endgame_adjacent_maxfeas[ic.itemhash]));
-            if (lc.loads[BINS] + largest_sendable  <= R-1) {
+            if (lc.loads[BINS] + largest_sendable <= R - 1) {
                 return true;
             } else {
                 return false;
@@ -364,9 +365,9 @@ public:
         uint64_t loadhash_if_packed = lc.virtual_loadhash(item, bin);
 
         if (endgame_adjacent_maxfeas.contains(next_layer_itemhash)) {
-            int largest_sendable = std::min(BINS*S - lc.loadsum() - item,
+            int largest_sendable = std::min(BINS * S - lc.loadsum() - item,
                                             grow_to_upper_bound(endgame_adjacent_maxfeas[next_layer_itemhash]));
-            if (virtual_smallest_load(lc, item, bin) + largest_sendable  <= R-1) {
+            if (virtual_smallest_load(lc, item, bin) + largest_sendable <= R - 1) {
                 return true;
             } else {
                 return false;
@@ -388,6 +389,18 @@ public:
         }
     }
 
+    bool query_same_layer(const loadconf &lc, int item, int bin,
+                                 const flat_hash_set<uint64_t> *alg_winning_in_layer) const {
+        bool knownsum_winning = query_knownsum_layer(lc, item, bin);
+
+        if (knownsum_winning) {
+            return true;
+        }
+
+        uint64_t loadhash_if_packed = lc.virtual_loadhash(item, bin);
+        return alg_winning_in_layer->contains(loadhash_if_packed);
+    }
+
     inline void itemconf_encache_alg_win(const uint64_t &loadhash, const unsigned int &item_layer) {
         if (!fingerprint_map.contains(loadhash)) {
             unsigned int new_pos = fingerprints.size();
@@ -400,7 +413,7 @@ public:
         fp->insert(item_layer);
     }
 
-    void init_itemconf_layer(long unsigned int layer_index) {
+    void init_itemconf_layer(unsigned int layer_index, flat_hash_set<uint64_t> *alg_winning_in_layer) {
 
         std::array<int, DENOMINATOR> feasible_layer = midgame_feasible_partitions[layer_index];
         itemconf<DENOMINATOR> layer = itemconf<DENOMINATOR>(feasible_layer);
@@ -408,29 +421,17 @@ public:
 
         bool last_layer = (layer_index == (midgame_feasible_partitions.size() - 1));
 
-        if (PROGRESS) {
-            fprintf(stderr, "Processing midgame feasible partition %lu / %lu , corresponding to: ", layer_index,
-                    midgame_feasible_partitions.size());
-            layer.print();
-        }
-
         loadconf iterated_lc = create_full_loadconf();
-        uint64_t winning_loadconfs = 0;
-        uint64_t losing_loadconfs = 0;
 
-
-        int scaled_ub_from_dp = DENOMINATOR - 1;
+        int scaled_ub_from_hashes = DENOMINATOR - 1;
 
         if (!last_layer) {
-            scaled_ub_from_dp = mdp.maximum_feasible(layer.items);
-            int scaled_ub_from_hashes = maximum_feasible_via_feasible_positions(layer);
-            assert(scaled_ub_from_dp == scaled_ub_from_hashes);
+            scaled_ub_from_hashes = maximum_feasible_via_feasible_positions(layer);
         }
 
         // The upper bound on maximum sendable from the DP is scaled by 1/DENOMINATOR.
         // So, a value of 5 means that any item from [0, 6*S/DENOMINATOR] can be sent.
-        assert(scaled_ub_from_dp <= DENOMINATOR-1);
-        int ub_from_dp = grow_to_upper_bound(scaled_ub_from_dp);
+        int ub_from_dp = grow_to_upper_bound(scaled_ub_from_hashes);
 
         if (MEASURE) {
             // fprintf(stderr, "Layer %d: maximum feasible item is scaled %d, and original %d.\n", layer_index,  scaled_ub_from_dp, ub_from_dp);
@@ -470,13 +471,6 @@ public:
             }
 
             if (loadsum < S * BINS) {
-                // Debug.
-                if (iterated_lc.loadhash == 5226482913416365521U
-                && layer.itemhash == 10310270876292415393U) {
-                    fprintf(stderr, "Considering position: ");
-                    iterated_lc.print();
-                    layer.print(stderr, true);
-                }
 
                 int start_item = std::min(ub_from_dp, S * BINS - iterated_lc.loadsum());
                 bool losing_item_exists = false;
@@ -486,11 +480,12 @@ public:
                     uint64_t next_layer_hash = layer.itemhash;
                     int shrunk_itemtype = shrink_item(item);
 
+                    bool next_layer_midgame = true;
                     if (shrunk_itemtype >= 1) {
                         next_layer_hash = layer.virtual_increase(shrunk_itemtype);
+                        next_layer_midgame = midgame_feasible_map.contains(next_layer_hash);
                     }
 
-                    bool next_layer_midgame = midgame_feasible_map.contains(next_layer_hash);
                     // If the next layer is not midgame feasible, it by definition must be endgame adjacent.
                     // We assert this below.
                     if (!next_layer_midgame) {
@@ -506,8 +501,14 @@ public:
                         if (item + iterated_lc.loads[bin] <= R - 1) // A plausible move.
                         {
                             // We have to check the hash table if the position is winning.
-                            bool alg_wins_next_position = query_itemconf_winning(iterated_lc, next_layer_hash,
-                                                                                 item, bin);
+                            bool alg_wins_next_position;
+                            if (shrunk_itemtype == 0) {
+                                alg_wins_next_position = query_same_layer(iterated_lc, item, bin,
+                                                                          alg_winning_in_layer);
+                            } else {
+                                alg_wins_next_position = query_itemconf_winning(iterated_lc, next_layer_hash,
+                                                                                item, bin);
+                            }
                             if (alg_wins_next_position) {
                                 good_move_found = true;
                                 break;
@@ -517,33 +518,17 @@ public:
 
                     if (!good_move_found) {
                         losing_item_exists = true;
-                        if (iterated_lc.loadhash == 5226482913416365521U
-                        && layer.itemhash  == 10310270876292415393U) {
-                            fprintf(stderr, "The losing item for position: ");
-                            iterated_lc.print();
-                            layer.print(stderr, false);
-                            fprintf(stderr, " is %d (shrunk %d).\n", item, shrunk_itemtype);
-
-                            if(next_layer_midgame) {
-                                fprintf(stderr, "The next layer with index %d ", midgame_feasible_map[next_layer_hash]);
-                                itemconf<DENOMINATOR> next_ic(
-                                        midgame_feasible_partitions[midgame_feasible_map[next_layer_hash]]);
-                                next_ic.print(stderr, false);
-                                fprintf(stderr, " is still midgame feasible.\n");
-                            } else {
-                                assert(endgame_adjacent_maxfeas.contains(next_layer_hash));
-                                fprintf(stderr, "The next layer is endgame adjacent.\n");
-                            }
-                        }
                         break;
                     }
                 }
 
                 if (!losing_item_exists) {
-                    MEASURE_ONLY(winning_loadconfs++);
-                    itemconf_encache_alg_win(iterated_lc.loadhash, layer_index);
+                    // The measure only code below does not work in the parallel setting.
+                    // MEASURE_ONLY(winning_loadconfs++);
+                    // We delay encaching the win until the parallel phase is over.
+                    alg_winning_in_layer->insert(iterated_lc.loadhash);
                 } else {
-                    MEASURE_ONLY(losing_loadconfs++);
+                    // MEASURE_ONLY(losing_loadconfs++);
                 }
             }
         } while (decrease(&iterated_lc));
@@ -553,6 +538,12 @@ public:
 
     }
 
+    void deferred_insertion(unsigned int layer_index, const flat_hash_set<uint64_t> &winning_loadhashes) {
+        // fprintf(stderr, "Bucket of layer %u has %zu elements.\n", layer_index, winning_loadhashes.size());
+        for (uint64_t loadhash: winning_loadhashes) {
+            itemconf_encache_alg_win(loadhash, layer_index);
+        }
+    }
 
     static uint64_t fingerprint_hash(std::vector<uint64_t> *rns, flat_hash_set<unsigned int> *fp) {
         uint64_t ret = 0;
@@ -603,15 +594,106 @@ public:
         }
     }
 
+    void init_layers_sequentially() {
+        for (unsigned int i = 0; i < midgame_feasible_partitions.size(); i++) {
+            if (PROGRESS) {
+                fprintf(stderr, "Processing midgame feasible partition %u / %lu , corresponding to: ", i,
+                        midgame_feasible_partitions.size());
+                itemconf<DENOMINATOR>(midgame_feasible_partitions[i]).print();
+            }
+
+            flat_hash_set<uint64_t> current_layer;
+            init_itemconf_layer(i, &current_layer);
+            deferred_insertion(i, current_layer);
+        }
+    }
+
+
+    void init_layers_parallel() {
+
+        // Split into buckets first.
+        int max_items_per_partition = std::accumulate(midgame_feasible_partitions[0].begin(),
+                                                      midgame_feasible_partitions[0].end(), 0);
+
+        std::vector<std::vector<unsigned int>> open_bucket(max_items_per_partition + 1);
+        std::vector<std::vector<std::vector<unsigned int>>> superbuckets(max_items_per_partition + 1);
+
+        unsigned int thread_count = std::get<2>(server_properties(gethost().c_str()));
+
+
+        // We create superbuckets which hold buckets (groups of at most thread_count elements of the same itemcount)
+        // which can be processed in parallel.
+
+        for (unsigned int j = 0; j < midgame_feasible_partitions.size(); j++) {
+            unsigned int itemcount = std::accumulate(midgame_feasible_partitions[j].begin(),
+                                                     midgame_feasible_partitions[j].end(), 0);
+            open_bucket[itemcount].emplace_back(j);
+            if (open_bucket[itemcount].size() >= thread_count) {
+                superbuckets[itemcount].emplace_back(open_bucket[itemcount]);
+                open_bucket[itemcount].clear();
+            }
+        }
+
+        assert(max_items_per_partition + 1 == (int) superbuckets.size());
+        assert(max_items_per_partition + 1 == (int) open_bucket.size());
+
+        // Some buckets may still be open, they need to be closed now.
+        for (int b = max_items_per_partition; b >= 0; b--) {
+            if (open_bucket[b].size() >= 0) {
+                superbuckets[b].emplace_back(open_bucket[b]);
+                open_bucket[b].clear();
+            }
+        }
+
+        auto *threads = new std::thread[thread_count];
+        auto *winning_per_layer = new flat_hash_set<uint64_t>[thread_count];
+
+        for (unsigned int t = 0; t < thread_count; t++) {
+            winning_per_layer[t] = flat_hash_set<uint64_t>{};
+        }
+
+        unsigned int buckets_processed = 0;
+        unsigned int buckets_last_reported = 0;
+
+        for (int b = max_items_per_partition; b >= 0; b--) {
+            for (auto &bucket: superbuckets[b]) {
+                assert(bucket.size() <= thread_count);
+                for (unsigned int t = 0; t < bucket.size(); t++) {
+                    threads[t] = std::thread(&minibs<DENOMINATOR, 3>::init_itemconf_layer, this, bucket[t],
+                                             &winning_per_layer[t]);
+                }
+
+                for (unsigned int t = 0; t < bucket.size(); t++) {
+                    threads[t].join();
+                    deferred_insertion(bucket[t], winning_per_layer[t]);
+                    winning_per_layer[t].clear();
+                }
+
+                if (PROGRESS) {
+                    buckets_processed += bucket.size();
+                    if (buckets_processed - buckets_last_reported >= 500) {
+                        fprintf(stderr, "Processed %u/%zu midgame feasible partitions.\n", buckets_processed,
+                                midgame_feasible_partitions.size());
+                        buckets_last_reported = buckets_processed;
+                    }
+                }
+            }
+        }
+
+        delete[] threads;
+        delete[] winning_per_layer;
+    }
+
     // The init is now able to recover data from previous computations.
     minibs() {
         print_if<PROGRESS>("Minibs<%d> used, specialized for three bins.\n", DENOM);
         fprintf(stderr, "Minibs<%d>: There will be %d item sizes tracked.\n", DENOM, DENOM - 1);
 
         binary_storage<DENOMINATOR> bstore;
+//        if (false) {
         if (bstore.storage_exists()) {
             bstore.restore_three(midgame_feasible_partitions, endgame_adjacent_partitions, endgame_adjacent_maxfeas,
-                           fingerprint_map, fingerprints, unique_fps, alg_knownsum_winning);
+                                 fingerprint_map, fingerprints, unique_fps, alg_knownsum_winning);
             populate_midgame_feasible_map();
             print_if<PROGRESS>("Minibs<%d>: Init complete via restoration.\n", DENOMINATOR);
             fprintf(stderr, "Minibs<%d> from restoration: %zu partitions are midgame feasible.\n", DENOM,
@@ -622,8 +704,8 @@ public:
                     DENOMINATOR, unique_fps.size());
         } else {
 
-        print_if<PROGRESS>("Minibs<%d>: Initialization must happen from scratch.\n", DENOMINATOR);
-        init_from_scratch();
+            print_if<PROGRESS>("Minibs<%d>: Initialization must happen from scratch.\n", DENOMINATOR);
+            init_from_scratch();
         }
     }
 
@@ -641,11 +723,11 @@ public:
         flat_hash_set<uint64_t> midgame_feasible_hashes;
 
         midgame_feasibility<DENOMINATOR, BINS>::multiknapsack_partitions(limits,
-                                                                        midgame_feasible_partitions,
-                                                                        midgame_feasible_hashes);
+                                                                         midgame_feasible_partitions,
+                                                                         midgame_feasible_hashes);
 
-        midgame_feasibility<DENOMINATOR,BINS>::endgame_adjacent(midgame_feasible_partitions, midgame_feasible_hashes,
-                                                               endgame_adjacent_partitions);
+        midgame_feasibility<DENOMINATOR, BINS>::endgame_adjacent(midgame_feasible_partitions, midgame_feasible_hashes,
+                                                                 endgame_adjacent_partitions);
         midgame_feasibility<DENOMINATOR, BINS>::endgame_hints(endgame_adjacent_partitions, endgame_adjacent_maxfeas);
 
         populate_midgame_feasible_map();
@@ -663,11 +745,8 @@ public:
             alg_winning_positions.push_back(winning_in_layer);
         }
 
-        for (long unsigned int i = 0; i < midgame_feasible_partitions.size(); i++) {
-
-            init_itemconf_layer(i);
-        }
-
+        // init_layers_sequentially();
+        init_layers_parallel();
         sparsify();
 
     }
@@ -676,9 +755,9 @@ public:
         binary_storage<DENOMINATOR> bstore;
         if (!bstore.storage_exists()) {
             print_if<PROGRESS>("Queen: Backing up Minibs<%d> calculations.\n", DENOMINATOR);
-            bstore.backup_three(midgame_feasible_partitions, endgame_adjacent_partitions,  endgame_adjacent_maxfeas,
-                    fingerprint_map, fingerprints, unique_fps,
-                          alg_knownsum_winning);
+            bstore.backup_three(midgame_feasible_partitions, endgame_adjacent_partitions, endgame_adjacent_maxfeas,
+                                fingerprint_map, fingerprints, unique_fps,
+                                alg_knownsum_winning);
         }
     }
 
