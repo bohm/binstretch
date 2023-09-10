@@ -17,6 +17,7 @@ constexpr int TEST_SCALE = 12;
 
 constexpr int TWO_MINUS_FIVE_ALPHA = 2 * S - 5 * ALPHA;
 
+std::string binary_name{};
 /*
 bool gs4_6_weaker(loadconf *lc)
 {
@@ -451,8 +452,13 @@ void print_ranges(loadconf *lc) {
 
 }
 
-template<int DENOMINATOR> void print_input_form(const loadconf &lc, const itemconf<DENOMINATOR>& ic)
+template<int DENOMINATOR> void print_input_form(const loadconf &lc, const itemconf<DENOMINATOR>& ic,
+        std::string executable_name = std::string())
 {
+    if (!executable_name.empty()) {
+        fprintf(stderr, "%s ", executable_name.c_str());
+    }
+
     lc.print(stderr);
     fprintf(stderr, " \"(");
     for (int i = 1; i < ic.items.size(); i++) {
@@ -523,7 +529,7 @@ void adv_winning_description(std::pair<loadconf, itemconf<SCALE>> *pos, minibs<S
                     if (shrunk_itemtype != 0) {
                         nextic.increase(shrunk_itemtype);
                     }
-                    print_input_form<SCALE>(nextlc, nextic);
+                    print_input_form<SCALE>(nextlc, nextic, binary_name);
                 }
             }
 
@@ -684,6 +690,7 @@ int main(int argc, char **argv) {
 
     zobrist_init();
 
+    binary_name = std::string(argv[0]);
     std::stringstream argstream;
     for (int i = 1; i < argc; i++) {
         argstream << argv[i];
