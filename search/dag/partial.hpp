@@ -112,7 +112,7 @@ public:
         add_adv_vertex(name, heurstring);
         if (bc_ptr != nullptr) {
             root_binconf.loads = bc_ptr->loads;
-            root_binconf.items = bc_ptr->items;
+            root_binconf.ic.items = bc_ptr->ic.items;
             root_binconf.last_item = bc_ptr->last_item;
             delete bc_ptr;
         }

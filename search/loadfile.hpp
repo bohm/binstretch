@@ -114,7 +114,7 @@ std::tuple<int, std::string, binconf *> parse_adv_vertex(const char *line) {
 
         fprintf(stderr, "Loading binconf %s.\n", binconf_str.str().c_str());
         binconf b = loadbinconf(binconf_str);
-        bc_ptr = new binconf(b.loads, b.items, b.last_item);
+        bc_ptr = new binconf(b.loads, b.ic.items, b.last_item);
     }
 
     // Check for heur="", and load the content.

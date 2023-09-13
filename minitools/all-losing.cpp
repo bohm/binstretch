@@ -5,14 +5,14 @@
 #include <cstdint>
 
 #define IBINS 3
-#define IR 411
-#define IS 300
+#define IR 821
+#define IS 600
 
 #include "minibs/minibs.hpp"
 #include "minibs/minibs-three.hpp"
 #include "gs.hpp"
 
-constexpr int TEST_SCALE = 24;
+constexpr int TEST_SCALE = 12;
 
 constexpr int TWO_MINUS_FIVE_ALPHA = 2 * S - 5 * ALPHA;
 
