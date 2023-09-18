@@ -15,25 +15,3 @@ size_t fingerprint_hash(const std::vector<uint64_t> &rns, const fingerprint_set 
     }
     return ret;
 }
-
-// Augmented fingerprint also hosts reference counts. Used for fingerprint storage.
-
-class augmented_fp {
-public:
-    fingerprint_set fp;
-    int refcount = 0;
-    size_t hash = 0;
-
-    augmented_fp(const std::vector<uint64_t> &rns, const fingerprint_set& ifp) {
-        fp = ifp;
-        hash = fingerprint_hash(rns, ifp);
-    }
-};
-
-template<>
-struct std::hash<augmented_fp> {
-    size_t operator()( const augmented_fp& fp)
-    {
-        return fp.hash;
-    }
-};

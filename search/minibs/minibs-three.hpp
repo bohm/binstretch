@@ -411,13 +411,16 @@ public:
                 return true;
             }
 
-            if (!fingerprint_map.contains(loadhash_if_packed)) {
-                return false;
-            }
+            // if (!fingerprint_map.contains(loadhash_if_packed)) {
+            //     return false;
+            // }
 
             int next_item_layer = midgame_feasible_map[next_layer_itemhash];
             fingerprint_set *fp = fpstorage->query_fp(loadhash_if_packed);
-            assert(fp != nullptr);
+            if (fp == nullptr)
+            {
+                return false;
+            }
 
             return fp->contains(next_item_layer);
         } else { // Same as above: it should be automatically winning.
@@ -445,10 +448,14 @@ public:
             fp_new.insert(item_layer);
             fpstorage->change_representative(loadhash, fp_new);
         } else {
+            flat_hash_set<unsigned int> fp_clone(*fpstorage->query_fp(loadhash));
             flat_hash_set<unsigned int> fp_upcoming(*fpstorage->query_fp(loadhash));
             old_size = fpstorage->query_fp(loadhash)->size();
             fp_upcoming.insert(item_layer);
             fpstorage->change_representative(loadhash, fp_upcoming);
+            for (unsigned int layer: fp_clone) {
+                assert (fpstorage->query_fp(loadhash)->contains(layer));
+            }
         }
 
         assert(fpstorage->query_fp(loadhash)->contains(item_layer));
@@ -583,7 +590,10 @@ public:
     void deferred_insertion(unsigned int layer_index, const flat_hash_set<uint64_t> &winning_loadhashes) {
         // fprintf(stderr, "Bucket of layer %u has %zu elements.\n", layer_index, winning_loadhashes.size());
         for (uint64_t loadhash: winning_loadhashes) {
-            itemconf_encache_alg_win(loadhash, layer_index);
+            if (loadhash == 1790676600U) {
+                fprintf(stderr, "Problematic loadhash.\n");
+            }
+                itemconf_encache_alg_win(loadhash, layer_index);
         }
         // flat_hash_map<uint64_t, size_t> frequencies_before = fpstorage->compute_frequencies();
         fpstorage->collect();
@@ -685,6 +695,10 @@ public:
                 for (unsigned int t = 0; t < bucket.size(); t++) {
                     threads[t].join();
                     deferred_insertion(bucket[t], winning_per_layer[t]);
+                    // fprintf(stderr, "Layer %u has %zu winning loadhashes per this layer.\n", bucket[t],
+                    //        winning_per_layer[t].size());
+                    // fpstorage->add_positions_to_check(bucket[t], winning_per_layer[t]);
+                    // fpstorage->check_wins();
                     winning_per_layer[t].clear();
                 }
 
@@ -709,8 +723,8 @@ public:
         fprintf(stderr, "Minibs<%d>: There will be %d item sizes tracked.\n", DENOM, DENOM - 1);
 
         binary_storage<DENOMINATOR> bstore;
-        if (false) {
-//        if (bstore.storage_exists()) {
+//        if (false) {
+        if (bstore.storage_exists()) {
             bstore.restore_three(midgame_feasible_partitions, endgame_adjacent_partitions, endgame_adjacent_maxfeas,
                                  fingerprint_map, fingerprints, unique_fps, alg_knownsum_winning);
             populate_midgame_feasible_map();
@@ -721,6 +735,9 @@ public:
                     endgame_adjacent_partitions.size());
             fprintf(stderr, "Minibs<%d> from restoration: %zu unique fingerprints.\n",
                     DENOMINATOR, unique_fps.size());
+            fprintf(stderr, "Fingerprint map size %zu, fingerprints size %zu.\n",
+                    fingerprint_map.size(), fingerprints.size());
+
         } else {
 
             print_if<PROGRESS>("Minibs<%d>: Initialization must happen from scratch.\n", DENOMINATOR);

@@ -11,7 +11,7 @@ public:
 
     flat_hash_map<size_t, fingerprint_set> fingerprints{};
     flat_hash_map<uint64_t, size_t> loadhash_representative_fp{};
-    std::vector<uint64_t> *rns{};
+    std::vector<uint64_t> *rns = nullptr;
 
     explicit fingerprint_storage(std::vector<uint64_t> *irns) {
         rns = irns;
@@ -87,6 +87,19 @@ public:
         for (auto &[loadhash, hash] : loadhash_representative_fp) {
             out_fingerprint_map[loadhash] = position_in_out_vector[hash];
         }
+
+        // Strict consistency check.
+
+        /*
+        for (const auto &[layer_index, winning_loadhashes] : positions_to_check)
+        {
+            for (uint64_t win_loadhash: winning_loadhashes) {
+                assert(out_fingerprint_map.contains(win_loadhash));
+                assert(out_fp_vector[out_fingerprint_map[win_loadhash]]->contains(layer_index));
+            }
+        }
+         */
+
         loadhash_representative_fp.clear();
         fingerprints.clear();
     }
@@ -99,5 +112,21 @@ public:
             freq[loadhash] = fingerprints[hash].size();
         }
         return freq;
+    }
+
+    std::vector<std::pair<int, flat_hash_set<uint64_t>>> positions_to_check{};
+
+    void add_positions_to_check(unsigned int layer_index, const flat_hash_set<uint64_t>& winning_loadhashes) {
+        positions_to_check.emplace_back(layer_index, winning_loadhashes);
+    }
+
+    void check_wins() {
+        for (const auto &[layer_index, winning_loadhashes] : positions_to_check)
+        {
+            for (uint64_t win_loadhash: winning_loadhashes) {
+                assert(loadhash_representative_fp.contains(win_loadhash));
+                assert(query_fp(win_loadhash)->contains(layer_index));
+            }
+        }
     }
 };
