@@ -14,6 +14,8 @@
 #include "../cache/loadconf.hpp"
 #include "../heur_alg_knownsum.hpp"
 #include "binary_storage.hpp"
+#include "fingerprints.hpp"
+#include "fingerprint_storage.hpp"
 #include "minidp.hpp"
 #include "feasibility.hpp"
 #include "minibs/midgame_feasibility.hpp"
@@ -87,6 +89,8 @@ public:
 
     flat_hash_set<uint64_t> alg_knownsum_winning;
 
+
+    fingerprint_storage *fpstorage = nullptr;
     minidp<DENOMINATOR> mdp;
 
 
@@ -388,6 +392,39 @@ public:
         }
     }
 
+    // A query function to be used during (parallel) initialization but not during execution.
+    bool query_different_layer(const loadconf &lc, uint64_t next_layer_itemhash, int item, int bin) {
+
+        // We have to check the hash table if the position is winning.
+        uint64_t loadhash_if_packed = lc.virtual_loadhash(item, bin);
+
+        if (endgame_adjacent_maxfeas.contains(next_layer_itemhash)) {
+            int largest_sendable = std::min(BINS * S - lc.loadsum() - item,
+                                            grow_to_upper_bound(endgame_adjacent_maxfeas[next_layer_itemhash]));
+            if (virtual_smallest_load(lc, item, bin) + largest_sendable <= R - 1) {
+                return true;
+            } else {
+                return false;
+            }
+        } else if (midgame_feasible_map.contains(next_layer_itemhash)) {
+            if (query_knownsum_layer(lc, item, bin)) {
+                return true;
+            }
+
+            if (!fingerprint_map.contains(loadhash_if_packed)) {
+                return false;
+            }
+
+            int next_item_layer = midgame_feasible_map[next_layer_itemhash];
+            fingerprint_set *fp = fpstorage->query_fp(loadhash_if_packed);
+            assert(fp != nullptr);
+
+            return fp->contains(next_item_layer);
+        } else { // Same as above: it should be automatically winning.
+            return true;
+        }
+    }
+
     bool query_same_layer(const loadconf &lc, int item, int bin,
                                  const flat_hash_set<uint64_t> *alg_winning_in_layer) const {
         bool knownsum_winning = query_knownsum_layer(lc, item, bin);
@@ -401,15 +438,21 @@ public:
     }
 
     inline void itemconf_encache_alg_win(const uint64_t &loadhash, const unsigned int &item_layer) {
-        if (!fingerprint_map.contains(loadhash)) {
-            unsigned int new_pos = fingerprints.size();
-            auto *fp_new = new flat_hash_set<unsigned int>();
-            fingerprints.push_back(fp_new);
-            fingerprint_map[loadhash] = new_pos;
+
+        size_t old_size = 0;
+        if (fpstorage->query_fp(loadhash) == nullptr) {
+            flat_hash_set<unsigned int> fp_new;
+            fp_new.insert(item_layer);
+            fpstorage->change_representative(loadhash, fp_new);
+        } else {
+            flat_hash_set<unsigned int> fp_upcoming(*fpstorage->query_fp(loadhash));
+            old_size = fpstorage->query_fp(loadhash)->size();
+            fp_upcoming.insert(item_layer);
+            fpstorage->change_representative(loadhash, fp_upcoming);
         }
 
-        flat_hash_set<unsigned int> *fp = fingerprints[fingerprint_map[loadhash]];
-        fp->insert(item_layer);
+        assert(fpstorage->query_fp(loadhash)->contains(item_layer));
+        assert(fpstorage->query_fp(loadhash)->size() == old_size+1);
     }
 
     void init_itemconf_layer(unsigned int layer_index, flat_hash_set<uint64_t> *alg_winning_in_layer) {
@@ -505,7 +548,7 @@ public:
                                 alg_wins_next_position = query_same_layer(iterated_lc, item, bin,
                                                                           alg_winning_in_layer);
                             } else {
-                                alg_wins_next_position = query_itemconf_winning(iterated_lc, next_layer_hash,
+                                alg_wins_next_position = query_different_layer(iterated_lc, next_layer_hash,
                                                                                 item, bin);
                             }
                             if (alg_wins_next_position) {
@@ -542,15 +585,16 @@ public:
         for (uint64_t loadhash: winning_loadhashes) {
             itemconf_encache_alg_win(loadhash, layer_index);
         }
+        // flat_hash_map<uint64_t, size_t> frequencies_before = fpstorage->compute_frequencies();
+        fpstorage->collect();
+        // flat_hash_map<uint64_t, size_t> frequencies_after = fpstorage->compute_frequencies();
+        // for (auto& [key, value] : frequencies_before) {
+        //    assert(frequencies_after[key] == value);
+        // }
+
     }
 
-    static uint64_t fingerprint_hash(std::vector<uint64_t> *rns, flat_hash_set<unsigned int> *fp) {
-        uint64_t ret = 0;
-        for (unsigned int u: *fp) {
-            ret ^= (*rns)[u];
-        }
-        return ret;
-    }
+
 
     // Generates capacity random numbers for use in the sparsification.
     static std::vector<uint64_t> *create_random_hashes(unsigned int capacity) {
@@ -559,30 +603,6 @@ public:
             ret->push_back(rand_64bit());
         }
         return ret;
-    }
-
-    void sparsify() {
-        std::vector<uint64_t> *random_numbers = create_random_hashes(midgame_feasible_partitions.size());
-        flat_hash_map<uint64_t, flat_hash_set<unsigned int> *> unique_fingerprint_map;
-
-        for (unsigned int i = 0; i < fingerprints.size(); ++i) {
-            uint64_t hash = fingerprint_hash(random_numbers, fingerprints[i]);
-            if (unique_fingerprint_map.contains(hash)) {
-                flat_hash_set<unsigned int> *unique_fp = unique_fingerprint_map[hash];
-                delete fingerprints[i];
-                fingerprints[i] = unique_fp;
-            } else {
-                unique_fingerprint_map[hash] = fingerprints[i];
-            }
-        }
-
-        // Convert the flat_hash_map into a vector, keeping track of unique elements
-        // and forgetting the hash function.
-        for (const auto &[key, el]: unique_fingerprint_map) {
-            unique_fps.push_back(el);
-        }
-
-        delete random_numbers;
     }
 
     // Call after feasible_itemconfs exist, to build the inverse map.
@@ -689,8 +709,8 @@ public:
         fprintf(stderr, "Minibs<%d>: There will be %d item sizes tracked.\n", DENOM, DENOM - 1);
 
         binary_storage<DENOMINATOR> bstore;
-//        if (false) {
-        if (bstore.storage_exists()) {
+        if (false) {
+//        if (bstore.storage_exists()) {
             bstore.restore_three(midgame_feasible_partitions, endgame_adjacent_partitions, endgame_adjacent_maxfeas,
                                  fingerprint_map, fingerprints, unique_fps, alg_knownsum_winning);
             populate_midgame_feasible_map();
@@ -739,15 +759,24 @@ public:
         // We initialize the knownsum layer here.
         init_knownsum_layer();
 
+        std::vector<uint64_t> *random_numbers = create_random_hashes(midgame_feasible_partitions.size());
+        fpstorage = new fingerprint_storage(random_numbers);
+
+
         for (long unsigned int i = 0; i < midgame_feasible_partitions.size(); i++) {
             flat_hash_set<uint64_t> winning_in_layer;
             alg_winning_positions.push_back(winning_in_layer);
         }
 
+
         // init_layers_sequentially();
         init_layers_parallel();
-        sparsify();
-
+        fpstorage->output(fingerprint_map, fingerprints);
+        unique_fps = fingerprints;
+        fprintf(stderr, "Fingerprint map size %zu, fingerprints size %zu.\n",
+                fingerprint_map.size(), fingerprints.size());
+        delete fpstorage;
+        fpstorage = nullptr;
     }
 
     inline void backup_calculations() {

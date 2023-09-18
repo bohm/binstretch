@@ -102,7 +102,9 @@ add_executable(clion
         search/minimax/descend_ascend.hpp
         search/loadconf.hpp
         search/minibs/minibs-three.hpp
-        search/minibs/midgame_feasibility.hpp)
+        search/minibs/midgame_feasibility.hpp
+        search/minibs/fingerprint_storage.hpp
+        search/minibs/fingerprints.hpp)
 
 add_executable(listsaplings minitools/listsaplings.cpp
         search/cache/guar64.hpp
