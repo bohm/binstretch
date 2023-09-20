@@ -87,8 +87,12 @@ public:
     // Useful for deleting them e.g. during termination.
     std::vector<flat_hash_set<unsigned int> *> unique_fps;
 
+    // Data structures related to knownsum.
     flat_hash_set<uint64_t> alg_knownsum_winning;
-
+    // The first load configuration that is losing for the knownsum heuristic.
+    // When we do the iterations for the individual itemconf layers, we can start with this one as the initial one.
+    // This can save a bit of time while keep the loop simple.
+    loadconf knownsum_first_losing;
 
     fingerprint_storage *fpstorage = nullptr;
     minidp<DENOMINATOR> mdp;
@@ -270,6 +274,7 @@ public:
 
         print_if<PROGRESS>("Processing the knownsum layer.\n");
 
+        bool all_winning_so_far = true;
         loadconf iterated_lc = create_full_loadconf();
         uint64_t winning_loadconfs = 0;
         uint64_t losing_loadconfs = 0;
@@ -320,6 +325,10 @@ public:
                     MEASURE_ONLY(winning_loadconfs++);
                     alg_knownsum_winning.insert(iterated_lc.loadhash);
                 } else {
+                    if (all_winning_so_far) {
+                        all_winning_so_far = false;
+                        knownsum_first_losing = iterated_lc;
+                    }
                     MEASURE_ONLY(losing_loadconfs++);
                     // loads_not_winning_by_knownsum.emplace_back(iterated_lc);
                 }
@@ -460,7 +469,8 @@ public:
 
         bool last_layer = (layer_index == (midgame_feasible_partitions.size() - 1));
 
-        loadconf iterated_lc = create_full_loadconf();
+        // loadconf iterated_lc = create_full_loadconf();
+        loadconf iterated_lc = knownsum_first_losing;
 
         int scaled_ub_from_hashes = DENOMINATOR - 1;
 
@@ -711,9 +721,23 @@ public:
 
         binary_storage<DENOMINATOR> bstore;
 //        if (false) {
+
+        bool knownsum_loaded = false;
+        if (bstore.knownsum_file_exists()) {
+            bstore.restore_knownsum_set(alg_knownsum_winning, knownsum_first_losing.loads);
+            print_if<PROGRESS>("Restored knownsum layer with %zu winning positions.\n", alg_knownsum_winning.size());
+
+            if (PROGRESS) {
+                fprintf(stderr, "Restored first losing loadconf: ");
+                knownsum_first_losing.print(stderr);
+                fprintf(stderr, ".\n");
+            }
+            knownsum_loaded = true;
+        }
+
         if (bstore.storage_exists()) {
             bstore.restore_three(midgame_feasible_partitions, endgame_adjacent_partitions, endgame_adjacent_maxfeas,
-                                 fingerprint_map, fingerprints, unique_fps, alg_knownsum_winning);
+                                 fingerprint_map, fingerprints, unique_fps);
             populate_midgame_feasible_map();
             print_if<PROGRESS>("Minibs<%d>: Init complete via restoration.\n", DENOMINATOR);
             fprintf(stderr, "Minibs<%d> from restoration: %zu partitions are midgame feasible.\n", DENOM,
@@ -728,11 +752,11 @@ public:
         } else {
 
             print_if<PROGRESS>("Minibs<%d>: Initialization must happen from scratch.\n", DENOMINATOR);
-            init_from_scratch();
+            init_from_scratch(knownsum_loaded);
         }
     }
 
-    void init_from_scratch() {
+    void init_from_scratch(bool knownsum_loaded) {
 
         std::array<unsigned int, BINS> limits = {0};
         limits[0] = DENOMINATOR - 1;
@@ -761,7 +785,15 @@ public:
                 endgame_adjacent_partitions.size());
 
         // We initialize the knownsum layer here.
-        init_knownsum_layer();
+        if (!knownsum_loaded) {
+            init_knownsum_layer();
+            if (PROGRESS) {
+                fprintf(stderr, "Computed first losing loadconf: ");
+                knownsum_first_losing.print(stderr);
+                fprintf(stderr, ".\n");
+            }
+
+        }
 
         std::vector<uint64_t> *random_numbers = create_random_hashes(midgame_feasible_partitions.size());
         fpstorage = new fingerprint_storage(random_numbers);
@@ -785,11 +817,16 @@ public:
 
     inline void backup_calculations() {
         binary_storage<DENOMINATOR> bstore;
+
+        if (!bstore.knownsum_file_exists()) {
+            print_if<PROGRESS>("Backing up knownsum calculations.\n", DENOMINATOR);
+            bstore.backup_knownsum_set(alg_knownsum_winning, knownsum_first_losing.loads);
+        }
+
         if (!bstore.storage_exists()) {
             print_if<PROGRESS>("Queen: Backing up Minibs<%d> calculations.\n", DENOMINATOR);
             bstore.backup_three(midgame_feasible_partitions, endgame_adjacent_partitions, endgame_adjacent_maxfeas,
-                                fingerprint_map, fingerprints, unique_fps,
-                                alg_knownsum_winning);
+                                fingerprint_map, fingerprints, unique_fps);
         }
     }
 

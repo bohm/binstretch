@@ -22,9 +22,11 @@ template<int DENOMINATOR>
 class binary_storage {
 public:
 
-    const int VERSION = 5;
+    const int VERSION = 6;
     char storage_file_path[256]{};
     FILE *storage_file = nullptr;
+    char knownsum_file_path[256]{};
+    FILE *knownsum_file = nullptr;
 
     binary_storage() {
         if (BINS == 3) {
@@ -32,10 +34,16 @@ public:
         } else {
             sprintf(storage_file_path, "./cache/minibs-%d-%d-%d-scale-%d-v%d.bin", BINS, R, S, DENOMINATOR, VERSION);
         }
+
+        sprintf(knownsum_file_path, "./cache/minibs-knownsum-%d-%d-%d-v%d.bin", BINS, R, S, VERSION);
     }
 
     bool storage_exists() {
         return std::filesystem::exists(storage_file_path);
+    }
+
+    bool knownsum_file_exists() {
+        return std::filesystem::exists(knownsum_file_path);
     }
 
     void open_for_writing() {
@@ -51,6 +59,21 @@ public:
     void close() {
         fclose(storage_file);
         storage_file = nullptr;
+    }
+
+    void open_knownsum_for_writing() {
+        knownsum_file = fopen(knownsum_file_path, "wb");
+        assert(knownsum_file != nullptr);
+    }
+
+    void open_knownsum_for_reading() {
+        knownsum_file = fopen(knownsum_file_path, "rb");
+        assert(knownsum_file != nullptr);
+    }
+
+    void close_knowsum() {
+        fclose(knownsum_file);
+        knownsum_file = nullptr;
     }
 
     bool check_signature() {
@@ -125,15 +148,24 @@ public:
         return ret;
     }
 
-    void write_delimeter() {
+    void write_delimeter(FILE* file = nullptr) {
         int del = -1;
-        fwrite(&del, sizeof(int), 1, storage_file);
+        if (file == nullptr) {
+            fwrite(&del, sizeof(int), 1, storage_file);
+        } else {
+            fwrite(&del, sizeof(int), 1, file);
+        }
     }
 
-    void read_delimeter() {
+    void read_delimeter(FILE *file = nullptr) {
         int del = 0;
         int del_read = 0;
-        del_read = fread(&del, sizeof(int), 1, storage_file);
+        if (file == nullptr) {
+            del_read = fread(&del, sizeof(int), 1, storage_file);
+        } else {
+            del_read = fread(&del, sizeof(int), 1, file);
+        }
+
         if (del != -1 || del_read != 1) {
             ERRORPRINT("Binary storage error: missing delimeter.\n");
         }
@@ -153,13 +185,21 @@ public:
         return nos;
     }
 
-    void write_set_size(unsigned int set_size) {
-        fwrite(&set_size, sizeof(unsigned int), 1, storage_file);
+    void write_set_size(unsigned int set_size, FILE* file = nullptr) {
+        if (file == nullptr) {
+            fwrite(&set_size, sizeof(unsigned int), 1, storage_file);
+        } else {
+            fwrite(&set_size, sizeof(unsigned int), 1, file);
+        }
     }
 
-    unsigned int read_set_size() {
+    unsigned int read_set_size(FILE* file = nullptr) {
         int set_size = 0, set_size_read = 0;
-        set_size_read = fread(&set_size, sizeof(unsigned int), 1, storage_file);
+        if (file == nullptr) {
+            set_size_read = fread(&set_size, sizeof(unsigned int), 1, storage_file);
+        } else {
+            set_size_read = fread(&set_size, sizeof(unsigned int), 1, file);
+        }
 
         if (set_size_read != 1) {
             ERRORPRINT("Binary storage error: failed to read the set size.\n");
@@ -169,39 +209,51 @@ public:
     }
 
 
-    void write_one_set(flat_hash_set<uint64_t> &s) {
-        write_set_size(s.size());
-        uint64_t *set_as_array = new uint64_t[s.size()];
+    void write_one_set(flat_hash_set<uint64_t> &s, FILE *file = nullptr) {
+        write_set_size(s.size(), file);
+        auto *set_as_array = new uint64_t[s.size()];
         uint64_t c = 0;
         for (const uint64_t &el: s) {
             set_as_array[c++] = el;
         }
 
-        fwrite(set_as_array, sizeof(uint64_t), c, storage_file);
+        if (file == nullptr) {
+            fwrite(set_as_array, sizeof(uint64_t), c, storage_file);
+        } else {
+            fwrite(set_as_array, sizeof(uint64_t), c, file);
+        }
         delete[] set_as_array;
     }
 
 
-    void write_one_set(flat_hash_set<unsigned int> *s) {
-        write_set_size(s->size());
-        unsigned int *set_as_array = new unsigned int[s->size()];
+    void write_one_set(flat_hash_set<unsigned int> *s, FILE* file = nullptr) {
+        write_set_size(s->size(), file);
+        auto *set_as_array = new unsigned int[s->size()];
         uint64_t c = 0;
         for (const unsigned int &el: *s) {
             set_as_array[c++] = el;
         }
 
-        fwrite(set_as_array, sizeof(unsigned int), c, storage_file);
+        if (file == nullptr) {
+            fwrite(set_as_array, sizeof(unsigned int), c, storage_file);
+        } else {
+            fwrite(set_as_array, sizeof(unsigned int), c, file);
+        }
         delete[] set_as_array;
     }
 
 
-    void read_one_set(flat_hash_set<uint64_t> &out_set) {
+    void read_one_set(flat_hash_set<uint64_t> &out_set, FILE *file = nullptr) {
         out_set.clear();
-        unsigned int set_size = read_set_size();
+        unsigned int set_size = read_set_size(file);
         out_set.reserve(set_size);
         size_t set_read = 0;
-        uint64_t *set_as_array = new uint64_t[set_size];
-        set_read = fread(set_as_array, sizeof(uint64_t), set_size, storage_file);
+        auto *set_as_array = new uint64_t[set_size];
+        if (file == nullptr) {
+            set_read = fread(set_as_array, sizeof(uint64_t), set_size, storage_file);
+        } else {
+            set_read = fread(set_as_array, sizeof(uint64_t), set_size, file);
+        }
 
         if (set_read != set_size) {
             ERRORPRINT("Binary storage error: failed to read one of the sets.\n");
@@ -214,13 +266,17 @@ public:
         delete[] set_as_array;
     }
 
-    void read_one_set(flat_hash_set<unsigned int> *out_set) {
+    void read_one_set(flat_hash_set<unsigned int> *out_set, FILE *file = nullptr) {
         out_set->clear();
-        unsigned int set_size = read_set_size();
+        unsigned int set_size = read_set_size(file);
         out_set->reserve(set_size);
         size_t set_read = 0;
-        unsigned int *set_as_array = new unsigned int[set_size];
-        set_read = fread(set_as_array, sizeof(unsigned int), set_size, storage_file);
+        auto *set_as_array = new unsigned int[set_size];
+        if (file == nullptr) {
+            set_read = fread(set_as_array, sizeof(unsigned int), set_size, storage_file);
+        } else {
+            set_read = fread(set_as_array, sizeof(unsigned int), set_size, file);
+        }
 
         if (set_read != set_size) {
             ERRORPRINT("Binary storage error: failed to read one of the sets.\n");
@@ -410,14 +466,40 @@ public:
 
     }
 
-    void read_knownsum_set(flat_hash_set<uint64_t> &out_knownsum_set) {
-        read_one_set(out_knownsum_set);
-        read_delimeter();
+
+    void write_load_array(std::array<int, BINS+1> &load_array, FILE *file) {
+        fwrite(load_array.data(), sizeof(int), BINS+1, file);
     }
 
-    void write_knownsum_set(flat_hash_set<uint64_t> &knownsum_set) {
-        write_one_set(knownsum_set);
-        write_delimeter();
+    void read_load_array(std::array<int, BINS+1> &out_load_array, FILE *file) {
+        int lc_read = 0;
+        lc_read = fread(out_load_array.data(), sizeof(int), BINS+1, file);
+
+        if (lc_read != BINS+1) {
+            ERRORPRINT("Binary storage error: failed to read one load array.\n");
+        }
+    }
+
+    void restore_knownsum_set(flat_hash_set<uint64_t> &out_knownsum_set,
+                              std::array<int, BINS+1> &out_first_loadconf) {
+        open_knownsum_for_reading();
+        read_delimeter(knownsum_file);
+        read_one_set(out_knownsum_set, knownsum_file);
+        read_delimeter(knownsum_file);
+        read_load_array(out_first_loadconf, knownsum_file);
+        read_delimeter(knownsum_file);
+        close_knowsum();
+    }
+
+    void backup_knownsum_set(flat_hash_set<uint64_t> &knownsum_set,
+                             std::array<int, BINS+1> &first_loadconf) {
+        open_knownsum_for_writing();
+        write_delimeter(knownsum_file);
+        write_one_set(knownsum_set, knownsum_file);
+        write_delimeter(knownsum_file);
+        write_load_array(first_loadconf, knownsum_file);
+        write_delimeter(knownsum_file);
+        close_knowsum();
     }
 
     void write_number_of_feasible_itemconfs(unsigned int nofc) {
@@ -488,7 +570,7 @@ public:
         }
 
         read_feasible_itemconfs(out_feasible_ics);
-        read_knownsum_set(out_knownsum_set);
+        restore_knownsum_set(out_knownsum_set);
         // read_set_system(out_system);
         read_fingerprint_system(out_fingerprint_map, out_fingerprints, out_unique_fps);
         close();
@@ -504,7 +586,7 @@ public:
         write_signature();
         write_zobrist_table();
         write_feasible_itemconfs(feasible_ics);
-        write_knownsum_set(knownsum_set);
+        backup_knownsum_set(knownsum_set);
         write_fingerprint_system(fingerprint_map, fingerprints, unique_fps);
         close();
     }
@@ -552,16 +634,13 @@ public:
                       flat_hash_map<uint64_t, unsigned int> &endgame_adjacent_maxfeas,
                       flat_hash_map<uint64_t, unsigned int> &fingerprint_map,
                       std::vector<flat_hash_set<unsigned int> *> &fingerprints,
-                      std::vector<flat_hash_set<unsigned int> *> &unique_fps,
-                      flat_hash_set<uint64_t> &knownsum_set
-    ) {
+                      std::vector<flat_hash_set<unsigned int> *> &unique_fps) {
         open_for_writing();
         write_signature();
         write_zobrist_table();
         write_partition_container(midgame_feasible_partitions);
         write_partition_container(endgame_adjacent_partitions);
         write_hash_map_to_int(endgame_adjacent_maxfeas);
-        write_knownsum_set(knownsum_set);
         write_fingerprint_system(fingerprint_map, fingerprints, unique_fps);
         close();
     }
@@ -571,8 +650,7 @@ public:
                        flat_hash_map<uint64_t, unsigned int> &endgame_adjacent_maxfeas,
                        flat_hash_map<uint64_t, unsigned int> &out_fingerprint_map,
                        std::vector<flat_hash_set<unsigned int> *> &out_fingerprints,
-                       std::vector<flat_hash_set<unsigned int> *> &out_unique_fps,
-                       flat_hash_set<uint64_t> &out_knownsum_set) {
+                       std::vector<flat_hash_set<unsigned int> *> &out_unique_fps) {
         open_for_reading();
         bool check = check_signature();
         if (!check) {
@@ -587,7 +665,6 @@ public:
         read_partition_container(midgame_feasible_partitions);
         read_partition_container(endgame_adjacent_partitions);
         read_hash_map_to_int(endgame_adjacent_maxfeas);
-        read_knownsum_set(out_knownsum_set);
         // read_set_system(out_system);
         read_fingerprint_system(out_fingerprint_map, out_fingerprints, out_unique_fps);
         close();
