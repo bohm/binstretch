@@ -441,25 +441,15 @@ public:
     }
 
     inline void itemconf_encache_alg_win(const uint64_t &loadhash, const unsigned int &item_layer) {
-
-        size_t old_size = 0;
         if (fpstorage->query_fp(loadhash) == nullptr) {
             flat_hash_set<unsigned int> fp_new;
             fp_new.insert(item_layer);
             fpstorage->change_representative(loadhash, fp_new);
         } else {
-            flat_hash_set<unsigned int> fp_clone(*fpstorage->query_fp(loadhash));
             flat_hash_set<unsigned int> fp_upcoming(*fpstorage->query_fp(loadhash));
-            old_size = fpstorage->query_fp(loadhash)->size();
             fp_upcoming.insert(item_layer);
             fpstorage->change_representative(loadhash, fp_upcoming);
-            for (unsigned int layer: fp_clone) {
-                assert (fpstorage->query_fp(loadhash)->contains(layer));
-            }
         }
-
-        assert(fpstorage->query_fp(loadhash)->contains(item_layer));
-        assert(fpstorage->query_fp(loadhash)->size() == old_size+1);
     }
 
     void init_itemconf_layer(unsigned int layer_index, flat_hash_set<uint64_t> *alg_winning_in_layer) {
@@ -590,9 +580,6 @@ public:
     void deferred_insertion(unsigned int layer_index, const flat_hash_set<uint64_t> &winning_loadhashes) {
         // fprintf(stderr, "Bucket of layer %u has %zu elements.\n", layer_index, winning_loadhashes.size());
         for (uint64_t loadhash: winning_loadhashes) {
-            if (loadhash == 1790676600U) {
-                fprintf(stderr, "Problematic loadhash.\n");
-            }
                 itemconf_encache_alg_win(loadhash, layer_index);
         }
         // flat_hash_map<uint64_t, size_t> frequencies_before = fpstorage->compute_frequencies();
