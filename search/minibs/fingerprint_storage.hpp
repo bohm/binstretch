@@ -7,9 +7,10 @@
 class fingerprint_storage {
 public:
 
-    flat_hash_map<size_t, int> refcounts{};
+    // flat_hash_map<size_t, int> refcounts{};
+    // flat_hash_map<size_t, uint64_t> fp_hashes{};
 
-    flat_hash_map<size_t, fingerprint_set> fingerprints{};
+    flat_hash_map<uint64_t, augmented_fp_set> fingerprints{};
     flat_hash_map<uint64_t, size_t> loadhash_representative_fp{};
     std::vector<uint64_t> *rns = nullptr;
 
@@ -17,32 +18,34 @@ public:
         rns = irns;
     }
 
-    // Returns the hash of the new afp.
-    size_t increase(const fingerprint_set &fp) {
-        size_t hash = fingerprint_hash(*rns, fp);
-        if (fingerprints.contains(hash)) {
-            refcounts[hash]++;
-        } else {
-            refcounts[hash] = 1;
-            fingerprints[hash] = fp;
-        }
-        return hash;
-    }
-
-    void decrease(const fingerprint_set &fp) {
-        size_t hash = fingerprint_hash(*rns, fp);
-        refcounts[hash]--;
-    }
-
-    void change_representative(uint64_t loadhash, const fingerprint_set &newfp) {
+    void add_partition_to_loadhash(uint64_t loadhash, unsigned int winning_partition_index) {
+        uint64_t previous_hash = 0;
         if (loadhash_representative_fp.contains(loadhash)) {
-            size_t old_representative_hash = loadhash_representative_fp[loadhash];
-            fingerprint_set& fp_old = fingerprints[old_representative_hash];
-            decrease(fp_old);
+            previous_hash = fingerprints[loadhash_representative_fp[loadhash]].hash;
         }
-        size_t new_representative_hash = increase(newfp);
-        loadhash_representative_fp[loadhash] = new_representative_hash;
 
+        uint64_t new_fp_hash = fingerprint_virtual_hash(rns, previous_hash, winning_partition_index);
+
+        if (fingerprints.contains(new_fp_hash)) {
+            loadhash_representative_fp[loadhash] = new_fp_hash;
+            fingerprints[new_fp_hash].refcount++;
+        } else {
+            if (loadhash_representative_fp.contains(loadhash)) {
+                augmented_fp_set afs(fingerprints[loadhash_representative_fp[loadhash]].fp, new_fp_hash);
+                afs.fp.insert(winning_partition_index);
+                afs.refcount++;
+                fingerprints[loadhash_representative_fp[loadhash]].refcount--;
+                fingerprints[new_fp_hash] = afs;
+                loadhash_representative_fp[loadhash] = new_fp_hash;
+            } else {
+                augmented_fp_set afs;
+                afs.fp.insert(winning_partition_index);
+                afs.hash = new_fp_hash;
+                afs.refcount++;
+                fingerprints[new_fp_hash] = afs;
+                loadhash_representative_fp[loadhash] = new_fp_hash;
+            }
+        }
     }
 
     // Returns the fingerprint on query or nullptr.
@@ -51,23 +54,22 @@ public:
          {
              return nullptr;
          } else {
-             return &(fingerprints[loadhash_representative_fp[loadhash]]);
+             return &(fingerprints[loadhash_representative_fp[loadhash]].fp);
          }
     }
 
     // Garbage collection of fingerprints with zero references.
     void collect() {
         std::vector<size_t> marked_for_deletion;
-        for (auto& [hash, count] : refcounts) {
-            if (count <= 0) {
-                marked_for_deletion.emplace_back(hash);
+        for (auto& [afp_hash, afp]: fingerprints) {
+            if (afp.refcount <= 0) {
+                marked_for_deletion.emplace_back(afp_hash);
             }
         }
 
         for (size_t hash: marked_for_deletion)
         {
             fingerprints.erase(hash);
-            refcounts.erase(hash);
         }
     }
 
@@ -76,10 +78,10 @@ public:
         out_fp_vector.clear();
         out_fingerprint_map.clear();
 
-        flat_hash_map<size_t, unsigned int> position_in_out_vector;
+        flat_hash_map<uint64_t, unsigned int> position_in_out_vector;
         for (auto &[key, afp]: fingerprints) {
-            auto* output_fp = new fingerprint_set(afp);
-            size_t hash = fingerprint_hash(*rns, afp);
+            auto* output_fp = new fingerprint_set(afp.fp);
+            uint64_t hash = fingerprint_hash(*rns, afp.fp);
             out_fp_vector.emplace_back(output_fp);
             position_in_out_vector[hash] = out_fp_vector.size() - 1;
         }
@@ -109,7 +111,7 @@ public:
     flat_hash_map<uint64_t, size_t> compute_frequencies() {
         flat_hash_map<uint64_t, size_t> freq;
         for (auto & [loadhash, hash] : loadhash_representative_fp) {
-            freq[loadhash] = fingerprints[hash].size();
+            freq[loadhash] = fingerprints[hash].fp.size();
         }
         return freq;
     }

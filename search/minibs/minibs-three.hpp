@@ -449,16 +449,8 @@ public:
         return alg_winning_in_layer->contains(loadhash_if_packed);
     }
 
-    inline void itemconf_encache_alg_win(const uint64_t &loadhash, const unsigned int &item_layer) {
-        if (fpstorage->query_fp(loadhash) == nullptr) {
-            flat_hash_set<unsigned int> fp_new;
-            fp_new.insert(item_layer);
-            fpstorage->change_representative(loadhash, fp_new);
-        } else {
-            flat_hash_set<unsigned int> fp_upcoming(*fpstorage->query_fp(loadhash));
-            fp_upcoming.insert(item_layer);
-            fpstorage->change_representative(loadhash, fp_upcoming);
-        }
+    inline void itemconf_encache_alg_win(uint64_t loadhash, unsigned int item_layer) {
+        fpstorage->add_partition_to_loadhash(loadhash, item_layer);
     }
 
     void init_itemconf_layer(unsigned int layer_index, flat_hash_set<uint64_t> *alg_winning_in_layer) {
