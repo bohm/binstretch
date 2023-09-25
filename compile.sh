@@ -21,6 +21,7 @@ I_S="{}"
 
 # Default parameter values for other parameters:
 OUTPUT="build"
+OUTPUT_SUBFOLDER="build/$BINS-$R-$S"
 BUILDING_ROOSTER=true
 BUILDING_PAINTER=true
 BUILDING_KIBBITZER=true
@@ -113,6 +114,10 @@ if [ ! -d $OUTPUT ]; then
     mkdir $OUTPUT;
 fi
 
+if [ ! -d $OUTPUT_SUBFOLDER ]; then
+    mkdir $OUTPUT_SUBFOLDER;
+fi
+
 if [[ "$I_S" == "{}" ]]; then
     echo "Building for $BINS bins and ratio $R/$S."
 else
@@ -121,18 +126,18 @@ fi
 
 
 if [[ "$BUILDING_SEARCH" = true ]]; then
-	echo "Running: g++ -I./ -I../../parallel-hashmap/ -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S main.cpp -o ../$OUTPUT/search-$BINS-$R-$S -pthread $LINKING_SUFFIX"
-	cd search; g++ -I./ -I../../parallel-hashmap/ -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S main.cpp -o ../$OUTPUT/search-$BINS-$R-$S -pthread $LINKING_SUFFIX; cd ..
+	echo "Running: g++ -I./ -I../../parallel-hashmap/ -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S main.cpp -o ../$OUTPUT_SUBFOLDER/search -pthread $LINKING_SUFFIX"
+	cd search; g++ -I./ -I../../parallel-hashmap/ -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S main.cpp -o ../$OUTPUT_SUBFOLDER/search -pthread $LINKING_SUFFIX; cd ..
 fi
 
 if [[ "$BUILDING_PAINTER" = true ]]; then
-	echo "Running: g++ -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S painter.cpp -o ../$OUTPUT/painter-$BINS-$R-$S -pthread $LINKING_SUFFIX"
-	cd painter; g++ -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S painter.cpp -o ../$OUTPUT/painter-$BINS-$R-$S -pthread $LINKING_SUFFIX; cd ..
+	echo "Running: g++ -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S painter.cpp -o ../$OUTPUT_SUBFOLDER/painter -pthread $LINKING_SUFFIX"
+	cd painter; g++ -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S painter.cpp -o ../$OUTPUT_SUBFOLDER/painter -pthread $LINKING_SUFFIX; cd ..
 fi
 
 if [[ "$BUILDING_KIBBITZER" = true ]]; then
-	echo "Running: g++ -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S kibbitzer.cpp -o ../$OUTPUT/kibbitzer-$BINS-$R-$S -pthread $LINKING_SUFFIX"
-	cd kibbitzer; g++ -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S kibbitzer.cpp -o ../$OUTPUT/kibbitzer-$BINS-$R-$S -pthread $LINKING_SUFFIX; cd ..
+	echo "Running: g++ -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S kibbitzer.cpp -o ../$OUTPUT_SUBFOLDER/kibbitzer -pthread $LINKING_SUFFIX"
+	cd kibbitzer; g++ -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S kibbitzer.cpp -o ../$OUTPUT_SUBFOLDER/kibbitzer -pthread $LINKING_SUFFIX; cd ..
 fi
 
 if [[ "$BUILDING_ROOSTER" = true ]]; then
@@ -141,10 +146,13 @@ if [[ "$BUILDING_ROOSTER" = true ]]; then
 fi
 
 if [[ "$BUILDING_MINITOOLS" = true ]]; then
-	echo "Running: g++ -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S listsaplings.cpp -o ../$OUTPUT/listsaplings-$BINS-$R-$S -pthread $LINKING_SUFFIX"
-	cd minitools; g++ -I../search/ -I../../parallel-hashmap/ -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S listsaplings.cpp -o ../$OUTPUT/listsaplings-$BINS-$R-$S -pthread $LINKING_SUFFIX; cd ..
-	echo "Running: g++ -I./search/ -I../parallel-hashmap/  -Wall -std=$CPP_STANDARD $OPTFLAG -march=native minitools/alg-winning-table.cpp -o ./$OUTPUT/awt -pthread"
-	g++ -I./search/ -I../parallel-hashmap/  -Wall -std=$CPP_STANDARD $OPTFLAG -march=native minitools/alg-winning-table.cpp -o ./$OUTPUT/awt -pthread
+#	echo "Running: g++ -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S listsaplings.cpp -o ../$OUTPUT/listsaplings-$BINS-$R-$S -pthread $LINKING_SUFFIX"
+#	cd minitools; g++ -I../search/ -I../../parallel-hashmap/ -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S listsaplings.cpp -o ../$OUTPUT/listsaplings-$BINS-$R-$S -pthread $LINKING_SUFFIX; cd ..
+	g++ -I./search/ -I../parallel-hashmap/  -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S minitools/alg-winning-table.cpp -o ./$OUTPUT_SUBFOLDER/awt -pthread
+	g++ -I./search/ -I../parallel-hashmap/  -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S minitools/all-losing.cpp -o ./$OUTPUT_SUBFOLDER/all-losing -pthread
+	g++ -I./search/ -I../parallel-hashmap/  -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S tests/minibs-tests.cpp -o ./$OUTPUT_SUBFOLDER/minibs-tests -pthread
+
+
 
 fi
 

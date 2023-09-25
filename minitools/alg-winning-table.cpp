@@ -4,16 +4,13 @@
 #include <unordered_map>
 #include <cstdint>
 
-#define IBINS 3
-#define IR 821
-#define IS 600
 
 #include "minibs/minibs.hpp"
 #include "minibs/minibs-three.hpp"
 
 #include "gs.hpp"
 
-constexpr int TEST_SCALE = 12;
+constexpr int TEST_SCALE = 6;
 
 constexpr int TWO_MINUS_FIVE_ALPHA = 2 * S - 5 * ALPHA;
 
@@ -158,6 +155,18 @@ bool gs8_step1s(loadconf *lc) {
 
     return false;
 }
+
+
+// A small extension of GS8-step1s, 2023-09-25.
+// The idea is, we pack very fine sand into C, which lifts it above the 2*S - 5*ALPHA
+// strong condition, which does not hold at the outset.
+// However, if an item arrives that breaks the 8A + 8B >= 9 - 15ALPHA + 7C inequality,
+// then this item should trigger GS2 on B (or be too large, which we need to think about.)
+
+bool gs8_step1as(loadconf *lc) {
+
+}
+
 
 // Strong condition becomes true after packing an item on A.
 // We already have 4A + 4B >= 5 - 7ALPHA +3C, which can be understood as the 2-6-4-3 coverage.

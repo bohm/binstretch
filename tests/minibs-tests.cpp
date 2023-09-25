@@ -4,14 +4,10 @@
 #include <unordered_map>
 #include <cstdint>
 
-#define IBINS 3
-#define IR 821
-#define IS 600
-
 #include "minibs/minibs.hpp"
 #include "minibs/minibs-three.hpp"
 
-constexpr int TEST_SCALE = 12;
+constexpr int TEST_SCALE = 6;
 constexpr int GS2BOUND = S - 2*ALPHA;
 
 // Computes the winning sand positions (for ALG with ratio R-1/S).
