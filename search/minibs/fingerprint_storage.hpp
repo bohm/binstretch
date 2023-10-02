@@ -27,6 +27,9 @@ public:
         uint64_t new_fp_hash = fingerprint_virtual_hash(rns, previous_hash, winning_partition_index);
 
         if (fingerprints.contains(new_fp_hash)) {
+            if (loadhash_representative_fp.contains(loadhash)) {
+                fingerprints[loadhash_representative_fp[loadhash]].refcount--;
+            }
             loadhash_representative_fp[loadhash] = new_fp_hash;
             fingerprints[new_fp_hash].refcount++;
         } else {

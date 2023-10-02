@@ -326,7 +326,7 @@ public:
             flat_hash_map<unsigned int, flat_hash_set<unsigned int> *> &out_p_seq) {
         unsigned int unique_trees = read_set_size();
         for (unsigned int i = 0; i < unique_trees; ++i) {
-            flat_hash_set<unsigned int> *fp = new flat_hash_set<unsigned int>();
+            auto *fp = new flat_hash_set<unsigned int>();
             read_one_set(fp);
             out_p_seq[i] = fp;
             out_unique_fps.push_back(fp);
@@ -373,8 +373,8 @@ public:
 
     void read_hash_map_to_int(flat_hash_map<uint64_t, unsigned int> &out_fingerprint_map) {
         unsigned int map_size = read_set_size();
-        uint64_t *keys = new uint64_t[map_size];
-        unsigned int *values = new unsigned int[map_size];
+        auto *keys = new uint64_t[map_size];
+        auto *values = new unsigned int[map_size];
 
         int succ_read_keys = fread(keys, sizeof(uint64_t), map_size, storage_file);
 
@@ -394,14 +394,17 @@ public:
         for (unsigned int i = 0; i < map_size; ++i) {
             out_fingerprint_map[keys[i]] = values[i];
         }
+
+        delete[] keys;
+        delete[] values;
     }
 
 
     void write_hash_map_to_int(flat_hash_map<uint64_t, unsigned int> &fingerprint_map) {
         // Store the map as two arrays.
 
-        uint64_t *keys = new uint64_t[fingerprint_map.size()];
-        unsigned int *values = new unsigned int[fingerprint_map.size()];
+        auto *keys = new uint64_t[fingerprint_map.size()];
+        auto *values = new unsigned int[fingerprint_map.size()];
 
         int pos = 0;
         for (const auto &[k, v]: fingerprint_map) {
@@ -417,6 +420,8 @@ public:
         write_delimeter();
         fwrite(values, sizeof(unsigned int), fingerprint_map.size(), storage_file);
         write_delimeter();
+        delete[] keys;
+        delete[] values;
     }
 
 
@@ -460,7 +465,7 @@ public:
                fingerprints.size(), storage_file);
         write_delimeter();
 
-        delete pointerless_fingerprints;
+        delete[] pointerless_fingerprints;
 
         write_hash_map_to_int(fingerprint_map);
 

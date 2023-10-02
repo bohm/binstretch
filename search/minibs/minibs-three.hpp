@@ -748,6 +748,11 @@ public:
         }
     }
 
+    ~minibs() {
+        for (auto* fingerprint: unique_fps) {
+            delete fingerprint;
+        }
+    }
     void init_from_scratch(bool knownsum_loaded) {
 
         std::array<unsigned int, BINS> limits = {0};
@@ -804,6 +809,7 @@ public:
         fprintf(stderr, "Fingerprint map size %zu, fingerprints size %zu.\n",
                 fingerprint_map.size(), fingerprints.size());
         delete fpstorage;
+        delete random_numbers;
         fpstorage = nullptr;
     }
 
