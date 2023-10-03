@@ -97,7 +97,14 @@ public:
     fingerprint_storage *fpstorage = nullptr;
     minidp<DENOMINATOR> mdp;
 
+private:
+    // Parallel bucketing variables.
+    int current_superbucket = 0;
+    std::atomic<int> position_in_bucket = 0;
+    std::vector<std::vector<unsigned int>> superbuckets;
+    std::vector<flat_hash_set<uint64_t>> parallel_computed_layers;
 
+public:
     static inline int shrink_item(int larger_item) {
         if ((larger_item * DENOMINATOR) % S == 0) {
             return ((larger_item * DENOMINATOR) / S) - 1;
@@ -626,6 +633,23 @@ public:
         }
     }
 
+    std::pair<int, int> get_bucket_task() {
+        int superbucket_id = current_superbucket;
+        int position_id = position_in_bucket++;
+        return {superbucket_id, position_id};
+    }
+
+    void worker_process_task() {
+        while (true) {
+            auto [superbucket_id, position_id] = get_bucket_task();
+            if (superbuckets[superbucket_id].size() >= position_id) {
+                return;
+            } else {
+                init_itemconf_layer(superbuckets[superbucket_id][position_id],
+                                    &parallel_computed_layers[position_id]);
+            }
+        }
+    }
 
     void init_layers_parallel() {
 
@@ -633,9 +657,11 @@ public:
         int max_items_per_partition = std::accumulate(midgame_feasible_partitions[0].begin(),
                                                       midgame_feasible_partitions[0].end(), 0);
 
-        std::vector<std::vector<unsigned int>> open_bucket(max_items_per_partition + 1);
-        std::vector<std::vector<std::vector<unsigned int>>> superbuckets(max_items_per_partition + 1);
+        // std::vector<std::vector<unsigned int>> open_bucket(max_items_per_partition + 1);
+        // std::vector<std::vector<std::vector<unsigned int>>> superbuckets(max_items_per_partition + 1);
 
+        superbuckets.clear();
+        superbuckets.resize(max_items_per_partition+1);
         unsigned int thread_count = std::get<2>(server_properties(gethost().c_str()));
 
 
@@ -645,23 +671,11 @@ public:
         for (unsigned int j = 0; j < midgame_feasible_partitions.size(); j++) {
             unsigned int itemcount = std::accumulate(midgame_feasible_partitions[j].begin(),
                                                      midgame_feasible_partitions[j].end(), 0);
-            open_bucket[itemcount].emplace_back(j);
-            if (open_bucket[itemcount].size() >= thread_count) {
-                superbuckets[itemcount].emplace_back(open_bucket[itemcount]);
-                open_bucket[itemcount].clear();
-            }
+            superbuckets[itemcount].emplace_back(j);
         }
 
         assert(max_items_per_partition + 1 == (int) superbuckets.size());
-        assert(max_items_per_partition + 1 == (int) open_bucket.size());
 
-        // Some buckets may still be open, they need to be closed now.
-        for (int b = max_items_per_partition; b >= 0; b--) {
-            if (open_bucket[b].size() >= 0) {
-                superbuckets[b].emplace_back(open_bucket[b]);
-                open_bucket[b].clear();
-            }
-        }
 
         auto *threads = new std::thread[thread_count];
         auto *winning_per_layer = new flat_hash_set<uint64_t>[thread_count];
@@ -673,31 +687,30 @@ public:
         unsigned int buckets_processed = 0;
         unsigned int buckets_last_reported = 0;
 
-        for (int b = max_items_per_partition; b >= 0; b--) {
-            for (auto &bucket: superbuckets[b]) {
-                assert(bucket.size() <= thread_count);
-                for (unsigned int t = 0; t < bucket.size(); t++) {
-                    threads[t] = std::thread(&minibs<DENOMINATOR, 3>::init_itemconf_layer, this, bucket[t],
-                                             &winning_per_layer[t]);
-                }
+        for (int sb = max_items_per_partition; sb >= 0; sb--) {
+            current_superbucket = sb;
+            position_in_bucket = 0;
+            parallel_computed_layers.clear();
+            parallel_computed_layers.resize(superbuckets[current_superbucket].size());
 
-                for (unsigned int t = 0; t < bucket.size(); t++) {
-                    threads[t].join();
-                    deferred_insertion(bucket[t], winning_per_layer[t]);
-                    // fprintf(stderr, "Layer %u has %zu winning loadhashes per this layer.\n", bucket[t],
-                    //        winning_per_layer[t].size());
-                    // fpstorage->add_positions_to_check(bucket[t], winning_per_layer[t]);
-                    // fpstorage->check_wins();
-                    winning_per_layer[t].clear();
-                }
+            for (unsigned int t = 0; t < thread_count; t++) {
+                threads[t] = std::thread(&minibs<DENOMINATOR, 3>::worker_process_task, this);
+            }
+            for (unsigned int t = 0; t < thread_count; t++) {
+                threads[t].join();
+            }
 
-                if (PROGRESS) {
-                    buckets_processed += bucket.size();
-                    if (buckets_processed - buckets_last_reported >= 500) {
-                        fprintf(stderr, "Processed %u/%zu midgame feasible partitions.\n", buckets_processed,
+            for (unsigned int b = 0; b < superbuckets[sb].size(); b++) {
+                deferred_insertion(superbuckets[sb][b], parallel_computed_layers[b]);
+                parallel_computed_layers[b].clear();
+            }
+
+            if (PROGRESS) {
+                buckets_processed += superbuckets[sb].size();
+                if (buckets_processed - buckets_last_reported >= 500) {
+                    fprintf(stderr, "Processed %u/%zu midgame feasible partitions.\n", buckets_processed,
                                 midgame_feasible_partitions.size());
-                        buckets_last_reported = buckets_processed;
-                    }
+                    buckets_last_reported = buckets_processed;
                 }
             }
         }
