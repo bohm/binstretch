@@ -633,16 +633,18 @@ public:
         }
     }
 
-    std::pair<int, int> get_bucket_task() {
-        int superbucket_id = current_superbucket;
-        int position_id = position_in_bucket++;
+    std::pair<unsigned int, unsigned int> get_bucket_task() {
+        unsigned int superbucket_id = current_superbucket;
+        unsigned int position_id = position_in_bucket++;
         return {superbucket_id, position_id};
     }
 
     void worker_process_task() {
         while (true) {
             auto [superbucket_id, position_id] = get_bucket_task();
-            if (superbuckets[superbucket_id].size() >= position_id) {
+            // print_if<PROGRESS>("Pair {%u, %u}.\n", superbucket_id, position_id);
+            // auto [superbucket_id, position_id] = get_bucket_task();
+            if (position_id >= superbuckets[superbucket_id].size()) {
                 return;
             } else {
                 init_itemconf_layer(superbuckets[superbucket_id][position_id],
@@ -678,11 +680,6 @@ public:
 
 
         auto *threads = new std::thread[thread_count];
-        auto *winning_per_layer = new flat_hash_set<uint64_t>[thread_count];
-
-        for (unsigned int t = 0; t < thread_count; t++) {
-            winning_per_layer[t] = flat_hash_set<uint64_t>{};
-        }
 
         unsigned int buckets_processed = 0;
         unsigned int buckets_last_reported = 0;
@@ -691,7 +688,7 @@ public:
             current_superbucket = sb;
             position_in_bucket = 0;
             parallel_computed_layers.clear();
-            parallel_computed_layers.resize(superbuckets[current_superbucket].size());
+            parallel_computed_layers.resize(superbuckets[sb].size());
 
             for (unsigned int t = 0; t < thread_count; t++) {
                 threads[t] = std::thread(&minibs<DENOMINATOR, 3>::worker_process_task, this);
@@ -716,7 +713,6 @@ public:
         }
 
         delete[] threads;
-        delete[] winning_per_layer;
     }
 
     // The init is now able to recover data from previous computations.
