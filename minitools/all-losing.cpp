@@ -5,11 +5,11 @@
 #include <cstdint>
 
 
+#include "minitool_scale.hpp"
 #include "minibs/minibs.hpp"
 #include "minibs/minibs-three.hpp"
 #include "gs.hpp"
 
-constexpr int TEST_SCALE = 6;
 
 constexpr int TWO_MINUS_FIVE_ALPHA = 2 * S - 5 * ALPHA;
 
@@ -122,7 +122,7 @@ int main(int argc, char **argv) {
     }
 
     // fprintf(stderr, "argstream: %s\n", argstream.str().c_str());
-    std::pair<loadconf, itemconf<TEST_SCALE>> p = loadshrunken<TEST_SCALE>(argstream, only_load);
+    std::pair<loadconf, itemconf<MINITOOL_MINIBS_SCALE>> p = loadshrunken<MINITOOL_MINIBS_SCALE>(argstream, only_load);
 
     // p.first.print(stderr);
     // fprintf(stderr, " ");
@@ -130,11 +130,11 @@ int main(int argc, char **argv) {
 
     // maximum_feasible_tests();
 
-    minibs<TEST_SCALE, BINS> mb;
+    minibs<MINITOOL_MINIBS_SCALE, BINS> mb;
     mb.backup_calculations();
 
 
-    alg_losing_table<TEST_SCALE, BINS>(&p, &mb);
+    alg_losing_table<MINITOOL_MINIBS_SCALE, BINS>(&p, &mb);
     // binary_storage<TEST_SCALE> bstore;
 
     // if (!bstore.storage_exists())
