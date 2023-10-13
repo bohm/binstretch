@@ -163,9 +163,8 @@ if [[ "$BUILDING_MINITOOLS" = true ]]; then
 	g++ -I./search/ -I../parallel-hashmap/  -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DI_SCALE=$I_SCALE minitools/all-losing.cpp -o ./$OUTPUT_SUBFOLDER/all-losing-$I_SCALE -pthread
   echo "Compiling ./$OUTPUT_SUBFOLDER/minibs-tests-$I_SCALE."
 	g++ -I./search/ -I../parallel-hashmap/  -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DI_SCALE=$I_SCALE tests/minibs-tests.cpp -o ./$OUTPUT_SUBFOLDER/minibs-tests-$I_SCALE -pthread
-
-
-
+  echo "Compiling ./$OUTPUT_SUBFOLDER/sand-on-ab-$I_SCALE."
+	g++ -I./search/ -I../parallel-hashmap/  -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DI_SCALE=$I_SCALE minitools/sand-on-ab.cpp -o ./$OUTPUT_SUBFOLDER/sand-on-ab-$I_SCALE -pthread
 fi
 
 if [[ "$BUILDING_TESTS" = true ]]; then
