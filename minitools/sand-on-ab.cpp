@@ -43,14 +43,22 @@ bool sand_losing(minibs<SCALE, SPEC> &mb, const std::array<int, BINS>& sand_load
 
 using initial_square_matrix = std::array<std::array<bool, ONE_MINUS_TWO_ALPHA>, ONE_MINUS_TWO_ALPHA>;
 
-void print_interval(int a, int b_left_end, int b_right_end) {
-    if (b_left_end == b_right_end) {
-        fprintf(stderr, "[%d, %d] ", a, b_left_end);
+void print_interval(int a, int b_left_end, int b_right_end, int c = 0) {
+    if (c == 0) {
+        if (b_left_end == b_right_end) {
+            fprintf(stderr, "[%d, %d] ", a, b_left_end);
+        } else {
+            fprintf(stderr, "[%d, %d-%d] ", a, b_left_end, b_right_end);
+        }
     } else {
-        fprintf(stderr, "[%d, %d-%d] ", a, b_left_end, b_right_end);
+        if (b_left_end == b_right_end) {
+            fprintf(stderr, "[%d, %d, %d] ", a, b_left_end, c);
+        } else {
+            fprintf(stderr, "[%d, %d-%d, %d] ", a, b_left_end, b_right_end, c);
+        }
     }
 }
-void print_square(const initial_square_matrix & m) {
+void print_square(const initial_square_matrix & m, int c = 0) {
     for (int a = ONE_MINUS_TWO_ALPHA-1; a >= 0; a--) {
         int interval_left_end = -1;
         bool something_printed = false;
@@ -61,7 +69,7 @@ void print_square(const initial_square_matrix & m) {
                 }
             } else {
                 if (interval_left_end != -1) {
-                    print_interval(a, interval_left_end, b-1);
+                    print_interval(a, interval_left_end, b-1, c);
                     interval_left_end = -1;
                     something_printed = true;
                 }
@@ -69,7 +77,7 @@ void print_square(const initial_square_matrix & m) {
         }
         // Close the current interval, too.
         if (interval_left_end != -1) {
-            print_interval(a, interval_left_end, a);
+            print_interval(a, interval_left_end, a, c);
             interval_left_end = -1;
             something_printed = true;
         }
@@ -80,29 +88,39 @@ void print_square(const initial_square_matrix & m) {
     }
 }
 
-template <int SCALE, int SPEC> void compute_sand_square(minibs<SCALE, SPEC> &mb) {
+template <int SCALE, int SPEC> void compute_sand_square(minibs<SCALE, SPEC> &mb, int c = 0) {
     initial_square_matrix m = {0};
     std::array<int, BINS> sand = {0};
 
-    for (int a = ONE_MINUS_TWO_ALPHA-1; a >= 0; a--) {
-        for (int b = 0; b <= a; b++) {
+    for (int a = ONE_MINUS_TWO_ALPHA-1; a >= c; a--) {
+        for (int b = c; b <= a; b++) {
             sand[0] = a;
             sand[1] = b;
+            sand[2] = c;
             m[a][b] = sand_losing(mb, sand);
         }
     }
 
-    print_square(m);
+    print_square(m, c);
 }
 
 int main(int argc, char **argv) {
+
+    int load_on_c = 0;
+    if (argc > 1) {
+        if (argc > 2) {
+            fprintf(stderr, "sand-on-ab takes either zero or one integer parameter.\n");
+            exit(-1);
+        }
+        load_on_c = atoi(argv[1]);
+    }
 
     zobrist_init();
 
     minibs<MINITOOL_MINIBS_SCALE, BINS> mb;
     mb.backup_calculations();
 
-    compute_sand_square(mb);
+    compute_sand_square(mb, load_on_c);
 
     return 0;
 }

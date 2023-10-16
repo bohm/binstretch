@@ -162,10 +162,11 @@ bool gs8_step1s(loadconf *lc) {
 // However, if an item arrives that breaks the 8A + 8B >= 9 - 15ALPHA + 7C inequality,
 // then this item should trigger GS2 on B (or be too large, which we need to think about.)
 
+/*
 bool gs8_step1as(loadconf *lc) {
 
 }
-
+*/
 
 // Strong condition becomes true after packing an item on A.
 // We already have 4A + 4B >= 5 - 7ALPHA +3C, which can be understood as the 2-6-4-3 coverage.
@@ -469,7 +470,7 @@ template<int DENOMINATOR> void print_input_form(const loadconf &lc, const itemco
 
     lc.print(stderr);
     fprintf(stderr, " \"(");
-    for (int i = 1; i < ic.items.size(); i++) {
+    for (unsigned int i = 1; i < ic.items.size(); i++) {
         fprintf(stderr, "%d", ic.items[i]);
         if (i != ic.items.size() - 1) {
             fprintf(stderr, " ");
@@ -569,6 +570,34 @@ void print_minibs(std::pair<loadconf, itemconf<SCALE>> *pos) {
     pos->second.print(stderr, false);
 }
 
+template <int SCALE>
+void print_same_interval(int start, int end, flat_hash_map<int, std::string>& good_move_map,
+                    minibs<SCALE, 3>& mb) {
+    if (start == end) {
+        fprintf(stderr, "Item %3d (scaled: %3d), ALG can use: ", start, mb.shrink_item(start));
+        fprintf(stderr, "%s ", good_move_map[start].c_str());
+        fprintf(stderr, "\n");
+    } else {
+        fprintf(stderr, "Items [%3d, %3d] (scaled: [%3d, %3d]), ALG can use: ", end, start,
+                mb.shrink_item(end), mb.shrink_item(start));
+        fprintf(stderr, "%s ", good_move_map[start].c_str());
+        fprintf(stderr, "\n");
+    }
+}
+
+template <int SCALE>
+void print_as_intervals(int item_ub, flat_hash_map<int, std::string>& good_move_map,
+                        minibs<SCALE, 3>& mb) {
+    int unprinted_start = item_ub;
+    for (int item = item_ub-1; item >= 1; item--) {
+        if (good_move_map[item] != good_move_map[unprinted_start]) {
+            print_same_interval<SCALE>(unprinted_start, item+1, good_move_map, mb);
+            unprinted_start = item;
+        }
+    }
+    print_same_interval<SCALE>(unprinted_start, 1, good_move_map, mb);
+}
+
 template<int SCALE>
 void alg_winning_table(std::pair<loadconf, itemconf<SCALE>> *minibs_position, minibs<SCALE,3>*minibs) {
     // If the position is already winning by our established mathematical rules (good situations),
@@ -618,11 +647,14 @@ void alg_winning_table(std::pair<loadconf, itemconf<SCALE>> *minibs_position, mi
     int start_item = std::min(S * BINS - minibs_position->first.loadsum(), maximum_feasible_via_minibs);
 
 
+    flat_hash_map<int, std::string> good_move_map;
+
     for (int item = start_item; item >= 1; item--) {
         // Do not list an item if it is in GS5+ range or any of the GS2 ranges.
-        bool skip_print = false;
-        for (unsigned int i = 0; i < good_ranges.size(); i++) {
-            if (item >= good_ranges[i].first && item <= good_ranges[i].second) {
+
+        /* bool skip_print = false;
+        for (auto &good_range: good_ranges) {
+            if (item >= good_range.first && item <= good_range.second) {
                 skip_print = true;
                 break;
             }
@@ -630,10 +662,10 @@ void alg_winning_table(std::pair<loadconf, itemconf<SCALE>> *minibs_position, mi
 
         if (skip_print) {
             continue;
-        }
+        }*/
 
 
-        std::vector<std::string> good_moves;
+        std::string good_moves;
         uint64_t next_layer_hash = minibs_position->second.itemhash;
         int shrunk_itemtype = minibs->shrink_item(item);
 
@@ -649,39 +681,40 @@ void alg_winning_table(std::pair<loadconf, itemconf<SCALE>> *minibs_position, mi
             if (item + minibs_position->first.loads[bin] <= R - 1) // A plausible move.
             {
                 // We have to check the hash table if the position is winning.
-                bool alg_wins_next_position = minibs->query_itemconf_winning(minibs_position->first, next_layer_hash, item,
+                bool alg_wins_next_position = minibs->query_itemconf_winning(minibs_position->first, next_layer_hash,
+                                                                             item,
                                                                              bin);
                 if (alg_wins_next_position) {
                     char bin_name = (char) (a_minus_one + bin);
-                    good_moves.emplace_back(1, bin_name);
+                    good_moves += bin_name;
+                    good_moves += ' ';
                     // If this position is also a good situation (those we can analyze theoretically) we say so.
 
                     // First, we run the tests which do not need to place the item.
                     std::string tester_before_placing = gs_pre_placement<SCALE>(
                             &(minibs_position->first), item, bin, minibs);
                     if (!tester_before_placing.empty()) {
-                        good_moves.push_back(tester_before_placing);
+                        good_moves += tester_before_placing;
+                        good_moves += ' ';
                     } else {
                         // Then, we run the tests which assume the item is packed.
                         loadconf gm(minibs_position->first, item, bin);
                         std::string tester_reply = gs_loadconf_tester(&gm);
                         if (!tester_reply.empty()) {
-                            good_moves.push_back(tester_reply);
+                            good_moves += tester_reply;
+                            good_moves += ' ';
                         }
                     }
                 }
             }
         }
 
-        // Printing phase.
+        // We do not print until the full good move map is constructed.
+        good_move_map[item] = good_moves;
 
-        fprintf(stderr, "In case %3d (scaled size: %3d), ALG can pack into: ", item, minibs->shrink_item(item));
-        for (unsigned int i = 0; i < good_moves.size(); i++) {
-            fprintf(stderr, "%s ", good_moves[i].c_str());
-        }
-        fprintf(stderr, "\n");
     }
 
+    print_as_intervals<SCALE>(start_item, good_move_map, *minibs);
     print_ranges(&(minibs_position->first));
 }
 
