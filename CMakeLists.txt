@@ -17,9 +17,9 @@ include_directories(search/strategies)
 include_directories(search/weights)
 include_directories(../parallel-hashmap)
 
-add_compile_definitions(IBINS=3)
-add_compile_definitions(IR=56)
-add_compile_definitions(IS=41)
+add_compile_definitions(IBINS=9)
+add_compile_definitions(IR=19)
+add_compile_definitions(IS=14)
 
 
 add_executable(clion

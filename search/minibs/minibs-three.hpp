@@ -49,7 +49,7 @@ public:
     // Non-static section.
 
     // std::vector<itemconf<DENOMINATOR> > feasible_itemconfs;
-    // flat_hash_map<uint64_t, unsigned int> feasible_map;
+    // flat_hash_map<uint64_t, unsigned int> all_feasible_hashmap;
 
     // For three bins, we store not all feasible item configurations, but instead only what we call
     // midgame feasible partitions. These still allow to send two items of size 1.5*ALPHA.

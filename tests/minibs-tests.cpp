@@ -347,7 +347,7 @@ template <int DENOMINATOR> void topmost_layer_info(const minibs<DENOMINATOR>& mb
 	bool no_increase_possible = true;
 	for (int itemtype = 1; itemtype < DENOMINATOR; itemtype++)
 	{
-	    if (mb.feasible_map.contains(ic.virtual_increase(itemtype)))
+	    if (mb.all_feasible_hashmap.contains(ic.virtual_increase(itemtype)))
 	    {
 		no_increase_possible = false;
 		break;
@@ -455,8 +455,8 @@ template <int DENOMINATOR> void itemconfig_backtrack(minibs<DENOMINATOR> &mb,
 	    {
 		if (item + lc.loads[bin] <= R-1)
 		{
-		    assert(mb.feasible_map.contains(new_ic.itemhash));
-		    int new_ic_index = mb.feasible_map[new_ic.itemhash];
+		    assert(mb.all_feasible_hashmap.contains(new_ic.itemhash));
+		    int new_ic_index = mb.all_feasible_hashmap[new_ic.itemhash];
 		    bool alg_locally_winning = mb.query_itemconf_winning(lc,
 								 new_ic_index, item, bin);
 		    if (alg_locally_winning)
@@ -491,8 +491,8 @@ template <int DENOMINATOR> void itemconfig_backtrack(minibs<DENOMINATOR> &mb,
 		{
 		    if (item + lc.loads[bin] <= R-1)
 		    {
-			assert(mb.feasible_map.contains(new_ic.itemhash));
-			int new_ic_index = mb.feasible_map[new_ic.itemhash];
+			assert(mb.all_feasible_hashmap.contains(new_ic.itemhash));
+			int new_ic_index = mb.all_feasible_hashmap[new_ic.itemhash];
 			bool alg_locally_winning = mb.query_itemconf_winning(lc,
 									     new_ic_index, item, bin);
 			fprintf(stderr, "Item %d (shrunk: %d) into bin %d: result %d.\n",
@@ -584,7 +584,7 @@ int main(int argc, char** argv)
     for(auto& ic: mb.feasible_itemconfs)
     {
 	// ic.print();
-	assert( mb.feasible_itemconfs[mb.feasible_map[ic.itemhash]] == ic);
+	assert( mb.feasible_itemconfs[mb.all_feasible_hashmap[ic.itemhash]] == ic);
     }
 
     */
