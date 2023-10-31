@@ -775,7 +775,7 @@ public:
 
         flat_hash_set<uint64_t> midgame_feasible_hashes;
 
-        midgame_feasibility<DENOMINATOR, BINS>::multiknapsack_partitions(limits,
+        minibs_feasibility<DENOMINATOR, BINS>::multiknapsack_partitions(limits,
                                                                          midgame_feasible_partitions,
                                                                          midgame_feasible_hashes);
 

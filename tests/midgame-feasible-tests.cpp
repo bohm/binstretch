@@ -4,16 +4,16 @@
 #include <unordered_map>
 #include <cstdint>
 
-#define IBINS 3
-#define IR 411
-#define IS 300
+#define IBINS 7
+#define IR 19
+#define IS 14
 
 #include "minibs/minibs.hpp"
 #include "minibs/minibs-three.hpp"
 
 #include "minibs/midgame_feasibility.hpp"
 
-constexpr int TEST_SCALE = 30;
+constexpr int TEST_SCALE = 6;
 constexpr int GS2BOUND = S - 2 * ALPHA;
 
 template<unsigned int ARRLEN>
@@ -47,7 +47,7 @@ unsigned int midgame_feasible_partition_number() {
     partition_container<DENOMINATOR> midgame_feasible_partitions;
 
 
-    midgame_feasibility<DENOMINATOR, BINS>::multiknapsack_partitions(limits,
+    minibs_feasibility<DENOMINATOR, BINS>::multiknapsack_partitions(limits,
                                                                      midgame_feasible_partitions,
                                                                      midgame_feasible_hashes);
 
@@ -169,9 +169,21 @@ int main(int argc, char **argv) {
     fprintf(stderr, "The partition number of %d is %zu.\n", 15, test_container.size());
      */
 
+    /*
     unsigned int number_of_midgame_feasible = midgame_feasible_partition_number<TEST_SCALE>();
     fprintf(stderr, "The number of midgame feasible partitions for scale %d is %u.\n",
             TEST_SCALE, number_of_midgame_feasible );
+            */
+
+    partition_container<TEST_SCALE> p;
+    minibs_feasibility<TEST_SCALE, BINS>::all_feasible_subpartitions_dp(p);
+    fprintf(stderr, "All feasible partitions according to DP: %zu.\n", p.size());
+
+    p.clear();
+
+    minibs_feasibility<TEST_SCALE, BINS>::all_feasible_subpartitions(p);
+    fprintf(stderr, "All feasible partitions according to recursion: %zu.\n", p.size());
+
     // minibs<TEST_SCALE, 1> mb_gen;
     // minibs<TEST_SCALE, 3> mb_spec;
 

@@ -635,17 +635,9 @@ public:
     }
 
     void init_from_scratch(bool knownsum_loaded) {
-
-        flat_hash_set<uint64_t> all_feasible_hashes;
-        std::array<unsigned int, BINS> limits = {0};
-
-        for (int i = 0; i < BINS; i++) {
-            limits[i] = DENOMINATOR - 1;
-        }
-        midgame_feasibility<DENOMINATOR, BINS>::multiknapsack_partitions(limits,
-                                                                         all_feasible_partitions,
-                                                                         all_feasible_hashes);
-
+        // Note: The recursive approach is very slow with larger number of BINS, whereas it is quite fast with BINS = 3.
+        // Hence, we switch to the "enumerate and filter" approach in the generic minibs.hpp.
+        minibs_feasibility<DENOMINATOR, BINS>::all_feasible_subpartitions_dp(all_feasible_partitions);
         populate_feasible_map();
 
         fprintf(stderr, "Minibs<%d, %d> from scratch: %zu itemconfs are feasible.\n", BINS, DENOM,
