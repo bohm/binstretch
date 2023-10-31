@@ -15,6 +15,9 @@
 #include "binary_storage.hpp"
 #include "minidp.hpp"
 #include "feasibility.hpp"
+#include "fingerprint_storage.hpp"
+#include "midgame_feasibility.hpp"
+#include "server_properties.hpp"
 
 using phmap::flat_hash_set;
 using phmap::flat_hash_map;
@@ -29,9 +32,10 @@ public:
     // Non-static section.
 
     std::vector<itemconf<DENOMINATOR> > feasible_itemconfs;
+    partition_container<DENOMINATOR> all_feasible_partitions;
 
     // Map pointing from hashes to the index in feasible_itemconfs.
-    flat_hash_map<uint64_t, unsigned int> feasible_map;
+    flat_hash_map<uint64_t, unsigned int> all_feasible_hashmap;
 
 
 
@@ -56,8 +60,22 @@ public:
 
     flat_hash_set<uint64_t> alg_knownsum_winning;
 
+    // The first load configuration that is losing for the knownsum heuristic.
+    // When we do the iterations for the individual itemconf layers, we can start with this one as the initial one.
+    // This can save a bit of time while keeping the loop simple.
+    loadconf knownsum_first_losing;
+
+    fingerprint_storage *fpstorage = nullptr;
     minidp<DENOMINATOR> mdp;
 
+private:
+    // Parallel bucketing variables.
+    int current_superbucket = 0;
+    std::atomic<int> position_in_bucket = 0;
+    std::vector<std::vector<unsigned int>> superbuckets;
+    std::vector<flat_hash_set<uint64_t>> parallel_computed_layers;
+
+public:
     static inline int shrink_item(int larger_item) {
         if ((larger_item * DENOMINATOR) % S == 0) {
             return ((larger_item * DENOMINATOR) / S) - 1;
@@ -162,7 +180,7 @@ public:
         int item = DENOMINATOR-1;
         for (; item >= 1; item--) {
             uint64_t next_layer_hash = ic.virtual_increase(item);
-            if (feasible_map.contains(next_layer_hash))
+            if (all_feasible_hashmap.contains(next_layer_hash))
             {
                 break;
             }
@@ -206,6 +224,7 @@ public:
 
         print_if<PROGRESS>("Processing the knownsum layer.\n");
 
+        bool all_winning_so_far = true;
         loadconf iterated_lc = create_full_loadconf();
         uint64_t winning_loadconfs = 0;
         uint64_t losing_loadconfs = 0;
@@ -256,6 +275,10 @@ public:
                     MEASURE_ONLY(winning_loadconfs++);
                     alg_knownsum_winning.insert(iterated_lc.loadhash);
                 } else {
+                    if (all_winning_so_far) {
+                        all_winning_so_far = false;
+                        knownsum_first_losing = iterated_lc;
+                    }
                     MEASURE_ONLY(losing_loadconfs++);
                 }
             }
@@ -278,8 +301,8 @@ public:
             return false;
         }
 
-        // assert(feasible_map.contains(ic.itemhash));
-        unsigned int layer_index = (unsigned int) feasible_map[ic.itemhash];
+        // assert(all_feasible_hashmap.contains(ic.itemhash));
+        unsigned int layer_index = (unsigned int) all_feasible_hashmap[ic.itemhash];
 
         flat_hash_set<unsigned int> *fp = fingerprints[fingerprint_map[lc.loadhash]];
         return fp->contains(layer_index);
@@ -297,52 +320,71 @@ public:
             return false;
         }
 
-        int next_item_layer = feasible_map[next_layer_itemhash];
+        int next_item_layer = all_feasible_hashmap[next_layer_itemhash];
         flat_hash_set<unsigned int> *fp = fingerprints[fingerprint_map[hash_if_packed]];
         return fp->contains(next_item_layer);
     }
 
-    inline void itemconf_encache_alg_win(const uint64_t &loadhash, const unsigned int &item_layer) {
-        if (!fingerprint_map.contains(loadhash)) {
-            unsigned int new_pos = fingerprints.size();
-            flat_hash_set<unsigned int> *fp_new = new flat_hash_set<unsigned int>();
-            fingerprints.push_back(fp_new);
-            fingerprint_map[loadhash] = new_pos;
-        }
 
-        flat_hash_set<unsigned int> *fp = fingerprints[fingerprint_map[loadhash]];
-        fp->insert(item_layer);
+    // A query function to be used during (parallel) initialization but not during execution.
+    bool query_different_layer(const loadconf &lc, uint64_t next_layer_itemhash, int item, int bin) {
+
+        // We have to check the hash table if the position is winning.
+        uint64_t loadhash_if_packed = lc.virtual_loadhash(item, bin);
+            if (query_knownsum_layer(lc, item, bin)) {
+                return true;
+            }
+
+            // if (!fingerprint_map.contains(loadhash_if_packed)) {
+            //     return false;
+            // }
+
+            int next_item_layer = all_feasible_hashmap[next_layer_itemhash];
+            fingerprint_set *fp = fpstorage->query_fp(loadhash_if_packed);
+            if (fp == nullptr)
+            {
+                return false;
+            }
+
+            return fp->contains(next_item_layer);
     }
 
-    void init_itemconf_layer(long unsigned int layer_index) {
+    bool query_same_layer(const loadconf &lc, int item, int bin,
+                          const flat_hash_set<uint64_t> *alg_winning_in_layer) const {
+        bool knownsum_winning = query_knownsum_layer(lc, item, bin);
 
-        itemconf<DENOMINATOR> layer = feasible_itemconfs[layer_index];
-
-        bool last_layer = (layer_index == (feasible_itemconfs.size() - 1));
-
-        if (PROGRESS) {
-            fprintf(stderr, "Processing itemconf layer %lu / %lu , corresponding to: ", layer_index,
-                    feasible_itemconfs.size());
-            layer.print();
+        if (knownsum_winning) {
+            return true;
         }
 
-        loadconf iterated_lc = create_full_loadconf();
-        uint64_t winning_loadconfs = 0;
-        uint64_t losing_loadconfs = 0;
+        uint64_t loadhash_if_packed = lc.virtual_loadhash(item, bin);
+        return alg_winning_in_layer->contains(loadhash_if_packed);
+    }
 
+    inline void itemconf_encache_alg_win(uint64_t loadhash, unsigned int item_layer) {
+        fpstorage->add_partition_to_loadhash(loadhash, item_layer);
+    }
 
-        int scaled_ub_from_dp = DENOMINATOR - 1;
+    void init_itemconf_layer(unsigned int layer_index, flat_hash_set<uint64_t> *alg_winning_in_layer) {
+
+        std::array<int, DENOMINATOR> feasible_layer = all_feasible_partitions[layer_index];
+        itemconf<DENOMINATOR> layer = itemconf<DENOMINATOR>(feasible_layer);
+        // itemconf<DENOMINATOR> layer = feasible_itemconfs[layer_index];
+
+        bool last_layer = (layer_index == (all_feasible_partitions.size() - 1));
+
+        // loadconf iterated_lc = create_full_loadconf();
+        loadconf iterated_lc = knownsum_first_losing;
+
+        int scaled_ub_from_hashes = DENOMINATOR - 1;
 
         if (!last_layer) {
-            scaled_ub_from_dp = mdp.maximum_feasible(layer.items);
-            int scaled_ub_from_hashes = maximum_feasible_via_feasible_positions(layer);
-            assert(scaled_ub_from_dp == scaled_ub_from_hashes);
+            scaled_ub_from_hashes = maximum_feasible_via_feasible_positions(layer);
         }
 
         // The upper bound on maximum sendable from the DP is scaled by 1/DENOMINATOR.
         // So, a value of 5 means that any item from [0, 6*S/DENOMINATOR] can be sent.
-        assert(scaled_ub_from_dp <= DENOMINATOR-1);
-        int ub_from_dp = grow_to_upper_bound(scaled_ub_from_dp);
+        int ub_from_dp = grow_to_upper_bound(scaled_ub_from_hashes);
 
         if (MEASURE) {
             // fprintf(stderr, "Layer %d: maximum feasible item is scaled %d, and original %d.\n", layer_index,  scaled_ub_from_dp, ub_from_dp);
@@ -358,7 +400,6 @@ public:
         int lb_on_vol = lb_on_volume(layer);
 
         do {
-
 
             int loadsum = iterated_lc.loadsum();
             if (loadsum < lb_on_vol) {
@@ -383,7 +424,8 @@ public:
             }
 
             if (loadsum < S * BINS) {
-                int start_item = std::min(ub_from_dp, S * BINS - loadsum);
+
+                int start_item = std::min(ub_from_dp, S * BINS - iterated_lc.loadsum());
                 bool losing_item_exists = false;
 
                 for (int item = start_item; item >= 1; item--) {
@@ -395,8 +437,6 @@ public:
                         next_layer_hash = layer.virtual_increase(shrunk_itemtype);
                     }
 
-                    assert(feasible_map.contains(next_layer_hash));
-                    // int next_layer = feasible_map[next_layer_hash];
 
                     for (int bin = 1; bin <= BINS; bin++) {
                         if (bin > 1 && iterated_lc.loads[bin] == iterated_lc.loads[bin - 1]) {
@@ -406,8 +446,14 @@ public:
                         if (item + iterated_lc.loads[bin] <= R - 1) // A plausible move.
                         {
                             // We have to check the hash table if the position is winning.
-                            bool alg_wins_next_position = query_itemconf_winning(iterated_lc, next_layer_hash,
-                                                                                 item, bin);
+                            bool alg_wins_next_position;
+                            if (shrunk_itemtype == 0) {
+                                alg_wins_next_position = query_same_layer(iterated_lc, item, bin,
+                                                                          alg_winning_in_layer);
+                            } else {
+                                alg_wins_next_position = query_different_layer(iterated_lc, next_layer_hash,
+                                                                               item, bin);
+                            }
                             if (alg_wins_next_position) {
                                 good_move_found = true;
                                 break;
@@ -422,10 +468,12 @@ public:
                 }
 
                 if (!losing_item_exists) {
-                    MEASURE_ONLY(winning_loadconfs++);
-                    itemconf_encache_alg_win(iterated_lc.loadhash, layer_index);
+                    // The measure only code below does not work in the parallel setting.
+                    // MEASURE_ONLY(winning_loadconfs++);
+                    // We delay encaching the win until the parallel phase is over.
+                    alg_winning_in_layer->insert(iterated_lc.loadhash);
                 } else {
-                    MEASURE_ONLY(losing_loadconfs++);
+                    // MEASURE_ONLY(losing_loadconfs++);
                 }
             }
         } while (decrease(&iterated_lc));
@@ -434,7 +482,6 @@ public:
 //			      layer_index, winning_loadconfs, losing_loadconfs);
 
     }
-
 
     static uint64_t fingerprint_hash(std::vector<uint64_t> *rns, flat_hash_set<unsigned int> *fp) {
         uint64_t ret = 0;
@@ -482,7 +529,7 @@ public:
     // While feasible_itemconfs will be stored to speed up computation, the map is easy to build.
     void populate_feasible_map() {
         for (unsigned int i = 0; i < feasible_itemconfs.size(); ++i) {
-            feasible_map[feasible_itemconfs[i].itemhash] = i;
+            all_feasible_hashmap[feasible_itemconfs[i].itemhash] = i;
         }
     }
 
@@ -527,6 +574,127 @@ public:
 
         sparsify();
 
+    }
+
+
+    void deferred_insertion(unsigned int layer_index, const flat_hash_set<uint64_t> &winning_loadhashes) {
+        // fprintf(stderr, "Bucket of layer %u has %zu elements.\n", layer_index, winning_loadhashes.size());
+        for (uint64_t loadhash: winning_loadhashes) {
+            itemconf_encache_alg_win(loadhash, layer_index);
+        }
+        fpstorage->collect();
+    }
+
+
+    void init_layers_parallel() {
+
+        // Split into buckets first.
+        int max_items_per_partition = std::accumulate(all_feasible_partitions[0].begin(),
+                                                      all_feasible_partitions[0].end(), 0);
+
+        // std::vector<std::vector<unsigned int>> open_bucket(max_items_per_partition + 1);
+        // std::vector<std::vector<std::vector<unsigned int>>> superbuckets(max_items_per_partition + 1);
+
+        superbuckets.clear();
+        superbuckets.resize(max_items_per_partition+1);
+        unsigned int thread_count = std::get<2>(server_properties(gethost().c_str()));
+
+
+        // We create superbuckets which hold buckets (groups of at most thread_count elements of the same itemcount)
+        // which can be processed in parallel.
+
+        for (unsigned int j = 0; j < all_feasible_partitions.size(); j++) {
+            unsigned int itemcount = std::accumulate(all_feasible_partitions[j].begin(),
+                                                     all_feasible_partitions[j].end(), 0);
+            superbuckets[itemcount].emplace_back(j);
+        }
+
+        assert(max_items_per_partition + 1 == (int) superbuckets.size());
+
+
+        auto *threads = new std::thread[thread_count];
+
+        unsigned int buckets_processed = 0;
+        unsigned int buckets_last_reported = 0;
+
+        for (int sb = max_items_per_partition; sb >= 0; sb--) {
+            current_superbucket = sb;
+            position_in_bucket = 0;
+            parallel_computed_layers.clear();
+            parallel_computed_layers.resize(superbuckets[sb].size());
+
+            for (unsigned int t = 0; t < thread_count; t++) {
+                threads[t] = std::thread(&minibs<DENOMINATOR, 3>::worker_process_task, this);
+            }
+            for (unsigned int t = 0; t < thread_count; t++) {
+                threads[t].join();
+            }
+
+            for (unsigned int b = 0; b < superbuckets[sb].size(); b++) {
+                deferred_insertion(superbuckets[sb][b], parallel_computed_layers[b]);
+                parallel_computed_layers[b].clear();
+            }
+
+            if (PROGRESS) {
+                buckets_processed += superbuckets[sb].size();
+                if (buckets_processed - buckets_last_reported >= 500) {
+                    fprintf(stderr, "Processed %u/%zu midgame feasible partitions.\n", buckets_processed,
+                            midgame_feasible_partitions.size());
+                    buckets_last_reported = buckets_processed;
+                }
+            }
+        }
+
+        delete[] threads;
+    }
+
+    void init_from_scratch(bool knownsum_loaded) {
+
+        flat_hash_set<uint64_t> all_feasible_hashes;
+        std::array<unsigned int, BINS> limits = {0};
+
+        for (int i = 0; i < BINS; i++) {
+            limits[i] = DENOMINATOR - 1;
+        }
+        midgame_feasibility<DENOMINATOR, BINS>::multiknapsack_partitions(limits,
+                                                                         all_feasible_partitions,
+                                                                         all_feasible_hashes);
+
+        populate_feasible_map();
+
+        fprintf(stderr, "Minibs<%d, %d> from scratch: %zu itemconfs are feasible.\n", BINS, DENOM,
+                all_feasible_partitions.size());
+
+        // We initialize the knownsum layer here.
+        if (!knownsum_loaded) {
+            init_knownsum_layer();
+            if (PROGRESS) {
+                fprintf(stderr, "Computed first losing loadconf: ");
+                knownsum_first_losing.print(stderr);
+                fprintf(stderr, ".\n");
+            }
+
+        }
+
+        std::vector<uint64_t> *random_numbers = create_random_hashes(all_feasible_partitions.size());
+        fpstorage = new fingerprint_storage(random_numbers);
+
+
+        for (long unsigned int i = 0; i < all_feasible_partitions.size(); i++) {
+            flat_hash_set<uint64_t> winning_in_layer;
+            alg_winning_positions.push_back(winning_in_layer);
+        }
+
+
+        // init_layers_sequentially();
+        init_layers_parallel();
+        fpstorage->output(fingerprint_map, fingerprints);
+        unique_fps = fingerprints;
+        fprintf(stderr, "Fingerprint map size %zu, fingerprints size %zu.\n",
+                fingerprint_map.size(), fingerprints.size());
+        delete fpstorage;
+        delete random_numbers;
+        fpstorage = nullptr;
     }
 
     inline void backup_calculations() {
