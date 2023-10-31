@@ -5,15 +5,15 @@
 #include <cstdint>
 
 #define IBINS 3
-#define IR 112
-#define IS 82
+#define IR 411
+#define IS 300
 
 #include "minibs/minibs.hpp"
 #include "minibs/minibs-three.hpp"
 
 #include "minibs/midgame_feasibility.hpp"
 
-constexpr int TEST_SCALE = 12;
+constexpr int TEST_SCALE = 30;
 constexpr int GS2BOUND = S - 2 * ALPHA;
 
 template<unsigned int ARRLEN>
@@ -31,8 +31,32 @@ bool midgame_feasible(std::array<int, DENOMINATOR> itemconf,
 // Borrowed from alg-winning-table.cpp
 
 
-template <int SCALE> void print_minibs(const loadconf &lc, const itemconf<SCALE> &ic)
-{
+template<int DENOMINATOR>
+unsigned int midgame_feasible_partition_number() {
+
+    std::array<unsigned int, BINS> limits = {0};
+    limits[0] = DENOMINATOR - 1;
+    for (unsigned int i = 1; i < BINS; i++) {
+        unsigned int three_halves_alpha = (3 * ALPHA) / 2 + (3 * ALPHA) % 2;
+        unsigned int shrunk_three_halves = minibs<DENOMINATOR, BINS>::shrink_item(three_halves_alpha);
+        unsigned int remaining_cap = DENOMINATOR - 1 - shrunk_three_halves;
+        limits[i] = remaining_cap;
+    }
+
+    flat_hash_set<uint64_t> midgame_feasible_hashes;
+    partition_container<DENOMINATOR> midgame_feasible_partitions;
+
+
+    midgame_feasibility<DENOMINATOR, BINS>::multiknapsack_partitions(limits,
+                                                                     midgame_feasible_partitions,
+                                                                     midgame_feasible_hashes);
+
+    return midgame_feasible_partitions.size();
+}
+
+
+template<int SCALE>
+void print_minibs(const loadconf &lc, const itemconf<SCALE> &ic) {
     lc.print(stderr);
     fprintf(stderr, " ");
     ic.print(stderr, false);
@@ -104,7 +128,7 @@ void consistency_tests(minibs<DENOMINATOR, 1> &mb_gen, minibs<DENOMINATOR, 3> &m
 
         do {
             int lb_on_vol = mb_gen.lb_on_volume(ic);
-            if (iterated_lc.loadsum() <  lb_on_vol) {
+            if (iterated_lc.loadsum() < lb_on_vol) {
                 continue;
             }
 
@@ -119,11 +143,9 @@ void consistency_tests(minibs<DENOMINATOR, 1> &mb_gen, minibs<DENOMINATOR, 3> &m
                 print_loadconf_stream(stderr, &iterated_lc, false);
                 fprintf(stderr, " the results differ (mbs generic = %d), (mbs specialized = %d).\n",
                         alg_winning_gen, alg_winning_spec);
-                if (mb_spec.midgame_feasible_map.contains(ic.itemhash))
-                {
+                if (mb_spec.midgame_feasible_map.contains(ic.itemhash)) {
                     fprintf(stderr, "This item partition is midgame feasible.\n");
-                } else if (mb_spec.endgame_adjacent_maxfeas.contains(ic.itemhash))
-                {
+                } else if (mb_spec.endgame_adjacent_maxfeas.contains(ic.itemhash)) {
                     fprintf(stderr, "This item partition is endgame adjacent.\n");
                 } else {
                     fprintf(stderr, "This item partition is neither midgame feasible nor endgame adjacent.\n");
@@ -147,10 +169,13 @@ int main(int argc, char **argv) {
     fprintf(stderr, "The partition number of %d is %zu.\n", 15, test_container.size());
      */
 
-    minibs<TEST_SCALE, 1> mb_gen;
-    minibs<TEST_SCALE, 3> mb_spec;
+    unsigned int number_of_midgame_feasible = midgame_feasible_partition_number<TEST_SCALE>();
+    fprintf(stderr, "The number of midgame feasible partitions for scale %d is %u.\n",
+            TEST_SCALE, number_of_midgame_feasible );
+    // minibs<TEST_SCALE, 1> mb_gen;
+    // minibs<TEST_SCALE, 3> mb_spec;
 
-    consistency_tests<TEST_SCALE>(mb_gen, mb_spec);
+    // consistency_tests<TEST_SCALE>(mb_gen, mb_spec);
 
     // All feasible tests.
     /* std::array<unsigned int, BINS> no_limits = {0};
