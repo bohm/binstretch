@@ -561,8 +561,7 @@ public:
     void restore(flat_hash_map<uint64_t, unsigned int> &out_fingerprint_map,
                  std::vector<flat_hash_set<unsigned int> *> &out_fingerprints,
                  std::vector<flat_hash_set<unsigned int> *> &out_unique_fps,
-                 flat_hash_set<uint64_t> &out_knownsum_set,
-                 std::vector<itemconf<DENOMINATOR> > &out_feasible_ics) {
+                 partition_container<DENOMINATOR> &out_feasible_ics) {
         open_for_reading();
         bool check = check_signature();
         if (!check) {
@@ -574,8 +573,7 @@ public:
             ERRORPRINT("Error: The Zobrist table do not match!\n");
         }
 
-        read_feasible_itemconfs(out_feasible_ics);
-        restore_knownsum_set(out_knownsum_set);
+        read_partition_container(out_feasible_ics);
         // read_set_system(out_system);
         read_fingerprint_system(out_fingerprint_map, out_fingerprints, out_unique_fps);
         close();
@@ -585,13 +583,11 @@ public:
     void backup(flat_hash_map<uint64_t, unsigned int> &fingerprint_map,
                 std::vector<flat_hash_set<unsigned int> *> &fingerprints,
                 std::vector<flat_hash_set<unsigned int> *> &unique_fps,
-                flat_hash_set<uint64_t> &knownsum_set,
-                std::vector<itemconf<DENOMINATOR> > &feasible_ics) {
+                partition_container<DENOMINATOR> &feasible_ics) {
         open_for_writing();
         write_signature();
         write_zobrist_table();
-        write_feasible_itemconfs(feasible_ics);
-        backup_knownsum_set(knownsum_set);
+        write_partition_container(feasible_ics);
         write_fingerprint_system(fingerprint_map, fingerprints, unique_fps);
         close();
     }

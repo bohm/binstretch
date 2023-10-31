@@ -31,7 +31,7 @@ public:
 
     // Non-static section.
 
-    std::vector<itemconf<DENOMINATOR> > feasible_itemconfs;
+    // std::vector<itemconf<DENOMINATOR> > feasible_itemconfs;
     partition_container<DENOMINATOR> all_feasible_partitions;
 
     // Map pointing from hashes to the index in feasible_itemconfs.
@@ -500,36 +500,12 @@ public:
         return ret;
     }
 
-    void sparsify() {
-        std::vector<uint64_t> *random_numbers = create_random_hashes(feasible_itemconfs.size());
-
-        flat_hash_map<uint64_t, flat_hash_set<unsigned int> *> unique_fingerprint_map;
-
-        for (unsigned int i = 0; i < fingerprints.size(); ++i) {
-            uint64_t hash = fingerprint_hash(random_numbers, fingerprints[i]);
-            if (unique_fingerprint_map.contains(hash)) {
-                flat_hash_set<unsigned int> *unique_fp = unique_fingerprint_map[hash];
-                delete fingerprints[i];
-                fingerprints[i] = unique_fp;
-            } else {
-                unique_fingerprint_map[hash] = fingerprints[i];
-            }
-        }
-
-        // Convert the flat_hash_map into a vector, keeping track of unique elements
-        // and forgetting the hash function.
-        for (const auto &[key, el]: unique_fingerprint_map) {
-            unique_fps.push_back(el);
-        }
-
-        delete random_numbers;
-    }
 
     // Call after feasible_itemconfs exist, to build the inverse map.
     // While feasible_itemconfs will be stored to speed up computation, the map is easy to build.
     void populate_feasible_map() {
-        for (unsigned int i = 0; i < feasible_itemconfs.size(); ++i) {
-            all_feasible_hashmap[feasible_itemconfs[i].itemhash] = i;
+        for (unsigned int i = 0; i < all_feasible_partitions.size(); ++i) {
+            all_feasible_hashmap[itemconf<DENOMINATOR>(all_feasible_partitions[i]).itemhash] = i;
         }
     }
 
@@ -538,43 +514,33 @@ public:
         fprintf(stderr, "Minibs<%d>: There will be %d item sizes tracked.\n", DENOM, DENOM - 1);
 
         binary_storage<DENOMINATOR> bstore;
+        bool knownsum_loaded = false;
+        if (bstore.knownsum_file_exists()) {
+            bstore.restore_knownsum_set(alg_knownsum_winning, knownsum_first_losing.loads);
+            print_if<PROGRESS>("Restored knownsum layer with %zu winning positions.\n", alg_knownsum_winning.size());
+
+            if (PROGRESS) {
+                fprintf(stderr, "Restored first losing loadconf: ");
+                knownsum_first_losing.print(stderr);
+                fprintf(stderr, ".\n");
+            }
+            knownsum_loaded = true;
+        }
+
         if (bstore.storage_exists()) {
-            bstore.restore(fingerprint_map, fingerprints, unique_fps,
-                           alg_knownsum_winning, feasible_itemconfs);
+            bstore.restore(fingerprint_map, fingerprints, unique_fps, all_feasible_partitions);
             populate_feasible_map();
             print_if<PROGRESS>("Minibs<%d>: Init complete via restoration.\n", DENOMINATOR);
-            fprintf(stderr, "Minibs<%d> from restoration: %zu itemconfs are feasible.\n", DENOM,
-                    feasible_itemconfs.size());
+            fprintf(stderr, "Minibs<%d> from restoration: %zu partitions are feasible.\n", DENOM,
+                    all_feasible_partitions.size());
             fprintf(stderr, "Minibs<%d> from restoration: %zu unique fingerprints.\n",
                     DENOMINATOR, unique_fps.size());
         } else {
             print_if<PROGRESS>("Minibs<%d>: Initialization must happen from scratch.\n", DENOMINATOR);
-            init_from_scratch();
+            init_from_scratch(knownsum_loaded);
         }
     }
 
-    void init_from_scratch() {
-        minibs_feasibility<DENOMINATOR>::compute_feasible_itemconfs(feasible_itemconfs);
-        populate_feasible_map();
-        fprintf(stderr, "Minibs<%d> from scratch: %zu itemconfs are feasible.\n", DENOM, feasible_itemconfs.size());
-
-
-        // We initialize the knownsum layer here.
-        init_knownsum_layer();
-
-        for (long unsigned int i = 0; i < feasible_itemconfs.size(); i++) {
-            flat_hash_set<uint64_t> winning_in_layer;
-            alg_winning_positions.push_back(winning_in_layer);
-        }
-
-        for (long unsigned int i = 0; i < feasible_itemconfs.size(); i++) {
-
-            init_itemconf_layer(i);
-        }
-
-        sparsify();
-
-    }
 
 
     void deferred_insertion(unsigned int layer_index, const flat_hash_set<uint64_t> &winning_loadhashes) {
@@ -585,6 +551,26 @@ public:
         fpstorage->collect();
     }
 
+
+    std::pair<unsigned int, unsigned int> get_bucket_task() {
+        unsigned int superbucket_id = current_superbucket;
+        unsigned int position_id = position_in_bucket++;
+        return {superbucket_id, position_id};
+    }
+
+    void worker_process_task() {
+        while (true) {
+            auto [superbucket_id, position_id] = get_bucket_task();
+            // print_if<PROGRESS>("Pair {%u, %u}.\n", superbucket_id, position_id);
+            // auto [superbucket_id, position_id] = get_bucket_task();
+            if (position_id >= superbuckets[superbucket_id].size()) {
+                return;
+            } else {
+                init_itemconf_layer(superbuckets[superbucket_id][position_id],
+                                    &parallel_computed_layers[position_id]);
+            }
+        }
+    }
 
     void init_layers_parallel() {
 
@@ -624,7 +610,7 @@ public:
             parallel_computed_layers.resize(superbuckets[sb].size());
 
             for (unsigned int t = 0; t < thread_count; t++) {
-                threads[t] = std::thread(&minibs<DENOMINATOR, 3>::worker_process_task, this);
+                threads[t] = std::thread(&minibs<DENOMINATOR, BINS>::worker_process_task, this);
             }
             for (unsigned int t = 0; t < thread_count; t++) {
                 threads[t].join();
@@ -638,8 +624,8 @@ public:
             if (PROGRESS) {
                 buckets_processed += superbuckets[sb].size();
                 if (buckets_processed - buckets_last_reported >= 500) {
-                    fprintf(stderr, "Processed %u/%zu midgame feasible partitions.\n", buckets_processed,
-                            midgame_feasible_partitions.size());
+                    fprintf(stderr, "Processed %u/%zu feasible partitions.\n", buckets_processed,
+                            all_feasible_partitions.size());
                     buckets_last_reported = buckets_processed;
                 }
             }
@@ -699,18 +685,22 @@ public:
 
     inline void backup_calculations() {
         binary_storage<DENOMINATOR> bstore;
+        if (!bstore.knownsum_file_exists()) {
+            print_if<PROGRESS>("Backing up knownsum calculations.\n", DENOMINATOR);
+            bstore.backup_knownsum_set(alg_knownsum_winning, knownsum_first_losing.loads);
+        }
+
         if (!bstore.storage_exists()) {
             print_if<PROGRESS>("Queen: Backing up Minibs<%d> calculations.\n", DENOMINATOR);
-            bstore.backup(fingerprint_map, fingerprints, unique_fps,
-                          alg_knownsum_winning, feasible_itemconfs);
+            bstore.backup(fingerprint_map, fingerprints, unique_fps, all_feasible_partitions);
         }
     }
 
     void stats_by_layer() {
-        for (unsigned int i = 0; i < feasible_itemconfs.size(); i++) {
+        for (unsigned int i = 0; i < all_feasible_partitions.size(); i++) {
 
             fprintf(stderr, "Layer %u,  ", i);
-            feasible_itemconfs[i].print();
+            all_feasible_partitions[i].print();
             fprintf(stderr, "Size of the layer %d cache: %lu.\n", i,
                     alg_winning_positions[i].size());
         }
@@ -720,7 +710,7 @@ public:
 
         unsigned int total_elements = 0;
         fprintf(stderr, "Number of feasible sets %zu, number of fingerprints %zu.\n",
-                feasible_itemconfs.size(), fingerprints.size());
+                all_feasible_partitions.size(), fingerprints.size());
         for (unsigned int i = 0; i < fingerprints.size(); ++i) {
             total_elements += fingerprints[i]->size();
         }
