@@ -545,7 +545,7 @@ int main(int argc, char** argv)
 
     // maximum_feasible_tests();
     
-    minibs<MINITOOL_MINIBS_SCALE, 3> mb;
+    minibs<MINITOOL_MINIBS_SCALE, BINS> mb;
     // print_basic_components(mb);
     // mb.stats_by_layer();
     mb.backup_calculations();
@@ -570,7 +570,7 @@ int main(int argc, char** argv)
 
     if (argc >= 2)
     {
-	fixed_load_on_one = atoi(argv[1]);
+	    fixed_load_on_one = atoi(argv[1]);
     }
 
 
@@ -597,11 +597,11 @@ int main(int argc, char** argv)
     
     std::unordered_set<int> sand_winning_for_alg;
     fprintf(stderr, "Sand winning positions (with one bin loaded to %d, interval [1,%d]):\n", fixed_load_on_one, GS2BOUND);
-    sand_winning<MINITOOL_MINIBS_SCALE, 3>(mb, sand_winning_for_alg, fixed_load_on_one);
+    sand_winning<MINITOOL_MINIBS_SCALE, BINS>(mb, sand_winning_for_alg, fixed_load_on_one);
     fprintf(stderr, "Single measurable item winning (interval [1,%d], ignoring sand wins):\n", GS2BOUND);
-    one_measurable_item_winning<MINITOOL_MINIBS_SCALE, 3>(mb, sand_winning_for_alg);
+    one_measurable_item_winning<MINITOOL_MINIBS_SCALE, BINS>(mb, sand_winning_for_alg);
     fprintf(stderr, "Single items winning (interval [1,%d], ignoring sand wins):\n", GS2BOUND);
-    single_items_winning<MINITOOL_MINIBS_SCALE, 3>(mb, sand_winning_for_alg);
+    single_items_winning<MINITOOL_MINIBS_SCALE, BINS>(mb, sand_winning_for_alg);
     
 
     return 0;
