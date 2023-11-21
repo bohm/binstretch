@@ -622,6 +622,8 @@ public:
             }
 
             if (PROGRESS) {
+                fpstorage->stats(sb);
+
                 buckets_processed += superbuckets[sb].size();
                 if (buckets_processed - buckets_last_reported >= 500) {
                     fprintf(stderr, "Processed %u/%zu feasible partitions.\n", buckets_processed,

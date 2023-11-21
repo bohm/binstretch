@@ -134,4 +134,20 @@ public:
             }
         }
     }
+
+    void stats(int pass = -1) const {
+        if (pass >= 0) {
+            fprintf(stderr, "Fingerprint stats after layer %d:\n", pass);
+        }
+
+        fprintf(stderr, "Number of augmented fingerprint sets: %zu.\n", fingerprints.size());
+        fprintf(stderr, "Number of loadhashes associated with >= 1 winning itemhash: %zu.\n",
+                loadhash_representative_fp.size());
+        uint64_t itemhashes_total = 0;
+        for (const auto& [key, value] : fingerprints) {
+            itemhashes_total += value.fp.size();
+        }
+        fprintf(stderr, "Total itemhashes in all fingerprints: %" PRIu64 ", average %Lf.\n",
+                itemhashes_total, itemhashes_total / (long double) fingerprints.size());
+    }
 };
