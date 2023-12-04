@@ -89,6 +89,41 @@ public:
         }
     }
 
+    // Another form of garbage collection, where we recompute the max_ids to be continuous in [0, fingerprint.size() ).
+    void reindex_fingerprints() {
+        if (fingerprints.empty()) {
+            return;
+        }
+
+        print_if<PROGRESS>("Before reindexing: max fingerprint index %hu, fingerprint count %zd.\n",
+                           max_id, fingerprints.size());
+
+        unsigned short id_counter = 0;
+        flat_hash_map<unsigned short, unsigned short> reindexing;
+        for (auto &[key, _]: fingerprints) {
+            reindexing[key] = id_counter;
+            id_counter++;
+        }
+
+        // Clone fingerprints and re-insert with new keys.
+        flat_hash_map<unsigned short, augmented_fp_set> fp_clone(fingerprints);
+        fingerprints.clear();
+        for (auto &[key, value]: fp_clone) {
+            fingerprints[reindexing[key]] = value;
+        }
+
+        for (auto &[key, value]: fp_by_itemhash) {
+            fp_by_itemhash[key] = reindexing[value];
+        }
+
+        for (auto &[key, value]: loadhash_representative_fp) {
+            loadhash_representative_fp[key] = reindexing[value];
+        }
+
+        max_id = id_counter;
+        print_if<PROGRESS>("Current max fingerprint index %hu, fingerprint count %zd.\n", max_id, fingerprints.size());
+    }
+
     void output(flat_hash_map<uint64_t, unsigned short>& out_fingerprint_map,
             std::vector<fingerprint_set*> &out_fp_vector) {
         out_fp_vector.clear();
@@ -155,8 +190,8 @@ public:
             fprintf(stderr, "Fingerprint stats after layer %d:\n", pass);
         }
 
-        fprintf(stderr, "Number of augmented fingerprint sets: %zu. Largest id of a fingerprint %hu.\n",
-                fingerprints.size(), max_id);
+        // fprintf(stderr, "Number of augmented fingerprint sets: %zu. Largest id of a fingerprint %hu.\n",
+        //        fingerprints.size(), max_id);
         fprintf(stderr, "Number of loadhashes associated with >= 1 winning itemhash: %zu.\n",
                 loadhash_representative_fp.size());
         uint64_t itemhashes_total = 0;
