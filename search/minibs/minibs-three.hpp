@@ -78,7 +78,7 @@ public:
     // This sparsification is not easily done on the fly, so we do it during
     // postprocessing.
 
-    flat_hash_map<uint64_t, unsigned int> fingerprint_map;
+    flat_hash_map<uint64_t, unsigned short> fingerprint_map;
     // We store pointers to the winning fingerprints,
     // to enable smooth sparsification.
     std::vector<flat_hash_set<unsigned int> *> fingerprints;

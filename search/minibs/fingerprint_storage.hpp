@@ -10,8 +10,11 @@ public:
     // flat_hash_map<size_t, int> refcounts{};
     // flat_hash_map<size_t, uint64_t> fp_hashes{};
 
-    flat_hash_map<uint64_t, augmented_fp_set> fingerprints{};
-    flat_hash_map<uint64_t, size_t> loadhash_representative_fp{};
+    flat_hash_map<uint64_t, unsigned short> fp_by_itemhash{};
+    flat_hash_map<unsigned short, augmented_fp_set> fingerprints{};
+    unsigned short max_id = 0;
+
+    flat_hash_map<uint64_t, unsigned short> loadhash_representative_fp{};
     std::vector<uint64_t> *rns = nullptr;
 
     explicit fingerprint_storage(std::vector<uint64_t> *irns) {
@@ -26,27 +29,37 @@ public:
 
         uint64_t new_fp_hash = fingerprint_virtual_hash(rns, previous_hash, winning_partition_index);
 
-        if (fingerprints.contains(new_fp_hash)) {
+        if (fp_by_itemhash.contains(new_fp_hash)) {
+            unsigned short existing_equal_fp_id = fp_by_itemhash[new_fp_hash];
             if (loadhash_representative_fp.contains(loadhash)) {
                 fingerprints[loadhash_representative_fp[loadhash]].refcount--;
             }
-            loadhash_representative_fp[loadhash] = new_fp_hash;
-            fingerprints[new_fp_hash].refcount++;
+            loadhash_representative_fp[loadhash] = existing_equal_fp_id;
+            fingerprints[existing_equal_fp_id].refcount++;
         } else {
             if (loadhash_representative_fp.contains(loadhash)) {
                 augmented_fp_set afs(fingerprints[loadhash_representative_fp[loadhash]].fp, new_fp_hash);
                 afs.fp.insert(winning_partition_index);
-                afs.refcount++;
+                afs.refcount = 1;
                 fingerprints[loadhash_representative_fp[loadhash]].refcount--;
-                fingerprints[new_fp_hash] = afs;
-                loadhash_representative_fp[loadhash] = new_fp_hash;
+                fingerprints[max_id] = afs;
+                fp_by_itemhash[new_fp_hash] = max_id;
+                loadhash_representative_fp[loadhash] = max_id;
+                max_id++;
             } else {
                 augmented_fp_set afs;
                 afs.fp.insert(winning_partition_index);
                 afs.hash = new_fp_hash;
-                afs.refcount++;
-                fingerprints[new_fp_hash] = afs;
-                loadhash_representative_fp[loadhash] = new_fp_hash;
+                afs.refcount = 1;
+                fingerprints[max_id] = afs;
+                fp_by_itemhash[new_fp_hash] = max_id;
+                loadhash_representative_fp[loadhash] = max_id;
+                max_id++;
+            }
+
+            if (max_id == std::numeric_limits<unsigned short>::max()) {
+                fprintf(stderr, "The number of unique trees hit 65535, we have to terminate.\n");
+                exit(-1);
             }
         }
     }
@@ -76,7 +89,7 @@ public:
         }
     }
 
-    void output(flat_hash_map<uint64_t, unsigned int>& out_fingerprint_map,
+    void output(flat_hash_map<uint64_t, unsigned short>& out_fingerprint_map,
             std::vector<fingerprint_set*> &out_fp_vector) {
         out_fp_vector.clear();
         out_fingerprint_map.clear();
@@ -86,7 +99,7 @@ public:
             auto* output_fp = new fingerprint_set(afp.fp);
             uint64_t hash = fingerprint_hash(*rns, afp.fp);
             out_fp_vector.emplace_back(output_fp);
-            position_in_out_vector[hash] = out_fp_vector.size() - 1;
+            position_in_out_vector[hash] = (unsigned short) (out_fp_vector.size() - 1);
         }
 
         for (auto &[loadhash, hash] : loadhash_representative_fp) {
@@ -106,7 +119,9 @@ public:
          */
 
         loadhash_representative_fp.clear();
+        fp_by_itemhash.clear();
         fingerprints.clear();
+        max_id = 0;
     }
 
     // debug functions
@@ -140,7 +155,8 @@ public:
             fprintf(stderr, "Fingerprint stats after layer %d:\n", pass);
         }
 
-        fprintf(stderr, "Number of augmented fingerprint sets: %zu.\n", fingerprints.size());
+        fprintf(stderr, "Number of augmented fingerprint sets: %zu. Largest id of a fingerprint %hu.\n",
+                fingerprints.size(), max_id);
         fprintf(stderr, "Number of loadhashes associated with >= 1 winning itemhash: %zu.\n",
                 loadhash_representative_fp.size());
         uint64_t itemhashes_total = 0;
