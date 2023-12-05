@@ -190,8 +190,7 @@ public:
             fprintf(stderr, "Fingerprint stats after layer %d:\n", pass);
         }
 
-        // fprintf(stderr, "Number of augmented fingerprint sets: %zu. Largest id of a fingerprint %hu.\n",
-        //        fingerprints.size(), max_id);
+        fprintf(stderr, "Number of unique fingerprint sets: %zu.\n", fingerprints.size());
         fprintf(stderr, "Number of loadhashes associated with >= 1 winning itemhash: %zu.\n",
                 loadhash_representative_fp.size());
         uint64_t itemhashes_total = 0;

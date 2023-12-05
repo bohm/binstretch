@@ -593,6 +593,8 @@ public:
         }
         // flat_hash_map<uint64_t, size_t> frequencies_before = fpstorage->compute_frequencies();
         fpstorage->collect();
+        fpstorage->reindex_fingerprints();
+
         // flat_hash_map<uint64_t, size_t> frequencies_after = fpstorage->compute_frequencies();
         // for (auto& [key, value] : frequencies_before) {
         //    assert(frequencies_after[key] == value);

@@ -549,6 +549,7 @@ public:
             itemconf_encache_alg_win(loadhash, layer_index);
         }
         fpstorage->collect();
+        fpstorage->reindex_fingerprints();
     }
 
 
@@ -620,9 +621,6 @@ public:
                 deferred_insertion(superbuckets[sb][b], parallel_computed_layers[b]);
                 parallel_computed_layers[b].clear();
             }
-
-            fpstorage->reindex_fingerprints();
-
             if (PROGRESS) {
                 fpstorage->stats(sb);
 
