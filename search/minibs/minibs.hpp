@@ -541,7 +541,11 @@ public:
         }
     }
 
-
+    ~minibs() {
+        for (auto* fingerprint: unique_fps) {
+            delete fingerprint;
+        }
+    }
 
     void deferred_insertion(unsigned int layer_index, const flat_hash_set<uint64_t> &winning_loadhashes) {
         // fprintf(stderr, "Bucket of layer %u has %zu elements.\n", layer_index, winning_loadhashes.size());

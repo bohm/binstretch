@@ -95,9 +95,6 @@ public:
             return;
         }
 
-        print_if<PROGRESS>("Before reindexing: max fingerprint index %hu, fingerprint count %zd.\n",
-                           max_id, fingerprints.size());
-
         unsigned short id_counter = 0;
         flat_hash_map<unsigned short, unsigned short> reindexing;
         for (auto &[key, _]: fingerprints) {
@@ -121,7 +118,6 @@ public:
         }
 
         max_id = id_counter;
-        print_if<PROGRESS>("Current max fingerprint index %hu, fingerprint count %zd.\n", max_id, fingerprints.size());
     }
 
     void output(flat_hash_map<uint64_t, unsigned short>& out_fingerprint_map,
