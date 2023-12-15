@@ -11,6 +11,7 @@ class loadconf {
 public:
     std::array<int, BINS + 1> loads = {};
     uint64_t loadhash = 0;
+    uint32_t index = 0;
 
 // sorts the loads with advice: the advice
 // being that only one load has increased, namely
@@ -24,6 +25,14 @@ public:
         for (int i = 1; i <= BINS; i++) {
             loadhash ^= Zl[i * (R + 1) + loads[i]];
         }
+    }
+
+
+    // Implemented in binomial_index.hpp.
+    uint32_t binomial_index_explicit() const;
+
+    void index_init() {
+        index = binomial_index_explicit();
     }
 
 // returns new position of the newly loaded bin
@@ -47,8 +56,6 @@ public:
 
         return i;
     }
-
-
 
     void rehash_loads_increased_range(int item, int from, int to) {
         assert(item >= 1);
@@ -203,5 +210,4 @@ public:
 
         return os.str();
     }
-
 };

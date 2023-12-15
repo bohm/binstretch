@@ -272,20 +272,21 @@ public:
                 }
 
                 if (!losing_item_exists) {
-                    MEASURE_ONLY(winning_loadconfs++);
+                    winning_loadconfs++;
                     alg_knownsum_winning.insert(iterated_lc.loadhash);
                 } else {
                     if (all_winning_so_far) {
                         all_winning_so_far = false;
                         knownsum_first_losing = iterated_lc;
                     }
-                    MEASURE_ONLY(losing_loadconfs++);
+
+                    losing_loadconfs++;
                 }
             }
         } while (decrease(&iterated_lc));
 
         fprintf(stderr,
-                "Knownsum layer: Winning positions: %" PRIu64 " and %" PRIu64 " losing, elements in cache %zu\n",
+                "Knownsum layer: %" PRIu64 " winning and %" PRIu64 " losing load configurations, elements in cache %zu\n",
                 winning_loadconfs, losing_loadconfs, alg_knownsum_winning.size());
 
     }

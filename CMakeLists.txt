@@ -104,7 +104,8 @@ add_executable(clion
         search/minibs/minibs-three.hpp
         search/minibs/midgame_feasibility.hpp
         search/minibs/fingerprint_storage.hpp
-        search/minibs/fingerprints.hpp)
+        search/minibs/fingerprints.hpp
+        search/binomial_index.hpp)
 
 add_executable(listsaplings minitools/listsaplings.cpp
         search/cache/guar64.hpp
@@ -347,7 +348,8 @@ add_executable(awt minitools/alg-winning-table.cpp
         search/minimax/descend_ascend.hpp
         search/loadconf.hpp
         search/minibs/minibs-three.hpp
-        search/minibs/midgame_feasibility.hpp)
+        search/minibs/midgame_feasibility.hpp
+        search/binomial_index.hpp)
 
 
 add_executable(minibs-tests tests/minibs-tests.cpp

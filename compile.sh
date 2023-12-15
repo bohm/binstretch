@@ -142,12 +142,12 @@ fi
 
 if [[ "$BUILDING_KIBBITZER" = true ]]; then
 	echo "Running: g++ -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S kibbitzer.cpp -o ../$OUTPUT_SUBFOLDER/kibbitzer -pthread $LINKING_SUFFIX"
-	cd kibbitzer; g++ -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S kibbitzer.cpp -o ../$OUTPUT_SUBFOLDER/kibbitzer -pthread $LINKING_SUFFIX; cd ..
+	cd kibbitzer || exit; g++ -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S kibbitzer.cpp -o ../$OUTPUT_SUBFOLDER/kibbitzer -pthread $LINKING_SUFFIX; cd ..
 fi
 
 if [[ "$BUILDING_ROOSTER" = true ]]; then
     echo "Compiling converter binary for $BINS bins and ratio $R/$S bins into $OUTPUT/rooster-$BINS-$R-$S."
-    cd rooster; g++ -I../ -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S rooster.cpp -o ../$OUTPUT/rooster-$BINS-$R-$S -pthread $LINKING_SUFFIX; cd ..
+    cd rooster || exit; g++ -I../ -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S rooster.cpp -o ../$OUTPUT/rooster-$BINS-$R-$S -pthread $LINKING_SUFFIX; cd ..
 fi
 
 if [[ "$BUILDING_MINITOOLS" = true ]]; then
@@ -157,17 +157,17 @@ if [[ "$BUILDING_MINITOOLS" = true ]]; then
   fi
 #	echo "Running: g++ -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S listsaplings.cpp -o ../$OUTPUT/listsaplings-$BINS-$R-$S -pthread $LINKING_SUFFIX"
 #	cd minitools; g++ -I../search/ -I../../parallel-hashmap/ -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S listsaplings.cpp -o ../$OUTPUT/listsaplings-$BINS-$R-$S -pthread $LINKING_SUFFIX; cd ..
+  echo "Compiling ./$OUTPUT_SUBFOLDER/minibs-tests-$I_SCALE."
+	g++ -I./search/ -I../parallel-hashmap/  -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DI_SCALE=$I_SCALE tests/minibs-tests.cpp -o ./$OUTPUT_SUBFOLDER/minibs-tests-$I_SCALE -pthread
   echo "Compiling ./$OUTPUT_SUBFOLDER/awt-$I_SCALE".
 	g++ -I./search/ -I../parallel-hashmap/  -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DI_SCALE=$I_SCALE minitools/alg-winning-table.cpp -o ./$OUTPUT_SUBFOLDER/awt-$I_SCALE -pthread
   echo "Compiling ./$OUTPUT_SUBFOLDER/all-losing-$I_SCALE."
 	g++ -I./search/ -I../parallel-hashmap/  -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DI_SCALE=$I_SCALE minitools/all-losing.cpp -o ./$OUTPUT_SUBFOLDER/all-losing-$I_SCALE -pthread
-  echo "Compiling ./$OUTPUT_SUBFOLDER/minibs-tests-$I_SCALE."
-	g++ -I./search/ -I../parallel-hashmap/  -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DI_SCALE=$I_SCALE tests/minibs-tests.cpp -o ./$OUTPUT_SUBFOLDER/minibs-tests-$I_SCALE -pthread
   echo "Compiling ./$OUTPUT_SUBFOLDER/sand-on-ab-$I_SCALE."
 	g++ -I./search/ -I../parallel-hashmap/  -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DI_SCALE=$I_SCALE minitools/sand-on-ab.cpp -o ./$OUTPUT_SUBFOLDER/sand-on-ab-$I_SCALE -pthread
 fi
 
 if [[ "$BUILDING_TESTS" = true ]]; then
     echo "Compiling $OUTPUT/generationtest-$BINS-$R-$S."
-    cd tests; g++ -I../search/ -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S generationtest.cpp -o ../$OUTPUT/generationtest-$BINS-$R-$S $LINKING_SUFFIX; cd ..
+    cd tests || exit; g++ -I../search/ -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S generationtest.cpp -o ../$OUTPUT/generationtest-$BINS-$R-$S $LINKING_SUFFIX; cd ..
 fi

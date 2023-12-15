@@ -7,54 +7,218 @@
 #include "minitool_scale.hpp"
 #include "minibs/minibs.hpp"
 #include "minibs/minibs-three.hpp"
+#include "binomial_index.hpp"
 
-constexpr int GS2BOUND = S - 2*ALPHA;
+constexpr int GS2BOUND = S - 2 * ALPHA;
+
+// Compute the 32-bit loadhash of a load configuration.
+// Used for collision testing.
+uint32_t loadhash_32(const loadconf *lc) {
+    uint32_t loadhash = 0;
+
+    for (int i = 1; i <= BINS; i++) {
+        loadhash ^= (uint32_t) Zl[i * (R + 1) + lc->loads[i]];
+    }
+
+    return loadhash;
+}
+
+// Two standalone functions from the minibs.hpp headers. Since minibs currently does not support running without
+// initialization, we keep them here to be able to use them before minibs is constructed.
+
+template<int DENOM, int SPEC>
+bool query_knownsum_layer_standalone(loadconf &lc, flat_hash_set<uint64_t>
+&alg_knownsum_winning) {
+
+    if (minibs<DENOM, SPEC>::alg_immediately_winning(lc)) {
+        return true;
+    }
+
+    return alg_knownsum_winning.contains(lc.loadhash);
+}
+
+template<int DENOM, int SPEC>
+bool query_knownsum_layer_standalone(loadconf &lc, int item, int bin,
+                                     flat_hash_set<uint64_t> &alg_knownsum_winning) {
+    uint64_t hash_if_packed = lc.virtual_loadhash(item, bin);
+    int load_if_packed = lc.loadsum() + item;
+    int load_on_last = lc.loads[BINS];
+    if (bin == BINS) {
+        load_on_last = std::min(lc.loads[BINS - 1], lc.loads[BINS] + item);
+    }
+
+    if (minibs<DENOM, SPEC>::alg_immediately_winning(load_if_packed, load_on_last)) {
+        return true;
+    }
+
+    if (minibs<DENOM, SPEC>::alg_winning_by_gs5plus(lc, item, bin)) {
+        return true;
+    }
+
+    return alg_knownsum_winning.contains(hash_if_packed);
+}
+
+template<int DENOM, int SPEC>
+std::pair<flat_hash_set<uint64_t>, loadconf> init_knownsum_layer_standalone() {
+
+    flat_hash_set<uint64_t> alg_knownsum_winning;
+    loadconf knownsum_first_losing;
+
+    print_if<PROGRESS>("Processing the knownsum layer.\n");
+
+    bool all_winning_so_far = true;
+    loadconf iterated_lc = create_full_loadconf();
+    uint64_t winning_loadconfs = 0;
+    uint64_t losing_loadconfs = 0;
+
+    do {
+        // No insertions are necessary if the positions are trivially winning or losing.
+        if (minibs<DENOM, SPEC>::adv_immediately_winning(iterated_lc) ||
+            minibs<DENOM, SPEC>::alg_immediately_winning(iterated_lc)) {
+            continue;
+        }
+
+        int loadsum = iterated_lc.loadsum();
+        if (loadsum < S * BINS) {
+            int start_item = std::min(S, S * BINS - iterated_lc.loadsum());
+            bool losing_item_exists = false;
+            for (int item = start_item; item >= 1; item--) {
+                bool good_move_found = false;
+
+                for (int bin = 1; bin <= BINS; bin++) {
+                    if (bin > 1 && iterated_lc.loads[bin] == iterated_lc.loads[bin - 1]) {
+                        continue;
+                    }
+
+                    if (item + iterated_lc.loads[bin] <= R - 1) // A plausible move.
+                    {
+                        if (item + iterated_lc.loadsum() >=
+                            S * BINS) // with the new item, the load is by definition sufficient
+                        {
+                            good_move_found = true;
+                            break;
+                        } else {
+
+                            // We have to check the hash table if the position is winning.
+                            bool alg_wins_next_position =
+                                    query_knownsum_layer_standalone<DENOM, SPEC>(iterated_lc, item, bin,
+                                                                                 alg_knownsum_winning);
+                            if (alg_wins_next_position) {
+                                good_move_found = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if (!good_move_found) {
+                    losing_item_exists = true;
+                    break;
+                }
+            }
+
+            if (!losing_item_exists) {
+                winning_loadconfs++;
+                alg_knownsum_winning.insert(iterated_lc.loadhash);
+            } else {
+                if (all_winning_so_far) {
+                    all_winning_so_far = false;
+                    knownsum_first_losing = iterated_lc;
+                }
+
+                losing_loadconfs++;
+            }
+        }
+    } while (decrease(&iterated_lc));
+
+    fprintf(stderr,
+            "Knownsum layer: %" PRIu64 " winning and %" PRIu64 " losing load configurations, elements in cache %zu\n",
+            winning_loadconfs, losing_loadconfs, alg_knownsum_winning.size());
+
+    return {alg_knownsum_winning, knownsum_first_losing};
+}
+
+
+template<int DENOM, int SPEC>
+void test_hashing_collisions(flat_hash_set<uint64_t> &alg_knownsum_winning,
+                             loadconf &knownsum_first_losing) {
+
+    flat_hash_set<uint32_t> losing_hashes_loadhash32;
+    flat_hash_set<uint32_t> losing_hashes_binomial_index;
+
+    uint64_t collisions_32 = 0;
+    uint64_t collisions_binomial = 0;
+    loadconf iterated_lc = knownsum_first_losing;
+
+    do {
+        // We skip all positions in the known sum cache or those clearly losing.
+        if (query_knownsum_layer_standalone<DENOM, SPEC>(iterated_lc, alg_knownsum_winning) ||
+            minibs<DENOM, SPEC>::adv_immediately_winning(iterated_lc)) {
+            continue;
+        }
+
+        uint32_t small_hash = loadhash_32(&iterated_lc);
+        if (losing_hashes_loadhash32.contains(small_hash)) {
+            collisions_32++;
+        } else {
+            losing_hashes_loadhash32.insert(small_hash);
+        }
+
+        uint32_t bin_index = iterated_lc.binomial_index_explicit();
+        if (losing_hashes_binomial_index.contains(bin_index)) {
+            collisions_binomial++;
+        } else {
+            losing_hashes_binomial_index.insert(bin_index);
+        }
+
+    } while (decrease(&iterated_lc));
+
+    fprintf(stderr, "Test of int32 collisions: Hash set size %zu with %" PRIu64 " collisions.\n",
+            losing_hashes_loadhash32.size(), collisions_32);
+
+    fprintf(stderr, "Test of binomial index collisions (should be 0): Hash set size %zu with %" PRIu64 " collisions.\n",
+            losing_hashes_binomial_index.size(), collisions_binomial);
+}
 
 // Computes the winning sand positions (for ALG with ratio R-1/S).
 // Stores the winning position into the provided unordered_set.
 // This is useful for some later tests.
 
-template <int DENOMINATOR, int SPECIALIZATION>
-void sand_winning(minibs<DENOMINATOR, SPECIALIZATION> &mb, std::unordered_set<int>& sand_winning, int fixed_sand_on_one)
-{
+template<int DENOMINATOR, int SPECIALIZATION>
+void
+sand_winning(minibs<DENOMINATOR, SPECIALIZATION> &mb, std::unordered_set<int> &sand_winning, int fixed_sand_on_one) {
     itemconf<DENOMINATOR> ic;
     ic.hashinit();
 
-    for (int sand = 1; sand < GS2BOUND; sand++)
-    {
-	loadconf lc;
-	lc.hashinit();
-	lc.assign_and_rehash(sand, 1);
-	if (fixed_sand_on_one >= 1)
-	{
-	    lc.assign_and_rehash(fixed_sand_on_one, 2);
-	}
-	
-	bool alg_winning_via_knownsum = mb.query_knownsum_layer(lc);
-	if (alg_winning_via_knownsum)
-	{
-	    print_loadconf_stream(stderr, &lc, false);
-	    fprintf(stderr, " of sand is winning for ALG with ratio %d/%d (through knownsum).\n", RMOD, S);
-	    sand_winning.insert(sand);
-	} else
-	{
-	    bool alg_winning = mb.query_itemconf_winning(lc, ic);
-	    if (alg_winning)
-	    {
-		print_loadconf_stream(stderr, &lc, false);
-		fprintf(stderr, " of sand is winning for ALG with ratio %d/%d (through minibinstretching).\n", RMOD, S);
-		sand_winning.insert(sand);
-	    }
-	}
+    for (int sand = 1; sand < GS2BOUND; sand++) {
+        loadconf lc;
+        lc.hashinit();
+        lc.assign_and_rehash(sand, 1);
+        if (fixed_sand_on_one >= 1) {
+            lc.assign_and_rehash(fixed_sand_on_one, 2);
+        }
+
+        bool alg_winning_via_knownsum = mb.query_knownsum_layer(lc);
+        if (alg_winning_via_knownsum) {
+            print_loadconf_stream(stderr, &lc, false);
+            fprintf(stderr, " of sand is winning for ALG with ratio %d/%d (through knownsum).\n", RMOD, S);
+            sand_winning.insert(sand);
+        } else {
+            bool alg_winning = mb.query_itemconf_winning(lc, ic);
+            if (alg_winning) {
+                print_loadconf_stream(stderr, &lc, false);
+                fprintf(stderr, " of sand is winning for ALG with ratio %d/%d (through minibinstretching).\n", RMOD, S);
+                sand_winning.insert(sand);
+            }
+        }
     }
 }
 
 // How many positions are winning if one "measurable" item arrives. That means
 // item of size at least 1/DENOMINATOR + 1.
-template <int DENOMINATOR, int SPECIALIZATION>
-void one_measurable_item_winning(minibs<DENOMINATOR, SPECIALIZATION> &mb, std::unordered_set<int>& sand_winning)
-{
-    constexpr int GS2BOUND = S - 2*ALPHA;
+template<int DENOMINATOR, int SPECIALIZATION>
+void one_measurable_item_winning(minibs<DENOMINATOR, SPECIALIZATION> &mb, std::unordered_set<int> &sand_winning) {
+    constexpr int GS2BOUND = S - 2 * ALPHA;
     itemconf<DENOMINATOR> ic;
     ic.hashinit();
 
@@ -62,81 +226,69 @@ void one_measurable_item_winning(minibs<DENOMINATOR, SPECIALIZATION> &mb, std::u
     ic.increase(1);
 
     // we start measuring from 1/DENOMINATOR + 1, otherwise it makes no sense.
-    for (int sand = smallest_measurable; sand < GS2BOUND; sand++)
-    {
-	if (sand_winning.contains(sand))
-	{
-	    continue;
-	}
-	
-	loadconf lc;
-	lc.hashinit();
-	lc.assign_and_rehash(sand, 1);
+    for (int sand = smallest_measurable; sand < GS2BOUND; sand++) {
+        if (sand_winning.contains(sand)) {
+            continue;
+        }
+
+        loadconf lc;
+        lc.hashinit();
+        lc.assign_and_rehash(sand, 1);
         bool alg_winning = mb.query_itemconf_winning(lc, ic);
 
-	if (alg_winning)
-	{
-	    print_loadconf_stream(stderr, &lc, false);
-	    fprintf(stderr, " with an item of size at least %d is winning for ALG with ratio %d/%d.\n",
-		    smallest_measurable, RMOD, S);
-	}
+        if (alg_winning) {
+            print_loadconf_stream(stderr, &lc, false);
+            fprintf(stderr, " with an item of size at least %d is winning for ALG with ratio %d/%d.\n",
+                    smallest_measurable, RMOD, S);
+        }
     }
 }
 
 
-template <int DENOMINATOR, int SPECIALIZATION>
-void single_items_winning(minibs<DENOMINATOR, SPECIALIZATION> &mb, std::unordered_set<int>& sand_winning)
-{
-    for (int item = 1; item < GS2BOUND; item++)
-    {
-	if (sand_winning.contains(item))
-	{
-	    continue;
-	}
-	
-	loadconf empty;
-	empty.hashinit();
-	empty.assign_and_rehash(item, 1);
-	itemconf<DENOMINATOR> ic;
-	ic.hashinit();
-	int downscaled_item = mb.shrink_item(item);
-	// fprintf(stderr, "Shrunk item %d to scaled size %d.\n", item, downscaled_item);
-	if (downscaled_item > 0)
-	{
-	    ic.increase(downscaled_item);
-	}
-	
+template<int DENOMINATOR, int SPECIALIZATION>
+void single_items_winning(minibs<DENOMINATOR, SPECIALIZATION> &mb, std::unordered_set<int> &sand_winning) {
+    for (int item = 1; item < GS2BOUND; item++) {
+        if (sand_winning.contains(item)) {
+            continue;
+        }
+
+        loadconf empty;
+        empty.hashinit();
+        empty.assign_and_rehash(item, 1);
+        itemconf<DENOMINATOR> ic;
+        ic.hashinit();
+        int downscaled_item = mb.shrink_item(item);
+        // fprintf(stderr, "Shrunk item %d to scaled size %d.\n", item, downscaled_item);
+        if (downscaled_item > 0) {
+            ic.increase(downscaled_item);
+        }
+
         bool alg_winning = mb.query_itemconf_winning(empty, ic);
-	if (alg_winning)
-	{
-	    fprintf(stderr, "A single item packing: ");
-	    print_loadconf_stream(stderr, &empty, false);
-	    fprintf(stderr, " (item scale %d) is winning for ALG with ratio %d/%d.\n", downscaled_item, RMOD, S);
-	} else
-	{
-	    // print_loadconf_stream(stderr, &empty, false);
-	    // fprintf(stderr, " is losing, itemconf array: ");
-	    // ic.print();
-	}
+        if (alg_winning) {
+            fprintf(stderr, "A single item packing: ");
+            print_loadconf_stream(stderr, &empty, false);
+            fprintf(stderr, " (item scale %d) is winning for ALG with ratio %d/%d.\n", downscaled_item, RMOD, S);
+        } else {
+            // print_loadconf_stream(stderr, &empty, false);
+            // fprintf(stderr, " is losing, itemconf array: ");
+            // ic.print();
+        }
     }
 }
 
-template<int DENOM, int SPECIALIZATION> void print_basic_components(minibs<DENOM, SPECIALIZATION> &mb)
-{
-    for(unsigned int i = 0; i < mb.feasible_itemconfs.size(); ++i)
-    {
-	itemconf<DENOM> ic = mb.feasible_itemconfs[i];
-	fprintf(stderr, "Printing basic components of itemconfig: ");
-	ic.print();
-	for (int j = 0; j < DENOM; ++j)
-	{
-	    if (mb.basic_components[i][j] == -1)
-	    {
-		break;
-	    }
-	    fprintf(stderr, "%d, ", mb.basic_components[i][j]);
-	}
-	fprintf(stderr, "\n");
+template<int DENOM, int SPECIALIZATION>
+void print_basic_components(minibs<DENOM, SPECIALIZATION> &mb) {
+    for (unsigned int i = 0; i < mb.feasible_itemconfs.size(); ++i) {
+        itemconf<DENOM> ic = mb.feasible_itemconfs[i];
+        fprintf(stderr, "Printing basic components of itemconfig: ");
+        ic.print();
+        for (int j = 0; j < DENOM; ++j) {
+            if (mb.basic_components[i][j] == -1) {
+                break;
+            }
+            fprintf(stderr, "%d, ", mb.basic_components[i][j]);
+        }
+        fprintf(stderr, "\n");
     }
 }
 
@@ -539,12 +691,16 @@ template <int DENOMINATOR> void itemconfig_backtrack(minibs<DENOMINATOR> &mb,
 }
 */
 
-int main(int argc, char** argv)
-{
+int main(int argc, char **argv) {
     zobrist_init();
 
+    for (int i =0;i < R*BINS; i++) {
+        fprintf(stderr, "%" PRIu32 ", ", global_binoms[i]);
+    }
+    fprintf(stderr, "\n");
     // maximum_feasible_tests();
-    
+    auto [akw, first_losing] = init_knownsum_layer_standalone<MINITOOL_MINIBS_SCALE, BINS>();
+    test_hashing_collisions<MINITOOL_MINIBS_SCALE, BINS>(akw, first_losing);
     minibs<MINITOOL_MINIBS_SCALE, BINS> mb;
     // print_basic_components(mb);
     // mb.stats_by_layer();
@@ -563,14 +719,13 @@ int main(int argc, char** argv)
     // query_all_caches(mb, random_value_2);
     // loadhashes_across_caches(mb);
     // loadhash_fingerprinting(mb);
-   
+
     // mb.backup_calculations();
 
     int fixed_load_on_one = 0;
 
-    if (argc >= 2)
-    {
-	    fixed_load_on_one = atoi(argv[1]);
+    if (argc >= 2) {
+        fixed_load_on_one = atoi(argv[1]);
     }
 
 
@@ -588,21 +743,22 @@ int main(int argc, char** argv)
     }
 
     */
-    
+
     // fprintf(stderr, "----\n");
 
     // topmost_layer_info<TEST_SIZE>(mb);
     // print_int_array<mb.DENOM>(mb.ITEMS_PER_TYPE, true);
 
-    
+
     std::unordered_set<int> sand_winning_for_alg;
-    fprintf(stderr, "Sand winning positions (with one bin loaded to %d, interval [1,%d]):\n", fixed_load_on_one, GS2BOUND);
+    fprintf(stderr, "Sand winning positions (with one bin loaded to %d, interval [1,%d]):\n", fixed_load_on_one,
+            GS2BOUND);
     sand_winning<MINITOOL_MINIBS_SCALE, BINS>(mb, sand_winning_for_alg, fixed_load_on_one);
     fprintf(stderr, "Single measurable item winning (interval [1,%d], ignoring sand wins):\n", GS2BOUND);
     one_measurable_item_winning<MINITOOL_MINIBS_SCALE, BINS>(mb, sand_winning_for_alg);
     fprintf(stderr, "Single items winning (interval [1,%d], ignoring sand wins):\n", GS2BOUND);
     single_items_winning<MINITOOL_MINIBS_SCALE, BINS>(mb, sand_winning_for_alg);
-    
+
 
     return 0;
 }
