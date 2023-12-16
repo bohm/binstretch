@@ -209,50 +209,50 @@ public:
     }
 
 
-    void write_one_set(flat_hash_set<uint64_t> &s, FILE *file = nullptr) {
+    template <class T> void write_one_set(flat_hash_set<T> &s, FILE *file = nullptr) {
         write_set_size(s.size(), file);
-        auto *set_as_array = new uint64_t[s.size()];
+        auto *set_as_array = new T[s.size()];
         uint64_t c = 0;
-        for (const uint64_t &el: s) {
+        for (const T &el: s) {
             set_as_array[c++] = el;
         }
 
         if (file == nullptr) {
-            fwrite(set_as_array, sizeof(uint64_t), c, storage_file);
+            fwrite(set_as_array, sizeof(T), c, storage_file);
         } else {
-            fwrite(set_as_array, sizeof(uint64_t), c, file);
+            fwrite(set_as_array, sizeof(T), c, file);
         }
         delete[] set_as_array;
     }
 
 
-    void write_one_set(flat_hash_set<unsigned int> *s, FILE* file = nullptr) {
+    template <class T> void write_one_set(flat_hash_set<T> *s, FILE* file = nullptr) {
         write_set_size(s->size(), file);
-        auto *set_as_array = new unsigned int[s->size()];
+        auto *set_as_array = new T[s->size()];
         uint64_t c = 0;
-        for (const unsigned int &el: *s) {
+        for (const T &el: *s) {
             set_as_array[c++] = el;
         }
 
         if (file == nullptr) {
-            fwrite(set_as_array, sizeof(unsigned int), c, storage_file);
+            fwrite(set_as_array, sizeof(T), c, storage_file);
         } else {
-            fwrite(set_as_array, sizeof(unsigned int), c, file);
+            fwrite(set_as_array, sizeof(T), c, file);
         }
         delete[] set_as_array;
     }
 
 
-    void read_one_set(flat_hash_set<uint64_t> &out_set, FILE *file = nullptr) {
+    template <class T> void read_one_set(flat_hash_set<T> &out_set, FILE *file = nullptr) {
         out_set.clear();
         unsigned int set_size = read_set_size(file);
         out_set.reserve(set_size);
         size_t set_read = 0;
-        auto *set_as_array = new uint64_t[set_size];
+        auto *set_as_array = new T[set_size];
         if (file == nullptr) {
-            set_read = fread(set_as_array, sizeof(uint64_t), set_size, storage_file);
+            set_read = fread(set_as_array, sizeof(T), set_size, storage_file);
         } else {
-            set_read = fread(set_as_array, sizeof(uint64_t), set_size, file);
+            set_read = fread(set_as_array, sizeof(T), set_size, file);
         }
 
         if (set_read != set_size) {
@@ -266,16 +266,16 @@ public:
         delete[] set_as_array;
     }
 
-    void read_one_set(flat_hash_set<unsigned int> *out_set, FILE *file = nullptr) {
+    template <class T> void read_one_set(flat_hash_set<T> *out_set, FILE *file = nullptr) {
         out_set->clear();
         unsigned int set_size = read_set_size(file);
         out_set->reserve(set_size);
         size_t set_read = 0;
-        auto *set_as_array = new unsigned int[set_size];
+        auto *set_as_array = new T[set_size];
         if (file == nullptr) {
-            set_read = fread(set_as_array, sizeof(unsigned int), set_size, storage_file);
+            set_read = fread(set_as_array, sizeof(T), set_size, storage_file);
         } else {
-            set_read = fread(set_as_array, sizeof(unsigned int), set_size, file);
+            set_read = fread(set_as_array, sizeof(T), set_size, file);
         }
 
         if (set_read != set_size) {
@@ -425,12 +425,12 @@ public:
         delete[] values;
     }
 
-    void read_hash_map_to_ushort(flat_hash_map<uint64_t, unsigned short> &out_fingerprint_map) {
+    void read_hash_map_to_ushort(flat_hash_map<uint32_t, unsigned short> &out_fingerprint_map) {
         unsigned int map_size = read_set_size();
-        auto *keys = new uint64_t[map_size];
+        auto *keys = new uint32_t[map_size];
         auto *values = new unsigned short[map_size];
 
-        int succ_read_keys = fread(keys, sizeof(uint64_t), map_size, storage_file);
+        int succ_read_keys = fread(keys, sizeof(uint32_t), map_size, storage_file);
 
         if (succ_read_keys != (int) map_size) {
             ERRORPRINT("Binary storage error: failed to read the keys of fingerprint_map.\n");
@@ -454,10 +454,10 @@ public:
     }
 
 
-    void write_hash_map_to_ushort(flat_hash_map<uint64_t, unsigned short> &fingerprint_map) {
+    void write_hash_map_to_ushort(flat_hash_map<uint32_t, unsigned short> &fingerprint_map) {
         // Store the map as two arrays.
 
-        auto *keys = new uint64_t[fingerprint_map.size()];
+        auto *keys = new uint32_t[fingerprint_map.size()];
         auto *values = new unsigned short[fingerprint_map.size()];
 
         int pos = 0;
@@ -470,7 +470,7 @@ public:
         // Store the two arrays.
         write_set_size(fingerprint_map.size());
 
-        fwrite(keys, sizeof(uint64_t), fingerprint_map.size(), storage_file);
+        fwrite(keys, sizeof(uint32_t), fingerprint_map.size(), storage_file);
         write_delimeter();
         fwrite(values, sizeof(unsigned short), fingerprint_map.size(), storage_file);
         write_delimeter();
@@ -479,7 +479,7 @@ public:
     }
 
 
-    void read_fingerprint_system(flat_hash_map<uint64_t, unsigned short> &out_fingerprint_map,
+    void read_fingerprint_system(flat_hash_map<uint32_t, unsigned short> &out_fingerprint_map,
                                  std::vector<flat_hash_set<unsigned int> *> &out_fingerprints,
                                  std::vector<flat_hash_set<unsigned int> *> &out_unique_fps) {
         flat_hash_map<unsigned int, flat_hash_set<unsigned int> *> pointer_sequence;
@@ -495,7 +495,7 @@ public:
 
     }
 
-    void write_fingerprint_system(flat_hash_map<uint64_t, unsigned short> &fingerprint_map,
+    void write_fingerprint_system(flat_hash_map<uint32_t, unsigned short> &fingerprint_map,
                                   std::vector<flat_hash_set<unsigned int> *> &fingerprints,
                                   std::vector<flat_hash_set<unsigned int> *> &unique_fps) {
         flat_hash_map<unsigned int, flat_hash_set<unsigned int> *> pointer_sequence;
@@ -539,7 +539,7 @@ public:
         }
     }
 
-    void restore_knownsum_set(flat_hash_set<uint64_t> &out_knownsum_set,
+    void restore_knownsum_set(flat_hash_set<uint32_t> &out_knownsum_set,
                               std::array<int, BINS+1> &out_first_loadconf) {
         open_knownsum_for_reading();
         read_delimeter(knownsum_file);
@@ -550,7 +550,7 @@ public:
         close_knowsum();
     }
 
-    void backup_knownsum_set(flat_hash_set<uint64_t> &knownsum_set,
+    void backup_knownsum_set(flat_hash_set<uint32_t> &knownsum_set,
                              std::array<int, BINS+1> &first_loadconf) {
         open_knownsum_for_writing();
         write_delimeter(knownsum_file);
@@ -612,7 +612,7 @@ public:
 
     }
 
-    void restore(flat_hash_map<uint64_t, unsigned short> &out_fingerprint_map,
+    void restore(flat_hash_map<uint32_t, unsigned short> &out_fingerprint_map,
                  std::vector<flat_hash_set<unsigned int> *> &out_fingerprints,
                  std::vector<flat_hash_set<unsigned int> *> &out_unique_fps,
                  partition_container<DENOMINATOR> &out_feasible_ics) {
@@ -634,7 +634,7 @@ public:
     }
 
 
-    void backup(flat_hash_map<uint64_t, unsigned short> &fingerprint_map,
+    void backup(flat_hash_map<uint32_t, unsigned short> &fingerprint_map,
                 std::vector<flat_hash_set<unsigned int> *> &fingerprints,
                 std::vector<flat_hash_set<unsigned int> *> &unique_fps,
                 partition_container<DENOMINATOR> &feasible_ics) {
@@ -687,7 +687,7 @@ public:
     void backup_three(partition_container<DENOMINATOR> &midgame_feasible_partitions,
                       partition_container<DENOMINATOR> &endgame_adjacent_partitions,
                       flat_hash_map<uint64_t, unsigned int> &endgame_adjacent_maxfeas,
-                      flat_hash_map<uint64_t, unsigned short> &fingerprint_map,
+                      flat_hash_map<uint32_t, unsigned short> &fingerprint_map,
                       std::vector<flat_hash_set<unsigned int> *> &fingerprints,
                       std::vector<flat_hash_set<unsigned int> *> &unique_fps) {
         open_for_writing();
@@ -703,7 +703,7 @@ public:
     void restore_three(partition_container<DENOMINATOR> &midgame_feasible_partitions,
                        partition_container<DENOMINATOR> &endgame_adjacent_partitions,
                        flat_hash_map<uint64_t, unsigned int> &endgame_adjacent_maxfeas,
-                       flat_hash_map<uint64_t, unsigned short> &out_fingerprint_map,
+                       flat_hash_map<uint32_t, unsigned short> &out_fingerprint_map,
                        std::vector<flat_hash_set<unsigned int> *> &out_fingerprints,
                        std::vector<flat_hash_set<unsigned int> *> &out_unique_fps) {
         open_for_reading();

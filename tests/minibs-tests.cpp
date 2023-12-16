@@ -34,7 +34,7 @@ bool query_knownsum_layer_standalone(loadconf &lc, flat_hash_set<uint64_t>
         return true;
     }
 
-    return alg_knownsum_winning.contains(lc.loadhash);
+    return alg_knownsum_winning.contains(lc.index);
 }
 
 template<int DENOM, int SPEC>
@@ -119,7 +119,7 @@ std::pair<flat_hash_set<uint64_t>, loadconf> init_knownsum_layer_standalone() {
 
             if (!losing_item_exists) {
                 winning_loadconfs++;
-                alg_knownsum_winning.insert(iterated_lc.loadhash);
+                alg_knownsum_winning.insert(iterated_lc.index);
             } else {
                 if (all_winning_so_far) {
                     all_winning_so_far = false;
@@ -164,7 +164,7 @@ void test_hashing_collisions(flat_hash_set<uint64_t> &alg_knownsum_winning,
             losing_hashes_loadhash32.insert(small_hash);
         }
 
-        uint32_t bin_index = iterated_lc.binomial_index_explicit();
+        uint32_t bin_index = iterated_lc.index;
         if (losing_hashes_binomial_index.contains(bin_index)) {
             collisions_binomial++;
         } else {
@@ -695,7 +695,7 @@ int main(int argc, char **argv) {
     zobrist_init();
 
     for (int i =0;i < R*BINS; i++) {
-        fprintf(stderr, "%" PRIu32 ", ", global_binoms[i]);
+        fprintf(stderr, "%" PRIu32 ", ", binoms_gl[i]);
     }
     fprintf(stderr, "\n");
     // maximum_feasible_tests();

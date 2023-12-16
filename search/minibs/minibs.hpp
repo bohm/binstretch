@@ -49,7 +49,7 @@ public:
     // This sparsification is not easily done on the fly, so we do it during
     // postprocessing.
 
-    flat_hash_map<uint64_t, unsigned short> fingerprint_map;
+    flat_hash_map<uint32_t, unsigned short> fingerprint_map;
     // We store pointers to the winning fingerprints,
     // to enable smooth sparsification.
     std::vector<flat_hash_set<unsigned int> *> fingerprints;
@@ -58,7 +58,7 @@ public:
     // Useful for deleting them e.g. during termination.
     std::vector<flat_hash_set<unsigned int> *> unique_fps;
 
-    flat_hash_set<uint64_t> alg_knownsum_winning;
+    flat_hash_set<uint32_t> alg_knownsum_winning;
 
     // The first load configuration that is losing for the knownsum heuristic.
     // When we do the iterations for the individual itemconf layers, we can start with this one as the initial one.
@@ -198,7 +198,7 @@ public:
             return true;
         }
 
-        return alg_knownsum_winning.contains(lc.loadhash);
+        return alg_knownsum_winning.contains(lc.index);
     }
 
     bool query_knownsum_layer(const loadconf &lc, int item, int bin) const {
@@ -273,7 +273,7 @@ public:
 
                 if (!losing_item_exists) {
                     winning_loadconfs++;
-                    alg_knownsum_winning.insert(iterated_lc.loadhash);
+                    alg_knownsum_winning.insert(iterated_lc.index);
                 } else {
                     if (all_winning_so_far) {
                         all_winning_so_far = false;
@@ -298,14 +298,14 @@ public:
             return true;
         }
 
-        if (!fingerprint_map.contains(lc.loadhash)) {
+        if (!fingerprint_map.contains(lc.index)) {
             return false;
         }
 
         // assert(all_feasible_hashmap.contains(ic.itemhash));
         unsigned int layer_index = (unsigned int) all_feasible_hashmap[ic.itemhash];
 
-        flat_hash_set<unsigned int> *fp = fingerprints[fingerprint_map[lc.loadhash]];
+        flat_hash_set<unsigned int> *fp = fingerprints[fingerprint_map[lc.index]];
         return fp->contains(layer_index);
     }
 
@@ -472,7 +472,7 @@ public:
                     // The measure only code below does not work in the parallel setting.
                     // MEASURE_ONLY(winning_loadconfs++);
                     // We delay encaching the win until the parallel phase is over.
-                    alg_winning_in_layer->insert(iterated_lc.loadhash);
+                    alg_winning_in_layer->insert(iterated_lc.index);
                 } else {
                     // MEASURE_ONLY(losing_loadconfs++);
                 }

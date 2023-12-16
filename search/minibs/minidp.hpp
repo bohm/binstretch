@@ -51,16 +51,16 @@ public:
                                 break;
                             }
 
-                            uint64_t debug_loadhash = tuple.loadhash;
+                            uint64_t debug_index = tuple.index;
                             int newpos = tuple.assign_and_rehash(itemsize, i);
 
-                            if (!loadconf_hashfind(tuple.loadhash ^ salt, dpd->loadht)) {
+                            if (!loadconf_hashfind(tuple.index ^ salt, dpd->loadht)) {
                                 pnewq->push_back(tuple);
-                                loadconf_hashpush(tuple.loadhash ^ salt, dpd->loadht);
+                                loadconf_hashpush(tuple.index ^ salt, dpd->loadht);
                             }
 
                             tuple.unassign_and_rehash(itemsize, newpos);
-                            assert(tuple.loadhash == debug_loadhash);
+                            assert(tuple.index == debug_index);
                         }
                     }
                     if (pnewq->size() == 0) {

@@ -146,7 +146,7 @@ public:
 
 
     uint64_t hash_with_low() const {
-        return (loadhash ^ ic.itemhash ^ Zlow[lowest_sendable(last_item)]);
+        return (index ^ ic.itemhash ^ Zlow[lowest_sendable(last_item)]);
     }
 
     uint64_t virtual_hash_with_low(int item, int bin) {
@@ -158,13 +158,13 @@ public:
 
 
     uint64_t hash_with_last() const {
-        return (loadhash ^ ic.itemhash ^ Zlast[last_item]);
+        return (index ^ ic.itemhash ^ Zlast[last_item]);
     }
 
     // A hash that ignores next item. This is used by some post-processing functions
     // but should be avoided in the main lower bound search.
     uint64_t loaditemhash() const {
-        return loadhash ^ ic.itemhash;
+        return index ^ ic.itemhash;
     }
 
     // Returns (winning/losing state) hash.
@@ -175,7 +175,7 @@ public:
     // Returns a hash that also encodes the next upcoming item. This allows
     // us to uniquely index algorithm's vertices.
     uint64_t alghash(int next_item) const {
-        return (loadhash ^ ic.itemhash ^ Zalg[next_item]);
+        return (index ^ ic.itemhash ^ Zalg[next_item]);
     }
 
     void consistency_check() const;
@@ -185,7 +185,7 @@ void duplicate(binconf *t, const binconf *s) {
     for (int i = 1; i <= BINS; i++)
         t->loads[i] = s->loads[i];
     t->last_item = s->last_item;
-    t->loadhash = s->loadhash;
+    t->index = s->index;
     t->_totalload = s->_totalload;
     t->ic = s->ic;
 }
@@ -204,7 +204,7 @@ bool binconf_equal(const binconf *a, const binconf *b) {
         }
     }
 
-    assert(a->loadhash == b->loadhash);
+    assert(a->index == b->index);
     assert(a->ic.itemhash == b->ic.itemhash);
     assert(a->_totalload == b->_totalload);
     assert(a->ic._itemcount_explicit == b->ic._itemcount_explicit);

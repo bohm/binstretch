@@ -3,7 +3,6 @@
 #include <array>
 #include <cstdint>
 #include "common.hpp"
-#include "loadconf.hpp"
 
 constexpr uint64_t binom_coef(uint64_t n, uint64_t k) {
     if (k == 0) { return 1; }
@@ -32,13 +31,7 @@ constexpr std::array<uint32_t, R*BINS> fill_binomial_indices() {
 }
 
 
-constexpr std::array<uint32_t, R*BINS> global_binoms = fill_binomial_indices();
+constexpr std::array<uint32_t, R*BINS> binoms_gl = fill_binomial_indices();
 
-uint32_t loadconf::binomial_index_explicit() const {
-    uint32_t index = 0;
-    for (int i = 1; i <= BINS; i++) {
-        index += global_binoms[(i-1)*R + loads[i]];
-    }
-    return index;
-}
+
 

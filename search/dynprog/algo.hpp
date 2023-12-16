@@ -104,21 +104,21 @@ int dynprog_max_direct(const binconf &conf, dynprog_data *dpdata = nullptr, meas
                             break;
                         }
 
-                        uint64_t debug_loadhash = tuple.loadhash;
+                        uint64_t debug_index = tuple.index;
                         int newpos = tuple.assign_and_rehash(size, i);
 
-                        if (!loadconf_hashfind(tuple.loadhash ^ salt, loadht)) {
+                        if (!loadconf_hashfind(tuple.index ^ salt, loadht)) {
                             if (size == smallest_item && k == 1) {
                                 // this can be improved by sorting
                                 max_overall = std::max((int) (S - tuple.loads[BINS]), max_overall);
                             }
 
                             pnewq->push_back(tuple);
-                            loadconf_hashpush(tuple.loadhash ^ salt, loadht);
+                            loadconf_hashpush(tuple.index ^ salt, loadht);
                         }
 
                         tuple.unassign_and_rehash(size, newpos);
-                        assert(tuple.loadhash == debug_loadhash);
+                        assert(tuple.index == debug_index);
                     }
                 }
                 if (pnewq->size() == 0) {
@@ -201,16 +201,16 @@ std::vector<loadconf> dynprog(const binconf &conf, dynprog_data *dpdata) {
                             break;
                         }
 
-                        uint64_t debug_loadhash = tuple.loadhash;
+                        uint64_t debug_loadhash = tuple.index;
                         int newpos = tuple.assign_and_rehash(size, i);
 
-                        if (!loadconf_hashfind(tuple.loadhash ^ salt, dpdata->loadht)) {
+                        if (!loadconf_hashfind(tuple.index ^ salt, dpdata->loadht)) {
                             pnewq->push_back(tuple);
-                            loadconf_hashpush(tuple.loadhash ^ salt, dpdata->loadht);
+                            loadconf_hashpush(tuple.index ^ salt, dpdata->loadht);
                         }
 
                         tuple.unassign_and_rehash(size, newpos);
-                        assert(tuple.loadhash == debug_loadhash);
+                        assert(tuple.index == debug_loadhash);
                     }
                 }
                 if (pnewq->size() == 0) {

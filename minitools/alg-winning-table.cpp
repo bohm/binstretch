@@ -752,7 +752,7 @@ int main(int argc, char **argv) {
 
     fprintf(stderr, "Evaluating the pair:");
     print_minibs<MINITOOL_MINIBS_SCALE>(&p);
-    fprintf(stderr, "With loadhash %" PRIu64 " and itemhash %" PRIu64 ".\n", p.first.loadhash, p.second.itemhash);
+    fprintf(stderr, "With index %" PRIu32 " and itemhash %" PRIu64 ".\n", p.first.index, p.second.itemhash);
 
     alg_winning_table(&p, &mb);
 

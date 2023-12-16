@@ -26,7 +26,7 @@ public:
         bc._totalload = ft.shorts[2];
         bc.ic._itemcount_explicit = ft.shorts[3];
 
-        bc.loadhash = ft.longs[0];
+        bc.index = ft.longs[0];
         bc.ic.itemhash = ft.longs[1];
 
         for (int i = 0; i <= BINS; i++) {
@@ -44,7 +44,7 @@ public:
         ret.shorts[1] = expansion_depth;
         ret.shorts[2] = bc._totalload;
         ret.shorts[3] = bc.ic._itemcount_explicit;
-        ret.longs[0] = bc.loadhash;
+        ret.longs[0] = bc.index;
         ret.longs[1] = bc.ic.itemhash;
 
         for (int i = 0; i <= BINS; i++) {

@@ -10,18 +10,18 @@ public:
     // flat_hash_map<size_t, int> refcounts{};
     // flat_hash_map<size_t, uint64_t> fp_hashes{};
 
-    flat_hash_map<uint64_t, unsigned short> fp_by_itemhash{};
+    flat_hash_map<uint32_t, unsigned short> fp_by_itemhash{};
     flat_hash_map<unsigned short, augmented_fp_set> fingerprints{};
     unsigned short max_id = 0;
 
-    flat_hash_map<uint64_t, unsigned short> loadhash_representative_fp{};
+    flat_hash_map<uint32_t, unsigned short> loadhash_representative_fp{};
     std::vector<uint64_t> *rns = nullptr;
 
     explicit fingerprint_storage(std::vector<uint64_t> *irns) {
         rns = irns;
     }
 
-    void add_partition_to_loadhash(uint64_t loadhash, unsigned int winning_partition_index) {
+    void add_partition_to_loadhash(uint32_t loadhash, unsigned int winning_partition_index) {
         uint64_t previous_hash = 0;
         if (loadhash_representative_fp.contains(loadhash)) {
             previous_hash = fingerprints[loadhash_representative_fp[loadhash]].hash;
@@ -65,7 +65,7 @@ public:
     }
 
     // Returns the fingerprint on query or nullptr.
-    fingerprint_set * query_fp(uint64_t loadhash) {
+    fingerprint_set * query_fp(uint32_t loadhash) {
          if (!loadhash_representative_fp.contains(loadhash))
          {
              return nullptr;
@@ -120,7 +120,7 @@ public:
         max_id = id_counter;
     }
 
-    void output(flat_hash_map<uint64_t, unsigned short>& out_fingerprint_map,
+    void output(flat_hash_map<uint32_t, unsigned short>& out_fingerprint_map,
             std::vector<fingerprint_set*> &out_fp_vector) {
         out_fp_vector.clear();
         out_fingerprint_map.clear();
@@ -157,17 +157,17 @@ public:
 
     // debug functions
 
-    flat_hash_map<uint64_t, size_t> compute_frequencies() {
-        flat_hash_map<uint64_t, size_t> freq;
+    flat_hash_map<uint32_t, size_t> compute_frequencies() {
+        flat_hash_map<uint32_t, size_t> freq;
         for (auto & [loadhash, hash] : loadhash_representative_fp) {
             freq[loadhash] = fingerprints[hash].fp.size();
         }
         return freq;
     }
 
-    std::vector<std::pair<int, flat_hash_set<uint64_t>>> positions_to_check{};
+    std::vector<std::pair<int, flat_hash_set<uint32_t>>> positions_to_check{};
 
-    void add_positions_to_check(unsigned int layer_index, const flat_hash_set<uint64_t>& winning_loadhashes) {
+    void add_positions_to_check(unsigned int layer_index, const flat_hash_set<uint32_t>& winning_loadhashes) {
         positions_to_check.emplace_back(layer_index, winning_loadhashes);
     }
 

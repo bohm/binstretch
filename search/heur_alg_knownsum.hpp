@@ -142,7 +142,7 @@ void initialize_knownsum() {
                         partial_loadconfs++;
                     }
                 }
-                knownsum_ub.insert({iterated_lc.loadhash, item});
+                knownsum_ub.insert({iterated_lc.index, item});
             } else {
                 if (DEBUG) {
                     fprintf(stderr, "Even sending %d is a losing move for the conf ", S);
@@ -258,7 +258,7 @@ void init_lowest_sendable_layer() {
                                 item, iterated_lc.loadsum());
                     }
 
-                    knownsum_with_sendable[lowest_sendable_item].insert({iterated_lc.loadhash, item});
+                    knownsum_with_sendable[lowest_sendable_item].insert({iterated_lc.index, item});
                 } else {
                     if (DEBUG) {
                         fprintf(stderr, "Lowsend %d: Even sending %d is a losing move for the conf ",
