@@ -22,9 +22,8 @@ public:
         std::vector<loadconf> *poldq = dpd->oldloadqueue;
         std::vector<loadconf> *pnewq = dpd->newloadqueue;
         std::vector<loadconf> ret;
-        uint64_t salt = rand_64bit();
         bool initial_phase = true;
-        memset(dpd->loadht, 0, LOADSIZE * 8);
+        dpd->loadhashset->clear();
 
         // We currently avoid the heuristics of handling separate sizes.
         for (int itemsize = DENOMINATOR - 1; itemsize >= 1; itemsize--) {
@@ -51,12 +50,12 @@ public:
                                 break;
                             }
 
-                            uint64_t debug_index = tuple.index;
+                            uint32_t debug_index = tuple.index;
                             int newpos = tuple.assign_and_rehash(itemsize, i);
 
-                            if (!loadconf_hashfind(tuple.index ^ salt, dpd->loadht)) {
+                            if (!dpd->loadhashset->contains(tuple.index)) {
                                 pnewq->push_back(tuple);
-                                loadconf_hashpush(tuple.index ^ salt, dpd->loadht);
+                                dpd->loadhashset->insert(tuple.index);
                             }
 
                             tuple.unassign_and_rehash(itemsize, newpos);

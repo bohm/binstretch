@@ -3,6 +3,11 @@
 #include "common.hpp"
 #include "binconf.hpp"
 #include "optconf.hpp"
+#include <parallel_hashmap/phmap.h>
+// Notice: https://github.com/greg7mdp/parallel-hashmap is now required for the program to build.
+// This is a header-only hashmap/set that seems quicker and lower-memory than the unordered_set.
+
+using phmap::flat_hash_set;
 
 // global variables that collect items from thread_attr.
 
@@ -19,19 +24,19 @@ class dynprog_data {
 public:
     std::vector<loadconf> *oldloadqueue = nullptr;
     std::vector<loadconf> *newloadqueue = nullptr;
-    uint64_t *loadht = nullptr;
+    flat_hash_set<uint32_t> *loadhashset = nullptr;
 
     dynprog_data() {
         oldloadqueue = new std::vector<loadconf>();
         oldloadqueue->reserve(LOADSIZE);
         newloadqueue = new std::vector<loadconf>();
         newloadqueue->reserve(LOADSIZE);
-        loadht = new uint64_t[LOADSIZE];
+        loadhashset = new flat_hash_set<uint32_t>;
     }
 
     ~dynprog_data() {
         delete oldloadqueue;
         delete newloadqueue;
-        delete[] loadht;
+        delete loadhashset;
     }
 };

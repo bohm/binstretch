@@ -23,13 +23,10 @@ int dynprog_max_direct(const binconf &conf, dynprog_data *dpdata = nullptr, meas
     }
     std::vector<loadconf> *poldq = dpdata->oldloadqueue;
     std::vector<loadconf> *pnewq = dpdata->newloadqueue;
-    uint64_t *loadht = dpdata->loadht;
     dpdata->newloadqueue->clear();
     dpdata->oldloadqueue->clear();
+    dpdata->loadhashset->clear();
 
-    memset(loadht, 0, LOADSIZE * 8);
-
-    uint64_t salt = rand_64bit();
     bool initial_phase = true;
     int max_overall = MAX_INFEASIBLE;
     int smallest_item = -1;
@@ -104,17 +101,17 @@ int dynprog_max_direct(const binconf &conf, dynprog_data *dpdata = nullptr, meas
                             break;
                         }
 
-                        uint64_t debug_index = tuple.index;
+                        uint32_t debug_index = tuple.index;
                         int newpos = tuple.assign_and_rehash(size, i);
 
-                        if (!loadconf_hashfind(tuple.index ^ salt, loadht)) {
+                        if (!dpdata->loadhashset->contains(tuple.index)) {
                             if (size == smallest_item && k == 1) {
                                 // this can be improved by sorting
                                 max_overall = std::max((int) (S - tuple.loads[BINS]), max_overall);
                             }
 
                             pnewq->push_back(tuple);
-                            loadconf_hashpush(tuple.index ^ salt, loadht);
+                            dpdata->loadhashset->insert(tuple.index);
                         }
 
                         tuple.unassign_and_rehash(size, newpos);
@@ -172,9 +169,10 @@ std::vector<loadconf> dynprog(const binconf &conf, dynprog_data *dpdata) {
     std::vector<loadconf> *poldq = dpdata->oldloadqueue;
     std::vector<loadconf> *pnewq = dpdata->newloadqueue;
     std::vector<loadconf> ret;
-    uint64_t salt = rand_64bit();
     bool initial_phase = true;
-    memset(dpdata->loadht, 0, LOADSIZE * 8);
+    // There is possibly some slowdown to the line below:
+    dpdata->loadhashset->clear();
+    // Compared to the original: memset(dpdata->loadht, 0, LOADSIZE * 8);
 
     // We currently avoid the heuristics of handling separate sizes.
     for (int size = S; size >= 1; size--) {
@@ -204,9 +202,9 @@ std::vector<loadconf> dynprog(const binconf &conf, dynprog_data *dpdata) {
                         uint64_t debug_loadhash = tuple.index;
                         int newpos = tuple.assign_and_rehash(size, i);
 
-                        if (!loadconf_hashfind(tuple.index ^ salt, dpdata->loadht)) {
+                        if (!dpdata->loadhashset->contains(tuple.index)) {
                             pnewq->push_back(tuple);
-                            loadconf_hashpush(tuple.index ^ salt, dpdata->loadht);
+                            dpdata->loadhashset->insert(tuple.index);
                         }
 
                         tuple.unassign_and_rehash(size, newpos);
