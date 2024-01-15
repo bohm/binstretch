@@ -145,7 +145,7 @@ const std::string LOG_DIR = "./logs";
 // debug constants
 
 constexpr bool DEBUG = false;
-constexpr bool CONSISTENCY = false; // Additional consistency checks.
+constexpr bool CONSISTENCY = true; // Additional consistency checks.
 constexpr bool COMM_DEBUG = false; // Network debug messages.
 constexpr bool TASK_DEBUG = false; // Debugging creation of tasks, batching, etc.
 constexpr bool GRAPH_DEBUG = false; // Debugging the DAG creation and adding/removing edges.
