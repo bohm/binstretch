@@ -425,10 +425,10 @@ public:
         delete[] values;
     }
 
-    void read_hash_map_to_ushort(flat_hash_map<uint32_t, unsigned short> &out_fingerprint_map) {
+    void read_hash_map_to_uint32(flat_hash_map<uint32_t, uint32_t> &out_fingerprint_map) {
         unsigned int map_size = read_set_size();
         auto *keys = new uint32_t[map_size];
-        auto *values = new unsigned short[map_size];
+        auto *values = new uint32_t[map_size];
 
         int succ_read_keys = fread(keys, sizeof(uint32_t), map_size, storage_file);
 
@@ -438,14 +438,14 @@ public:
 
         read_delimeter();
 
-        int succ_read_values = fread(values, sizeof(unsigned short), map_size, storage_file);
+        int succ_read_values = fread(values, sizeof(uint32_t), map_size, storage_file);
         if (succ_read_values != (int) map_size) {
             ERRORPRINT("Binary storage error: failed to read the values of fingerprint_map.\n");
         }
 
         read_delimeter();
 
-        for (unsigned int i = 0; i < map_size; ++i) {
+        for (unsigned int i = 0; i < map_size; i++) {
             out_fingerprint_map[keys[i]] = values[i];
         }
 
@@ -454,11 +454,11 @@ public:
     }
 
 
-    void write_hash_map_to_ushort(flat_hash_map<uint32_t, unsigned short> &fingerprint_map) {
+    void write_hash_map_to_uint32(flat_hash_map<uint32_t, uint32_t> &fingerprint_map) {
         // Store the map as two arrays.
 
         auto *keys = new uint32_t[fingerprint_map.size()];
-        auto *values = new unsigned short[fingerprint_map.size()];
+        auto *values = new uint32_t[fingerprint_map.size()];
 
         int pos = 0;
         for (const auto &[k, v]: fingerprint_map) {
@@ -472,14 +472,14 @@ public:
 
         fwrite(keys, sizeof(uint32_t), fingerprint_map.size(), storage_file);
         write_delimeter();
-        fwrite(values, sizeof(unsigned short), fingerprint_map.size(), storage_file);
+        fwrite(values, sizeof(uint32_t), fingerprint_map.size(), storage_file);
         write_delimeter();
         delete[] keys;
         delete[] values;
     }
 
 
-    void read_fingerprint_system(flat_hash_map<uint32_t, unsigned short> &out_fingerprint_map,
+    void read_fingerprint_system(flat_hash_map<uint32_t, uint32_t> &out_fingerprint_map,
                                  std::vector<flat_hash_set<unsigned int> *> &out_fingerprints,
                                  std::vector<flat_hash_set<unsigned int> *> &out_unique_fps) {
         flat_hash_map<unsigned int, flat_hash_set<unsigned int> *> pointer_sequence;
@@ -491,11 +491,11 @@ public:
                                         out_fingerprints);
 
         delete[] pointerless;
-        read_hash_map_to_ushort(out_fingerprint_map);
+        read_hash_map_to_uint32(out_fingerprint_map);
 
     }
 
-    void write_fingerprint_system(flat_hash_map<uint32_t, unsigned short> &fingerprint_map,
+    void write_fingerprint_system(flat_hash_map<uint32_t, uint32_t> &fingerprint_map,
                                   std::vector<flat_hash_set<unsigned int> *> &fingerprints,
                                   std::vector<flat_hash_set<unsigned int> *> &unique_fps) {
         flat_hash_map<unsigned int, flat_hash_set<unsigned int> *> pointer_sequence;
@@ -521,7 +521,7 @@ public:
 
         delete[] pointerless_fingerprints;
 
-        write_hash_map_to_ushort(fingerprint_map);
+        write_hash_map_to_uint32(fingerprint_map);
 
     }
 
@@ -612,7 +612,7 @@ public:
 
     }
 
-    void restore(flat_hash_map<uint32_t, unsigned short> &out_fingerprint_map,
+    void restore(flat_hash_map<uint32_t, uint32_t> &out_fingerprint_map,
                  std::vector<flat_hash_set<unsigned int> *> &out_fingerprints,
                  std::vector<flat_hash_set<unsigned int> *> &out_unique_fps,
                  partition_container<DENOMINATOR> &out_feasible_ics) {
@@ -634,7 +634,7 @@ public:
     }
 
 
-    void backup(flat_hash_map<uint32_t, unsigned short> &fingerprint_map,
+    void backup(flat_hash_map<uint32_t, uint32_t> &fingerprint_map,
                 std::vector<flat_hash_set<unsigned int> *> &fingerprints,
                 std::vector<flat_hash_set<unsigned int> *> &unique_fps,
                 partition_container<DENOMINATOR> &feasible_ics) {
@@ -687,7 +687,7 @@ public:
     void backup_three(partition_container<DENOMINATOR> &midgame_feasible_partitions,
                       partition_container<DENOMINATOR> &endgame_adjacent_partitions,
                       flat_hash_map<uint64_t, unsigned int> &endgame_adjacent_maxfeas,
-                      flat_hash_map<uint32_t, unsigned short> &fingerprint_map,
+                      flat_hash_map<uint32_t, uint32_t> &fingerprint_map,
                       std::vector<flat_hash_set<unsigned int> *> &fingerprints,
                       std::vector<flat_hash_set<unsigned int> *> &unique_fps) {
         open_for_writing();
@@ -703,7 +703,7 @@ public:
     void restore_three(partition_container<DENOMINATOR> &midgame_feasible_partitions,
                        partition_container<DENOMINATOR> &endgame_adjacent_partitions,
                        flat_hash_map<uint64_t, unsigned int> &endgame_adjacent_maxfeas,
-                       flat_hash_map<uint32_t, unsigned short> &out_fingerprint_map,
+                       flat_hash_map<uint32_t, uint32_t> &out_fingerprint_map,
                        std::vector<flat_hash_set<unsigned int> *> &out_fingerprints,
                        std::vector<flat_hash_set<unsigned int> *> &out_unique_fps) {
         open_for_reading();

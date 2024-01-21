@@ -10,11 +10,11 @@ public:
     // flat_hash_map<size_t, int> refcounts{};
     // flat_hash_map<size_t, uint64_t> fp_hashes{};
 
-    flat_hash_map<uint64_t, unsigned short> fp_by_itemhash{};
-    flat_hash_map<unsigned short, augmented_fp_set> fingerprints{};
-    unsigned short max_id = 0;
+    flat_hash_map<uint64_t, uint32_t> fp_by_itemhash{};
+    flat_hash_map<uint32_t, augmented_fp_set> fingerprints{};
+    uint32_t max_id = 0;
 
-    flat_hash_map<index_t, unsigned short> loadhash_representative_fp{};
+    flat_hash_map<index_t, uint32_t> loadhash_representative_fp{};
     std::vector<uint64_t> *rns = nullptr;
 
     explicit fingerprint_storage(std::vector<uint64_t> *irns) {
@@ -30,7 +30,7 @@ public:
         uint64_t new_fp_hash = fingerprint_virtual_hash(rns, previous_fp_hash, winning_partition_index);
 
         if (fp_by_itemhash.contains(new_fp_hash)) {
-            unsigned short existing_equal_fp_id = fp_by_itemhash[new_fp_hash];
+            uint32_t existing_equal_fp_id = fp_by_itemhash[new_fp_hash];
             if (loadhash_representative_fp.contains(load_index)) {
                 fingerprints[loadhash_representative_fp[load_index]].refcount--;
             }
@@ -57,8 +57,9 @@ public:
                 max_id++;
             }
 
-            if (max_id == std::numeric_limits<unsigned short>::max()) {
-                fprintf(stderr, "The number of unique trees hit 65535, we have to terminate.\n");
+            if (max_id == std::numeric_limits<uint32_t>::max()) {
+                fprintf(stderr, "The number of unique trees hit %u, we have to terminate.\n",
+                        std::numeric_limits<uint32_t>::max());
                 exit(-1);
             }
         }
@@ -105,15 +106,15 @@ public:
             return;
         }
 
-        unsigned short id_counter = 0;
-        flat_hash_map<unsigned short, unsigned short> reindexing;
+        uint32_t id_counter = 0;
+        flat_hash_map<uint32_t, uint32_t> reindexing;
         for (auto &[key, _]: fingerprints) {
             reindexing[key] = id_counter;
             id_counter++;
         }
 
         // Clone fingerprints and re-insert with new keys.
-        flat_hash_map<unsigned short, augmented_fp_set> fp_clone(fingerprints);
+        flat_hash_map<uint32_t, augmented_fp_set> fp_clone(fingerprints);
         fingerprints.clear();
         for (auto &[key, value]: fp_clone) {
             fingerprints[reindexing[key]] = value;
@@ -130,18 +131,18 @@ public:
         max_id = id_counter;
     }
 
-    void output(flat_hash_map<uint32_t, unsigned short>& out_fingerprint_map,
+    void output(flat_hash_map<uint32_t, uint32_t>& out_fingerprint_map,
             std::vector<fingerprint_set*> &out_fp_vector) {
         out_fp_vector.clear();
         out_fingerprint_map.clear();
 
 
-        flat_hash_map<unsigned short, unsigned short> position_in_out_vector;
+        flat_hash_map<uint32_t, uint32_t> position_in_out_vector;
         for (auto &[key, afp]: fingerprints) {
-            unsigned short old_fingerprint_index = key;
+            uint32_t old_fingerprint_index = key;
             auto* output_fp = new fingerprint_set(afp.fp);
             out_fp_vector.emplace_back(output_fp);
-            position_in_out_vector[old_fingerprint_index] = (unsigned short) (out_fp_vector.size() - 1);
+            position_in_out_vector[old_fingerprint_index] = (uint32_t) (out_fp_vector.size() - 1);
         }
 
         for (auto &[loadhash, hash] : loadhash_representative_fp) {
