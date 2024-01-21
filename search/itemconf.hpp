@@ -4,7 +4,7 @@ template<int DENOMINATOR>
 class itemconf {
 public:
     std::array<int, DENOMINATOR> items = {};
-    uint64_t itemhash = 0;
+    itemhash_t itemhash = 0;
     int _itemcount_explicit = 0;
 
     // We do not initialize the hash by default, but maybe we should. 
@@ -93,8 +93,8 @@ public:
 
     // This is the same as above, but used in places where a full itemconf is not initialized, and we only
     // have an array.
-    static uint64_t static_hash(const std::array<int, DENOMINATOR>& items) {
-        uint64_t ret = 0;
+    static itemhash_t static_hash(const std::array<int, DENOMINATOR>& items) {
+        itemhash_t ret = 0;
         for (int j = 1; j < DENOMINATOR; j++) {
             ret ^= Zi[j * (MAX_ITEMS + 1) + items[j]];
         }
@@ -117,8 +117,8 @@ public:
 
 
     // Does not affect the object, only prints the new itemhash.
-    uint64_t virtual_increase(int itemtype) const {
-        uint64_t ret = (itemhash ^ Zi[itemtype * (MAX_ITEMS + 1) + items[itemtype]]
+    itemhash_t virtual_increase(int itemtype) const {
+        itemhash_t ret = (itemhash ^ Zi[itemtype * (MAX_ITEMS + 1) + items[itemtype]]
                         ^ Zi[itemtype * (MAX_ITEMS + 1) + items[itemtype] + 1]);
 
 

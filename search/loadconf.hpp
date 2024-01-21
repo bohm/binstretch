@@ -12,7 +12,7 @@ class loadconf {
 public:
     std::array<int, BINS + 1> loads = {};
     // uint64_t loadhash = 0;
-    uint32_t index = 0;
+    index_t index = 0;
     // Note: At some point the index may need to go above 32-bits, but this will increase size of some
     // data structures by 2, which is the reason we have shifted from 64 to 32 at the moment.
 
@@ -29,8 +29,8 @@ public:
     }*/
 
 
-    uint32_t binomial_index_explicit() const {
-        uint32_t index_expl = 0;
+    index_t binomial_index_explicit() const {
+        index_t index_expl = 0;
         for (int i = 1; i <= BINS; i++) {
             index_expl += binoms_gl[(i - 1) * R + loads[i]];
         }
@@ -200,8 +200,8 @@ public:
 
     // This function does not do any actual assignments or reindexing,
     // instead only computes the index "as if" the item is packed.
-    uint32_t virtual_index(int item, int bin) const {
-        uint32_t virtual_ret = index;
+    index_t virtual_index(int item, int bin) const {
+        index_t virtual_ret = index;
         int newload = loads[bin] + item;
         int curbin = bin;
 

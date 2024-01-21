@@ -10,41 +10,41 @@ public:
     // flat_hash_map<size_t, int> refcounts{};
     // flat_hash_map<size_t, uint64_t> fp_hashes{};
 
-    flat_hash_map<uint32_t, unsigned short> fp_by_itemhash{};
+    flat_hash_map<uint64_t, unsigned short> fp_by_itemhash{};
     flat_hash_map<unsigned short, augmented_fp_set> fingerprints{};
     unsigned short max_id = 0;
 
-    flat_hash_map<uint32_t, unsigned short> loadhash_representative_fp{};
+    flat_hash_map<index_t, unsigned short> loadhash_representative_fp{};
     std::vector<uint64_t> *rns = nullptr;
 
     explicit fingerprint_storage(std::vector<uint64_t> *irns) {
         rns = irns;
     }
 
-    void add_partition_to_loadhash(uint32_t loadhash, unsigned int winning_partition_index) {
-        uint64_t previous_hash = 0;
-        if (loadhash_representative_fp.contains(loadhash)) {
-            previous_hash = fingerprints[loadhash_representative_fp[loadhash]].hash;
+    void add_partition_to_load_index(index_t load_index, unsigned int winning_partition_index) {
+        uint64_t previous_fp_hash = 0;
+        if (loadhash_representative_fp.contains(load_index)) {
+            previous_fp_hash = fingerprints[loadhash_representative_fp[load_index]].hash;
         }
 
-        uint64_t new_fp_hash = fingerprint_virtual_hash(rns, previous_hash, winning_partition_index);
+        uint64_t new_fp_hash = fingerprint_virtual_hash(rns, previous_fp_hash, winning_partition_index);
 
         if (fp_by_itemhash.contains(new_fp_hash)) {
             unsigned short existing_equal_fp_id = fp_by_itemhash[new_fp_hash];
-            if (loadhash_representative_fp.contains(loadhash)) {
-                fingerprints[loadhash_representative_fp[loadhash]].refcount--;
+            if (loadhash_representative_fp.contains(load_index)) {
+                fingerprints[loadhash_representative_fp[load_index]].refcount--;
             }
-            loadhash_representative_fp[loadhash] = existing_equal_fp_id;
+            loadhash_representative_fp[load_index] = existing_equal_fp_id;
             fingerprints[existing_equal_fp_id].refcount++;
         } else {
-            if (loadhash_representative_fp.contains(loadhash)) {
-                augmented_fp_set afs(fingerprints[loadhash_representative_fp[loadhash]].fp, new_fp_hash);
+            if (loadhash_representative_fp.contains(load_index)) {
+                augmented_fp_set afs(fingerprints[loadhash_representative_fp[load_index]].fp, new_fp_hash);
                 afs.fp.insert(winning_partition_index);
                 afs.refcount = 1;
-                fingerprints[loadhash_representative_fp[loadhash]].refcount--;
+                fingerprints[loadhash_representative_fp[load_index]].refcount--;
                 fingerprints[max_id] = afs;
                 fp_by_itemhash[new_fp_hash] = max_id;
-                loadhash_representative_fp[loadhash] = max_id;
+                loadhash_representative_fp[load_index] = max_id;
                 max_id++;
             } else {
                 augmented_fp_set afs;
@@ -53,7 +53,7 @@ public:
                 afs.refcount = 1;
                 fingerprints[max_id] = afs;
                 fp_by_itemhash[new_fp_hash] = max_id;
-                loadhash_representative_fp[loadhash] = max_id;
+                loadhash_representative_fp[load_index] = max_id;
                 max_id++;
             }
 
@@ -65,13 +65,23 @@ public:
     }
 
     // Returns the fingerprint on query or nullptr.
-    fingerprint_set * query_fp(uint32_t loadhash) {
-         if (!loadhash_representative_fp.contains(loadhash))
+    fingerprint_set * query_fp(index_t load_index) {
+         if (!loadhash_representative_fp.contains(load_index))
          {
              return nullptr;
          } else {
-             return &(fingerprints[loadhash_representative_fp[loadhash]].fp);
+             return &(fingerprints[loadhash_representative_fp[load_index]].fp);
          }
+    }
+
+    // A full query on a pair load/layer.
+    bool query(index_t load_index, unsigned int layer_index) {
+        if (!loadhash_representative_fp.contains(load_index))
+        {
+            return false;
+        } else {
+            return fingerprints[loadhash_representative_fp[load_index]].fp.contains(layer_index);
+        }
     }
 
     // Garbage collection of fingerprints with zero references.
@@ -125,12 +135,13 @@ public:
         out_fp_vector.clear();
         out_fingerprint_map.clear();
 
-        flat_hash_map<uint64_t, unsigned int> position_in_out_vector;
+
+        flat_hash_map<unsigned short, unsigned short> position_in_out_vector;
         for (auto &[key, afp]: fingerprints) {
+            unsigned short old_fingerprint_index = key;
             auto* output_fp = new fingerprint_set(afp.fp);
-            uint64_t hash = fingerprint_hash(*rns, afp.fp);
             out_fp_vector.emplace_back(output_fp);
-            position_in_out_vector[hash] = (unsigned short) (out_fp_vector.size() - 1);
+            position_in_out_vector[old_fingerprint_index] = (unsigned short) (out_fp_vector.size() - 1);
         }
 
         for (auto &[loadhash, hash] : loadhash_representative_fp) {

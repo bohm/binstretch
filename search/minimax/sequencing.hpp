@@ -105,7 +105,7 @@ victory sequencing_adversary(binconf *b, unsigned int depth, computation<MODE, M
         if (vic == victory::adv) {
             print_if<DEBUG>("Sequencing: Adversary heuristic ");
             if (DEBUG) {
-                print(stderr, adv_to_evaluate->heur_strategy->type);
+                print_heuristic(stderr, adv_to_evaluate->heur_strategy->type);
             }
             print_if<DEBUG>(" is successful.\n");
 

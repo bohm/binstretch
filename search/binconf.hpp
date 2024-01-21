@@ -282,6 +282,8 @@ void print_binconf_if(const binconf *b, bool newline = true) {
 void binconf::consistency_check() const {
     assert(ic._itemcount_explicit == ic.itemcount_explicit());
     assert(_totalload == totalload_explicit());
+    assert(index == binomial_index_explicit());
+
     int totalload_items = 0;
     for (int i = 1; i <= S; i++) {
         totalload_items += i * ic.items[i];

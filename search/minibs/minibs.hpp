@@ -16,6 +16,7 @@
 #include "minidp.hpp"
 #include "feasibility.hpp"
 #include "fingerprint_storage.hpp"
+#include "flat_data.hpp"
 #include "midgame_feasibility.hpp"
 #include "server_properties.hpp"
 #include "knownsum_game.hpp"
@@ -41,8 +42,6 @@ public:
     flat_hash_map<uint64_t, unsigned int> all_feasible_hashmap;
 
 
-    std::vector<flat_hash_set<uint64_t> > alg_winning_positions;
-
     // Fingerprints on their own is just a transposition of the original minibs
     // approach. Instead of storing loadhashes for each item layer, we store
     // list of item layer ids for every loadhash.
@@ -61,6 +60,8 @@ public:
     std::vector<flat_hash_set<unsigned int> *> unique_fps;
 
     fingerprint_storage *fpstorage = nullptr;
+
+    // flat_data_storage debug_data;
     minidp<DENOMINATOR> mdp;
 
 private:
@@ -68,7 +69,7 @@ private:
     int current_superbucket = 0;
     std::atomic<int> position_in_bucket = 0;
     std::vector<std::vector<unsigned int>> superbuckets;
-    std::vector<flat_hash_set<uint64_t>> parallel_computed_layers;
+    std::vector<flat_hash_set<index_t>> parallel_computed_layers;
 
 public:
     static inline int shrink_item(int larger_item) {
@@ -131,7 +132,7 @@ public:
         }
 
         // assert(all_feasible_hashmap.contains(ic.itemhash));
-        unsigned int layer_index = (unsigned int) all_feasible_hashmap[ic.itemhash];
+        unsigned int layer_index = all_feasible_hashmap[ic.itemhash];
 
         flat_hash_set<unsigned int> *fp = fingerprints[fingerprint_map[lc.index]];
         return fp->contains(layer_index);
@@ -159,7 +160,7 @@ public:
     bool query_different_layer(const loadconf &lc, uint64_t next_layer_itemhash, int item, int bin) {
 
         // We have to check the hash table if the position is winning.
-        uint64_t loadhash_if_packed = lc.virtual_loadhash(item, bin);
+        index_t index_if_packed = lc.virtual_index(item, bin);
             if (knownsum.query_next_step(lc, item, bin)) {
                 return true;
             }
@@ -169,32 +170,30 @@ public:
             // }
 
             int next_item_layer = all_feasible_hashmap[next_layer_itemhash];
-            fingerprint_set *fp = fpstorage->query_fp(loadhash_if_packed);
-            if (fp == nullptr)
-            {
-                return false;
-            }
+            bool result = fpstorage->query(index_if_packed, next_item_layer);
 
-            return fp->contains(next_item_layer);
+            // Debug.
+            // assert(result == debug_data.query(index_if_packed, next_item_layer));
+            return result;
     }
 
     bool query_same_layer(const loadconf &lc, int item, int bin,
-                          const flat_hash_set<uint64_t> *alg_winning_in_layer) const {
+                          const flat_hash_set<index_t> *alg_winning_in_layer) const {
         bool knownsum_winning = knownsum.query_next_step(lc, item, bin);
 
         if (knownsum_winning) {
             return true;
         }
 
-        uint64_t loadhash_if_packed = lc.virtual_loadhash(item, bin);
-        return alg_winning_in_layer->contains(loadhash_if_packed);
+        index_t index_if_packed = lc.virtual_index(item, bin);
+        return alg_winning_in_layer->contains(index_if_packed);
     }
 
-    inline void itemconf_encache_alg_win(uint64_t loadhash, unsigned int item_layer) {
-        fpstorage->add_partition_to_loadhash(loadhash, item_layer);
+    inline void itemconf_encache_alg_win(uint32_t load_index, unsigned int item_layer) {
+        fpstorage->add_partition_to_load_index(load_index, item_layer);
     }
 
-    void init_itemconf_layer(unsigned int layer_index, flat_hash_set<uint64_t> *alg_winning_in_layer) {
+    void init_itemconf_layer(unsigned int layer_index, flat_hash_set<index_t> *alg_winning_in_layer) {
 
         std::array<int, DENOMINATOR> feasible_layer = all_feasible_partitions[layer_index];
         itemconf<DENOMINATOR> layer = itemconf<DENOMINATOR>(feasible_layer);
@@ -322,7 +321,7 @@ public:
 
     // Generates capacity random numbers for use in the sparsification.
     static std::vector<uint64_t> *create_random_hashes(unsigned int capacity) {
-        std::vector<uint64_t> *ret = new std::vector<uint64_t>();
+        auto *ret = new std::vector<uint64_t>();
         for (unsigned int i = 0; i < capacity; ++i) {
             ret->push_back(rand_64bit());
         }
@@ -377,13 +376,18 @@ public:
         }
     }
 
-    void deferred_insertion(unsigned int layer_index, const flat_hash_set<uint64_t> &winning_loadhashes) {
-        // fprintf(stderr, "Bucket of layer %u has %zu elements.\n", layer_index, winning_loadhashes.size());
-        for (uint64_t loadhash: winning_loadhashes) {
-            itemconf_encache_alg_win(loadhash, layer_index);
+    void deferred_insertion(unsigned int layer_index, const flat_hash_set<index_t> &winning_indices) {
+        // fprintf(stderr, "Bucket of layer %u has %zu elements.\n", layer_index, winning_indices.size());
+        for (index_t load_index: winning_indices) {
+            itemconf_encache_alg_win(load_index, layer_index);
         }
         fpstorage->collect();
         fpstorage->reindex_fingerprints();
+
+        // Debug.
+        // for (index_t load_index: winning_indices) {
+        //    debug_data.insert(load_index, layer_index);
+        // }
     }
 
 
@@ -493,13 +497,6 @@ public:
         std::vector<uint64_t> *random_numbers = create_random_hashes(all_feasible_partitions.size());
         fpstorage = new fingerprint_storage(random_numbers);
 
-
-        for (long unsigned int i = 0; i < all_feasible_partitions.size(); i++) {
-            flat_hash_set<uint64_t> winning_in_layer;
-            alg_winning_positions.push_back(winning_in_layer);
-        }
-
-
         // init_layers_sequentially();
         init_layers_parallel();
         fpstorage->output(fingerprint_map, fingerprints);
@@ -529,8 +526,6 @@ public:
 
             fprintf(stderr, "Layer %u,  ", i);
             all_feasible_partitions[i].print();
-            fprintf(stderr, "Size of the layer %d cache: %lu.\n", i,
-                    alg_winning_positions[i].size());
         }
     }
 

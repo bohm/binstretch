@@ -102,7 +102,7 @@ private:
     int current_superbucket = 0;
     std::atomic<int> position_in_bucket = 0;
     std::vector<std::vector<unsigned int>> superbuckets;
-    std::vector<flat_hash_set<uint64_t>> parallel_computed_layers;
+    std::vector<flat_hash_set<uint32_t>> parallel_computed_layers;
 
 public:
     static inline int shrink_item(int larger_item) {
@@ -432,13 +432,7 @@ public:
             // }
 
             int next_item_layer = midgame_feasible_map[next_layer_itemhash];
-            fingerprint_set *fp = fpstorage->query_fp(loadhash_if_packed);
-            if (fp == nullptr)
-            {
-                return false;
-            }
-
-            return fp->contains(next_item_layer);
+            return fpstorage->query(loadhash_if_packed, next_item_layer);
         } else { // Same as above: it should be automatically winning.
             return true;
         }
@@ -457,7 +451,7 @@ public:
     }
 
     inline void itemconf_encache_alg_win(uint64_t loadhash, unsigned int item_layer) {
-        fpstorage->add_partition_to_loadhash(loadhash, item_layer);
+        fpstorage->add_partition_to_load_index(loadhash, item_layer);
     }
 
     void init_itemconf_layer(unsigned int layer_index, flat_hash_set<uint64_t> *alg_winning_in_layer) {

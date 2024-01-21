@@ -40,7 +40,7 @@ enum class heuristic {
     large_item, five_nine
 };
 
-void print(FILE *stream, const heuristic &type) {
+void print_heuristic(FILE *stream, const heuristic &type) {
     switch (type) {
 //     case heuristic::simple:
 // 	fprintf(stream, "simple"); break;
@@ -54,9 +54,9 @@ void print(FILE *stream, const heuristic &type) {
 }
 
 template<bool PARAM>
-void print(FILE *stream, const heuristic &type) {
+void print_heuristic(FILE *stream, const heuristic &type) {
     if (PARAM) {
-        print(stream, type);
+        print_heuristic(stream, type);
     }
 }
 

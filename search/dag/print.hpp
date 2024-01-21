@@ -49,7 +49,7 @@ void dotprint_state(vert_state vs, FILE *stream = stderr, bool first = false) {
     }
 }
 
-void adversary_vertex::print(FILE *stream, bool debug, bool first_vertex) {
+void adversary_vertex::print(FILE *stream, bool debug, bool first_vertex, bool newline) {
     // Print loads.
     fprintf(stream, "%" PRIu64 " [loads=\"", id);
     for (int i = 1; i <= BINS; i++) {
@@ -115,7 +115,11 @@ void adversary_vertex::print(FILE *stream, bool debug, bool first_vertex) {
         fprintf(stream, ",heur=\"%s\"", heur_strategy->print(&bc).c_str());
     }
 
-    fprintf(stream, "];\n");
+    fprintf(stream, "];");
+
+    if(newline) {
+        fprintf(stream, "\n");
+    }
 }
 
 void algorithm_vertex::print(FILE *stream, bool debug) {

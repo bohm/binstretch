@@ -97,7 +97,13 @@ void alg_losing_table(std::pair<loadconf, itemconf<SCALE>> *minibs_position, min
     if (!pos_winning) {
         alg_losing_moves<SCALE,SPEC>(minibs_position, mbs);
     } else {
-        fprintf(stderr, "Position is winning, doing nothing.\n");
+        bool pos_winning_knownsum = mbs->knownsum.query(minibs_position->first);
+        if (pos_winning_knownsum) {
+            fprintf(stderr, "Position is winning through known sum heuristic, doing nothing.\n");
+            return;
+        }
+
+        fprintf(stderr, "Position is winning through minibinstretching query, doing nothing.\n");
         return;
     }
 }
@@ -121,7 +127,7 @@ int main(int argc, char **argv) {
         argstream << " ";
     }
 
-    // fprintf(stderr, "argstream: %s\n", argstream.str().c_str());
+    //fprintf(stderr, "argstream: %s\n", argstream.str().c_str());
     std::pair<loadconf, itemconf<MINITOOL_MINIBS_SCALE>> p = loadshrunken<MINITOOL_MINIBS_SCALE>(argstream, only_load);
 
     // p.first.print(stderr);

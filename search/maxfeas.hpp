@@ -74,9 +74,8 @@ template<minimax MODE, int MINIBS_SCALE>
 int maximum_feasible(binconf *b, const int depth, const int cannot_send_less, int initial_ub,
                          computation<MODE, MINIBS_SCALE> *comp) {
     MEASURE_ONLY(comp->meas.maxfeas_calls++);
-    print_if<DEBUG>("Starting dynprog maximization of configuration:\n");
+    print_if<DEBUG>("Starting dynprog maximization of configuration: ");
     print_binconf_if<DEBUG>(b);
-    print_if<DEBUG>("\n");
 
     comp->maxfeas_return_point = -1;
 

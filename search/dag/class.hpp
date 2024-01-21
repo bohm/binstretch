@@ -266,7 +266,7 @@ public:
 
     bool nonfresh_descendants();
 
-    void print(FILE *stream, bool debug = false, bool first_vertex = false);
+    void print(FILE *stream, bool debug = false, bool first_vertex = false, bool newline = false);
 };
 
 

@@ -43,6 +43,9 @@ constexpr int BINS = IBINS;
 
 typedef int8_t maybebool;
 
+using index_t = uint32_t;
+using itemhash_t = uint64_t;
+
 const maybebool MB_INFEASIBLE = 0;
 const maybebool MB_FEASIBLE = 1;
 const maybebool MB_NOT_CACHED = 2;
