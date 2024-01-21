@@ -48,6 +48,8 @@ public:
 
     // Non-static section.
 
+    knownsum_game<DENOMINATOR, 3> knownsum;
+
     // std::vector<itemconf<DENOMINATOR> > feasible_itemconfs;
     // flat_hash_map<uint64_t, unsigned int> all_feasible_hashmap;
 
@@ -88,11 +90,9 @@ public:
     std::vector<flat_hash_set<unsigned int> *> unique_fps;
 
     // Data structures related to knownsum.
-    flat_hash_set<uint32_t> alg_knownsum_winning;
     // The first load configuration that is losing for the knownsum heuristic.
     // When we do the iterations for the individual itemconf layers, we can start with this one as the initial one.
     // This can save a bit of time while keep the loop simple.
-    loadconf knownsum_first_losing;
 
     fingerprint_storage *fpstorage = nullptr;
     minidp<DENOMINATOR> mdp;
@@ -102,7 +102,7 @@ private:
     int current_superbucket = 0;
     std::atomic<int> position_in_bucket = 0;
     std::vector<std::vector<unsigned int>> superbuckets;
-    std::vector<flat_hash_set<uint32_t>> parallel_computed_layers;
+    std::vector<flat_hash_set<index_t>> parallel_computed_layers;
 
 public:
     static inline int shrink_item(int larger_item) {
@@ -246,108 +246,6 @@ public:
         }
     }
 
-    bool query_knownsum_layer(const loadconf &lc) const {
-        if (adv_immediately_winning(lc)) {
-            return false;
-        }
-
-        if (alg_immediately_winning(lc)) {
-            return true;
-        }
-
-        return alg_knownsum_winning.contains(lc.index);
-    }
-
-    bool query_knownsum_layer(const loadconf &lc, int item, int bin) const {
-        uint64_t hash_if_packed = lc.virtual_loadhash(item, bin);
-        int load_if_packed = lc.loadsum() + item;
-        int load_on_last = lc.loads[BINS];
-        if (bin == BINS) {
-            load_on_last = std::min(lc.loads[BINS - 1], lc.loads[BINS] + item);
-        }
-
-        if (alg_immediately_winning(load_if_packed, load_on_last)) {
-            return true;
-        }
-
-        if (alg_winning_by_gs5plus(lc, item, bin)) {
-            return true;
-        }
-
-        return alg_knownsum_winning.contains(hash_if_packed);
-    }
-
-    void init_knownsum_layer() {
-
-        print_if<PROGRESS>("Processing the knownsum layer.\n");
-
-        bool all_winning_so_far = true;
-        loadconf iterated_lc = create_full_loadconf();
-        uint64_t winning_loadconfs = 0;
-        uint64_t losing_loadconfs = 0;
-
-        do {
-            // No insertions are necessary if the positions are trivially winning or losing.
-            if (adv_immediately_winning(iterated_lc) || alg_immediately_winning(iterated_lc)) {
-                continue;
-            }
-            int loadsum = iterated_lc.loadsum();
-            if (loadsum < S * BINS) {
-                int start_item = std::min(S, S * BINS - iterated_lc.loadsum());
-                bool losing_item_exists = false;
-                for (int item = start_item; item >= 1; item--) {
-                    bool good_move_found = false;
-
-                    for (int bin = 1; bin <= BINS; bin++) {
-                        if (bin > 1 && iterated_lc.loads[bin] == iterated_lc.loads[bin - 1]) {
-                            continue;
-                        }
-
-                        if (item + iterated_lc.loads[bin] <= R - 1) // A plausible move.
-                        {
-                            if (item + iterated_lc.loadsum() >=
-                                S * BINS) // with the new item, the load is by definition sufficient
-                            {
-                                good_move_found = true;
-                                break;
-                            } else {
-
-                                // We have to check the hash table if the position is winning.
-                                bool alg_wins_next_position = query_knownsum_layer(iterated_lc, item, bin);
-                                if (alg_wins_next_position) {
-                                    good_move_found = true;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-
-                    if (!good_move_found) {
-                        losing_item_exists = true;
-                        break;
-                    }
-                }
-
-                if (!losing_item_exists) {
-                    MEASURE_ONLY(winning_loadconfs++);
-                    alg_knownsum_winning.insert(iterated_lc.index);
-                } else {
-                    if (all_winning_so_far) {
-                        all_winning_so_far = false;
-                        knownsum_first_losing = iterated_lc;
-                    }
-                    MEASURE_ONLY(losing_loadconfs++);
-                    // loads_not_winning_by_knownsum.emplace_back(iterated_lc);
-                }
-            }
-        } while (decrease(&iterated_lc));
-
-        fprintf(stderr,
-                "Knownsum layer: Winning positions: %zu.\n",
-                alg_knownsum_winning.size());
-        // , loads_not_winning_by_knownsum.size());
-    }
-
     bool query_itemconf_winning(const loadconf &lc, const itemconf<DENOMINATOR> &ic) {
 
         if (endgame_adjacent_maxfeas.contains(ic.itemhash)) {
@@ -360,7 +258,7 @@ public:
             }
         } else if (midgame_feasible_map.contains(ic.itemhash)) {
             // Check basic tests.
-            if (query_knownsum_layer(lc)) {
+            if (knownsum.query(lc)) {
                 return true;
             }
 
@@ -381,7 +279,7 @@ public:
     bool query_itemconf_winning(const loadconf &lc, uint64_t next_layer_itemhash, int item, int bin) {
 
         // We have to check the hash table if the position is winning.
-        uint64_t loadhash_if_packed = lc.virtual_loadhash(item, bin);
+        index_t load_index_if_packed = lc.virtual_loadhash(item, bin);
 
         if (endgame_adjacent_maxfeas.contains(next_layer_itemhash)) {
             int largest_sendable = std::min(BINS * S - lc.loadsum() - item,
@@ -392,16 +290,16 @@ public:
                 return false;
             }
         } else if (midgame_feasible_map.contains(next_layer_itemhash)) {
-            if (query_knownsum_layer(lc, item, bin)) {
+            if (knownsum.query_next_step(lc, item, bin)) {
                 return true;
             }
 
-            if (!fingerprint_map.contains(loadhash_if_packed)) {
+            if (!fingerprint_map.contains(load_index_if_packed)) {
                 return false;
             }
 
             int next_item_layer = midgame_feasible_map[next_layer_itemhash];
-            flat_hash_set<unsigned int> *fp = fingerprints[fingerprint_map[loadhash_if_packed]];
+            flat_hash_set<unsigned int> *fp = fingerprints[fingerprint_map[load_index_if_packed]];
             return fp->contains(next_item_layer);
         } else { // Same as above: it should be automatically winning.
             return true;
@@ -423,7 +321,7 @@ public:
                 return false;
             }
         } else if (midgame_feasible_map.contains(next_layer_itemhash)) {
-            if (query_knownsum_layer(lc, item, bin)) {
+            if (knownsum.query_next_step(lc, item, bin)) {
                 return true;
             }
 
@@ -439,22 +337,22 @@ public:
     }
 
     bool query_same_layer(const loadconf &lc, int item, int bin,
-                                 const flat_hash_set<uint64_t> *alg_winning_in_layer) const {
-        bool knownsum_winning = query_knownsum_layer(lc, item, bin);
+                                 const flat_hash_set<index_t> *alg_winning_in_layer) const {
+        bool knownsum_winning = knownsum.query_next_step(lc, item, bin);
 
         if (knownsum_winning) {
             return true;
         }
 
-        uint64_t loadhash_if_packed = lc.virtual_loadhash(item, bin);
-        return alg_winning_in_layer->contains(loadhash_if_packed);
+        index_t load_index_if_packed = lc.virtual_loadhash(item, bin);
+        return alg_winning_in_layer->contains(load_index_if_packed);
     }
 
-    inline void itemconf_encache_alg_win(uint64_t loadhash, unsigned int item_layer) {
-        fpstorage->add_partition_to_load_index(loadhash, item_layer);
+    inline void itemconf_encache_alg_win(index_t load_index, unsigned int item_layer) {
+        fpstorage->add_partition_to_load_index(load_index, item_layer);
     }
 
-    void init_itemconf_layer(unsigned int layer_index, flat_hash_set<uint64_t> *alg_winning_in_layer) {
+    void init_itemconf_layer(unsigned int layer_index, flat_hash_set<index_t> *alg_winning_in_layer) {
 
         std::array<int, DENOMINATOR> feasible_layer = midgame_feasible_partitions[layer_index];
         itemconf<DENOMINATOR> layer = itemconf<DENOMINATOR>(feasible_layer);
@@ -463,7 +361,7 @@ public:
         bool last_layer = (layer_index == (midgame_feasible_partitions.size() - 1));
 
         // loadconf iterated_lc = create_full_loadconf();
-        loadconf iterated_lc = knownsum_first_losing;
+        loadconf iterated_lc = knownsum.first_losing_loadconf;
 
         int scaled_ub_from_hashes = DENOMINATOR - 1;
 
@@ -508,7 +406,7 @@ public:
             }
 
             // Ignore all positions which are already winning in the knownsum layer.
-            if (query_knownsum_layer(iterated_lc)) {
+            if (knownsum.query(iterated_lc)) {
                 continue;
             }
 
@@ -580,10 +478,10 @@ public:
 
     }
 
-    void deferred_insertion(unsigned int layer_index, const flat_hash_set<uint64_t> &winning_loadhashes) {
+    void deferred_insertion(unsigned int layer_index, const flat_hash_set<index_t> &winning_loadhashes) {
         // fprintf(stderr, "Bucket of layer %u has %zu elements.\n", layer_index, winning_loadhashes.size());
-        for (uint64_t loadhash: winning_loadhashes) {
-                itemconf_encache_alg_win(loadhash, layer_index);
+        for (index_t load_index: winning_loadhashes) {
+                itemconf_encache_alg_win(load_index, layer_index);
         }
         // flat_hash_map<uint64_t, size_t> frequencies_before = fpstorage->compute_frequencies();
         fpstorage->collect();
@@ -725,12 +623,14 @@ public:
 
         bool knownsum_loaded = false;
         if (bstore.knownsum_file_exists()) {
-            bstore.restore_knownsum_set(alg_knownsum_winning, knownsum_first_losing.loads);
-            print_if<PROGRESS>("Restored knownsum layer with %zu winning positions.\n", alg_knownsum_winning.size());
+            bstore.restore_knownsum_set(knownsum.winning_indices, knownsum.first_losing_loadconf.loads);
+
+            print_if<PROGRESS>("Restored knownsum layer with %zu winning positions.\n",
+                               knownsum.winning_indices.size());
 
             if (PROGRESS) {
                 fprintf(stderr, "Restored first losing loadconf: ");
-                knownsum_first_losing.print(stderr);
+                knownsum.first_losing_loadconf.print(stderr);
                 fprintf(stderr, ".\n");
             }
             knownsum_loaded = true;
@@ -792,13 +692,12 @@ public:
 
         // We initialize the knownsum layer here.
         if (!knownsum_loaded) {
-            init_knownsum_layer();
+            knownsum.build_winning_set();
             if (PROGRESS) {
                 fprintf(stderr, "Computed first losing loadconf: ");
-                knownsum_first_losing.print(stderr);
+                knownsum.first_losing_loadconf.print(stderr);
                 fprintf(stderr, ".\n");
             }
-
         }
 
         std::vector<uint64_t> *random_numbers = create_random_hashes(midgame_feasible_partitions.size());
@@ -827,7 +726,8 @@ public:
 
         if (!bstore.knownsum_file_exists()) {
             print_if<PROGRESS>("Backing up knownsum calculations.\n", DENOMINATOR);
-            bstore.backup_knownsum_set(alg_knownsum_winning, knownsum_first_losing.loads);
+            bstore.backup_knownsum_set(knownsum.winning_indices, knownsum.first_losing_loadconf.loads);
+
         }
 
         if (!bstore.storage_exists()) {

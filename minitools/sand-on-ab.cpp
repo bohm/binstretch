@@ -31,7 +31,7 @@ bool sand_winning(minibs<SCALE, SPEC> &mb, const std::array<int, BINS>& sand_loa
     }
 
 
-    bool ret = mb.query_knownsum_layer(lc) || mb.query_itemconf_winning(lc, ic);
+    bool ret = mb.knownsum.query(lc) || mb.query_itemconf_winning(lc, ic);
 
     return ret;
 }
@@ -70,7 +70,7 @@ template <int SCALE, int SPEC> bool winnable_by_greedy_below_alpha(
         int remainder_to_one_minus_two_alpha = ONE_MINUS_TWO_ALPHA - lc.loads[greedy_bin];
         for (int item = 1; item < remainder_to_one_minus_two_alpha; item++) {
             int new_bin_pos = lc.assign_and_rehash(item, greedy_bin);
-            bool ret = mb.query_knownsum_layer(lc) || mb.query_itemconf_winning(lc, ic);
+            bool ret = mb.knownsum.query(lc) || mb.query_itemconf_winning(lc, ic);
             lc.unassign_and_rehash(item, new_bin_pos);
             if (!ret) {
                 greedy_strategy_wins = false;

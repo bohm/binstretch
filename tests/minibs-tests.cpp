@@ -30,7 +30,7 @@ template<int DENOM, int SPEC>
 bool query_knownsum_layer_standalone(loadconf &lc, flat_hash_set<uint64_t>
 &alg_knownsum_winning) {
 
-    if (minibs<DENOM, SPEC>::alg_immediately_winning(lc)) {
+    if (knownsum_game<DENOM, SPEC>::alg_immediately_winning(lc)) {
         return true;
     }
 
@@ -47,11 +47,11 @@ bool query_knownsum_layer_standalone(loadconf &lc, int item, int bin,
         load_on_last = std::min(lc.loads[BINS - 1], lc.loads[BINS] + item);
     }
 
-    if (minibs<DENOM, SPEC>::alg_immediately_winning(load_if_packed, load_on_last)) {
+    if (knownsum_game<DENOM, SPEC>::alg_immediately_winning(load_if_packed, load_on_last)) {
         return true;
     }
 
-    if (minibs<DENOM, SPEC>::alg_winning_by_gs5plus(lc, item, bin)) {
+    if (knownsum_game<DENOM, SPEC>::alg_winning_by_gs5plus(lc, item, bin)) {
         return true;
     }
 
@@ -73,8 +73,7 @@ std::pair<flat_hash_set<uint64_t>, loadconf> init_knownsum_layer_standalone() {
 
     do {
         // No insertions are necessary if the positions are trivially winning or losing.
-        if (minibs<DENOM, SPEC>::adv_immediately_winning(iterated_lc) ||
-            minibs<DENOM, SPEC>::alg_immediately_winning(iterated_lc)) {
+        if (knownsum_game<DENOM, SPEC>::alg_immediately_winning(iterated_lc)) {
             continue;
         }
 
@@ -152,8 +151,7 @@ void test_hashing_collisions(flat_hash_set<uint64_t> &alg_knownsum_winning,
 
     do {
         // We skip all positions in the known sum cache or those clearly losing.
-        if (query_knownsum_layer_standalone<DENOM, SPEC>(iterated_lc, alg_knownsum_winning) ||
-            minibs<DENOM, SPEC>::adv_immediately_winning(iterated_lc)) {
+        if (query_knownsum_layer_standalone<DENOM, SPEC>(iterated_lc, alg_knownsum_winning)) {
             continue;
         }
 
@@ -198,7 +196,7 @@ sand_winning(minibs<DENOMINATOR, SPECIALIZATION> &mb, std::unordered_set<int> &s
             lc.assign_and_rehash(fixed_sand_on_one, 2);
         }
 
-        bool alg_winning_via_knownsum = mb.query_knownsum_layer(lc);
+        bool alg_winning_via_knownsum = mb.knownsum.query(lc);
         if (alg_winning_via_knownsum) {
             print_loadconf_stream(stderr, &lc, false);
             fprintf(stderr, " of sand is winning for ALG with ratio %d/%d (through knownsum).\n", RMOD, S);
