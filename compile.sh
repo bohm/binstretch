@@ -31,6 +31,7 @@ BUILDING_MINITOOLS=true
 BUILDING_TESTS=true
 CPP_STANDARD="c++2a"
 LINKING_SUFFIX=""
+# OPTFLAG="-O3 -DNDEBUG"
 OPTFLAG="-O3"
 
 # Skip first three parameters, then iterate over the rest of the arguments.
