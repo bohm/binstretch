@@ -87,7 +87,10 @@ public:
             adv.bc = curbc;
             adv.suggestion = suggestion;
             adv_arr.push_back(adv);
-            assert(fscanf(advicefin, "\n") == 0);
+            int newline_load_result = fscanf(advicefin, "\n");
+            if (newline_load_result != 0) {
+                ERRORPRINT("Failed to load the newline.\n");
+            }
         }
 
         print_if<PROGRESS>("Loaded %d suggestions from the advice file.\n", adv_arr.size());
