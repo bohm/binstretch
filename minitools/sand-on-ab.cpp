@@ -102,12 +102,19 @@ void print_interval(int a, int b_left_end, int b_right_end, int c = 0) {
         }
     }
 }
+
+bool max_min_query(const initial_square_matrix& m, int a, int b) {
+    return m[std::max(a,b)][std::min(a,b)];
+}
+
+
 void print_square(const initial_square_matrix & m, int c = 0) {
     for (int a = ONE_MINUS_TWO_ALPHA-1; a >= 0; a--) {
         int interval_left_end = -1;
         bool something_printed = false;
-        for (int b = 0; b <= a; b++) {
-            if (m[a][b]) {
+        for (int b = 0; b <= ONE_MINUS_TWO_ALPHA-1; b++) {
+            bool query = max_min_query(m, a, b);
+            if (query) {
                 if (interval_left_end == -1) {
                     interval_left_end = b;
                 }
@@ -131,6 +138,39 @@ void print_square(const initial_square_matrix & m, int c = 0) {
         }
     }
 }
+
+void print_triangle(const initial_square_matrix & m, int c = 0) {
+    for (int a = ONE_MINUS_TWO_ALPHA-1; a >= 0; a--) {
+        int interval_left_end = -1;
+        bool something_printed = false;
+        for (int b = 0; b <= a; b++) {
+            bool query = max_min_query(m, a, b);
+            if (query) {
+                if (interval_left_end == -1) {
+                    interval_left_end = b;
+                }
+            } else {
+                if (interval_left_end != -1) {
+                    print_interval(a, interval_left_end, b-1, c);
+                    interval_left_end = -1;
+                    something_printed = true;
+                }
+            }
+        }
+        // Close the current interval, too.
+        if (interval_left_end != -1) {
+            print_interval(a, interval_left_end, a, c);
+            interval_left_end = -1;
+            something_printed = true;
+        }
+
+        if(something_printed) {
+            fprintf(stderr, "\n");
+        }
+    }
+}
+
+
 
 template <int SCALE, int SPEC> void compute_sand_square_losing(minibs<SCALE, SPEC> &mb, int c = 0) {
     initial_square_matrix m = {0};
