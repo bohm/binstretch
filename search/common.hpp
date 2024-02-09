@@ -1,5 +1,5 @@
 #pragma once
-//#define NDEBUG  // turns off all asserts
+// #define NDEBUG  // turns off all asserts
 #include <cstdio>
 #include <cstdlib>
 #include <cstdarg>
@@ -94,7 +94,7 @@ const bool PRINT_HEURISTICS_IN_FULL = true;
 
 // Heuristic constants:
 constexpr bool ADVERSARY_HEURISTICS = true;
-constexpr bool EXPAND_HEURISTICS = true;
+constexpr bool EXPAND_HEURISTICS = false;
 constexpr bool LARGE_ITEM_ACTIVE = true;
 constexpr bool LARGE_ITEM_ACTIVE_EVERYWHERE = false;
 constexpr bool FIVE_NINE_ACTIVE = false;

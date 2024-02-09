@@ -598,6 +598,57 @@ void print_as_intervals(int item_ub, flat_hash_map<int, std::string>& good_move_
     print_same_interval<SCALE>(unprinted_start, 1, good_move_map, mb);
 }
 
+// Very similar to alg_winning_table, but lists only partial results, and pretends all items on input are sand
+// (so no combinatorial weight).
+template<int SCALE>
+void sand_winning_table(std::pair<loadconf, itemconf<SCALE>> *minibs_position, minibs<SCALE,3> *minibs) {
+
+    char a_minus_one = 'A' - 1;
+    int maximum_feasible_via_minibs = minibs->grow_to_upper_bound(
+            minibs->maximum_feasible_via_feasible_positions(minibs_position->second));
+    int start_item = std::min(S * BINS - minibs_position->first.loadsum(), maximum_feasible_via_minibs);
+    flat_hash_map<int, std::string> good_move_map;
+    int first_sand_losing = -1;
+
+    for (int item_as_sand = 1; item_as_sand <= start_item; item_as_sand++) {
+
+        std::string good_moves;
+        itemhash_t current_layer_hash = minibs_position->second.itemhash;
+
+        for (int bin = 1; bin <= BINS; bin++) {
+            if (bin > 1 && minibs_position->first.loads[bin] == minibs_position->first.loads[bin - 1]) {
+                continue;
+            }
+
+            if (item_as_sand + minibs_position->first.loads[bin] <= R - 1) // A plausible move.
+            {
+                // We have to check the hash table if the position is winning.
+                bool alg_wins_next_position = minibs->query_itemconf_winning(
+                        minibs_position->first, current_layer_hash, item_as_sand, bin);
+                if (alg_wins_next_position) {
+                    char bin_name = (char) (a_minus_one + bin);
+                    good_moves += bin_name;
+                    good_moves += ' ';
+                }
+            }
+        }
+
+        if (good_moves.empty()) {
+            first_sand_losing = item_as_sand;
+            break;
+        } else {
+            // We do not print until the full good move map is constructed.
+            good_move_map[item_as_sand] = good_moves;
+        }
+    }
+
+    fprintf(stdout, "The interval [0,%d] is winnable with items of no combinatorial weight (sand).\n",
+            first_sand_losing-1);
+    fprintf(stdout, "Strategies for sand items:\n");
+    print_as_intervals<SCALE>(first_sand_losing-1, good_move_map, *minibs);
+    // print_ranges(&(minibs_position->first));
+}
+
 template<int SCALE>
 void alg_winning_table(std::pair<loadconf, itemconf<SCALE>> *minibs_position, minibs<SCALE,3>*minibs) {
     // If the position is already winning by our established mathematical rules (good situations),
@@ -623,6 +674,7 @@ void alg_winning_table(std::pair<loadconf, itemconf<SCALE>> *minibs_position, mi
         return;
     }
 
+    sand_winning_table<SCALE>(minibs_position, minibs);
 
     std::array<std::pair<int, int>, 5> good_ranges = {};
     // 0 - 2: GS2 ranges.

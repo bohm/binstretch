@@ -692,13 +692,14 @@ template <int DENOMINATOR> void itemconfig_backtrack(minibs<DENOMINATOR> &mb,
 int main(int argc, char **argv) {
     zobrist_init();
 
-    for (int i =0;i < R*BINS; i++) {
+    /* for (int i =0;i < R*BINS; i++) {
         fprintf(stderr, "%" PRIu32 ", ", binoms_gl[i]);
     }
     fprintf(stderr, "\n");
+     */
     // maximum_feasible_tests();
-    auto [akw, first_losing] = init_knownsum_layer_standalone<MINITOOL_MINIBS_SCALE, BINS>();
-    test_hashing_collisions<MINITOOL_MINIBS_SCALE, BINS>(akw, first_losing);
+    // auto [akw, first_losing] = init_knownsum_layer_standalone<MINITOOL_MINIBS_SCALE, BINS>();
+    // test_hashing_collisions<MINITOOL_MINIBS_SCALE, BINS>(akw, first_losing);
     minibs<MINITOOL_MINIBS_SCALE, BINS> mb;
     // print_basic_components(mb);
     // mb.stats_by_layer();
