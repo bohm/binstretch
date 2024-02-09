@@ -62,10 +62,10 @@ void dfs(dag *d,
 // Two empty functions which are useful for when we only want to do DFS on adversary or only on algorithm
 // vertices.
 
-void do_nothing(adversary_vertex *v) {
+void do_nothing(adversary_vertex *) {
 }
 
-void do_nothing(algorithm_vertex *v) {
+void do_nothing(algorithm_vertex *) {
 }
 
 

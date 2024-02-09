@@ -17,11 +17,6 @@ public:
         hashinit();
     }
 
-    itemconf(const itemconf &copy) {
-        items = copy.items;
-        itemhash = copy.itemhash;
-        _itemcount_explicit = copy.itemcount();
-    }
 
     int itemcount_explicit() const {
         int total = 0;

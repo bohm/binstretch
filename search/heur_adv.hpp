@@ -218,7 +218,7 @@ std::pair<bool, int> five_nine_heuristic(guar_cache *dpcache, binconf *b, dynpro
 template<minimax MODE>
 std::pair<victory, heuristic_strategy *>
 adversary_heuristics(guar_cache *dpcache, binconf *b, dynprog_data *dpdata,
-                     measure_attr *meas, adversary_vertex *adv_to_evaluate, int maximum_feasible_next) {
+                     measure_attr *meas, adversary_vertex *, int maximum_feasible_next) {
     heuristic_strategy *str = nullptr;
 
     // A heuristic that works since we know the maximum feasible item in advance.

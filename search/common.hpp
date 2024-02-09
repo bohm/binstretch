@@ -289,8 +289,10 @@ void assert_with_message(const char *expression, bool evaluation, const char *me
 
 #ifndef NDEBUG
 #define assert_message(expr, msg) assert_with_message(#expr, expr, msg);
+#define ASSERT_ONLY(x) x
 #else
 #define assert_message(expr, msg) ;
+#define ASSERT_ONLY(x)
 #endif
 
 #define MEASURE_ONLY(x) if (MEASURE) {x;}
@@ -298,3 +300,4 @@ void assert_with_message(const char *expression, bool evaluation, const char *me
 #define CONSISTENCY_ONLY(x) if (CONSISTENCY) {x;}
 #define GRAPH_DEBUG_ONLY(x) if (GRAPH_DEBUG) {x;}
 #define MINIMAX_DEBUG_ONLY(x) if (MINIMAX_DEBUG) {x;}
+

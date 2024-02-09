@@ -26,7 +26,7 @@ void savefile(FILE *stream, dag *d) {
     d->print_lowerbound_bfs(stream);
 }
 
-void savefile(const char *filename, dag *d, adversary_vertex *r) {
+void savefile(const char *filename, dag *d, adversary_vertex *) {
     d->clear_visited();
 
     print_if<PROGRESS>("Printing the game graph into %s.\n", filename);

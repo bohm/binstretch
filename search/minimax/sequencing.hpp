@@ -69,7 +69,7 @@ victory sequencing(binconf &root, adversary_vertex *root_vertex, guar_cache* dpc
 
 template<minimax MODE, int MINIBS_SCALE>
 victory sequencing_adversary(binconf *b, unsigned int depth, computation<MODE, MINIBS_SCALE> *comp,
-                             adversary_vertex *adv_to_evaluate, algorithm_vertex *parent_alg,
+                             adversary_vertex *adv_to_evaluate, algorithm_vertex *,
                              const advisor &advis) {
     algorithm_vertex *upcoming_alg = NULL;
     adv_outedge *new_edge = NULL;
@@ -214,7 +214,7 @@ victory sequencing_adversary(binconf *b, unsigned int depth, computation<MODE, M
 
 template<minimax MODE, int MINIBS_SCALE>
 victory sequencing_algorithm(binconf *b, int k, unsigned int depth, computation<MODE, MINIBS_SCALE> *comp,
-                             algorithm_vertex *alg_to_evaluate, adversary_vertex *parent_adv,
+                             algorithm_vertex *alg_to_evaluate, adversary_vertex *,
                              const advisor &advis) {
 
     adversary_vertex *upcoming_adv = NULL;
@@ -300,7 +300,7 @@ victory sequencing_algorithm(binconf *b, int k, unsigned int depth, computation<
 
 
     // If the vertex has degree zero and no descendants, it is a true leaf -- no move for algorithm is allowed.
-    if (alg_to_evaluate->win == victory::adv && alg_to_evaluate->out.size() == 0) {
+    if (alg_to_evaluate->win == victory::adv && alg_to_evaluate->out.empty()) {
         alg_to_evaluate->leaf = leaf_type::trueleaf;
     }
 

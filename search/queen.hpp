@@ -84,8 +84,7 @@ public:
         all_tasks = nullptr;
     }
 
-    void init_task_status(size_t atc) {
-        assert(atc == all_task_count);
+    void init_task_status() {
         all_tasks_status = new std::atomic<task_status>[all_task_count];
         for (unsigned int i = 0; i < all_task_count; i++) {
             all_tasks_status[i].store(task_status::available);
@@ -94,7 +93,7 @@ public:
 
     void init_task_status(const std::vector<task_status> &tstatus_temp) {
         assert(all_task_count == tstatus_temp.size());
-        init_task_status(tstatus_temp.size());
+        init_task_status();
         for (unsigned int i = 0; i < tstatus_temp.size(); i++) {
             all_tasks_status[i].store(tstatus_temp[i]);
         }

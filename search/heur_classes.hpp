@@ -59,7 +59,7 @@ public:
     }
 
     // Create a printable form of the strategy based on the current configuration.
-    std::string print(const binconf *_) override {
+    std::string print(const binconf *) override {
         std::ostringstream os;
         bool first = true;
 

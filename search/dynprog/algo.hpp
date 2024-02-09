@@ -101,7 +101,7 @@ int dynprog_max_direct(const binconf &conf, dynprog_data *dpdata = nullptr, meas
                             break;
                         }
 
-                        uint32_t debug_index = tuple.index;
+                        ASSERT_ONLY(index_t debug_index = tuple.index);
                         int newpos = tuple.assign_and_rehash(size, i);
 
                         if (!dpdata->loadhashset->contains(tuple.index)) {
@@ -199,7 +199,7 @@ std::vector<loadconf> dynprog(const binconf &conf, dynprog_data *dpdata) {
                             break;
                         }
 
-                        uint64_t debug_loadhash = tuple.index;
+                        ASSERT_ONLY(index_t debug_loadhash = tuple.index);
                         int newpos = tuple.assign_and_rehash(size, i);
 
                         if (!dpdata->loadhashset->contains(tuple.index)) {

@@ -50,7 +50,7 @@ dag::add_alg_vertex(const binconf &b, int next_item, std::string optimal = "", b
         alg_by_hash[b.alghash(next_item)] = ptr;
     }
 
-    auto it2 = alg_by_id.find(new_id);
+    ASSERT_ONLY(auto it2 = alg_by_id.find(new_id));
     assert(it2 == alg_by_id.end());
     alg_by_id[new_id] = ptr;
 
@@ -78,7 +78,7 @@ adversary_vertex *dag::add_adv_vertex(const binconf &b, std::string heurstring =
     }
 
     // ID should always be unique.
-    auto it2 = adv_by_id.find(new_id);
+    ASSERT_ONLY(auto it2 = adv_by_id.find(new_id));
     assert(it2 == adv_by_id.end());
 
     adv_by_id[new_id] = ptr;
@@ -119,11 +119,11 @@ void dag::del_alg_outedge(alg_outedge *gonner) {
 void dag::del_alg_vertex(algorithm_vertex *gonner) {
     assert(gonner != NULL);
     // Remove from alg_by_hash.
-    auto it = alg_by_hash.find(gonner->bc.alghash(gonner->next_item));
+    ASSERT_ONLY(auto it = alg_by_hash.find(gonner->bc.alghash(gonner->next_item)));
     assert(it != alg_by_hash.end());
     alg_by_hash.erase(gonner->bc.alghash(gonner->next_item));
     // Remove from alg_by_id.
-    auto it2 = alg_by_id.find(gonner->id);
+    ASSERT_ONLY(auto it2 = alg_by_id.find(gonner->id));
     assert(it2 != alg_by_id.end());
     alg_by_id.erase(gonner->id);
 
@@ -134,8 +134,8 @@ void dag::del_adv_vertex(adversary_vertex *gonner) {
     assert(gonner != NULL);
 
     // Remove from adv_by_hash.
-    auto it = adv_by_hash.find(gonner->bc.hash_with_last());
-    auto it2 = adv_by_id.find(gonner->id);
+    ASSERT_ONLY(auto it = adv_by_hash.find(gonner->bc.hash_with_last()));
+    ASSERT_ONLY(auto it2 = adv_by_id.find(gonner->id));
 
     assert(it != adv_by_hash.end());
     assert(it2 != adv_by_id.end());

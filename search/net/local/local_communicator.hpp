@@ -114,7 +114,7 @@ public:
 
     // Since zobrist values are immutable at this point and both threads have access to them, we do not
     // need to do anything here.
-    void bcast_send_zobrist(zobrist_quintuple zq) {
+    void bcast_send_zobrist(zobrist_quintuple) {
 
     }
 
@@ -168,7 +168,7 @@ public:
         solution_messages.send(0, spair);
     }
 
-    void request_new_batch(int _) {
+    void request_new_batch(int) {
         // fprintf(stderr, "Local overseer requesting a new batch.\n");
         running_low[1].store(true);
     }

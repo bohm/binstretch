@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.26)
 project(clion)
 
 set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
+# add_compile_definitions(NDEBUG)
 
 include_directories(search)
 include_directories(search/cache)
@@ -20,7 +22,6 @@ include_directories(../parallel-hashmap)
 add_compile_definitions(IBINS=9)
 add_compile_definitions(IR=19)
 add_compile_definitions(IS=14)
-
 
 add_executable(clion
         search/cache/guar64.hpp

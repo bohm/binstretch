@@ -384,7 +384,7 @@ void dag::print_two_ancestors(adversary_vertex *adv_v) {
 void dag::print_path_to_root(adversary_vertex *v) {
     fprintf(stderr, "Path to root:\n");
     adversary_vertex *cur = v;
-    int ic_old = v->bc.itemcount();
+    ASSERT_ONLY(int ic_old = v->bc.itemcount());
     while (cur != root) {
         cur->print(stderr, true);
         assert(cur->in.size() != 0);
@@ -394,9 +394,9 @@ void dag::print_path_to_root(adversary_vertex *v) {
         assert(alg_v->in.size() != 0);
         adv_outedge *e2 = *(alg_v->in.begin());
         cur = e2->from;
-        int ic_new = cur->bc.itemcount();
+        ASSERT_ONLY(int ic_new = cur->bc.itemcount());
         assert(ic_new == ic_old - 1);
-        ic_old = ic_new;
+        ASSERT_ONLY(ic_old = ic_new);
     }
 }
 

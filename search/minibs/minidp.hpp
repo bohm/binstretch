@@ -50,7 +50,7 @@ public:
                                 break;
                             }
 
-                            uint32_t debug_index = tuple.index;
+                            ASSERT_ONLY(index_t debug_index = tuple.index);
                             int newpos = tuple.assign_and_rehash(itemsize, i);
 
                             if (!dpd->loadhashset->contains(tuple.index)) {
@@ -62,7 +62,7 @@ public:
                             assert(tuple.index == debug_index);
                         }
                     }
-                    if (pnewq->size() == 0) {
+                    if (pnewq->empty()) {
                         return ret; // Empty ret.
                     }
                 }

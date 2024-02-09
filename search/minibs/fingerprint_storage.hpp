@@ -184,13 +184,15 @@ public:
     }
 
     void check_wins() {
+#ifndef NDEBUG
         for (const auto &[layer_index, winning_loadhashes] : positions_to_check)
         {
-            for (uint64_t win_loadhash: winning_loadhashes) {
+            for (index_t win_loadhash: winning_loadhashes) {
                 assert(loadhash_representative_fp.contains(win_loadhash));
                 assert(query_fp(win_loadhash)->contains(layer_index));
             }
         }
+#endif
     }
 
     void stats(int pass = -1) const {

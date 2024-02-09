@@ -33,12 +33,12 @@ void compute_next_moves_heur(std::vector<int> &cands, const binconf *b, heuristi
     cands.push_back(strat->next_item(b));
 }
 
-void compute_next_moves_sequence(std::vector<int> &cands, const binconf *b, int depth,
+void compute_next_moves_sequence(std::vector<int> &cands, const binconf *, int depth,
                                  const std::vector<int> &seq) {
     cands.push_back(seq[depth]);
 }
 
-void compute_next_moves_fixed(std::vector<int> &cands, adversary_vertex *fixed_vertex_to_evaluate) {
+void compute_next_moves_fixed(std::vector<int> &, adversary_vertex *) {
 }
 
 template<minimax MODE, int MINIBS_SCALE>

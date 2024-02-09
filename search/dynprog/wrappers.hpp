@@ -134,7 +134,7 @@ std::pair<bool, fullconf> dynprog_feasible_with_output(const binconf &conf) {
                             break;
                         }
 
-                        uint64_t debug_loadhash = tuple.loadhash;
+                        ASSERT_ONLY(index_t debug_loadhash = tuple.loadhash);
                         int newpos = tuple.assign_and_rehash(size, i);
 
                         if (!loadconf_hashfind(tuple.loadhash ^ salt, loadht)) {

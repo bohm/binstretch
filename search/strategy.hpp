@@ -3,21 +3,21 @@
 // Adversarial strategies (nothing smart so far).
 
 
-int basic_exp_strategy_start(int maximum_feasible, int last_item) {
+int basic_exp_strategy_start(int maximum_feasible, int) {
     return maximum_feasible;
 }
 
 // Basic strategy tries all numbers in the interval.
-bool basic_exp_strategy_skip(int maximum_feasible, int lower_bound, int stepcounter, int proposed_size) {
+bool basic_exp_strategy_skip(int , int , int , int ) {
     return false;
 }
 
 
-bool basic_exp_strategy_end(int maximum_feasible, int lower_bound, int stepcounter, int proposed_size) {
+bool basic_exp_strategy_end(int , int lower_bound, int , int proposed_size) {
     return proposed_size < lower_bound;
 }
 
-void basic_exp_strategy_step(int maximum_feasible, int lower_bound, int &stepcounter, int &step) {
+void basic_exp_strategy_step(int , int , int &, int &step) {
     step--;
 }
 

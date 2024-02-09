@@ -54,7 +54,7 @@ void queen_reverse_tarray_tstatus() {
 }
 
 
-bool possible_task_advanced(adversary_vertex *v, int largest_item, int calldepth) {
+bool possible_task_advanced(adversary_vertex *, int largest_item, int calldepth) {
     int target_depth = 0;
     if (largest_item >= S / 4) {
         target_depth = task_depth;
@@ -78,7 +78,7 @@ bool possible_task_size(adversary_vertex *v) {
     return false;
 }
 
-bool possible_task_depth(adversary_vertex *v, int largest_item, int calldepth) {
+bool possible_task_depth(adversary_vertex *, int, int calldepth) {
     if (calldepth >= task_depth) {
         return true;
     }
@@ -86,7 +86,7 @@ bool possible_task_depth(adversary_vertex *v, int largest_item, int calldepth) {
     return false;
 }
 
-bool possible_task_mixed(adversary_vertex *v, int largest_item, int calldepth) {
+bool possible_task_mixed(adversary_vertex *v, int, int calldepth) {
 
     if (v->bc.totalload() - computation_root->bc.totalload() >= task_load) {
         if (TASK_DEBUG) {
@@ -109,7 +109,7 @@ bool possible_task_mixed(adversary_vertex *v, int largest_item, int calldepth) {
     }
 }
 
-bool possible_task_mixed2(adversary_vertex *v, int largest_item, int calldepth) {
+bool possible_task_mixed2(adversary_vertex *, int largest_item, int calldepth) {
     if (largest_item >= S / 2 && calldepth >= 2) {
         return true;
     }

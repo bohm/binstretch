@@ -32,7 +32,7 @@ Message sequence:
  */
 
 // Parse input parameters to the program (overseers ignore them).
-queen_class::queen_class(int argc, char **argv) {
+queen_class::queen_class(int , char **) {
 }
 
 void queen_class::updater(sapling job) {

@@ -71,7 +71,7 @@ improve_bounds_binary(binconf *b, int lb, int ub, bool lb_certainly_feasible) {
 // (Even though smaller items fit, the adversary possibly must avoid them due to monotonicity.)
 
 template<minimax MODE, int MINIBS_SCALE>
-int maximum_feasible(binconf *b, const int depth, const int cannot_send_less, int initial_ub,
+int maximum_feasible(binconf *b, const int, const int cannot_send_less, int initial_ub,
                          computation<MODE, MINIBS_SCALE> *comp) {
     MEASURE_ONLY(comp->meas.maxfeas_calls++);
     print_if<DEBUG>("Starting dynprog maximization of configuration: ");

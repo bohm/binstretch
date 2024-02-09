@@ -178,7 +178,7 @@ void overseer::start() {
             // Attention: this potentially writes the same variable it reads in the local communication model.
             all_task_count = comm.bcast_recv_tcount();
             init_all_tasks(all_task_count);
-            init_task_status(all_task_count);
+            init_task_status();
 
             // Synchronize tarray.
             comm.bcast_recv_all_tasks(all_tasks, all_task_count);

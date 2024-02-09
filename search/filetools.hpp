@@ -68,7 +68,10 @@ std::array<int, BINS + 1> load_segment_with_loads(std::stringstream &str_s) {
     char c = 0;
     int load = -1;
     str_s.get(c);
-    assert(c == '[');
+    if (c != '[') {
+        ERRORPRINT("Missing opening bracket '[' at the start of the load list.\n");
+    }
+
     for (int i = 1; i <= BINS; i++) {
         str_s >> load;
         if (load < 0 || load >= R) {
@@ -79,7 +82,9 @@ std::array<int, BINS + 1> load_segment_with_loads(std::stringstream &str_s) {
     }
 
     str_s.get(c);
-    assert(c == ']');
+    if (c != ']') {
+        ERRORPRINT("Missing closing bracket ']' at the end of the load list.\n");
+    }
     return ret;
 }
 
@@ -90,10 +95,13 @@ std::array<int, SCALE + 1> load_segment_with_items(std::stringstream &str_s) {
     char c = 0;
     int item_size = -1;
     str_s.get(c);
-    assert(c == ' ');
+    if (c != ' ') {
+        ERRORPRINT("The separator between loads and items does not match ' '.\n");
+    }
     str_s.get(c);
-
-    assert(c == '(');
+    if (c != '(') {
+        ERRORPRINT("Missing opening bracket '(' at the start of the item list.\n");
+    }
 
     for (int j = 1; j <= SCALE; j++) {
         str_s >> item_size;
@@ -106,8 +114,9 @@ std::array<int, SCALE + 1> load_segment_with_items(std::stringstream &str_s) {
     }
 
     str_s.get(c);
-    assert(c == ')');
-
+    if (c != ')') {
+        ERRORPRINT("Missing closing bracket ')' at the end of the item list.\n");
+    }
     return ret;
 }
 

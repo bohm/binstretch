@@ -61,7 +61,7 @@ victory computation<MODE, MINIBS_SCALE>::minimax() {
 template<minimax MODE, int MINIBS_SCALE>
 victory computation<MODE, MINIBS_SCALE>::adversary(
         adversary_vertex *adv_to_evaluate,
-        algorithm_vertex *parent_alg) {
+        algorithm_vertex *) {
     algorithm_vertex *upcoming_alg = NULL;
     adv_outedge *new_edge = NULL;
     victory below = victory::alg;
@@ -391,7 +391,7 @@ victory computation<MODE, MINIBS_SCALE>::adversary(
 
 template<minimax MODE, int MINIBS_SCALE>
 victory computation<MODE, MINIBS_SCALE>::algorithm(int pres_item, algorithm_vertex *alg_to_evaluate,
-                                                   adversary_vertex *parent_adv) {
+                                                   adversary_vertex *) {
     adversary_vertex *upcoming_adv = nullptr;
     alg_outedge *connecting_outedge = nullptr;
     victory below = victory::adv; // Who wins below.

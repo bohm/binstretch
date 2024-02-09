@@ -72,7 +72,7 @@ std::pair<bool, std::string> parse_parameter_rootfile(int argc, char **argv, int
     return std::make_pair(false, "");
 }
 
-void overseer_main_thread(int argc, char **argv) {
+void overseer_main_thread(int, char **) {
     ov = new overseer();
     ov->start();
 }
