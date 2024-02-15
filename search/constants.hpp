@@ -20,6 +20,15 @@
 #define IS 14 // ditto
 #endif
 
+#ifndef IMONOT
+#error "The macro constant IMONOT needs to be passed by the compiler!"
+#define IMONOT 0 // ditto
+#endif
+
+#ifndef ISCALE
+#error "The macro constant ISCALE needs to be passed by the compiler!"
+#define ISCALE 3 // ditto
+#endif
 
 // To have the code buildable on Ubuntu 18.04, we include this
 // compiler-dependent hack.
@@ -99,75 +108,3 @@ constexpr int MAX_TOTAL_WEIGHT = MAX_WEIGHT * IBINS;
 
 constexpr int ZI_SIZE = (S + 1) * (MAX_ITEMS + 1);
 constexpr int ZL_SIZE = (BINS + 1) * (R + 1);
-
-// Plugging in some common monotonicity values.
-
-// 3 bins:
-#if IBINS == 3 && IR == 45 && IS == 33
-const int RECOMMENDED_MONOTONICITY = 5;
-#elif IBINS == 3 && IR == 72 && IS == 53
-const int RECOMMENDED_MONOTONICITY = 6; // Works, but of course better fractions are also lower bounds.
-#elif IBINS == 3 && IR == 86 && IS == 63
-const int RECOMMENDED_MONOTONICITY = 6;
-#elif IBINS == 3 && IR == 112 && IS == 82
-constexpr int RECOMMENDED_MONOTONICITY = 8;
-constexpr int RECOMMENDED_MINIBS_SCALE = 12;
-
-#elif IBINS == 3 && IR == 123 && IS == 90
-const int RECOMMENDED_MONOTONICITY = IS-1;
-#elif IBINS == 3 && IR == 138 && IS == 101
-const int RECOMMENDED_MONOTONICITY = 20; // ALG wins 10.
-#elif IBINS == 3 && IR == 153 && IS == 112
-const int RECOMMENDED_MONOTONICITY = 8;
-#elif IBINS == 3 && IR == 164 && IS == 120
-const int RECOMMENDED_MONOTONICITY = 15;
-#elif IBINS == 3 && IR == 175 && IS == 128
-const int RECOMMENDED_MONOTONICITY = 25;
-#elif IBINS == 3 && IR == 190 && IS == 139
-const int RECOMMENDED_MONOTONICITY = 25;
-#elif IBINS == 3 && IR == 194 && IS == 142
-const int RECOMMENDED_MONOTONICITY = 15;
-#elif IBINS == 3 && IR == 205 && IS == 150
-const int RECOMMENDED_MONOTONICITY = 15;
-#elif IBINS == 3 && IR == 329 && IS == 240 // For some specific configurations.
-const int RECOMMENDED_MONOTONICITY = 35;
-constexpr int RECOMMENDED_MINIBS_SCALE = 6;
-#elif IBINS == 3 && IR == 411 && IS == 300
-const int RECOMMENDED_MONOTONICITY = 15;
-constexpr int RECOMMENDED_MINIBS_SCALE = 6;
-#elif IBINS == 3 && IR == 657 && IS == 480
-const int RECOMMENDED_MONOTONICITY = 60;
-constexpr int RECOMMENDED_MINIBS_SCALE = 6;
-#elif IBINS == 3 && IR == 821 && IS == 600
-const int RECOMMENDED_MONOTONICITY = 70;
-constexpr int RECOMMENDED_MINIBS_SCALE = 6;
-#elif IBINS == 3 && IR == 985 && IS == 720
-const int RECOMMENDED_MONOTONICITY = 60;
-constexpr int RECOMMENDED_MINIBS_SCALE = 6;
-#elif IBINS == 3 // Default on 3 bins.
-const int RECOMMENDED_MONOTONICITY = IS - 1;
-constexpr int RECOMMENDED_MINIBS_SCALE = 6;
-// 4 bins:
-#elif IBINS == 4 && IR == 19 && IS == 14
-const int RECOMMENDED_MONOTONICITY = 2;
-constexpr int RECOMMENDED_MINIBS_SCALE = 6;
-#elif IBINS == 4 && IR == 72 && IS == 53
-const int RECOMMENDED_MONOTONICITY = 6;
-// #elif IBINS == 4 && IR == 60 && IS == 44
-// const int RECOMMENDED_MONOTONICITY = 43;
-#elif IBINS == 4 && IR == 112 && IS == 82
-const int RECOMMENDED_MONOTONICITY = 16;
-#elif IBINS >= 8 && IBINS <= 9 && IR == 19 && IS == 14
-const int RECOMMENDED_MONOTONICITY = 1;
-constexpr int RECOMMENDED_MINIBS_SCALE = 6;
-#elif IBINS >= 10 && IR == 19 && IS == 14
-const int RECOMMENDED_MONOTONICITY = 1;
-constexpr int RECOMMENDED_MINIBS_SCALE = 3;
-#elif IBINS == 6 && IR == 15 && IS == 11
-const int RECOMMENDED_MONOTONICITY = 3;
-#elif IBINS >= 7 && IR == 15 && IS == 11
-const int RECOMMENDED_MONOTONICITY = 5;
-#else
-const int RECOMMENDED_MONOTONICITY = IS - 1;
-constexpr int RECOMMENDED_MINIBS_SCALE = 3;
-#endif

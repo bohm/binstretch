@@ -66,7 +66,7 @@ const std::vector<int> INITIAL_ITEMS = {};
 
 
 // Monotonicity limiting the adversarial instance.
-constexpr int monotonicity = RECOMMENDED_MONOTONICITY;
+constexpr int monotonicity = IMONOT;
 // constexpr int monotonicity = 40; // A non-decreasing instance.
 // constexpr int monotonicity = S-1; // Full generality.
 
@@ -106,7 +106,7 @@ constexpr bool USING_HEURISTIC_GS = false;
 constexpr bool USING_KNOWNSUM_LOWSEND = false;
 constexpr bool USING_MINIBINSTRETCHING = true;
 
-constexpr int MINIBS_SCALE = RECOMMENDED_MINIBS_SCALE;
+constexpr int MINIBS_SCALE = ISCALE;
 
 // batching constants
 const int BATCH_SIZE = 50;

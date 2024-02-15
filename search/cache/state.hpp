@@ -71,7 +71,7 @@ public:
     }
 
     state_cache(uint64_t logbytes, int threads, std::string descriptor = "") {
-        assert(logbytes >= 0 && logbytes <= 64);
+        assert(logbytes <= 64);
 
         uint64_t bytes = two_to(logbytes);
         const uint64_t megabyte = 1024 * 1024;

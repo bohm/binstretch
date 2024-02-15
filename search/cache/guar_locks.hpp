@@ -122,7 +122,7 @@ public:
 
     // Parameter logbytes: how many 2^bytes we are given for the cache.
     guar_cache_locks(uint64_t logbytes) {
-        assert(logbytes >= 0 && logbytes <= 64);
+        assert(logbytes <= 64);
 
         uint64_t bytes = two_to(logbytes);
         const uint64_t megabyte = 1024 * 1024;

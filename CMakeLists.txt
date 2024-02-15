@@ -1,9 +1,11 @@
 cmake_minimum_required(VERSION 3.26)
 project(clion)
 
+include(recommend.cmake)
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
-# add_compile_definitions(NDEBUG)
+add_compile_definitions(NDEBUG)
 
 include_directories(search)
 include_directories(search/cache)
@@ -19,11 +21,36 @@ include_directories(search/strategies)
 include_directories(search/weights)
 include_directories(../parallel-hashmap)
 
-add_compile_definitions(IBINS=9)
-add_compile_definitions(IR=19)
-add_compile_definitions(IS=14)
+if (NOT IBINS)
+    set(IBINS 9)
+endif ()
 
-add_executable(clion
+if (NOT IR)
+    set(IR 19)
+endif ()
+
+if (NOT IS)
+    set(IS 14)
+endif ()
+
+if (NOT IMONOT)
+    recommend_monotonicity(${IBINS} ${IR} ${IS})
+endif ()
+
+if (NOT ISCALE)
+    recommend_scaling(${IBINS} ${IR} ${IS})
+endif ()
+
+message("Recommending monotonicity ${IMONOT} and scaling factor ${ISCALE}.")
+add_compile_definitions(IBINS=${IBINS})
+add_compile_definitions(IR=${IR})
+add_compile_definitions(IS=${IS})
+add_compile_definitions(ISCALE=${ISCALE})
+add_compile_definitions(IMONOT=${IMONOT})
+
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "../build/${IBINS}-${IR}-${IS}/")
+
+add_executable(search
         search/cache/guar64.hpp
         search/cache/guar_locks.hpp
         search/cache/guarantee.hpp
@@ -109,6 +136,11 @@ add_executable(clion
         search/binomial_index.hpp
         search/minibs/knownsum_game.hpp
         search/minibs/flat_data.hpp)
+
+set_target_properties(search
+PROPERTIES
+OUTPUT_NAME search-${ISCALE}
+)
 
 add_executable(listsaplings minitools/listsaplings.cpp
         search/cache/guar64.hpp

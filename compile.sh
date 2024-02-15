@@ -132,8 +132,9 @@ fi
 
 
 if [[ "$BUILDING_SEARCH" = true ]]; then
-	echo "Running: g++ -I./ -I../../parallel-hashmap/ -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S main.cpp -o ../$OUTPUT_SUBFOLDER/search -pthread $LINKING_SUFFIX"
-	cd search || exit; g++ -I./ -I../../parallel-hashmap/ -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S main.cpp -o ../$OUTPUT_SUBFOLDER/search -pthread $LINKING_SUFFIX; cd ..
+   cd cmake-build-debug || exit; cmake .. -DIBINS=$BINS -DIR=$R -DIS=$S; cmake --build ./ --target search -- -j 22; cmake --build ./ --target search -- -j 22; cd ..
+# 	echo "Running: g++ -I./ -I../../parallel-hashmap/ -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S main.cpp -o ../$OUTPUT_SUBFOLDER/search -pthread $LINKING_SUFFIX"
+# 	cd search || exit; g++ -I./ -I../../parallel-hashmap/ -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S main.cpp -o ../$OUTPUT_SUBFOLDER/search -pthread $LINKING_SUFFIX; cd ..
 fi
 
 if [[ "$BUILDING_PAINTER" = true ]]; then
