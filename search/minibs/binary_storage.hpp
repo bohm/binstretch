@@ -29,13 +29,18 @@ public:
     FILE *knownsum_file = nullptr;
 
     binary_storage() {
+        char extension_string[10] = "basic";
+        if (KNOWNSUM_EXTENSION_GS5) {
+            sprintf(extension_string, "ext");
+        }
+
         if (BINS == 3) {
-            sprintf(storage_file_path, "./cache/minibs-three-%d-%d-scale-%d-v%d.bin", R, S, DENOMINATOR, VERSION);
+            sprintf(storage_file_path, "./cache/minibs-three-%s-%d-%d-scale-%d-v%d.bin", extension_string, R, S, DENOMINATOR, VERSION);
         } else {
             sprintf(storage_file_path, "./cache/minibs-%d-%d-%d-scale-%d-v%d.bin", BINS, R, S, DENOMINATOR, VERSION);
         }
 
-        sprintf(knownsum_file_path, "./cache/minibs-knownsum-%d-%d-%d-v%d.bin", BINS, R, S, VERSION);
+        sprintf(knownsum_file_path, "./cache/minibs-knownsum-%s-%d-%d-%d-v%d.bin", extension_string, BINS, R, S, VERSION);
     }
 
     bool storage_exists() {

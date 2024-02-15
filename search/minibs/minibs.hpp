@@ -28,8 +28,6 @@ template<int DENOMINATOR, int SPECIALIZATION> class minibs {
 public:
     static constexpr int DENOM = DENOMINATOR;
     static constexpr bool EXTENSION_GS5 = true;
-    // We keep the EXTENSION_GS5 in (for now, at least) to be able to match the new specialized code
-    // exactly.
 
     // Non-static section.
 

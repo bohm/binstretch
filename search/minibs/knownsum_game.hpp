@@ -28,19 +28,6 @@ public:
     // This can save a bit of time while keeping the loop simple.
     loadconf first_losing_loadconf;
 
-    // Explanation: the good situation GS5 is dependent on size of exactly one item.
-    // In this sense, it is not a valid GS for the game of known sum of processing times, because this game
-    // does not handle combinatorics.
-
-    // However, if we are solving bin stretching ultimately, we might want to wish to turn it on already for
-    // the known sum layer, because this is the backbone of winning positions.
-
-    // Currently, it applies only for the setting of BINS == 3, so that the winning tables produced by our tools
-    // such as all-losing or alg-winning-table provide more meaningful results this way.
-
-    static constexpr bool EXTENSION_GS5 = true;
-
-
     /*
     static inline bool adv_immediately_winning(const loadconf &lc) {
         return (lc.loads[1] >= R);
@@ -71,7 +58,7 @@ public:
         // Compile time checks.
         // There must be three bins, or GS5+ does not apply. And the extension must
         // be turned on.
-        if (BINS != 3 || !EXTENSION_GS5) {
+        if (BINS != 3 || !KNOWNSUM_EXTENSION_GS5) {
             return false;
         }
 

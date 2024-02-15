@@ -33,18 +33,6 @@ template<int DENOMINATOR>
 class minibs<DENOMINATOR, 3> {
 public:
     static constexpr int DENOM = DENOMINATOR;
-    // GS5+ extension. GS5+ is one of the currently only good situations which
-    // makes use of tracking items -- in this case, items of size at least alpha
-    // and at most 1-alpha.
-
-    // Setting EXTENSION_GS5 to false makes the computation structurally cleaner,
-    // as there are no special cases, but the understanding of winning and losing
-    // positions does not match the human understanding exactly.
-
-    // Setting EXTENSION_GS5 to true should include more winning positions in the system,
-    // which helps performance.
-    static constexpr bool EXTENSION_GS5 = true;
-
 
     // Non-static section.
 
@@ -163,47 +151,6 @@ public:
     static inline bool alg_immediately_winning(int loadsum, int load_on_last) {
         int last_bin_cap = (R - 1) - load_on_last;
         if (loadsum >= S * BINS - last_bin_cap) {
-            return true;
-        }
-
-        return false;
-    }
-
-    // Reimplementation of GS5+.
-    static bool alg_winning_by_gs5plus(const loadconf &lc, int item, int bin) {
-        // Compile time checks.
-        // There must be three bins, or GS5+ does not apply. And the extension must
-        // be turned on.
-        if (!EXTENSION_GS5) {
-            return false;
-        }
-
-        // The item must be bigger than ALPHA and the item must fit in the target bin.
-        if (item < ALPHA || lc.loads[bin] + item > R - 1) {
-            return false;
-        }
-
-        // The two bins other than "bin" are loaded below alpha.
-        // One bin other than "bin" must be loaded to zero.
-        bool one_bin_zero = false;
-        bool one_bin_sufficient = false;
-        for (int i = 1; i <= BINS; i++) {
-            if (i != bin) {
-                if (lc.loads[i] > ALPHA) {
-                    return false;
-                }
-
-                if (lc.loads[i] == 0) {
-                    one_bin_zero = true;
-                }
-
-                if (lc.loads[i] >= 2 * S - 5 * ALPHA) {
-                    one_bin_sufficient = true;
-                }
-            }
-        }
-
-        if (one_bin_zero && one_bin_sufficient) {
             return true;
         }
 
