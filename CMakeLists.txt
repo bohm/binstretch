@@ -1,10 +1,18 @@
 cmake_minimum_required(VERSION 3.26)
 project(clion)
 
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE Release)
+endif()
+
+message("CMake build type: ${CMAKE_BUILD_TYPE}.")
+
 include(recommend.cmake)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
+set(CMAKE_CXX_FLAGS_DEBUG "-g")
+set(CMAKE_CXX_FLAGS_RELEASE "-march=native -O3")
 add_compile_definitions(NDEBUG)
 
 include_directories(search)
