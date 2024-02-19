@@ -138,18 +138,18 @@ public:
 
     bool query_itemconf_winning(const loadconf &lc, uint64_t next_layer_itemhash, int item, int bin) {
         // We have to check the hash table if the position is winning.
-        uint64_t hash_if_packed = lc.virtual_loadhash(item, bin);
+        index_t index_if_packed = lc.virtual_index(item, bin);
 
         if (knownsum.query_next_step(lc, item, bin)) {
             return true;
         }
 
-        if (!fingerprint_map.contains(hash_if_packed)) {
+        if (!fingerprint_map.contains(index_if_packed)) {
             return false;
         }
 
         int next_item_layer = all_feasible_hashmap[next_layer_itemhash];
-        flat_hash_set<unsigned int> *fp = fingerprints[fingerprint_map[hash_if_packed]];
+        flat_hash_set<unsigned int> *fp = fingerprints[fingerprint_map[index_if_packed]];
         return fp->contains(next_item_layer);
     }
 

@@ -93,8 +93,8 @@ public:
 
         if (succ_read_bins != 1 || succ_read_r != 1 || succ_read_s != 1 ||
             succ_read_scale != 1 || succ_read_version != 1) {
-            ERRORPRINT("Binary_storage read %d %d %d %d v%d: Signature reading failed.\n", BINS, R, S, DENOMINATOR,
-                       VERSION);
+            PRINT_AND_ABORT("Binary_storage read %d %d %d %d v%d: Signature reading failed.\n", BINS, R, S, DENOMINATOR,
+                            VERSION);
         }
 
         if (read_bins != BINS || read_r != R || read_s != S || read_scale != DENOMINATOR || read_version != VERSION) {
@@ -130,7 +130,7 @@ public:
         succ_read_zl = fread(read_zl, sizeof(uint64_t), ZL_SIZE, storage_file);
 
         if (succ_read_zi != ZI_SIZE || succ_read_zl != ZL_SIZE) {
-            ERRORPRINT("Binary_storage read %d %d %d %d: Zobrist table read failed.\n", BINS, R, S, DENOMINATOR);
+            PRINT_AND_ABORT("Binary_storage read %d %d %d %d: Zobrist table read failed.\n", BINS, R, S, DENOMINATOR);
         }
         for (int i = 0; i < ZI_SIZE; i++) {
             if (Zi[i] != read_zi[i]) {
@@ -172,7 +172,7 @@ public:
         }
 
         if (del != -1 || del_read != 1) {
-            ERRORPRINT("Binary storage error: missing delimeter.\n");
+            PRINT_AND_ABORT("Binary storage error: missing delimeter.\n");
         }
     }
 
@@ -185,7 +185,7 @@ public:
         int nos_read = 0;
         nos_read = fread(&nos, sizeof(unsigned int), 1, storage_file);
         if (nos_read != 1) {
-            ERRORPRINT("Binary storage error: failed to read the number of sets.\n");
+            PRINT_AND_ABORT("Binary storage error: failed to read the number of sets.\n");
         }
         return nos;
     }
@@ -207,7 +207,7 @@ public:
         }
 
         if (set_size_read != 1) {
-            ERRORPRINT("Binary storage error: failed to read the set size.\n");
+            PRINT_AND_ABORT("Binary storage error: failed to read the set size.\n");
         }
 
         return set_size;
@@ -261,7 +261,7 @@ public:
         }
 
         if (set_read != set_size) {
-            ERRORPRINT("Binary storage error: failed to read one of the sets.\n");
+            PRINT_AND_ABORT("Binary storage error: failed to read one of the sets.\n");
         }
 
         for (unsigned int i = 0; i < set_size; i++) {
@@ -284,7 +284,7 @@ public:
         }
 
         if (set_read != set_size) {
-            ERRORPRINT("Binary storage error: failed to read one of the sets.\n");
+            PRINT_AND_ABORT("Binary storage error: failed to read one of the sets.\n");
         }
 
         for (unsigned int i = 0; i < set_size; i++) {
@@ -359,7 +359,7 @@ public:
                                 fingerprints_size, storage_file);
 
         if (read_prints != (int) fingerprints_size) {
-            ERRORPRINT("Binary storage error: failed to read pointerless fingerprints.\n");
+            PRINT_AND_ABORT("Binary storage error: failed to read pointerless fingerprints.\n");
         }
         read_delimeter();
 
@@ -385,14 +385,14 @@ public:
         int succ_read_keys = fread(keys, sizeof(uint64_t), map_size, storage_file);
 
         if (succ_read_keys != (int) map_size) {
-            ERRORPRINT("Binary storage error: failed to read the keys of fingerprint_map.\n");
+            PRINT_AND_ABORT("Binary storage error: failed to read the keys of fingerprint_map.\n");
         }
 
         read_delimeter();
 
         int succ_read_values = fread(values, sizeof(unsigned int), map_size, storage_file);
         if (succ_read_values != (int) map_size) {
-            ERRORPRINT("Binary storage error: failed to read the values of fingerprint_map.\n");
+            PRINT_AND_ABORT("Binary storage error: failed to read the values of fingerprint_map.\n");
         }
 
         read_delimeter();
@@ -435,17 +435,19 @@ public:
         auto *keys = new uint32_t[map_size];
         auto *values = new uint32_t[map_size];
 
-        int succ_read_keys = fread(keys, sizeof(uint32_t), map_size, storage_file);
+        size_t succ_read_keys = fread(keys, sizeof(uint32_t), map_size, storage_file);
 
-        if (succ_read_keys != (int) map_size) {
-            ERRORPRINT("Binary storage error: failed to read the keys of fingerprint_map.\n");
+        if (succ_read_keys != map_size) {
+            fprintf(stderr, "Binary storage error: Storage file name %s, loaded %zu many keys,"
+                            "read map size is supposed to be %u.\n", storage_file_path, succ_read_keys, map_size );
+            PRINT_AND_ABORT("Binary storage error: failed to read the keys of fingerprint_map.\n");
         }
 
         read_delimeter();
 
         int succ_read_values = fread(values, sizeof(uint32_t), map_size, storage_file);
         if (succ_read_values != (int) map_size) {
-            ERRORPRINT("Binary storage error: failed to read the values of fingerprint_map.\n");
+            PRINT_AND_ABORT("Binary storage error: failed to read the values of fingerprint_map.\n");
         }
 
         read_delimeter();
@@ -540,7 +542,7 @@ public:
         lc_read = fread(out_load_array.data(), sizeof(int), BINS+1, file);
 
         if (lc_read != BINS+1) {
-            ERRORPRINT("Binary storage error: failed to read one load array.\n");
+            PRINT_AND_ABORT("Binary storage error: failed to read one load array.\n");
         }
     }
 
@@ -575,7 +577,7 @@ public:
         int nofc_read = 0;
         nofc_read = fread(&nofc, sizeof(unsigned int), 1, storage_file);
         if (nofc_read != 1) {
-            ERRORPRINT("Binary storage error: failed to read the number of feasible minibs configurations.\n");
+            PRINT_AND_ABORT("Binary storage error: failed to read the number of feasible minibs configurations.\n");
         }
         return nofc;
     }
@@ -590,7 +592,7 @@ public:
         ic_read = fread(out_ic.items.data(), sizeof(int), DENOMINATOR, storage_file);
 
         if (ic_read != DENOMINATOR) {
-            ERRORPRINT("Binary storage error: failed to read one itemconf.\n");
+            PRINT_AND_ABORT("Binary storage error: failed to read one itemconf.\n");
         }
     }
 
@@ -624,12 +626,12 @@ public:
         open_for_reading();
         bool check = check_signature();
         if (!check) {
-            ERRORPRINT("Error: Signature check failed!\n");
+            PRINT_AND_ABORT("Error: Signature check failed!\n");
         }
 
         check = check_zobrist_table();
         if (!check) {
-            ERRORPRINT("Error: The Zobrist table do not match!\n");
+            PRINT_AND_ABORT("Error: The Zobrist table do not match!\n");
         }
 
         read_partition_container(out_feasible_ics);
@@ -663,7 +665,7 @@ public:
         ic_read = fread(out_part.data(), sizeof(int), DENOMINATOR, storage_file);
 
         if (ic_read != DENOMINATOR) {
-            ERRORPRINT("Binary storage error: failed to read one partition.\n");
+            PRINT_AND_ABORT("Binary storage error: failed to read one partition.\n");
         }
     }
 
@@ -714,12 +716,12 @@ public:
         open_for_reading();
         bool check = check_signature();
         if (!check) {
-            ERRORPRINT("Error: Signature check failed!\n");
+            PRINT_AND_ABORT("Error: Signature check failed!\n");
         }
 
         check = check_zobrist_table();
         if (!check) {
-            ERRORPRINT("Error: The Zobrist table do not match!\n");
+            PRINT_AND_ABORT("Error: The Zobrist table do not match!\n");
         }
 
         read_partition_container(midgame_feasible_partitions);

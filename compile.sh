@@ -136,7 +136,7 @@ if [ ! -d cmake-build-release ]; then
 fi
 
 if [[ "$BUILDING_SEARCH" = true ]]; then
-   cd cmake-build-release || exit; cmake .. -DIBINS=$BINS -DIR=$R -DIS=$S "$SCALE_FLAG"; cmake --build ./ --target search -- -j 22; cmake --build ./ --target search -- -j 22; cd ..
+   cd cmake-build-release || exit; cmake .. -DIBINS=$BINS -DIR=$R -DIS=$S $SCALE_FLAG; cmake --build ./ --target search -- -j 22; cmake --build ./ --target search -- -j 22; cd ..
 # 	echo "Running: g++ -I./ -I../../parallel-hashmap/ -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S main.cpp -o ../$OUTPUT_SUBFOLDER/search -pthread $LINKING_SUFFIX"
 # 	cd search || exit; g++ -I./ -I../../parallel-hashmap/ -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S main.cpp -o ../$OUTPUT_SUBFOLDER/search -pthread $LINKING_SUFFIX; cd ..
 fi
@@ -163,7 +163,7 @@ if [[ "$BUILDING_MINITOOLS" = true ]]; then
   fi
 #	echo "Running: g++ -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S listsaplings.cpp -o ../$OUTPUT/listsaplings-$BINS-$R-$S -pthread $LINKING_SUFFIX"
 #	cd minitools; g++ -I../search/ -I../../parallel-hashmap/ -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S listsaplings.cpp -o ../$OUTPUT/listsaplings-$BINS-$R-$S -pthread $LINKING_SUFFIX; cd ..
-   cd cmake-build-debug || exit; cmake .. -DIBINS=$BINS -DIR=$R -DIS=$S "$SCALE_FLAG"; cmake --build ./ --target minibs-tests -- -j 22; cd ..
+   cd cmake-build-debug || exit; cmake .. -DIBINS=$BINS -DIR=$R -DIS=$S $SCALE_FLAG; cmake --build ./ --target minibs-tests -- -j 22; cd ..
 
 	g++ -I./search/ -I../parallel-hashmap/  -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DI_SCALE=$ISCALE tests/minibs-tests.cpp -o ./$OUTPUT_SUBFOLDER/minibs-tests-$ISCALE -pthread
   echo "Compiling ./$OUTPUT_SUBFOLDER/awt-$ISCALE".

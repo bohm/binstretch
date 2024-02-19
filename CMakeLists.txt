@@ -12,7 +12,7 @@ include(recommend.cmake)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
-set(CMAKE_CXX_FLAGS_RELEASE "-march=native -O3")
+set(CMAKE_CXX_FLAGS_RELEASE "-g -march=native -O3 -shared-libgcc")
 add_compile_definitions(NDEBUG)
 
 include_directories(search)
@@ -43,13 +43,16 @@ endif ()
 
 if (NOT IMONOT)
     recommend_monotonicity(${IBINS} ${IR} ${IS})
+    message("Recommending monotonicity ${IMONOT}.")
 endif ()
 
 if (NOT ISCALE)
     recommend_scaling(${IBINS} ${IR} ${IS})
+    message("Recommending scaling factor ${ISCALE}.")
+else ()
+    message("Pre-set scaling factor ${ISCALE}.")
 endif ()
 
-message("Recommending monotonicity ${IMONOT} and scaling factor ${ISCALE}.")
 add_compile_definitions(IBINS=${IBINS})
 add_compile_definitions(IR=${IR})
 add_compile_definitions(IS=${IS})
@@ -569,3 +572,7 @@ add_executable(painter painter/painter.cpp
         search/loadconf.hpp
         search/minibs/minibs-three.hpp
         search/minibs/midgame_feasibility.hpp)
+
+# Purge the two variables from the cache, so they are recomputed.
+unset(IMONOT)
+unset(ISCALE)

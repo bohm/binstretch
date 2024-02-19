@@ -60,7 +60,7 @@ void parse_command(const char *line) {
         // expected and harmless
         return;
     } else {
-        ERRORPRINT("Parsed an unrecognizable command: %s.\n", line);
+        PRINT_AND_ABORT("Parsed an unrecognizable command: %s.\n", line);
         return;
     }
 }
@@ -143,7 +143,7 @@ partial_dag *loadfile(const char *filename) {
 
     FILE *fin = fopen(filename, "r");
     if (fin == NULL) {
-        ERRORPRINT("Unable to open file %s\n", filename);
+        PRINT_AND_ABORT("Unable to open file %s\n", filename);
     }
 
     bool first_adversary = true;
@@ -160,7 +160,7 @@ partial_dag *loadfile(const char *filename) {
             case line_type::adversary_vertex:
                 std::tie(name, heurstring, bc_ptr) = parse_adv_vertex(line);
                 if (name == -1) {
-                    ERRORPRINT("Unable to parse adv. vertex line: %s\n", line);
+                    PRINT_AND_ABORT("Unable to parse adv. vertex line: %s\n", line);
                 }
                 if (first_adversary) {
                     print_if<DEBUG>("Adding vertex with old name %d as root.\n", name);
@@ -174,7 +174,7 @@ partial_dag *loadfile(const char *filename) {
             case line_type::algorithm_vertex:
                 std::tie(name, optimal) = parse_alg_vertex(line);
                 if (name == -1) {
-                    ERRORPRINT("Unable to parse alg. vertex line: %s\n", line);
+                    PRINT_AND_ABORT("Unable to parse alg. vertex line: %s\n", line);
                 }
 
                 pd->add_alg_vertex(name, optimal);
@@ -183,14 +183,14 @@ partial_dag *loadfile(const char *filename) {
             case line_type::adversary_outedge:
                 std::tie(name_from, name_to, next_item) = parse_adv_outedge(line);
                 if (name_from == -1 || name_to == -1 || next_item == -1) {
-                    ERRORPRINT("Unable to parse adversary outedge line: %s\n", line);
+                    PRINT_AND_ABORT("Unable to parse adversary outedge line: %s\n", line);
                 }
                 pd->add_adv_outedge(name_from, name_to, next_item);
                 break;
             case line_type::algorithm_outedge:
                 std::tie(name_from, name_to, bin) = parse_alg_outedge(line);
                 if (name_from == -1 || name_to == -1 || bin == -1) {
-                    ERRORPRINT("Unable to parse algorithm outedge line: %s\n", line);
+                    PRINT_AND_ABORT("Unable to parse algorithm outedge line: %s\n", line);
                 }
                 pd->add_alg_outedge(name_from, name_to, bin);
                 break;

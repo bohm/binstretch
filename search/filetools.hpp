@@ -69,13 +69,13 @@ std::array<int, BINS + 1> load_segment_with_loads(std::stringstream &str_s) {
     int load = -1;
     str_s.get(c);
     if (c != '[') {
-        ERRORPRINT("Missing opening bracket '[' at the start of the load list.\n");
+        PRINT_AND_ABORT("Missing opening bracket '[' at the start of the load list.\n");
     }
 
     for (int i = 1; i <= BINS; i++) {
         str_s >> load;
         if (load < 0 || load >= R) {
-            ERRORPRINT("The %d-th load from the loads list is out of bounds.", i);
+            PRINT_AND_ABORT("The %d-th load from the loads list is out of bounds.", i);
         }
         ret[i] = load;
         load = -1;
@@ -83,7 +83,7 @@ std::array<int, BINS + 1> load_segment_with_loads(std::stringstream &str_s) {
 
     str_s.get(c);
     if (c != ']') {
-        ERRORPRINT("Missing closing bracket ']' at the end of the load list.\n");
+        PRINT_AND_ABORT("Missing closing bracket ']' at the end of the load list.\n");
     }
     return ret;
 }
@@ -96,17 +96,17 @@ std::array<int, SCALE + 1> load_segment_with_items(std::stringstream &str_s) {
     int item_size = -1;
     str_s.get(c);
     if (c != ' ') {
-        ERRORPRINT("The separator between loads and items does not match ' '.\n");
+        PRINT_AND_ABORT("The separator between loads and items does not match ' '.\n");
     }
     str_s.get(c);
     if (c != '(') {
-        ERRORPRINT("Missing opening bracket '(' at the start of the item list.\n");
+        PRINT_AND_ABORT("Missing opening bracket '(' at the start of the item list.\n");
     }
 
     for (int j = 1; j <= SCALE; j++) {
         str_s >> item_size;
         if (item_size < 0 || item_size > BINS * SCALE) {
-            ERRORPRINT("The %d-th item from the items segment (value %d) is out of bounds.\n", j, item_size);
+            PRINT_AND_ABORT("The %d-th item from the items segment (value %d) is out of bounds.\n", j, item_size);
         }
 
         ret[j] = item_size;
@@ -115,7 +115,7 @@ std::array<int, SCALE + 1> load_segment_with_items(std::stringstream &str_s) {
 
     str_s.get(c);
     if (c != ')') {
-        ERRORPRINT("Missing closing bracket ')' at the end of the item list.\n");
+        PRINT_AND_ABORT("Missing closing bracket ')' at the end of the item list.\n");
     }
     return ret;
 }
@@ -125,7 +125,7 @@ int load_last_item_segment(std::stringstream &str_s) {
     str_s >> last_item;
 
     if (last_item < 0 || last_item > BINS * S) {
-        ERRORPRINT("Could not scan the last item field from the input file.\n");
+        PRINT_AND_ABORT("Could not scan the last item field from the input file.\n");
     }
     return last_item;
 }
@@ -144,13 +144,13 @@ binconf loadbinconf(std::stringstream &str_s) {
 binconf loadbinconf_singlefile(const char *filename) {
     FILE *fin = fopen(filename, "r");
     if (fin == NULL) {
-        ERRORPRINT("Unable to open file %s\n", filename);
+        PRINT_AND_ABORT("Unable to open file %s\n", filename);
     }
 
     char linebuf[20000];
     char *retptr = fgets(linebuf, 20000, fin);
     if (retptr == nullptr) {
-        ERRORPRINT("File %s found, but a line could not be loaded.\n", filename);
+        PRINT_AND_ABORT("File %s found, but a line could not be loaded.\n", filename);
     }
 
     fclose(fin);
@@ -170,7 +170,7 @@ public:
         logfile = fopen(path.c_str(), "a");
         // fprintf(stderr, "File %s open for writing.\n", path.c_str());
         if (logfile == nullptr) {
-            ERRORPRINT("File %s not possible to be opened.\n", path.c_str());
+            PRINT_AND_ABORT("File %s not possible to be opened.\n", path.c_str());
         }
     }
 

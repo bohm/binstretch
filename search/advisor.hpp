@@ -55,7 +55,7 @@ public:
     void load_advice_file(const char *filename) {
         FILE *advicefin = fopen(filename, "r");
         if (advicefin == nullptr) {
-            ERRORPRINT("Unable to open file %s\n", filename);
+            PRINT_AND_ABORT("Unable to open file %s\n", filename);
         }
 
         while (!feof(advicefin)) {
@@ -78,7 +78,7 @@ public:
             // Load the suggestion.
             int suggestion = 0;
             if (sscanf(rest.c_str(), " suggestion: %d", &suggestion) != 1) {
-                ERRORPRINT("Suggestion %d failed to load.\n", adv_arr.size());
+                PRINT_AND_ABORT("Suggestion %d failed to load.\n", adv_arr.size());
             }
 
             curbc.consistency_check();
@@ -89,7 +89,7 @@ public:
             adv_arr.push_back(adv);
             int newline_load_result = fscanf(advicefin, "\n");
             if (newline_load_result != 0) {
-                ERRORPRINT("Failed to load the newline.\n");
+                PRINT_AND_ABORT("Failed to load the newline.\n");
             }
         }
 

@@ -26,7 +26,7 @@ std::string gethost() {
 }
 
 // A fprintf(stderr) version of the #error macro.
-void ERRORPRINT(const char *format, ...) {
+void PRINT_AND_ABORT(const char *format, ...) {
     va_list argptr;
     va_start(argptr, format);
     vfprintf(stderr, format, argptr);

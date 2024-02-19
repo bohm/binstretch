@@ -773,7 +773,7 @@ void alg_winning_table(std::pair<loadconf, itemconf<SCALE>> *minibs_position, mi
 int main(int argc, char **argv) {
 
     if (argc < 4) {
-        ERRORPRINT("alg-winning-table error: Needs the minibinstretching configuration as a parameter.\n");
+        PRINT_AND_ABORT("alg-winning-table error: Needs the minibinstretching configuration as a parameter.\n");
     }
 
     bool only_load = false;
