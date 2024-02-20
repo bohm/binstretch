@@ -101,7 +101,7 @@ constexpr bool FIVE_NINE_ACTIVE = false;
 constexpr bool FIVE_NINE_ACTIVE_EVERYWHERE = false;
 
 constexpr bool USING_HEURISTIC_VISITS = true;
-constexpr bool HEURISTIC_VISITS_USING_CACHE = false;
+constexpr bool HEURISTIC_VISITS_USING_CACHE = true;
 constexpr bool HEURISTIC_VISITS_USING_MINIBS = true;
 constexpr bool USING_HEURISTIC_KNOWNSUM = false; // Recommend turning off when WEIGHTSUM is true.
 

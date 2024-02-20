@@ -69,8 +69,8 @@ victory computation<MODE, MINIBS_SCALE>::adversary(
     bool switch_to_heuristic = false;
     adversary_notes notes;
 
-    bstate.consistency_check();
-    binconf bstate_consistency_copy(bstate);
+    MINIMAX_DEBUG_ONLY(bstate.consistency_check());
+    MINIMAX_DEBUG_ONLY(binconf bstate_consistency_copy(bstate));
 
     if (GENERATING) {
         if (adv_to_evaluate->visited) {
@@ -324,11 +324,11 @@ victory computation<MODE, MINIBS_SCALE>::adversary(
 
         adversary_descend<MODE, MINIBS_SCALE>(this, notes, item_size);
         below = algorithm(item_size, upcoming_alg, adv_to_evaluate);
-        bstate.consistency_check();
-        assert(binconf_equal(&bstate, &bstate_consistency_copy));
+        MINIMAX_DEBUG_ONLY(bstate.consistency_check());
+        MINIMAX_DEBUG_ONLY(assert(binconf_equal(&bstate, &bstate_consistency_copy)));
         adversary_ascend<MODE, MINIBS_SCALE>(this, notes);
-        bstate.consistency_check();
-        assert(binconf_equal(&bstate, &bstate_consistency_copy));
+        MINIMAX_DEBUG_ONLY(bstate.consistency_check());
+        MINIMAX_DEBUG_ONLY(assert(binconf_equal(&bstate, &bstate_consistency_copy)));
 
         if (MINIMAX_DEBUG) {
             fprintf(stderr, "Recursive call for ");
@@ -405,8 +405,8 @@ victory computation<MODE, MINIBS_SCALE>::algorithm(int pres_item, algorithm_vert
     print_binconf_if<MINIMAX_DEBUG>(&bstate);
 
 
-    bstate.consistency_check();
-    binconf bstate_consistency_copy(bstate);
+    MINIMAX_DEBUG_ONLY(bstate.consistency_check());
+    MINIMAX_DEBUG_ONLY(binconf bstate_consistency_copy(bstate));
 
     if (GENERATING) {
         if (alg_to_evaluate->visited) {
@@ -475,12 +475,12 @@ victory computation<MODE, MINIBS_SCALE>::algorithm(int pres_item, algorithm_vert
                 upcoming_adv = (*it)->to;
                 int target_bin = (*it)->target_bin;
 
-                bstate.consistency_check();
+                MINIMAX_DEBUG_ONLY(bstate.consistency_check();)
                 algorithm_descend<MODE, MINIBS_SCALE>(this, notes, pres_item, target_bin);
                 below = adversary(upcoming_adv, alg_to_evaluate);
                 algorithm_ascend<MODE, MINIBS_SCALE>(this, notes, pres_item);
-                bstate.consistency_check();
-                assert(binconf_equal(&bstate, &bstate_consistency_copy));
+                MINIMAX_DEBUG_ONLY(bstate.consistency_check();)
+                MINIMAX_DEBUG_ONLY(assert(binconf_equal(&bstate, &bstate_consistency_copy));)
 
                 if (below == victory::alg) {
                     win = victory::alg;
@@ -549,19 +549,19 @@ victory computation<MODE, MINIBS_SCALE>::algorithm(int pres_item, algorithm_vert
                     attach_matching_vertex(qdag, alg_to_evaluate, &bstate, i, regrow_level);
         }
 
-        bstate.consistency_check();
+        MINIMAX_DEBUG_ONLY(bstate.consistency_check();)
         below = adversary(upcoming_adv, alg_to_evaluate);
 
 
         print_if<MINIMAX_DEBUG>("Alg packs into bin %d, the new configuration is: ", i);
         print_binconf_if<MINIMAX_DEBUG>(&bstate, false);
         print_if<MINIMAX_DEBUG>(" resulting in: ");
-        MINIMAX_DEBUG_ONLY(print(stderr, below));
+        MINIMAX_DEBUG_ONLY(print(stderr, below);)
         print_if<MINIMAX_DEBUG>(".\n");
 
         algorithm_ascend(this, notes, pres_item);
-        bstate.consistency_check();
-        assert(binconf_equal(&bstate, &bstate_consistency_copy));
+        MINIMAX_DEBUG_ONLY(bstate.consistency_check();)
+        MINIMAX_DEBUG_ONLY(assert(binconf_equal(&bstate, &bstate_consistency_copy));)
 
 
         // send signal that we should terminate immediately upwards
