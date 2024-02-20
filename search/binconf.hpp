@@ -11,7 +11,7 @@
 #include <string>
 #include <iostream>
 #include <sstream>
-
+#include <immintrin.h>
 
 class binconf : public loadconf {
 public:
@@ -146,11 +146,12 @@ public:
 
 
     uint64_t hash_with_low() const {
-        return (index ^ ic.itemhash ^ Zlow[lowest_sendable(last_item)]);
+        uint64_t swapped_index = __bswap_64((uint64_t) index);
+        return (swapped_index ^ ic.itemhash ^ Zlow[lowest_sendable(last_item)]);
     }
 
     uint64_t virtual_hash_with_low(int item, int bin) {
-        uint64_t ret = virtual_loadhash(item, bin);
+        uint64_t ret = __bswap_64((uint64_t) virtual_index(item, bin));
         // hash as if item added
         ret ^= ic.virtual_increase(item);
         return ret ^ Zlow[lowest_sendable(item)];

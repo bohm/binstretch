@@ -83,6 +83,11 @@ void queen_main_thread(int argc, char **argv) {
         return; // formerly return -1;
     }
 
+    // Debug. Erase later.
+    // ALG_WIN_STATE_FILE = fopen("./logs/alg-win-state-file.txt",  "w");
+    // ADV_WIN_STATE_FILE = fopen("./logs/adv-win-state-file.txt", "w");
+    // alg_win_state_file.fileptr = ALG_WIN_STATE_FILE;
+    // adv_win_state_file.fileptr = ADV_WIN_STATE_FILE;
 
     // A quick debug, erase later.
     // uint64_t somenumber = 8193;

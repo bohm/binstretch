@@ -5,6 +5,7 @@
 #include "../common.hpp"
 #include "../hash.hpp"
 
+#include "net/local/threadsafe_printer.hpp"
 // Implementations of specific caches, using the interface defined in cache_generic.hpp.
 
 
@@ -30,9 +31,11 @@ public:
         //return (zero_last_bit(_data) == zero_last_bit(hash));
     }
 
+    /*
     inline bool removed() const {
         return false; // Currently not implemented.
     }
+    */
 
     inline bool empty() const {
         return _data == 0;
@@ -230,7 +233,7 @@ void state_cache::insert(conf_el e, uint64_t h) {
 
     for (int i = 0; i < limit; i++) {
         candidate = access(pos + i);
-        if (candidate.empty() || candidate.removed()) {
+        if (candidate.empty()) {
             MEASURE_ONLY(meas.insert_into_empty++);
             store(pos + i, e);
             // return INSERTED;
@@ -269,9 +272,12 @@ void state_cache::analysis() {
 // much more sense.
 
 void adv_cache_encache_adv_win(state_cache *cache, const binconf *d) {
+
     uint64_t bchash = d->statehash();
     conf_el new_item;
     new_item.set(bchash, 0);
+    // Deep debug. Remove as soon as possible.
+    // adv_win_state_file.print_with_binconf(d,"Storing statehash (%" PRIu64 ") as adv-winning for binconf ", bchash);
     cache->insert(new_item, bchash);
 }
 
@@ -279,5 +285,7 @@ void adv_cache_encache_alg_win(state_cache *cache, const binconf *d) {
     uint64_t bchash = d->statehash();
     conf_el new_item;
     new_item.set(bchash, 1);
+    // Deep debug. Remove as soon as possible.
+    // alg_win_state_file.print_with_binconf(d, "Storing statehash (%" PRIu64 ") as alg-winning for binconf ", bchash);
     cache->insert(new_item, bchash);
 }
