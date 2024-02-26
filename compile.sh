@@ -33,6 +33,7 @@ CPP_STANDARD="c++2a"
 LINKING_SUFFIX=""
 OPTFLAG="-O3 -DNDEBUG"
 SCALE_FLAG=""
+MONOT_FLAG=""
 # OPTFLAG="-O3"
 
 # Skip first three parameters, then iterate over the rest of the arguments.
@@ -49,6 +50,10 @@ while (( "$#" )); do
 	    ;;
 	--scale)
 	    SCALE_FLAG="-DISCALE=$2"
+	    shift 2
+	    ;;
+	--monot)
+	    MONOT_FLAG="-DIMONOT=$2"
 	    shift 2
 	    ;;
 	--search)
@@ -136,7 +141,7 @@ if [ ! -d cmake-build-release ]; then
 fi
 
 if [[ "$BUILDING_SEARCH" = true ]]; then
-   cd cmake-build-release || exit; cmake .. -DIBINS=$BINS -DIR=$R -DIS=$S $SCALE_FLAG; cmake --build ./ --target search -- -j 22; cmake --build ./ --target search -- -j 22; cd ..
+   cd cmake-build-release || exit; cmake .. -DIBINS=$BINS -DIR=$R -DIS=$S $SCALE_FLAG $MONOT_FLAG; cmake --build ./ --target search -- -j 22; cmake --build ./ --target search -- -j 22; cd ..
 # 	echo "Running: g++ -I./ -I../../parallel-hashmap/ -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S main.cpp -o ../$OUTPUT_SUBFOLDER/search -pthread $LINKING_SUFFIX"
 # 	cd search || exit; g++ -I./ -I../../parallel-hashmap/ -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S main.cpp -o ../$OUTPUT_SUBFOLDER/search -pthread $LINKING_SUFFIX; cd ..
 fi
