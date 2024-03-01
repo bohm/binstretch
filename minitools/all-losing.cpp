@@ -111,7 +111,7 @@ void alg_losing_table(std::pair<loadconf, itemconf<SCALE>> *minibs_position, min
 int main(int argc, char **argv) {
 
     if (argc < BINS + 1) {
-        ERRORPRINT("all-losing error: Needs the minibinstretching configuration as a parameter.\n");
+        PRINT_AND_ABORT("all-losing error: Needs the minibinstretching configuration as a parameter.\n");
     }
 
     bool only_load = false;

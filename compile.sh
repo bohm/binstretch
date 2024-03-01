@@ -49,6 +49,7 @@ while (( "$#" )); do
 	    shift 2
 	    ;;
 	--scale)
+	    ISCALE=$2 # We set this to use the number only in filenames.
 	    SCALE_FLAG="-DISCALE=$2"
 	    shift 2
 	    ;;
@@ -141,7 +142,7 @@ if [ ! -d cmake-build-release ]; then
 fi
 
 if [[ "$BUILDING_SEARCH" = true ]]; then
-   cd cmake-build-release || exit; cmake .. -DIBINS=$BINS -DIR=$R -DIS=$S $SCALE_FLAG $MONOT_FLAG; cmake --build ./ --target search -- -j 22; cmake --build ./ --target search -- -j 22; cd ..
+   cd cmake-build-release || exit; cmake .. -DIBINS=$BINS -DIR=$R -DIS=$S $SCALE_FLAG $MONOT_FLAG; cmake --build ./ --target search -- -j 22; cd ..
 # 	echo "Running: g++ -I./ -I../../parallel-hashmap/ -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S main.cpp -o ../$OUTPUT_SUBFOLDER/search -pthread $LINKING_SUFFIX"
 # 	cd search || exit; g++ -I./ -I../../parallel-hashmap/ -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S main.cpp -o ../$OUTPUT_SUBFOLDER/search -pthread $LINKING_SUFFIX; cd ..
 fi
@@ -166,17 +167,16 @@ if [[ "$BUILDING_MINITOOLS" = true ]]; then
     echo "The parameter --scale needs to be specified for minitools compilation."
     exit 1
   fi
+
 #	echo "Running: g++ -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S listsaplings.cpp -o ../$OUTPUT/listsaplings-$BINS-$R-$S -pthread $LINKING_SUFFIX"
 #	cd minitools; g++ -I../search/ -I../../parallel-hashmap/ -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DII_S=$I_S listsaplings.cpp -o ../$OUTPUT/listsaplings-$BINS-$R-$S -pthread $LINKING_SUFFIX; cd ..
-   cd cmake-build-debug || exit; cmake .. -DIBINS=$BINS -DIR=$R -DIS=$S $SCALE_FLAG; cmake --build ./ --target minibs-tests -- -j 22; cd ..
-
-	g++ -I./search/ -I../parallel-hashmap/  -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DI_SCALE=$ISCALE tests/minibs-tests.cpp -o ./$OUTPUT_SUBFOLDER/minibs-tests-$ISCALE -pthread
+	cd cmake-build-release || exit; cmake .. -DIBINS=$BINS -DIR=$R -DIS=$S $SCALE_FLAG $MONOT_FLAG; cmake --build ./ --target minibs-stats -- -j 22; cd ..
   echo "Compiling ./$OUTPUT_SUBFOLDER/awt-$ISCALE".
-	g++ -I./search/ -I../parallel-hashmap/  -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DI_SCALE=$ISCALE minitools/alg-winning-table.cpp -o ./$OUTPUT_SUBFOLDER/awt-$ISCALE -pthread
+	cd cmake-build-release || exit; cmake .. -DIBINS=$BINS -DIR=$R -DIS=$S $SCALE_FLAG $MONOT_FLAG; cmake --build ./ --target awt -- -j 22; cd ..
   echo "Compiling ./$OUTPUT_SUBFOLDER/all-losing-$ISCALE."
-	g++ -I./search/ -I../parallel-hashmap/  -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DI_SCALE=$ISCALE minitools/all-losing.cpp -o ./$OUTPUT_SUBFOLDER/all-losing-$ISCALE -pthread
+  cd cmake-build-release || exit; cmake .. -DIBINS=$BINS -DIR=$R -DIS=$S $SCALE_FLAG $MONOT_FLAG; cmake --build ./ --target all-losing -- -j 22; cd ..
   echo "Compiling ./$OUTPUT_SUBFOLDER/sand-on-ab-$ISCALE."
-	g++ -I./search/ -I../parallel-hashmap/  -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S -DI_SCALE=$ISCALE minitools/sand-on-ab.cpp -o ./$OUTPUT_SUBFOLDER/sand-on-ab-$ISCALE -pthread
+  cd cmake-build-release || exit; cmake .. -DIBINS=$BINS -DIR=$R -DIS=$S $SCALE_FLAG $MONOT_FLAG; cmake --build ./ --target sand-on-ab -- -j 22; cd ..
 fi
 
 if [[ "$BUILDING_TESTS" = true ]]; then
