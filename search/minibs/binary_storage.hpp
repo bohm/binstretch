@@ -27,6 +27,7 @@ public:
     FILE *storage_file = nullptr;
     char knownsum_file_path[256]{};
     FILE *knownsum_file = nullptr;
+    char memory_saving_folder[256]{};
 
     binary_storage() {
         char extension_string[10] = "basic";
@@ -41,6 +42,15 @@ public:
         }
 
         sprintf(knownsum_file_path, "./cache/minibs-knownsum-%s-%d-%d-%d-v%d.bin", extension_string, BINS, R, S, VERSION);
+
+        // This helps save the memory during the parallel creation of minibs, at the cost of some disk writes.
+        // In principle, after every successful construction, this directory can be deleted.
+
+        sprintf(memory_saving_folder, "./cache/memsave-%d-%d-%d-v%d", BINS, R, S, VERSION);
+
+        if (!fs::is_directory(memory_saving_folder)) {
+            fs::create_directory(memory_saving_folder);
+        }
     }
 
     bool storage_exists() {
@@ -731,4 +741,21 @@ public:
         read_fingerprint_system(out_fingerprint_map, out_fingerprints, out_unique_fps);
         close();
     }
+
+    void write_one_feasible_hashset(int layer_index, flat_hash_set<index_t> *single_hashset) {
+        char memsave_file_path[256] {};
+        sprintf(memsave_file_path, "%s/%d.bin", memory_saving_folder, layer_index);
+        FILE *memsave_file = fopen(memsave_file_path, "wb");
+        write_one_set<index_t>(single_hashset, memsave_file);
+        fclose(memsave_file);
+    }
+
+    void read_one_feasible_hashset(int layer_index, flat_hash_set<index_t> *hashset_to_fill) {
+        char memsave_file_path[256] {};
+        sprintf(memsave_file_path, "%s/%d.bin", memory_saving_folder, layer_index);
+        FILE *memsave_file = fopen(memsave_file_path, "rb");
+        read_one_set<index_t>(hashset_to_fill, memsave_file);
+        fclose(memsave_file);
+    }
+
 };

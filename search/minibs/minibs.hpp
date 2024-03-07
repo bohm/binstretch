@@ -396,6 +396,7 @@ public:
     }
 
     void worker_process_task() {
+        binary_storage<DENOMINATOR> bstore;
         while (true) {
             auto [superbucket_id, position_id] = get_bucket_task();
             // print_if<PROGRESS>("Pair {%u, %u}.\n", superbucket_id, position_id);
@@ -403,8 +404,12 @@ public:
             if (position_id >= superbuckets[superbucket_id].size()) {
                 return;
             } else {
+                auto* computed_layer = new flat_hash_set<index_t>();
                 init_itemconf_layer(superbuckets[superbucket_id][position_id],
-                                    &parallel_computed_layers[position_id]);
+                                    computed_layer);
+                bstore.write_one_feasible_hashset(superbuckets[superbucket_id][position_id], computed_layer);
+                delete computed_layer;
+
             }
         }
     }
@@ -453,9 +458,12 @@ public:
                 threads[t].join();
             }
 
+            binary_storage<DENOMINATOR> bstore;
             for (unsigned int b = 0; b < superbuckets[sb].size(); b++) {
-                deferred_insertion(superbuckets[sb][b], parallel_computed_layers[b]);
-                parallel_computed_layers[b].clear();
+                auto *computed_hashset = new flat_hash_set<index_t>();
+                bstore.read_one_feasible_hashset(superbuckets[sb][b], computed_hashset);
+                deferred_insertion(superbuckets[sb][b], *computed_hashset);
+                delete computed_hashset;
             }
             if (PROGRESS) {
                 fpstorage->stats(sb);
