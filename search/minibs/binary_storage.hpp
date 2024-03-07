@@ -758,4 +758,13 @@ public:
         fclose(memsave_file);
     }
 
+    void delete_memory_saving_file(int layer_index) {
+        char memsave_file_path[256] {};
+        sprintf(memsave_file_path, "%s/%d.bin", memory_saving_folder, layer_index);
+        bool file_removed = fs::remove(memsave_file_path);
+        if (!file_removed) {
+            PRINT_AND_ABORT("File of layer index %d was not deleted.\n", layer_index);
+        }
+    }
+
 };

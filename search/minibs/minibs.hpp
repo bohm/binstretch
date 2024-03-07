@@ -464,6 +464,7 @@ public:
                 bstore.read_one_feasible_hashset(superbuckets[sb][b], computed_hashset);
                 deferred_insertion(superbuckets[sb][b], *computed_hashset);
                 delete computed_hashset;
+                bstore.delete_memory_saving_file(superbuckets[sb][b]);
             }
             if (PROGRESS) {
                 fpstorage->stats(sb);
