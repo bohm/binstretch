@@ -97,12 +97,7 @@ int main(int argc, char **argv) {
         }
     }
 
-    int sapling_no = 0;
-    int ret = 0;
-    bool output_useful = false; // Set to true when it is clear output will be printed.
     performance_timer perf_timer;
-    uint64_t sapling_counter = 0;
-
     perf_timer.queen_start();
 
     zobrist_init();

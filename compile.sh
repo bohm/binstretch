@@ -178,6 +178,8 @@ if [[ "$BUILDING_MINITOOLS" = true ]]; then
   cd cmake-build-release || exit; cmake .. -DIBINS=$BINS -DIR=$R -DIS=$S $SCALE_FLAG $MONOT_FLAG; cmake --build ./ --target all-losing -- -j 22; cd ..
   echo "Compiling ./$OUTPUT_SUBFOLDER/sand-on-ab-$ISCALE."
   cd cmake-build-release || exit; cmake .. -DIBINS=$BINS -DIR=$R -DIS=$S $SCALE_FLAG $MONOT_FLAG; cmake --build ./ --target sand-on-ab -- -j 22; cd ..
+  echo "Compiling ./$OUTPUT_SUBFOLDER/listsaplings-$ISCALE."
+  cd cmake-build-release || exit; cmake .. -DIBINS=$BINS -DIR=$R -DIS=$S $SCALE_FLAG $MONOT_FLAG; cmake --build ./ --target listsaplings -- -j 22; cd ..
 fi
 
 if [[ "$BUILDING_TESTS" = true ]]; then

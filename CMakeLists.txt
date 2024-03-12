@@ -328,6 +328,12 @@ add_executable(listsaplings minitools/listsaplings.cpp
         search/minibs/minibs-three.hpp
         search/minibs/midgame_feasibility.hpp)
 
+
+set_target_properties(listsaplings
+        PROPERTIES
+        OUTPUT_NAME listsaplings-${ISCALE}
+)
+
 add_executable(awt minitools/alg-winning-table.cpp
         search/cache/guar64.hpp
         search/cache/guar_locks.hpp
