@@ -2,6 +2,7 @@
 
 #include <cstring>
 #include <parallel_hashmap/phmap.h>
+#include <condition_variable>
 // Notice: https://github.com/greg7mdp/parallel-hashmap is now required for the program to build.
 // This is a header-only hashmap/set that seems quicker and lower-memory than the unordered_set.
 
@@ -68,6 +69,12 @@ private:
     std::atomic<int> position_in_bucket = 0;
     std::vector<std::vector<unsigned int>> superbuckets;
     std::vector<flat_hash_set<index_t>> parallel_computed_layers;
+
+    fingerprint_storage *fpstorage_next_level = nullptr;
+    std::queue<unsigned int> processed_layers;
+    std::mutex processed_layers_lock;
+    std::condition_variable processed_layers_cv;
+    bool superbucket_finished = false;
 
 public:
     static inline int shrink_item(int larger_item) {
@@ -388,6 +395,48 @@ public:
         // }
     }
 
+    void parallel_deferred_insertion() {
+        binary_storage<DENOMINATOR> bstore;
+        while (true) {
+            std::unique_lock lk(processed_layers_lock);
+            processed_layers_cv.wait(lk);
+            // fprintf(stderr, "Parallel fingerprint processing wakes up.\n");
+            while (!processed_layers.empty()) {
+                unsigned int layer_to_integrate = processed_layers.front();
+                processed_layers.pop();
+
+                // fprintf(stderr, "Parallel fingerprint processing integrates layer %u.\n", layer_to_integrate);
+
+                auto* processed_hashset = new flat_hash_set<index_t>();
+
+                bstore.read_one_feasible_hashset(layer_to_integrate, processed_hashset);
+
+                for (index_t load_index: *processed_hashset) {
+                    fpstorage_next_level->add_partition_to_load_index(load_index, layer_to_integrate);
+                }
+
+                bstore.delete_memory_saving_file(layer_to_integrate);
+                delete processed_hashset;
+
+                fpstorage_next_level->collect();
+                fpstorage_next_level->reindex_fingerprints();
+            }
+
+            if (superbucket_finished) {
+                // fprintf(stderr, "Parallel processing done.\n");
+                return;
+            }
+
+            // fprintf(stderr, "Parallel fingerprint processing goes back to sleep.\n");
+        }
+    }
+
+    void update_fpstorage() {
+        std::unique_lock lk(processed_layers_lock);
+        delete fpstorage;
+        fpstorage = fpstorage_next_level;
+        fpstorage_next_level = new fingerprint_storage(fpstorage);
+    }
 
     std::pair<unsigned int, unsigned int> get_bucket_task() {
         unsigned int superbucket_id = current_superbucket;
@@ -408,9 +457,12 @@ public:
                 init_itemconf_layer(superbuckets[superbucket_id][position_id],
                                     computed_layer);
                 bstore.write_one_feasible_hashset(superbuckets[superbucket_id][position_id], computed_layer);
+                std::unique_lock<std::mutex> lock(processed_layers_lock); // Lock.
+                processed_layers.push(superbuckets[superbucket_id][position_id]);
                 delete computed_layer;
-
-            }
+                lock.unlock();
+                processed_layers_cv.notify_all();
+            } // Unlock by leaving context.
         }
     }
 
@@ -447,9 +499,12 @@ public:
 
         for (int sb = max_items_per_partition; sb >= 0; sb--) {
             current_superbucket = sb;
+            superbucket_finished = false;
             position_in_bucket = 0;
             parallel_computed_layers.clear();
             parallel_computed_layers.resize(superbuckets[sb].size());
+
+            std::thread* joiner_thread = new std::thread(&minibs<DENOMINATOR, BINS>::parallel_deferred_insertion, this);
 
             for (unsigned int t = 0; t < thread_count; t++) {
                 threads[t] = std::thread(&minibs<DENOMINATOR, BINS>::worker_process_task, this);
@@ -458,14 +513,16 @@ public:
                 threads[t].join();
             }
 
-            binary_storage<DENOMINATOR> bstore;
-            for (unsigned int b = 0; b < superbuckets[sb].size(); b++) {
-                auto *computed_hashset = new flat_hash_set<index_t>();
-                bstore.read_one_feasible_hashset(superbuckets[sb][b], computed_hashset);
-                deferred_insertion(superbuckets[sb][b], *computed_hashset);
-                delete computed_hashset;
-                bstore.delete_memory_saving_file(superbuckets[sb][b]);
-            }
+            // fprintf(stderr, "Superbucket layer %d: all parallel threads done.", sb);
+            std::unique_lock lk(processed_layers_lock);
+            superbucket_finished = true;
+            lk.unlock();
+            processed_layers_cv.notify_all();
+            // fprintf(stderr, "Parallel updater notified.\n");
+            joiner_thread->join();
+            delete joiner_thread;
+            update_fpstorage();
+
             if (PROGRESS) {
                 fpstorage->stats(sb);
 
@@ -503,6 +560,7 @@ public:
 
         std::vector<uint64_t> *random_numbers = create_random_hashes(all_feasible_partitions.size());
         fpstorage = new fingerprint_storage(random_numbers);
+        fpstorage_next_level = new fingerprint_storage(random_numbers);
 
         // init_layers_sequentially();
         init_layers_parallel();

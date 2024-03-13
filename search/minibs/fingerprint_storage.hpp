@@ -21,6 +21,15 @@ public:
         rns = irns;
     }
 
+    // Info: We should double-check if this is a proper deep copy.
+    fingerprint_storage(const fingerprint_storage* other) {
+        fingerprints = other->fingerprints;
+        fp_by_itemhash = other->fp_by_itemhash;
+        loadhash_representative_fp = other->loadhash_representative_fp;
+        rns = other->rns;
+        max_id = other->max_id;
+    }
+
     void add_partition_to_load_index(index_t load_index, unsigned int winning_partition_index) {
         uint64_t previous_fp_hash = 0;
         if (loadhash_representative_fp.contains(load_index)) {
