@@ -183,6 +183,9 @@ if [[ "$BUILDING_MINITOOLS" = true ]]; then
 fi
 
 if [[ "$BUILDING_TESTS" = true ]]; then
-    echo "Compiling $OUTPUT/generationtest-$BINS-$R-$S."
-    cd tests || exit; g++ -I../search/ -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S generationtest.cpp -o ../$OUTPUT/generationtest-$BINS-$R-$S $LINKING_SUFFIX; cd ..
+   echo "cd cmake-build-release || exit; cmake .. -DIBINS=$BINS -DIR=$R -DIS=$S $SCALE_FLAG $MONOT_FLAG; cmake --build ./ --target minibs-layer-tests -- -j 22; cd .."
+   cd cmake-build-release || exit; cmake .. -DIBINS=$BINS -DIR=$R -DIS=$S $SCALE_FLAG $MONOT_FLAG; cmake --build ./ --target minibs-layer-tests -- -j 22; cd ..
+
+# echo "Compiling $OUTPUT/generationtest-$BINS-$R-$S."
+#     cd tests || exit; g++ -I../search/ -Wall -std=$CPP_STANDARD $OPTFLAG -march=native -DIBINS=$BINS -DIR=$R -DIS=$S generationtest.cpp -o ../$OUTPUT/generationtest-$BINS-$R-$S $LINKING_SUFFIX; cd ..
 fi

@@ -14,6 +14,7 @@
 #include "../cache/loadconf.hpp"
 #include "../heur_alg_knownsum.hpp"
 #include "binary_storage.hpp"
+#include "binstorage_memsave.hpp"
 #include "minidp.hpp"
 #include "feasibility.hpp"
 #include "fingerprint_storage.hpp"
@@ -343,7 +344,7 @@ public:
     }
 
     // The init is now able to recover data from previous computations.
-    minibs() {
+    minibs(bool footprinting = false) {
         fprintf(stderr, "Minibs<%d>: There will be %d item sizes tracked.\n", DENOM, DENOM - 1);
 
         binary_storage<DENOMINATOR> bstore;
@@ -371,7 +372,12 @@ public:
                     DENOMINATOR, unique_fps.size());
         } else {
             print_if<PROGRESS>("Minibs<%d>: Initialization must happen from scratch.\n", DENOMINATOR);
-            init_from_scratch(knownsum_loaded);
+
+            if (footprinting) {
+                footprinting_init();
+            } else {
+                init_from_scratch(knownsum_loaded);
+            }
         }
     }
 
@@ -409,7 +415,7 @@ public:
 
                 auto* processed_hashset = new flat_hash_set<index_t>();
 
-                bstore.read_one_feasible_hashset(layer_to_integrate, processed_hashset);
+                bstore.read_one_layer_from_file(layer_to_integrate, processed_hashset);
 
                 for (index_t load_index: *processed_hashset) {
                     fpstorage_next_level->add_partition_to_load_index(load_index, layer_to_integrate);
@@ -456,13 +462,32 @@ public:
                 auto* computed_layer = new flat_hash_set<index_t>();
                 init_itemconf_layer(superbuckets[superbucket_id][position_id],
                                     computed_layer);
-                bstore.write_one_feasible_hashset(superbuckets[superbucket_id][position_id], computed_layer);
+                bstore.write_one_layer_to_file(superbuckets[superbucket_id][position_id], computed_layer);
                 std::unique_lock<std::mutex> lock(processed_layers_lock); // Lock.
                 processed_layers.push(superbuckets[superbucket_id][position_id]);
                 delete computed_layer;
                 lock.unlock();
                 processed_layers_cv.notify_all();
             } // Unlock by leaving context.
+        }
+    }
+
+    // This function's primary role is to verify that sequential and parallel creation are the same
+    // logically. There should be no difference in any of the layers.
+
+    void init_layers_sequentially(bool create_footprints = false) {
+        for (unsigned int j = 0; j < all_feasible_partitions.size(); j++) {
+            auto *computed_layer = new flat_hash_set<index_t>();
+            init_itemconf_layer(j, computed_layer);
+            if (create_footprints) {
+                binary_storage<DENOMINATOR> bs(true);
+                bs.write_one_layer_to_file(j, computed_layer, true );
+            }
+            deferred_insertion(j, *computed_layer);
+            delete computed_layer;
+            if (PROGRESS) {
+                fpstorage->stats(j);
+            }
         }
     }
 
@@ -572,6 +597,38 @@ public:
         delete random_numbers;
         fpstorage = nullptr;
     }
+
+    void footprinting_init() {
+        // Note: The recursive approach is very slow with larger number of BINS, whereas it is quite fast with BINS = 3.
+        // Hence, we switch to the "enumerate and filter" approach in the generic minibs.hpp.
+        minibs_feasibility<DENOMINATOR, BINS>::all_feasible_subpartitions_dp(all_feasible_partitions);
+        populate_feasible_map();
+
+        fprintf(stderr, "Minibs<%d, %d> from scratch: %zu itemconfs are feasible.\n", BINS, DENOM,
+                all_feasible_partitions.size());
+
+        // We initialize the knownsum layer here.
+        knownsum.build_winning_set();
+        if (PROGRESS) {
+                fprintf(stderr, "Computed first losing loadconf: ");
+                knownsum.first_losing_loadconf.print(stderr);
+                fprintf(stderr, ".\n");
+        }
+
+        std::vector<uint64_t> *random_numbers = create_random_hashes(all_feasible_partitions.size());
+        fpstorage = new fingerprint_storage(random_numbers);
+        fpstorage_next_level = new fingerprint_storage(random_numbers);
+
+        init_layers_sequentially();
+        fpstorage->output(fingerprint_map, fingerprints);
+        unique_fps = fingerprints;
+        fprintf(stderr, "Fingerprint map size %zu, fingerprints size %zu.\n",
+                fingerprint_map.size(), fingerprints.size());
+        delete fpstorage;
+        delete random_numbers;
+        fpstorage = nullptr;
+    }
+
 
     inline void backup_calculations() {
         binary_storage<DENOMINATOR> bstore;

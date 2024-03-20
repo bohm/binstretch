@@ -148,7 +148,8 @@ add_executable(search
         search/minibs/fingerprints.hpp
         search/binomial_index.hpp
         search/minibs/knownsum_game.hpp
-        search/minibs/flat_data.hpp)
+        search/minibs/flat_data.hpp
+        search/minibs/binstorage_memsave.hpp)
 
 set_target_properties(search
 PROPERTIES
@@ -240,7 +241,8 @@ add_executable(minibs-stats minitools/minibs-stats.cpp
         search/minibs/fingerprints.hpp
         search/binomial_index.hpp
         search/minibs/knownsum_game.hpp
-        search/minibs/flat_data.hpp)
+        search/minibs/flat_data.hpp
+        search/minibs/binstorage_memsave.hpp)
 
 set_target_properties(minibs-stats
         PROPERTIES
@@ -326,7 +328,8 @@ add_executable(listsaplings minitools/listsaplings.cpp
         search/minimax/descend_ascend.hpp
         search/loadconf.hpp
         search/minibs/minibs-three.hpp
-        search/minibs/midgame_feasibility.hpp)
+        search/minibs/midgame_feasibility.hpp
+        search/minibs/binstorage_memsave.hpp)
 
 
 set_target_properties(listsaplings
@@ -416,7 +419,8 @@ add_executable(awt minitools/alg-winning-table.cpp
         search/minibs/midgame_feasibility.hpp
         search/binomial_index.hpp
         search/minibs/knownsum_game.hpp
-        search/minibs/flat_data.hpp)
+        search/minibs/flat_data.hpp
+        search/minibs/binstorage_memsave.hpp)
 
 set_target_properties(awt
         PROPERTIES
@@ -505,7 +509,8 @@ add_executable(all-losing minitools/all-losing.cpp
         search/minibs/midgame_feasibility.hpp
         search/binomial_index.hpp
         search/minibs/knownsum_game.hpp
-        search/minibs/flat_data.hpp)
+        search/minibs/flat_data.hpp
+        search/minibs/binstorage_memsave.hpp)
 
 set_target_properties(all-losing
         PROPERTIES
@@ -594,7 +599,8 @@ add_executable(sand-on-ab minitools/sand-on-ab.cpp
         search/minibs/midgame_feasibility.hpp
         search/binomial_index.hpp
         search/minibs/knownsum_game.hpp
-        search/minibs/flat_data.hpp)
+        search/minibs/flat_data.hpp
+        search/minibs/binstorage_memsave.hpp)
 
 set_target_properties(sand-on-ab
         PROPERTIES
@@ -680,7 +686,15 @@ add_executable(painter painter/painter.cpp
         search/minimax/descend_ascend.hpp
         search/loadconf.hpp
         search/minibs/minibs-three.hpp
-        search/minibs/midgame_feasibility.hpp)
+        search/minibs/midgame_feasibility.hpp
+        search/minibs/binstorage_memsave.hpp)
+
+add_executable(minibs-layer-tests tests/minibs-layer-tests.cpp)
+
+set_target_properties(minibs-layer-tests
+        PROPERTIES
+        OUTPUT_NAME minibs-layer-tests-${ISCALE}
+)
 
 # Purge the two variables from the cache, so they are recomputed.
 unset(IMONOT)

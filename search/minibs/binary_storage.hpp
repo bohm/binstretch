@@ -28,8 +28,10 @@ public:
     char knownsum_file_path[256]{};
     FILE *knownsum_file = nullptr;
     char memory_saving_folder[256]{};
+    char memory_footprint_folder[256]{}; // For debugging, we may wish to save and load a memory footprint of each
+    // layer.
 
-    binary_storage() {
+    binary_storage(bool footprint = false) {
         char extension_string[10] = "basic";
         if (KNOWNSUM_EXTENSION_GS5) {
             sprintf(extension_string, "ext");
@@ -47,10 +49,17 @@ public:
         // In principle, after every successful construction, this directory can be deleted.
 
         sprintf(memory_saving_folder, "./cache/memsave-%d-%d-%d-v%d", BINS, R, S, VERSION);
-
         if (!fs::is_directory(memory_saving_folder)) {
             fs::create_directory(memory_saving_folder);
         }
+
+        if (footprint) {
+            sprintf(memory_footprint_folder, "./cache/memfootprint-%d-%d-%d-v%d", BINS, R, S, VERSION);
+            if (!fs::is_directory(memory_footprint_folder)) {
+                fs::create_directory(memory_footprint_folder);
+            }
+        }
+
     }
 
     bool storage_exists() {
@@ -742,29 +751,9 @@ public:
         close();
     }
 
-    void write_one_feasible_hashset(int layer_index, flat_hash_set<index_t> *single_hashset) {
-        char memsave_file_path[256] {};
-        sprintf(memsave_file_path, "%s/%d.bin", memory_saving_folder, layer_index);
-        FILE *memsave_file = fopen(memsave_file_path, "wb");
-        write_one_set<index_t>(single_hashset, memsave_file);
-        fclose(memsave_file);
-    }
+    // Defined in binstorage_memsave.hpp.
 
-    void read_one_feasible_hashset(int layer_index, flat_hash_set<index_t> *hashset_to_fill) {
-        char memsave_file_path[256] {};
-        sprintf(memsave_file_path, "%s/%d.bin", memory_saving_folder, layer_index);
-        FILE *memsave_file = fopen(memsave_file_path, "rb");
-        read_one_set<index_t>(hashset_to_fill, memsave_file);
-        fclose(memsave_file);
-    }
-
-    void delete_memory_saving_file(int layer_index) {
-        char memsave_file_path[256] {};
-        sprintf(memsave_file_path, "%s/%d.bin", memory_saving_folder, layer_index);
-        bool file_removed = fs::remove(memsave_file_path);
-        if (!file_removed) {
-            PRINT_AND_ABORT("File of layer index %d was not deleted.\n", layer_index);
-        }
-    }
-
+    void write_one_layer_to_file(int layer_index, flat_hash_set<index_t> *single_hashset, bool footprint = false);
+    void read_one_layer_from_file(int layer_index, flat_hash_set<index_t> *hashset_to_fill, bool footprint = false);
+    void delete_memory_saving_file(int layer_index);
 };
