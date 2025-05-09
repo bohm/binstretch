@@ -29,18 +29,32 @@ public:
     // Depth counted in the number of new items packed into the bstate.
     // Note that this may not be the *number* of items in the bin configuration,
     // because there can be some items at the start.
-    // Item depth starts at one to allow for itemdepth-1 to also be viable.
-    int itemdepth = 1;
+    int itemdepth = 0;
 
     // Call depth -- number of recursive calls (above the current one).
     int calldepth = 0;
+
+
+    // Data structures related to the non-recursive minimax version.
+    // For every depth, we store the following states:
+    // 0 -- Adversary initial step.
+    // 1 -- Algorithm initial step.
+    // 2 -- Algorithm terminal step. (Tail-recursion.)
+    // 3 -- Adversary terminal step.
+    // 4 -- Level complete.
+    std::array<short, MAX_ITEMDEPTH> stack_state;
+
+    // std::array<std::array<short, S+1>, MAX_ITEMDEPTH> candidate_moves_array;
 
     // Experimental: We try to compute the next maximum feasible item early, as soon as the next item to be sent
     // is decided. This means that the following information is only useful with both bstate and the next item.
 
     // It also means that it makes sense to store it in the computation. We can store it either as a single variable
     // or like this, as an array, which makes it easier to unroll the recursion should we want to.
-    std::array<int, MAX_ITEMDEPTH> maximum_feasible_with_next_item = {0};
+
+    // Important: this array is indexed by itemdepth+1. So, already at itemdepth 0, there will be a number stored
+    // -- precomputed from the start, corresponding to itemdepth = -1.
+    std::array<int, MAX_ITEMDEPTH+1> maximum_feasible_with_next_item = {0};
 
     // dynamic programming data
     dynprog_data *dpdata;

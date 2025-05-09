@@ -139,7 +139,7 @@ victory computation<MODE, MINIBS_SCALE>::adversary(
     if (ADVERSARY_HEURISTICS && !this->heuristic_regime) {
         auto [vic, strategy] = adversary_heuristics<MODE>(dpcache, &bstate, this->dpdata,
                                                           &(this->meas), adv_to_evaluate,
-                                                          maximum_feasible_with_next_item[itemdepth-1]);
+                                                          maximum_feasible_with_next_item[itemdepth]);
 
         if (vic == victory::adv) {
             if (GENERATING) {
@@ -526,16 +526,16 @@ victory computation<MODE, MINIBS_SCALE>::algorithm(int pres_item, algorithm_vert
 
         int lower_bound = lowest_sendable(bstate.last_item);
 
-        maximum_feasible_with_next_item[itemdepth] =
+        maximum_feasible_with_next_item[itemdepth+1] =
                 maxfeas_with_known_next_item<MODE, MINIBS_SCALE>(&bstate, pres_item, itemdepth,
                                                                  lower_bound,
-                                                                 maximum_feasible_with_next_item[itemdepth-1],
+                                                                 maximum_feasible_with_next_item[itemdepth],
                                                                  this );
 
         print_if<MINIMAX_DEBUG>("Recursion: Nextitem %d, itemdepth %d, binconf ", pres_item, itemdepth);
         print_binconf_if<MINIMAX_DEBUG>(bstate, false);
         print_if<MINIMAX_DEBUG>(" has the maximum feasible item calculated to be %d.\n",
-                                maximum_feasible_with_next_item[itemdepth]);
+                                maximum_feasible_with_next_item[itemdepth+1]);
     }
 
     while (i != 0) {

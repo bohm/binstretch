@@ -47,7 +47,7 @@ template<minimax MODE, int MINIBS_SCALE>
 void computation<MODE, MINIBS_SCALE>::next_moves_genstrat_without_maxfeas(std::vector<int> &cands)
 {
     int lower_bound = lowest_sendable(bstate.last_item);
-    int maxfeas = maximum_feasible_with_next_item[itemdepth-1];
+    int maxfeas = maximum_feasible_with_next_item[itemdepth];
     int stepcounter = 0;
     print_if<MINIMAX_DEBUG>("Item depth %d, stored maxfeas value %d for itemdepth-1, binconf ", itemdepth, maxfeas);
     print_binconf_if<MINIMAX_DEBUG>(bstate, true);
@@ -78,7 +78,7 @@ template<minimax MODE, int MINIBS_SCALE>
 void computation<MODE, MINIBS_SCALE>::next_moves_expstrat_without_maxfeas(std::vector<int> &cands)
 {
     int lower_bound = lowest_sendable(bstate.last_item);
-    int maxfeas = maximum_feasible_with_next_item[itemdepth-1];
+    int maxfeas = maximum_feasible_with_next_item[itemdepth];
     int stepcounter = 0;
     for (int item_size = exp_strategy_start(maxfeas, lower_bound);
          !exp_strategy_end(maxfeas, lower_bound, stepcounter, item_size);
