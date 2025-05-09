@@ -11,6 +11,7 @@ class computation {
 public:
     constexpr static unsigned int MAX_RECURSION_DEPTH = MAX_ITEMS; // Potentially improve the upper bound here.
     constexpr static unsigned int MAX_ITEMDEPTH = MAX_ITEMS;
+    constexpr static unsigned int MAX_CALLDEPTH = 2*MAX_ITEMDEPTH; // Calldepth increases by two for every item.
     // --- persistent thread attributes ---
     int monotonicity = 0;
 
@@ -118,7 +119,7 @@ public:
         }
     }
 
-    void check_messages();
+    victory check_messages();
 
     victory heuristic_visit_alg(int pres_item);
 

@@ -12,7 +12,8 @@ include(recommend.cmake)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
 set(CMAKE_CXX_FLAGS_DEBUG "-g -march=native -O3")
-set(CMAKE_CXX_FLAGS_RELEASE "-march=native -O3 -shared-libgcc")
+set(CMAKE_CXX_FLAGS_RELEASE "-march=native -O3 -Ofast -march=native -fwhole-program -fno-exceptions -fno-rtti \
+-finline-functions")
 add_compile_definitions(NDEBUG)
 
 include_directories(search)
@@ -47,11 +48,7 @@ function(build_search BINS R S MONOT SCALE)
     endif ()
 
     message("Building lower bound search for ${BINS} bins, ratio ${R}/${S}, monotonicity ${MONOT}, minibs scaling ${SCALE}.")
-    add_compile_definitions(IBINS=${BINS})
-    add_compile_definitions(IR=${R})
-    add_compile_definitions(IS=${S})
-    add_compile_definitions(ISCALE=${SCALE})
-    add_compile_definitions(IMONOT=${MONOT})
+
 
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "./${BINS}-${R}-${S}/")
 
@@ -62,10 +59,16 @@ function(build_search BINS R S MONOT SCALE)
             OUTPUT_NAME search-${SCALE}
     )
 
+    target_compile_definitions(search-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IBINS=${BINS})
+    target_compile_definitions(search-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IR=${R})
+    target_compile_definitions(search-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IS=${S})
+    target_compile_definitions(search-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC ISCALE=${SCALE})
+    target_compile_definitions(search-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IMONOT=${MONOT})
+
 endfunction()
 
 build_search(3 19 14 -1 -1)
-
+build_search(3 164 120 -1 -1)
 #
 #
 #

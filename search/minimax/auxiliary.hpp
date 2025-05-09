@@ -5,12 +5,13 @@
 #include "small_classes.hpp"
 
 template<minimax MODE, int MINIBS_SCALE>
-void computation<MODE, MINIBS_SCALE>::check_messages() {
+victory computation<MODE, MINIBS_SCALE>::check_messages() {
     // check_termination();
     // fetch_irrelevant_tasks();
     if (this->flags != nullptr && this->flags->root_solved) {
-        // return victory::irrelevant;
-        throw computation_irrelevant();
+        // 2025-05-09: Shifting away from exceptions to maximize performance.
+        // throw computation_irrelevant();
+        return victory::irrelevant;
     }
 
     // The following code also make sense for EXPLORING, but only once proper relevancy passing is implemented.
@@ -18,11 +19,12 @@ void computation<MODE, MINIBS_SCALE>::check_messages() {
     if (GENERATING) {
         if (queen->all_tasks_status[task_id].load() == task_status::pruned) {
             //print_if<true>("Worker %d works on an irrelevant thread.\n", world_rank);
-            // return victory::irrelevant;
-            throw computation_irrelevant();
-
+            return victory::irrelevant;
+            // throw computation_irrelevant();
         }
     }
+
+    return victory::uncertain;
 }
 
 

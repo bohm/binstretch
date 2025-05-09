@@ -62,8 +62,8 @@ template<minimax MODE, int MINIBS_SCALE>
 victory computation<MODE, MINIBS_SCALE>::adversary(
         adversary_vertex *adv_to_evaluate,
         algorithm_vertex *) {
-    algorithm_vertex *upcoming_alg = NULL;
-    adv_outedge *new_edge = NULL;
+    algorithm_vertex *upcoming_alg = nullptr;
+    adv_outedge *new_edge = nullptr;
     victory below = victory::alg;
     victory win = victory::alg;
     bool switch_to_heuristic = false;
@@ -278,7 +278,9 @@ victory computation<MODE, MINIBS_SCALE>::adversary(
     if (EXPLORING) {
         this->iterations++;
         if (this->iterations % 1000 == 0) {
-            check_messages();
+            if (check_messages() == victory::irrelevant) {
+                return victory::irrelevant;
+            }
         }
     }
 

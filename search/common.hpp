@@ -20,12 +20,12 @@
 #include "constants.hpp" // Non-changeable system constants and recommendations.
 #include "small_classes.hpp" // Small classes and enum classes.
 
-constexpr bool PROGRESS = true; // Whether to print progress info to stderr.
-constexpr bool VERBOSE = true; // Further information about progress.
-constexpr bool OUTPUT = false; // Whether to produce output.
-constexpr bool REGROW = false; // Whether to regrow or just terminate after first iteration.
-constexpr bool MEASURE = false; // Whether to collect and print measurements to stderr.
-constexpr bool FURTHER_MEASURE = false; // Whether to collect more detailed data that is not needed often.
+inline constexpr bool PROGRESS = true; // Whether to print progress info to stderr.
+inline constexpr bool VERBOSE = true; // Further information about progress.
+inline constexpr bool OUTPUT = false; // Whether to produce output.
+inline constexpr bool REGROW = false; // Whether to regrow or just terminate after first iteration.
+inline constexpr bool MEASURE = false; // Whether to collect and print measurements to stderr.
+inline constexpr bool FURTHER_MEASURE = false; // Whether to collect more detailed data that is not needed often.
 
 // When producing output, how many times should a tree be regrown.
 // Note that REGROW_LIMIT = 0 still means a full tree will be generated.
@@ -66,7 +66,7 @@ const std::vector<int> INITIAL_ITEMS = {};
 
 
 // Monotonicity limiting the adversarial instance.
-constexpr int monotonicity = IMONOT;
+inline constexpr int monotonicity = IMONOT;
 // constexpr int monotonicity = 40; // A non-decreasing instance.
 // constexpr int monotonicity = S-1; // Full generality.
 
@@ -93,17 +93,17 @@ const unsigned int LOADLOG = 12;
 const bool PRINT_HEURISTICS_IN_FULL = true;
 
 // Heuristic constants:
-constexpr bool ADVERSARY_HEURISTICS = true;
-constexpr bool EXPAND_HEURISTICS = false;
-constexpr bool LARGE_ITEM_ACTIVE = true;
-constexpr bool LARGE_ITEM_ACTIVE_EVERYWHERE = false;
-constexpr bool FIVE_NINE_ACTIVE = false;
-constexpr bool FIVE_NINE_ACTIVE_EVERYWHERE = false;
+inline constexpr bool ADVERSARY_HEURISTICS = true;
+inline constexpr bool EXPAND_HEURISTICS = false;
+inline constexpr bool LARGE_ITEM_ACTIVE = true;
+inline constexpr bool LARGE_ITEM_ACTIVE_EVERYWHERE = false;
+inline constexpr bool FIVE_NINE_ACTIVE = false;
+inline constexpr bool FIVE_NINE_ACTIVE_EVERYWHERE = false;
 
-constexpr bool USING_HEURISTIC_VISITS = true;
-constexpr bool HEURISTIC_VISITS_USING_CACHE = true;
-constexpr bool HEURISTIC_VISITS_USING_MINIBS = true;
-constexpr bool USING_HEURISTIC_KNOWNSUM = false; // Recommend turning off when WEIGHTSUM is true.
+inline constexpr bool USING_HEURISTIC_VISITS = true;
+inline constexpr bool HEURISTIC_VISITS_USING_CACHE = true;
+inline constexpr bool HEURISTIC_VISITS_USING_MINIBS = true;
+inline constexpr bool USING_HEURISTIC_KNOWNSUM = false; // Recommend turning off when WEIGHTSUM is true.
 
 // GS5+ extension. GS5+ is one of the currently only good situations which
 // makes use of tracking items -- in this case, items of size at least alpha
@@ -167,15 +167,15 @@ const std::string LOG_DIR = "./logs";
 // ------------------------------------------------
 // debug constants
 
-constexpr bool DEBUG = false;
-constexpr bool CONSISTENCY = false; // Additional consistency checks.
-constexpr bool COMM_DEBUG = false; // Network debug messages.
-constexpr bool TASK_DEBUG = false; // Debugging creation of tasks, batching, etc.
-constexpr bool GRAPH_DEBUG = false; // Debugging the DAG creation and adding/removing edges.
+inline constexpr bool DEBUG = false;
+inline constexpr bool CONSISTENCY = false; // Additional consistency checks.
+inline constexpr bool COMM_DEBUG = false; // Network debug messages.
+inline constexpr bool TASK_DEBUG = false; // Debugging creation of tasks, batching, etc.
+inline constexpr bool GRAPH_DEBUG = false; // Debugging the DAG creation and adding/removing edges.
 // GRAPH_DEBUG also prints intermediary graphs into the ./logs/ folder.
-constexpr bool PARSING_DEBUG = false; // Debugging loading and saving a file.
+inline constexpr bool PARSING_DEBUG = false; // Debugging loading and saving a file.
 #define MINIMAX_DBG false // A quick hack to enable MINIMAX_DEBUG_ONLY without leaving the scope.
-constexpr bool MINIMAX_DEBUG = MINIMAX_DBG; // Debugging the minimax algorithm (recursion).
+inline constexpr bool MINIMAX_DEBUG = MINIMAX_DBG; // Debugging the minimax algorithm (recursion).
 
 // completely disable dynamic programming or binconf cache
 // (useful to debug soundness of cache algs)

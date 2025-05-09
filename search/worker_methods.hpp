@@ -80,13 +80,11 @@ victory worker::solve(const task *t, const int &task_id) {
     // worker depth is now set to be permanently zero
     comp.prev_max_feasible = S;
 
-    try {
         ret = explore(&task_copy, &comp);
         measurements.add(comp.meas);
-    } catch (computation_irrelevant &e) {
-        print_if<PROGRESS>("Worker %d: finishing computation, it is irrelevant.\n", tid);
-        ret = victory::irrelevant;
-    }
+        if (ret == victory::irrelevant) {
+            print_if<PROGRESS>("Worker %d: finishing computation, it is irrelevant.\n", tid);
+        }
 
     delete dlog;
     assert(ret != victory::uncertain); // Might be victory for alg, adv or irrelevant.

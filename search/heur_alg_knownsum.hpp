@@ -34,33 +34,52 @@ loadconf create_full_loadconf() {
     return full_load;
 }
 
+// Old version of decrease.
 
-void reset_load(loadconf *lc, int pos) {
-    assert(pos >= 2);
-    lc->loads[pos] = lc->loads[pos - 1];
-}
+//
+// void reset_load(loadconf *lc, int pos) {
+//     assert(pos >= 2);
+//     lc->loads[pos] = lc->loads[pos - 1];
+// }
+//
+//
+// void decrease_recursive(loadconf *lc, int pos) {
+//     if (lc->loads[pos] > 0) {
+//     lc->loads[pos]--;
+//     } else {
+//         decrease_recursive(lc, pos - 1);
+//         reset_load(lc, pos);
+//     }
+// }
 
-
-void decrease_recursive(loadconf *lc, int pos) {
-    if (lc->loads[pos] > 0) {
-        lc->loads[pos]--;
-    } else {
-        decrease_recursive(lc, pos - 1);
-        reset_load(lc, pos);
-    }
-}
-// Decrease the load configuration by one. This serves
-// as an iteration function
+// bool decrease(loadconf *lc) {
+//     if (lc->loads[1] == 0) {
+//         return false;
+//     } else {
+//         decrease_recursive(lc, BINS);
+//         lc->hashinit();
+//         return true;
+//     }
+// }
 
 // Returns false if the load configuration cannot be decreased -- it is the last one.
 bool decrease(loadconf *lc) {
     if (lc->loads[1] == 0) {
         return false;
-    } else {
-        decrease_recursive(lc, BINS);
-        lc->hashinit();
-        return true;
     }
+    short pos = BINS; // First right-most non-zero position.
+    while (pos >= 1) {
+        if (lc->loads[pos] > 0) {
+            lc->loads[pos]--;
+            for (short j = pos+1; j <= BINS; j++) {
+                lc->loads[j] = lc->loads[j- 1];
+            }
+            break;
+        }
+        pos--;
+    }
+    lc->hashinit();
+    return true;
 }
 
 void initialize_knownsum() {
