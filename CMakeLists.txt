@@ -11,8 +11,8 @@ include(recommend.cmake)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
-set(CMAKE_CXX_FLAGS_DEBUG "-g")
-set(CMAKE_CXX_FLAGS_RELEASE "-g -march=native -O3 -shared-libgcc")
+set(CMAKE_CXX_FLAGS_DEBUG "-g -march=native -O3")
+set(CMAKE_CXX_FLAGS_RELEASE "-march=native -O3 -shared-libgcc")
 add_compile_definitions(NDEBUG)
 
 include_directories(search)
@@ -29,659 +29,409 @@ include_directories(search/strategies)
 include_directories(search/weights)
 include_directories(../parallel-hashmap)
 
-if (NOT DEFINED IBINS)
-    set(IBINS 9)
-endif ()
+add_custom_target(search)
 
-if (NOT DEFINED IR)
-    set(IR 19)
-endif ()
+function(build_search BINS R S MONOT SCALE)
+    if (${MONOT} EQUAL -1)
+        recommend_monotonicity(${BINS} ${R} ${S})
+        message("Recommending monotonicity ${MONOT}.")
+    else ()
+        message("Pre-set monotonicity ${MONOT}.")
+    endif ()
 
-if (NOT DEFINED IS)
-    set(IS 14)
-endif ()
+    if (${SCALE} EQUAL -1)
+        recommend_scaling(${BINS} ${R} ${S})
+        message("Recommending scaling factor ${SCALE}.")
+    else ()
+        message("Pre-set scaling factor ${SCALE}.")
+    endif ()
 
-if (NOT DEFINED IMONOT)
-    recommend_monotonicity(${IBINS} ${IR} ${IS})
-    message("Recommending monotonicity ${IMONOT}.")
-else ()
-    message("Pre-set monotonicity ${IMONOT}.")
-endif ()
+    message("Building lower bound search for ${BINS} bins, ratio ${R}/${S}, monotonicity ${MONOT}, minibs scaling ${SCALE}.")
+    add_compile_definitions(IBINS=${BINS})
+    add_compile_definitions(IR=${R})
+    add_compile_definitions(IS=${S})
+    add_compile_definitions(ISCALE=${SCALE})
+    add_compile_definitions(IMONOT=${MONOT})
 
-if (NOT DEFINED ISCALE)
-    recommend_scaling(${IBINS} ${IR} ${IS})
-    message("Recommending scaling factor ${ISCALE}.")
-else ()
-    message("Pre-set scaling factor ${ISCALE}.")
-endif ()
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "./${BINS}-${R}-${S}/")
 
-add_compile_definitions(IBINS=${IBINS})
-add_compile_definitions(IR=${IR})
-add_compile_definitions(IS=${IS})
-add_compile_definitions(ISCALE=${ISCALE})
-add_compile_definitions(IMONOT=${IMONOT})
+    add_executable(search-${BINS}-${R}-${S}-${MONOT}-${SCALE} search/main.cpp)
+    add_dependencies(search search-${BINS}-${R}-${S}-${MONOT}-${SCALE})
+    set_target_properties(search-${BINS}-${R}-${S}-${MONOT}-${SCALE}
+            PROPERTIES
+            OUTPUT_NAME search-${SCALE}
+    )
 
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "../build/${IBINS}-${IR}-${IS}/")
+endfunction()
 
-add_executable(search
-        search/cache/guar64.hpp
-        search/cache/guar_locks.hpp
-        search/cache/guarantee.hpp
-        search/cache/loadconf.hpp
-        search/cache/state.hpp
-        search/dag/basics.hpp
-        search/dag/class.hpp
-        search/dag/cloning.hpp
-        search/dag/consistency.hpp
-        search/dag/dag.hpp
-        search/dag/partial.hpp
-        search/dag/print.hpp
-        search/dynprog/algo.hpp
-        search/dynprog/wrappers.hpp
-        search/minibs/binary_storage.hpp
-        search/minibs/feasibility.hpp
-        search/itemconf.hpp
-        search/minibs/minibs.hpp
-        search/minibs/minidp.hpp
-        search/minimax/auxiliary.hpp
-        search/minimax/computation.hpp
-        search/minimax/recursion.hpp
-        search/minimax/sequencing.hpp
-        search/net/local/broadcaster.hpp
-        search/net/local/comm_basics.hpp
-        search/net/local/local_communicator.hpp
-        search/net/local/message_arrays.hpp
-        search/net/local/synchronizer.hpp
-        search/net/local/threadsafe_printer.hpp
-        search/net/batches.hpp
-        search/poset/poset.hpp
-        search/strategies/abstract.hpp
-        search/strategies/basic.hpp
-        search/strategies/heuristical.hpp
-        search/strategies/insight.hpp
-        search/strategies/insight_methods.hpp
-        search/advisor.hpp
-        search/assumptions.hpp
-        search/binconf.hpp
-        search/cleanup.hpp
-        search/common.hpp
-        search/constants.hpp
-        search/dfs.hpp
-        search/exceptions.hpp
-        search/filetools.hpp
-        search/fits.hpp
-        search/functions.hpp
-        search/gs.hpp
-        search/hash.hpp
-        search/heur_adv.hpp
-        search/heur_alg_knownsum.hpp
-        search/heur_classes.hpp
-        search/layers.hpp
-        search/loadfile.hpp
-        search/main.cpp
-        search/maxfeas.hpp
-        search/measure_structures.hpp
-        search/optconf.hpp
-        search/overseer.hpp
-        search/overseer_methods.hpp
-        search/performance_timer.hpp
-        search/positional.hpp
-        search/queen.hpp
-        search/queen_methods.hpp
-        search/sapling_manager.hpp
-        search/saplings.hpp
-        search/savefile.hpp
-        search/server_properties.hpp
-        search/small_classes.hpp
-        search/strategy.hpp
-        search/tasks/tasks.hpp
-        search/thread_attr.hpp
-        search/updater.hpp
-        search/worker.hpp
-        search/worker_methods.hpp
-        search/minimax/heuristic_visits.hpp
-        search/minimax/descend_ascend.hpp
-        search/loadconf.hpp
-        search/minibs/minibs-three.hpp
-        search/minibs/midgame_feasibility.hpp
-        search/minibs/fingerprint_storage.hpp
-        search/minibs/fingerprints.hpp
-        search/binomial_index.hpp
-        search/minibs/knownsum_game.hpp
-        search/minibs/flat_data.hpp)
+build_search(3 19 14 -1 -1)
 
-set_target_properties(search
-PROPERTIES
-OUTPUT_NAME search-${ISCALE}
-)
-
-
-add_executable(minibs-stats minitools/minibs-stats.cpp
-        search/cache/guar64.hpp
-        search/cache/guar_locks.hpp
-        search/cache/guarantee.hpp
-        search/cache/loadconf.hpp
-        search/cache/state.hpp
-        search/dag/basics.hpp
-        search/dag/class.hpp
-        search/dag/cloning.hpp
-        search/dag/consistency.hpp
-        search/dag/dag.hpp
-        search/dag/partial.hpp
-        search/dag/print.hpp
-        search/dynprog/algo.hpp
-        search/dynprog/wrappers.hpp
-        search/minibs/binary_storage.hpp
-        search/minibs/feasibility.hpp
-        search/itemconf.hpp
-        search/minibs/minibs.hpp
-        search/minibs/minidp.hpp
-        search/minimax/auxiliary.hpp
-        search/minimax/computation.hpp
-        search/minimax/recursion.hpp
-        search/minimax/sequencing.hpp
-        search/net/local/broadcaster.hpp
-        search/net/local/comm_basics.hpp
-        search/net/local/local_communicator.hpp
-        search/net/local/message_arrays.hpp
-        search/net/local/synchronizer.hpp
-        search/net/local/threadsafe_printer.hpp
-        search/net/batches.hpp
-        search/poset/poset.hpp
-        search/strategies/abstract.hpp
-        search/strategies/basic.hpp
-        search/strategies/heuristical.hpp
-        search/strategies/insight.hpp
-        search/strategies/insight_methods.hpp
-        search/advisor.hpp
-        search/assumptions.hpp
-        search/binconf.hpp
-        search/cleanup.hpp
-        search/common.hpp
-        search/constants.hpp
-        search/dfs.hpp
-        search/exceptions.hpp
-        search/filetools.hpp
-        search/fits.hpp
-        search/functions.hpp
-        search/gs.hpp
-        search/hash.hpp
-        search/heur_adv.hpp
-        search/heur_alg_knownsum.hpp
-        search/heur_classes.hpp
-        search/layers.hpp
-        search/loadfile.hpp
-        search/maxfeas.hpp
-        search/measure_structures.hpp
-        search/optconf.hpp
-        search/overseer.hpp
-        search/overseer_methods.hpp
-        search/performance_timer.hpp
-        search/positional.hpp
-        search/queen.hpp
-        search/queen_methods.hpp
-        search/sapling_manager.hpp
-        search/saplings.hpp
-        search/savefile.hpp
-        search/server_properties.hpp
-        search/small_classes.hpp
-        search/strategy.hpp
-        search/tasks/tasks.hpp
-        search/thread_attr.hpp
-        search/updater.hpp
-        search/worker.hpp
-        search/worker_methods.hpp
-        search/minimax/heuristic_visits.hpp
-        search/minimax/descend_ascend.hpp
-        search/loadconf.hpp
-        search/minibs/minibs-three.hpp
-        search/minibs/midgame_feasibility.hpp
-        search/minibs/fingerprint_storage.hpp
-        search/minibs/fingerprints.hpp
-        search/binomial_index.hpp
-        search/minibs/knownsum_game.hpp
-        search/minibs/flat_data.hpp)
-
-set_target_properties(minibs-stats
-        PROPERTIES
-        OUTPUT_NAME minibs-stats-${ISCALE}
-)
-
-add_executable(listsaplings minitools/listsaplings.cpp
-        search/cache/guar64.hpp
-        search/cache/guar_locks.hpp
-        search/cache/guarantee.hpp
-        search/cache/loadconf.hpp
-        search/cache/state.hpp
-        search/dag/basics.hpp
-        search/dag/class.hpp
-        search/dag/cloning.hpp
-        search/dag/consistency.hpp
-        search/dag/dag.hpp
-        search/dag/partial.hpp
-        search/dag/print.hpp
-        search/dynprog/algo.hpp
-        search/dynprog/wrappers.hpp
-        search/minibs/binary_storage.hpp
-        search/minibs/feasibility.hpp
-        search/itemconf.hpp
-        search/minibs/minibs.hpp
-        search/minibs/minidp.hpp
-        search/minimax/auxiliary.hpp
-        search/minimax/computation.hpp
-        search/minimax/recursion.hpp
-        search/minimax/sequencing.hpp
-        search/net/local/broadcaster.hpp
-        search/net/local/comm_basics.hpp
-        search/net/local/local_communicator.hpp
-        search/net/local/message_arrays.hpp
-        search/net/local/synchronizer.hpp
-        search/net/local/threadsafe_printer.hpp
-        search/net/batches.hpp
-        search/poset/poset.hpp
-        search/strategies/abstract.hpp
-        search/strategies/basic.hpp
-        search/strategies/heuristical.hpp
-        search/strategies/insight.hpp
-        search/strategies/insight_methods.hpp
-        search/advisor.hpp
-        search/assumptions.hpp
-        search/binconf.hpp
-        search/cleanup.hpp
-        search/common.hpp
-        search/constants.hpp
-        search/dfs.hpp
-        search/exceptions.hpp
-        search/filetools.hpp
-        search/fits.hpp
-        search/functions.hpp
-        search/gs.hpp
-        search/hash.hpp
-        search/heur_adv.hpp
-        search/heur_alg_knownsum.hpp
-        search/heur_classes.hpp
-        search/layers.hpp
-        search/loadfile.hpp
-        search/maxfeas.hpp
-        search/measure_structures.hpp
-        search/optconf.hpp
-        search/overseer.hpp
-        search/overseer_methods.hpp
-        search/performance_timer.hpp
-        search/positional.hpp
-        search/queen.hpp
-        search/queen_methods.hpp
-        search/sapling_manager.hpp
-        search/saplings.hpp
-        search/savefile.hpp
-        search/server_properties.hpp
-        search/small_classes.hpp
-        search/strategy.hpp
-        search/tasks/tasks.hpp
-        search/thread_attr.hpp
-        search/updater.hpp
-        search/worker.hpp
-        search/worker_methods.hpp
-        search/minimax/heuristic_visits.hpp
-        search/minimax/descend_ascend.hpp
-        search/loadconf.hpp
-        search/minibs/minibs-three.hpp
-        search/minibs/midgame_feasibility.hpp)
-
-
-set_target_properties(listsaplings
-        PROPERTIES
-        OUTPUT_NAME listsaplings-${ISCALE}
-)
-
-add_executable(awt minitools/alg-winning-table.cpp
-        search/cache/guar64.hpp
-        search/cache/guar_locks.hpp
-        search/cache/guarantee.hpp
-        search/cache/loadconf.hpp
-        search/cache/state.hpp
-        search/dag/basics.hpp
-        search/dag/class.hpp
-        search/dag/cloning.hpp
-        search/dag/consistency.hpp
-        search/dag/dag.hpp
-        search/dag/partial.hpp
-        search/dag/print.hpp
-        search/dynprog/algo.hpp
-        search/dynprog/wrappers.hpp
-        search/minibs/binary_storage.hpp
-        search/minibs/feasibility.hpp
-        search/itemconf.hpp
-        search/minibs/minibs.hpp
-        search/minibs/minidp.hpp
-        search/minimax/auxiliary.hpp
-        search/minimax/computation.hpp
-        search/minimax/recursion.hpp
-        search/minimax/sequencing.hpp
-        search/net/local/broadcaster.hpp
-        search/net/local/comm_basics.hpp
-        search/net/local/local_communicator.hpp
-        search/net/local/message_arrays.hpp
-        search/net/local/synchronizer.hpp
-        search/net/local/threadsafe_printer.hpp
-        search/net/batches.hpp
-        search/poset/poset.hpp
-        search/strategies/abstract.hpp
-        search/strategies/basic.hpp
-        search/strategies/heuristical.hpp
-        search/strategies/insight.hpp
-        search/strategies/insight_methods.hpp
-        search/advisor.hpp
-        search/assumptions.hpp
-        search/binconf.hpp
-        search/cleanup.hpp
-        search/common.hpp
-        search/constants.hpp
-        search/dfs.hpp
-        search/exceptions.hpp
-        search/filetools.hpp
-        search/fits.hpp
-        search/functions.hpp
-        search/gs.hpp
-        search/hash.hpp
-        search/heur_adv.hpp
-        search/heur_alg_knownsum.hpp
-        search/heur_classes.hpp
-        search/layers.hpp
-        search/loadfile.hpp
-        search/maxfeas.hpp
-        search/measure_structures.hpp
-        search/optconf.hpp
-        search/overseer.hpp
-        search/overseer_methods.hpp
-        search/performance_timer.hpp
-        search/positional.hpp
-        search/queen.hpp
-        search/queen_methods.hpp
-        search/sapling_manager.hpp
-        search/saplings.hpp
-        search/savefile.hpp
-        search/server_properties.hpp
-        search/small_classes.hpp
-        search/strategy.hpp
-        search/tasks/tasks.hpp
-        search/thread_attr.hpp
-        search/updater.hpp
-        search/worker.hpp
-        search/worker_methods.hpp
-        search/minimax/heuristic_visits.hpp
-        search/minimax/descend_ascend.hpp
-        search/loadconf.hpp
-        search/minibs/minibs-three.hpp
-        search/minibs/midgame_feasibility.hpp
-        search/binomial_index.hpp
-        search/minibs/knownsum_game.hpp
-        search/minibs/flat_data.hpp)
-
-set_target_properties(awt
-        PROPERTIES
-        OUTPUT_NAME awt-${ISCALE}
-)
-
-add_executable(all-losing minitools/all-losing.cpp
-        search/cache/guar64.hpp
-        search/cache/guar_locks.hpp
-        search/cache/guarantee.hpp
-        search/cache/loadconf.hpp
-        search/cache/state.hpp
-        search/dag/basics.hpp
-        search/dag/class.hpp
-        search/dag/cloning.hpp
-        search/dag/consistency.hpp
-        search/dag/dag.hpp
-        search/dag/partial.hpp
-        search/dag/print.hpp
-        search/dynprog/algo.hpp
-        search/dynprog/wrappers.hpp
-        search/minibs/binary_storage.hpp
-        search/minibs/feasibility.hpp
-        search/itemconf.hpp
-        search/minibs/minibs.hpp
-        search/minibs/minidp.hpp
-        search/minimax/auxiliary.hpp
-        search/minimax/computation.hpp
-        search/minimax/recursion.hpp
-        search/minimax/sequencing.hpp
-        search/net/local/broadcaster.hpp
-        search/net/local/comm_basics.hpp
-        search/net/local/local_communicator.hpp
-        search/net/local/message_arrays.hpp
-        search/net/local/synchronizer.hpp
-        search/net/local/threadsafe_printer.hpp
-        search/net/batches.hpp
-        search/poset/poset.hpp
-        search/strategies/abstract.hpp
-        search/strategies/basic.hpp
-        search/strategies/heuristical.hpp
-        search/strategies/insight.hpp
-        search/strategies/insight_methods.hpp
-        search/advisor.hpp
-        search/assumptions.hpp
-        search/binconf.hpp
-        search/cleanup.hpp
-        search/common.hpp
-        search/constants.hpp
-        search/dfs.hpp
-        search/exceptions.hpp
-        search/filetools.hpp
-        search/fits.hpp
-        search/functions.hpp
-        search/gs.hpp
-        search/hash.hpp
-        search/heur_adv.hpp
-        search/heur_alg_knownsum.hpp
-        search/heur_classes.hpp
-        search/layers.hpp
-        search/loadfile.hpp
-        search/maxfeas.hpp
-        search/measure_structures.hpp
-        search/optconf.hpp
-        search/overseer.hpp
-        search/overseer_methods.hpp
-        search/performance_timer.hpp
-        search/positional.hpp
-        search/queen.hpp
-        search/queen_methods.hpp
-        search/sapling_manager.hpp
-        search/saplings.hpp
-        search/savefile.hpp
-        search/server_properties.hpp
-        search/small_classes.hpp
-        search/strategy.hpp
-        search/tasks/tasks.hpp
-        search/thread_attr.hpp
-        search/updater.hpp
-        search/worker.hpp
-        search/worker_methods.hpp
-        search/minimax/heuristic_visits.hpp
-        search/minimax/descend_ascend.hpp
-        search/loadconf.hpp
-        search/minibs/minibs-three.hpp
-        search/minibs/midgame_feasibility.hpp
-        search/binomial_index.hpp
-        search/minibs/knownsum_game.hpp
-        search/minibs/flat_data.hpp)
-
-set_target_properties(all-losing
-        PROPERTIES
-        OUTPUT_NAME all-losing-${ISCALE}
-)
-
-add_executable(sand-on-ab minitools/sand-on-ab.cpp
-        search/cache/guar64.hpp
-        search/cache/guar_locks.hpp
-        search/cache/guarantee.hpp
-        search/cache/loadconf.hpp
-        search/cache/state.hpp
-        search/dag/basics.hpp
-        search/dag/class.hpp
-        search/dag/cloning.hpp
-        search/dag/consistency.hpp
-        search/dag/dag.hpp
-        search/dag/partial.hpp
-        search/dag/print.hpp
-        search/dynprog/algo.hpp
-        search/dynprog/wrappers.hpp
-        search/minibs/binary_storage.hpp
-        search/minibs/feasibility.hpp
-        search/itemconf.hpp
-        search/minibs/minibs.hpp
-        search/minibs/minidp.hpp
-        search/minimax/auxiliary.hpp
-        search/minimax/computation.hpp
-        search/minimax/recursion.hpp
-        search/minimax/sequencing.hpp
-        search/net/local/broadcaster.hpp
-        search/net/local/comm_basics.hpp
-        search/net/local/local_communicator.hpp
-        search/net/local/message_arrays.hpp
-        search/net/local/synchronizer.hpp
-        search/net/local/threadsafe_printer.hpp
-        search/net/batches.hpp
-        search/poset/poset.hpp
-        search/strategies/abstract.hpp
-        search/strategies/basic.hpp
-        search/strategies/heuristical.hpp
-        search/strategies/insight.hpp
-        search/strategies/insight_methods.hpp
-        search/advisor.hpp
-        search/assumptions.hpp
-        search/binconf.hpp
-        search/cleanup.hpp
-        search/common.hpp
-        search/constants.hpp
-        search/dfs.hpp
-        search/exceptions.hpp
-        search/filetools.hpp
-        search/fits.hpp
-        search/functions.hpp
-        search/gs.hpp
-        search/hash.hpp
-        search/heur_adv.hpp
-        search/heur_alg_knownsum.hpp
-        search/heur_classes.hpp
-        search/layers.hpp
-        search/loadfile.hpp
-        search/maxfeas.hpp
-        search/measure_structures.hpp
-        search/optconf.hpp
-        search/overseer.hpp
-        search/overseer_methods.hpp
-        search/performance_timer.hpp
-        search/positional.hpp
-        search/queen.hpp
-        search/queen_methods.hpp
-        search/sapling_manager.hpp
-        search/saplings.hpp
-        search/savefile.hpp
-        search/server_properties.hpp
-        search/small_classes.hpp
-        search/strategy.hpp
-        search/tasks/tasks.hpp
-        search/thread_attr.hpp
-        search/updater.hpp
-        search/worker.hpp
-        search/worker_methods.hpp
-        search/minimax/heuristic_visits.hpp
-        search/minimax/descend_ascend.hpp
-        search/loadconf.hpp
-        search/minibs/minibs-three.hpp
-        search/minibs/midgame_feasibility.hpp
-        search/binomial_index.hpp
-        search/minibs/knownsum_game.hpp
-        search/minibs/flat_data.hpp)
-
-set_target_properties(sand-on-ab
-        PROPERTIES
-        OUTPUT_NAME sand-on-ab-${ISCALE}
-)
-
-add_executable(painter painter/painter.cpp
-        search/cache/guar64.hpp
-        search/cache/guar_locks.hpp
-        search/cache/guarantee.hpp
-        search/cache/loadconf.hpp
-        search/cache/state.hpp
-        search/dag/basics.hpp
-        search/dag/class.hpp
-        search/dag/cloning.hpp
-        search/dag/consistency.hpp
-        search/dag/dag.hpp
-        search/dag/partial.hpp
-        search/dag/print.hpp
-        search/dynprog/algo.hpp
-        search/dynprog/wrappers.hpp
-        search/minibs/binary_storage.hpp
-        search/minibs/feasibility.hpp
-        search/itemconf.hpp
-        search/minibs/minibs.hpp
-        search/minibs/minidp.hpp
-        search/minimax/auxiliary.hpp
-        search/minimax/computation.hpp
-        search/minimax/recursion.hpp
-        search/minimax/sequencing.hpp
-        search/net/local/broadcaster.hpp
-        search/net/local/comm_basics.hpp
-        search/net/local/local_communicator.hpp
-        search/net/local/message_arrays.hpp
-        search/net/local/synchronizer.hpp
-        search/net/local/threadsafe_printer.hpp
-        search/net/batches.hpp
-        search/poset/poset.hpp
-        search/strategies/abstract.hpp
-        search/strategies/basic.hpp
-        search/strategies/heuristical.hpp
-        search/strategies/insight.hpp
-        search/strategies/insight_methods.hpp
-        search/advisor.hpp
-        search/assumptions.hpp
-        search/binconf.hpp
-        search/cleanup.hpp
-        search/common.hpp
-        search/constants.hpp
-        search/dfs.hpp
-        search/exceptions.hpp
-        search/filetools.hpp
-        search/fits.hpp
-        search/functions.hpp
-        search/gs.hpp
-        search/hash.hpp
-        search/heur_adv.hpp
-        search/heur_alg_knownsum.hpp
-        search/heur_classes.hpp
-        search/layers.hpp
-        search/loadfile.hpp
-        search/maxfeas.hpp
-        search/measure_structures.hpp
-        search/optconf.hpp
-        search/overseer.hpp
-        search/overseer_methods.hpp
-        search/performance_timer.hpp
-        search/positional.hpp
-        search/queen.hpp
-        search/queen_methods.hpp
-        search/sapling_manager.hpp
-        search/saplings.hpp
-        search/savefile.hpp
-        search/server_properties.hpp
-        search/small_classes.hpp
-        search/strategy.hpp
-        search/tasks/tasks.hpp
-        search/thread_attr.hpp
-        search/updater.hpp
-        search/worker.hpp
-        search/worker_methods.hpp
-        search/minimax/heuristic_visits.hpp
-        search/minimax/descend_ascend.hpp
-        search/loadconf.hpp
-        search/minibs/minibs-three.hpp
-        search/minibs/midgame_feasibility.hpp)
-
-# Purge the two variables from the cache, so they are recomputed.
-unset(IMONOT)
-unset(ISCALE)
+#
+#
+#
+#add_executable(minibs-stats minitools/minibs-stats.cpp)
+#
+#set_target_properties(minibs-stats
+#        PROPERTIES
+#        OUTPUT_NAME minibs-stats-${ISCALE}
+#)
+#
+#add_executable(listsaplings minitools/listsaplings.cpp)
+#
+#
+#set_target_properties(listsaplings
+#        PROPERTIES
+#        OUTPUT_NAME listsaplings-${ISCALE}
+#)
+#
+#add_executable(awt minitools/alg-winning-table.cpp
+#        search/cache/guar64.hpp
+#        search/cache/guar_locks.hpp
+#        search/cache/guarantee.hpp
+#        search/cache/loadconf.hpp
+#        search/cache/state.hpp
+#        search/dag/basics.hpp
+#        search/dag/class.hpp
+#        search/dag/cloning.hpp
+#        search/dag/consistency.hpp
+#        search/dag/dag.hpp
+#        search/dag/partial.hpp
+#        search/dag/print.hpp
+#        search/dynprog/algo.hpp
+#        search/dynprog/wrappers.hpp
+#        search/minibs/binary_storage.hpp
+#        search/minibs/feasibility.hpp
+#        search/itemconf.hpp
+#        search/minibs/minibs.hpp
+#        search/minibs/minidp.hpp
+#        search/minimax/auxiliary.hpp
+#        search/minimax/computation.hpp
+#        search/minimax/recursion.hpp
+#        search/minimax/sequencing.hpp
+#        search/net/local/broadcaster.hpp
+#        search/net/local/comm_basics.hpp
+#        search/net/local/local_communicator.hpp
+#        search/net/local/message_arrays.hpp
+#        search/net/local/synchronizer.hpp
+#        search/net/local/threadsafe_printer.hpp
+#        search/net/batches.hpp
+#        search/poset/poset.hpp
+#        search/strategies/abstract.hpp
+#        search/strategies/basic.hpp
+#        search/strategies/heuristical.hpp
+#        search/strategies/insight.hpp
+#        search/strategies/insight_methods.hpp
+#        search/advisor.hpp
+#        search/assumptions.hpp
+#        search/binconf.hpp
+#        search/cleanup.hpp
+#        search/common.hpp
+#        search/constants.hpp
+#        search/dfs.hpp
+#        search/exceptions.hpp
+#        search/filetools.hpp
+#        search/fits.hpp
+#        search/functions.hpp
+#        search/gs.hpp
+#        search/hash.hpp
+#        search/heur_adv.hpp
+#        search/heur_alg_knownsum.hpp
+#        search/heur_classes.hpp
+#        search/layers.hpp
+#        search/loadfile.hpp
+#        search/maxfeas.hpp
+#        search/measure_structures.hpp
+#        search/optconf.hpp
+#        search/overseer.hpp
+#        search/overseer_methods.hpp
+#        search/performance_timer.hpp
+#        search/positional.hpp
+#        search/queen.hpp
+#        search/queen_methods.hpp
+#        search/sapling_manager.hpp
+#        search/saplings.hpp
+#        search/savefile.hpp
+#        search/server_properties.hpp
+#        search/small_classes.hpp
+#        search/strategy.hpp
+#        search/tasks/tasks.hpp
+#        search/thread_attr.hpp
+#        search/updater.hpp
+#        search/worker.hpp
+#        search/worker_methods.hpp
+#        search/minimax/heuristic_visits.hpp
+#        search/minimax/descend_ascend.hpp
+#        search/loadconf.hpp
+#        search/minibs/minibs-three.hpp
+#        search/minibs/midgame_feasibility.hpp
+#        search/binomial_index.hpp
+#        search/minibs/knownsum_game.hpp
+#        search/minibs/flat_data.hpp)
+#
+#set_target_properties(awt
+#        PROPERTIES
+#        OUTPUT_NAME awt-${ISCALE}
+#)
+#
+#add_executable(all-losing minitools/all-losing.cpp
+#        search/cache/guar64.hpp
+#        search/cache/guar_locks.hpp
+#        search/cache/guarantee.hpp
+#        search/cache/loadconf.hpp
+#        search/cache/state.hpp
+#        search/dag/basics.hpp
+#        search/dag/class.hpp
+#        search/dag/cloning.hpp
+#        search/dag/consistency.hpp
+#        search/dag/dag.hpp
+#        search/dag/partial.hpp
+#        search/dag/print.hpp
+#        search/dynprog/algo.hpp
+#        search/dynprog/wrappers.hpp
+#        search/minibs/binary_storage.hpp
+#        search/minibs/feasibility.hpp
+#        search/itemconf.hpp
+#        search/minibs/minibs.hpp
+#        search/minibs/minidp.hpp
+#        search/minimax/auxiliary.hpp
+#        search/minimax/computation.hpp
+#        search/minimax/recursion.hpp
+#        search/minimax/sequencing.hpp
+#        search/net/local/broadcaster.hpp
+#        search/net/local/comm_basics.hpp
+#        search/net/local/local_communicator.hpp
+#        search/net/local/message_arrays.hpp
+#        search/net/local/synchronizer.hpp
+#        search/net/local/threadsafe_printer.hpp
+#        search/net/batches.hpp
+#        search/poset/poset.hpp
+#        search/strategies/abstract.hpp
+#        search/strategies/basic.hpp
+#        search/strategies/heuristical.hpp
+#        search/strategies/insight.hpp
+#        search/strategies/insight_methods.hpp
+#        search/advisor.hpp
+#        search/assumptions.hpp
+#        search/binconf.hpp
+#        search/cleanup.hpp
+#        search/common.hpp
+#        search/constants.hpp
+#        search/dfs.hpp
+#        search/exceptions.hpp
+#        search/filetools.hpp
+#        search/fits.hpp
+#        search/functions.hpp
+#        search/gs.hpp
+#        search/hash.hpp
+#        search/heur_adv.hpp
+#        search/heur_alg_knownsum.hpp
+#        search/heur_classes.hpp
+#        search/layers.hpp
+#        search/loadfile.hpp
+#        search/maxfeas.hpp
+#        search/measure_structures.hpp
+#        search/optconf.hpp
+#        search/overseer.hpp
+#        search/overseer_methods.hpp
+#        search/performance_timer.hpp
+#        search/positional.hpp
+#        search/queen.hpp
+#        search/queen_methods.hpp
+#        search/sapling_manager.hpp
+#        search/saplings.hpp
+#        search/savefile.hpp
+#        search/server_properties.hpp
+#        search/small_classes.hpp
+#        search/strategy.hpp
+#        search/tasks/tasks.hpp
+#        search/thread_attr.hpp
+#        search/updater.hpp
+#        search/worker.hpp
+#        search/worker_methods.hpp
+#        search/minimax/heuristic_visits.hpp
+#        search/minimax/descend_ascend.hpp
+#        search/loadconf.hpp
+#        search/minibs/minibs-three.hpp
+#        search/minibs/midgame_feasibility.hpp
+#        search/binomial_index.hpp
+#        search/minibs/knownsum_game.hpp
+#        search/minibs/flat_data.hpp)
+#
+#set_target_properties(all-losing
+#        PROPERTIES
+#        OUTPUT_NAME all-losing-${ISCALE}
+#)
+#
+#add_executable(sand-on-ab minitools/sand-on-ab.cpp
+#        search/cache/guar64.hpp
+#        search/cache/guar_locks.hpp
+#        search/cache/guarantee.hpp
+#        search/cache/loadconf.hpp
+#        search/cache/state.hpp
+#        search/dag/basics.hpp
+#        search/dag/class.hpp
+#        search/dag/cloning.hpp
+#        search/dag/consistency.hpp
+#        search/dag/dag.hpp
+#        search/dag/partial.hpp
+#        search/dag/print.hpp
+#        search/dynprog/algo.hpp
+#        search/dynprog/wrappers.hpp
+#        search/minibs/binary_storage.hpp
+#        search/minibs/feasibility.hpp
+#        search/itemconf.hpp
+#        search/minibs/minibs.hpp
+#        search/minibs/minidp.hpp
+#        search/minimax/auxiliary.hpp
+#        search/minimax/computation.hpp
+#        search/minimax/recursion.hpp
+#        search/minimax/sequencing.hpp
+#        search/net/local/broadcaster.hpp
+#        search/net/local/comm_basics.hpp
+#        search/net/local/local_communicator.hpp
+#        search/net/local/message_arrays.hpp
+#        search/net/local/synchronizer.hpp
+#        search/net/local/threadsafe_printer.hpp
+#        search/net/batches.hpp
+#        search/poset/poset.hpp
+#        search/strategies/abstract.hpp
+#        search/strategies/basic.hpp
+#        search/strategies/heuristical.hpp
+#        search/strategies/insight.hpp
+#        search/strategies/insight_methods.hpp
+#        search/advisor.hpp
+#        search/assumptions.hpp
+#        search/binconf.hpp
+#        search/cleanup.hpp
+#        search/common.hpp
+#        search/constants.hpp
+#        search/dfs.hpp
+#        search/exceptions.hpp
+#        search/filetools.hpp
+#        search/fits.hpp
+#        search/functions.hpp
+#        search/gs.hpp
+#        search/hash.hpp
+#        search/heur_adv.hpp
+#        search/heur_alg_knownsum.hpp
+#        search/heur_classes.hpp
+#        search/layers.hpp
+#        search/loadfile.hpp
+#        search/maxfeas.hpp
+#        search/measure_structures.hpp
+#        search/optconf.hpp
+#        search/overseer.hpp
+#        search/overseer_methods.hpp
+#        search/performance_timer.hpp
+#        search/positional.hpp
+#        search/queen.hpp
+#        search/queen_methods.hpp
+#        search/sapling_manager.hpp
+#        search/saplings.hpp
+#        search/savefile.hpp
+#        search/server_properties.hpp
+#        search/small_classes.hpp
+#        search/strategy.hpp
+#        search/tasks/tasks.hpp
+#        search/thread_attr.hpp
+#        search/updater.hpp
+#        search/worker.hpp
+#        search/worker_methods.hpp
+#        search/minimax/heuristic_visits.hpp
+#        search/minimax/descend_ascend.hpp
+#        search/loadconf.hpp
+#        search/minibs/minibs-three.hpp
+#        search/minibs/midgame_feasibility.hpp
+#        search/binomial_index.hpp
+#        search/minibs/knownsum_game.hpp
+#        search/minibs/flat_data.hpp)
+#
+#set_target_properties(sand-on-ab
+#        PROPERTIES
+#        OUTPUT_NAME sand-on-ab-${ISCALE}
+#)
+#
+#add_executable(painter painter/painter.cpp
+#        search/cache/guar64.hpp
+#        search/cache/guar_locks.hpp
+#        search/cache/guarantee.hpp
+#        search/cache/loadconf.hpp
+#        search/cache/state.hpp
+#        search/dag/basics.hpp
+#        search/dag/class.hpp
+#        search/dag/cloning.hpp
+#        search/dag/consistency.hpp
+#        search/dag/dag.hpp
+#        search/dag/partial.hpp
+#        search/dag/print.hpp
+#        search/dynprog/algo.hpp
+#        search/dynprog/wrappers.hpp
+#        search/minibs/binary_storage.hpp
+#        search/minibs/feasibility.hpp
+#        search/itemconf.hpp
+#        search/minibs/minibs.hpp
+#        search/minibs/minidp.hpp
+#        search/minimax/auxiliary.hpp
+#        search/minimax/computation.hpp
+#        search/minimax/recursion.hpp
+#        search/minimax/sequencing.hpp
+#        search/net/local/broadcaster.hpp
+#        search/net/local/comm_basics.hpp
+#        search/net/local/local_communicator.hpp
+#        search/net/local/message_arrays.hpp
+#        search/net/local/synchronizer.hpp
+#        search/net/local/threadsafe_printer.hpp
+#        search/net/batches.hpp
+#        search/poset/poset.hpp
+#        search/strategies/abstract.hpp
+#        search/strategies/basic.hpp
+#        search/strategies/heuristical.hpp
+#        search/strategies/insight.hpp
+#        search/strategies/insight_methods.hpp
+#        search/advisor.hpp
+#        search/assumptions.hpp
+#        search/binconf.hpp
+#        search/cleanup.hpp
+#        search/common.hpp
+#        search/constants.hpp
+#        search/dfs.hpp
+#        search/exceptions.hpp
+#        search/filetools.hpp
+#        search/fits.hpp
+#        search/functions.hpp
+#        search/gs.hpp
+#        search/hash.hpp
+#        search/heur_adv.hpp
+#        search/heur_alg_knownsum.hpp
+#        search/heur_classes.hpp
+#        search/layers.hpp
+#        search/loadfile.hpp
+#        search/maxfeas.hpp
+#        search/measure_structures.hpp
+#        search/optconf.hpp
+#        search/overseer.hpp
+#        search/overseer_methods.hpp
+#        search/performance_timer.hpp
+#        search/positional.hpp
+#        search/queen.hpp
+#        search/queen_methods.hpp
+#        search/sapling_manager.hpp
+#        search/saplings.hpp
+#        search/savefile.hpp
+#        search/server_properties.hpp
+#        search/small_classes.hpp
+#        search/strategy.hpp
+#        search/tasks/tasks.hpp
+#        search/thread_attr.hpp
+#        search/updater.hpp
+#        search/worker.hpp
+#        search/worker_methods.hpp
+#        search/minimax/heuristic_visits.hpp
+#        search/minimax/descend_ascend.hpp
+#        search/loadconf.hpp
+#        search/minibs/minibs-three.hpp
+#        search/minibs/midgame_feasibility.hpp)
+#
+## Purge the two variables from the cache, so they are recomputed.
+#unset(IMONOT)
+#unset(ISCALE)
