@@ -305,7 +305,9 @@ victory computation<MODE, MINIBS_SCALE>::adversary(
     win = victory::alg;
     below = victory::alg;
 
-    std::vector<int> candidate_moves;
+    // Important: The array candidate_moves is always terminated with a zero.
+    // std::array<int, S+1> candidate_moves = {};
+    std::array<int, S+1> *candidate_moves = &(candidate_moves_by_depth[itemdepth]);
 
     if (this->heuristic_regime) {
         compute_next_moves_heur(candidate_moves, &bstate, this->current_strategy);
@@ -318,7 +320,11 @@ victory computation<MODE, MINIBS_SCALE>::adversary(
     }
 
     // print_if<MINIMAX_DEBUG>("Trying player zero choices, with maxload starting at %d\n", maximum_feasible);
-    for (int item_size: candidate_moves) {
+    for (int item_size: *candidate_moves) {
+        // The array candidate moves is always terminated with a zero.
+        if (item_size == 0) {
+            break;
+        }
 
         if (GENERATING) {
             std::tie(upcoming_alg, new_edge) = attach_matching_vertex(qdag, adv_to_evaluate, item_size);

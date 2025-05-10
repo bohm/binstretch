@@ -31,21 +31,16 @@ victory computation<MODE, MINIBS_SCALE>::check_messages() {
 // Computes moves that adversary wishes to make. There may be a strategy
 // involved, or we may be in a heuristic situation, where we know what to do.
 
-void compute_next_moves_heur(std::vector<int> &cands, const binconf *b, heuristic_strategy *strat) {
-    cands.push_back(strat->next_item(b));
-}
-
-void compute_next_moves_sequence(std::vector<int> &cands, const binconf *, int depth,
-                                 const std::vector<int> &seq) {
-    cands.push_back(seq[depth]);
-}
-
-void compute_next_moves_fixed(std::vector<int> &, adversary_vertex *) {
+void compute_next_moves_heur(std::array<int, S+1>* cands_array, const binconf *b, heuristic_strategy *strat) {
+    (*cands_array)[0] = strat->next_item(b);
+    (*cands_array)[1] = 0;
+    // cands.push_back(strat->next_item(b));
 }
 
 template<minimax MODE, int MINIBS_SCALE>
-void computation<MODE, MINIBS_SCALE>::next_moves_genstrat_without_maxfeas(std::vector<int> &cands)
+void computation<MODE, MINIBS_SCALE>::next_moves_genstrat_without_maxfeas(std::array<int, S+1> *cands_array)
 {
+    int cands_last_index = 0;
     int lower_bound = lowest_sendable(bstate.last_item);
     int maxfeas = maximum_feasible_with_next_item[itemdepth];
     int stepcounter = 0;
@@ -56,17 +51,27 @@ void computation<MODE, MINIBS_SCALE>::next_moves_genstrat_without_maxfeas(std::v
          !gen_strategy_end(maxfeas, lower_bound, stepcounter, item_size);
          gen_strategy_step(maxfeas, lower_bound, stepcounter, item_size)) {
         if (!gen_strategy_skip(maxfeas, lower_bound, stepcounter, item_size)) {
-            cands.push_back(item_size);
+            assert(cands_last_index >= 0 && cands_last_index < S);
+            (*cands_array)[cands_last_index++] = item_size;
         }
     }
 
+    assert(cands_last_index < S);
+    (*cands_array)[cands_last_index++] = 0;
+
     if (MINIMAX_DEBUG) {
         fprintf(stderr, "Valid moves are: [");
-        for (unsigned int j = 0; j < cands.size(); j++) {
-            if (j != 0) {
+        bool first = true;
+        for (int j: *cands_array) {
+            if (first) {
+                first = false;
+            } else {
                 fprintf(stderr, ", ");
             }
-            fprintf(stderr, "%d", cands[j]);
+            if (j == 0) {
+                break;
+            }
+            fprintf(stderr, "%d", j);
         }
         fprintf(stderr, "].\n");
     }
@@ -75,18 +80,22 @@ void computation<MODE, MINIBS_SCALE>::next_moves_genstrat_without_maxfeas(std::v
 // Note: currently same as genstrat. There is some potential for heuristical improvements here.
 
 template<minimax MODE, int MINIBS_SCALE>
-void computation<MODE, MINIBS_SCALE>::next_moves_expstrat_without_maxfeas(std::vector<int> &cands)
+void computation<MODE, MINIBS_SCALE>::next_moves_expstrat_without_maxfeas(std::array<int, S+1> *cands_array)
 {
     int lower_bound = lowest_sendable(bstate.last_item);
     int maxfeas = maximum_feasible_with_next_item[itemdepth];
+    int cands_last_index = 0;
     int stepcounter = 0;
     for (int item_size = exp_strategy_start(maxfeas, lower_bound);
          !exp_strategy_end(maxfeas, lower_bound, stepcounter, item_size);
          exp_strategy_step(maxfeas, lower_bound, stepcounter, item_size)) {
         if (!exp_strategy_skip(maxfeas, lower_bound, stepcounter, item_size)) {
-            cands.push_back(item_size);
+            assert(cands_last_index >= 0 && cands_last_index < S);
+            (*cands_array)[cands_last_index++] = item_size;
         }
     }
+    assert(cands_last_index < S);
+    (*cands_array)[cands_last_index++] = 0;
 }
 
 // Find the matching algorithm vertex that corresponds to moving by next_item from

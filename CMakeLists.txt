@@ -11,7 +11,7 @@ include(recommend.cmake)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
-set(CMAKE_CXX_FLAGS_DEBUG "-g -march=native -O3")
+set(CMAKE_CXX_FLAGS_DEBUG "-g2 -march=native -O2")
 set(CMAKE_CXX_FLAGS_RELEASE "-march=native -O3 -Ofast -march=native -fwhole-program -fno-exceptions -fno-rtti \
 -finline-functions")
 add_compile_definitions(NDEBUG)

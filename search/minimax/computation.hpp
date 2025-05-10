@@ -44,7 +44,8 @@ public:
     // 4 -- Level complete.
     std::array<short, MAX_ITEMDEPTH> stack_state;
 
-    // std::array<std::array<short, S+1>, MAX_ITEMDEPTH> candidate_moves_array;
+    // We use this array to be able to unroll the recursion.
+    std::array<std::array<int, S+1>, MAX_ITEMDEPTH> candidate_moves_by_depth;
 
     // Experimental: We try to compute the next maximum feasible item early, as soon as the next item to be sent
     // is decided. This means that the following information is only useful with both bstate and the next item.
@@ -159,7 +160,7 @@ public:
 				 algorithm_vertex *alg_to_evaluate, adversary_vertex *parent_adv,
 				 const std::vector<int>& seq);
     */
-    void next_moves_genstrat_without_maxfeas(std::vector<int> &cands);
+    void next_moves_genstrat_without_maxfeas(std::array<int, S+1> *cands_array);
 
-    void next_moves_expstrat_without_maxfeas(std::vector<int> &cands);
+    void next_moves_expstrat_without_maxfeas(std::array<int, S+1> *cands_array);
 };
