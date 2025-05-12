@@ -105,6 +105,11 @@ inline constexpr bool HEURISTIC_VISITS_USING_CACHE = true;
 inline constexpr bool HEURISTIC_VISITS_USING_MINIBS = true;
 inline constexpr bool USING_HEURISTIC_KNOWNSUM = false; // Recommend turning off when WEIGHTSUM is true.
 
+// Switch from recursion based minimax to stack-based minimax.
+// This is very handy for testing their identical properties.
+// Ultimately, if the stack-based minimax proves to be overall faster, this might go away.
+inline constexpr bool USING_RECURSION = true;
+
 // GS5+ extension. GS5+ is one of the currently only good situations which
 // makes use of tracking items -- in this case, items of size at least alpha
 // and at most 1-alpha. In this sense, it is not a valid GS for the game of known sum of

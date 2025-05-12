@@ -51,7 +51,15 @@
 */
 
 
-
+// We create a wrapper around return v; to catch the exact moment a bin configuration is resolved.
+// This is more useful in the stack-based minimax, but we can use it here for debugging.
+#define ADV_REC_RETURN(v) \
+    if (v == victory::adv) { \
+        adv_wins_recursion_printer.print_binconf(&bstate); \
+    } else if (v == victory::alg) { \
+        alg_wins_recursion_printer.print_binconf(&bstate); \
+    } \
+    return v;
 
 
 template<minimax MODE, int MINIBS_SCALE>
@@ -70,7 +78,8 @@ victory computation<MODE, MINIBS_SCALE>::adversary(
 
     if (GENERATING) {
         if (adv_to_evaluate->visited) {
-            return adv_to_evaluate->win;
+            ADV_REC_RETURN(adv_to_evaluate->win)
+            // return adv_to_evaluate->win;
         }
         adv_to_evaluate->visited = true;
         MEASURE_ONLY(meas.adv_vertices_visited++);
@@ -79,7 +88,8 @@ victory computation<MODE, MINIBS_SCALE>::adversary(
         // again, but the single one being expanded will be relabeled as "expanding".
         if (adv_to_evaluate->state == vert_state::finished) {
             assert(adv_to_evaluate->win == victory::adv);
-            return adv_to_evaluate->win;
+            ADV_REC_RETURN(adv_to_evaluate->win)
+            // return adv_to_evaluate->win;
         }
 
         // Fixed vertices should not need to be traversed by generation -- anything below
@@ -88,7 +98,8 @@ victory computation<MODE, MINIBS_SCALE>::adversary(
         // but the "expanding" state.
         if (adv_to_evaluate->state == vert_state::fixed) {
             assert(adv_to_evaluate->win == victory::adv);
-            return adv_to_evaluate->win;
+            ADV_REC_RETURN(adv_to_evaluate->win)
+            // return adv_to_evaluate->win;
         }
 
         // Any vertex which is touched by generation becomes temporarily a non-leaf.
@@ -108,7 +119,8 @@ victory computation<MODE, MINIBS_SCALE>::adversary(
             if (check != victory::uncertain) {
                 adv_to_evaluate->win = check;
                 adv_to_evaluate->leaf = leaf_type::assumption;
-                return check;
+                ADV_REC_RETURN(check)
+                // return check;
             }
         }
     }
@@ -124,7 +136,8 @@ victory computation<MODE, MINIBS_SCALE>::adversary(
                     print_binconf_stream(stderr, &bstate, true);
                 }
             }
-            return victory::alg;
+            ADV_REC_RETURN(victory::alg)
+            // return victory::alg;
         }
     }
 
@@ -150,7 +163,8 @@ victory computation<MODE, MINIBS_SCALE>::adversary(
             }
 
             if (EXPLORING) {
-                return victory::adv;
+                ADV_REC_RETURN(victory::adv)
+                // return victory::adv;
             } else {
                 switch_to_heuristic = true;
                 this->heuristic_regime = true;
@@ -181,7 +195,8 @@ victory computation<MODE, MINIBS_SCALE>::adversary(
                 this->current_strategy = nullptr;
             }
 
-            return victory::adv;
+            ADV_REC_RETURN(victory::adv)
+            // return victory::adv;
         }
 
     }
@@ -266,7 +281,8 @@ victory computation<MODE, MINIBS_SCALE>::adversary(
                 adv_to_evaluate->leaf = leaf_type::boundary;
             }
 
-            return adv_to_evaluate->win; // previously: return victory::uncertain
+            ADV_REC_RETURN(adv_to_evaluate->win)
+            // return adv_to_evaluate->win; // previously: return victory::uncertain
         }
     }
 
@@ -275,7 +291,8 @@ victory computation<MODE, MINIBS_SCALE>::adversary(
         this->iterations++;
         if (this->iterations % 1000 == 0) {
             if (check_messages() == victory::irrelevant) {
-                return victory::irrelevant;
+                ADV_REC_RETURN(victory::irrelevant)
+                // return victory::irrelevant;
             }
         }
     }
@@ -290,9 +307,11 @@ victory computation<MODE, MINIBS_SCALE>::adversary(
 
         if (found) {
             if (value == 0) {
-                return victory::adv;
+                ADV_REC_RETURN(victory::adv)
+                // return victory::adv;
             } else if (value == 1) {
-                return victory::alg;
+                ADV_REC_RETURN(victory::alg)
+                // return victory::alg;
             }
         }
     }
@@ -348,7 +367,8 @@ victory computation<MODE, MINIBS_SCALE>::adversary(
 
         // send signal that we should terminate immediately upwards
         if (below == victory::irrelevant) {
-            return below;
+            ADV_REC_RETURN(below)
+            // return below;
         }
 
         if (below == victory::adv) {
@@ -392,7 +412,8 @@ victory computation<MODE, MINIBS_SCALE>::adversary(
     }
 
     GEN_ONLY(adv_to_evaluate->win = win);
-    return win;
+    ADV_REC_RETURN(win);
+    //return win;
 }
 
 template<minimax MODE, int MINIBS_SCALE>
@@ -656,8 +677,14 @@ victory explore(binconf *b, computation<MODE, MINIBS_SCALE> *comp) {
     print_if<MINIMAX_DEBUG>(" is the initial maximum feasible item is calculated to be %d.\n",
                             comp->maximum_feasible_with_next_item[0]);
 
-    // victory ret = comp->adversary(NULL, NULL);
-    victory ret = comp->minimax(nullptr);
+    victory ret = victory::uncertain;
+
+    if (USING_RECURSION) {
+        ret = comp->adversary(NULL, NULL);
+    } else {
+        ret = comp->minimax(nullptr);
+    }
+
     assert(ret != victory::uncertain);
     if (MINIMAX_DEBUG && ret == victory::adv) {
         print_if<MINIMAX_DEBUG>("EXP: bin configuration leads to ADV victory: ");
@@ -700,8 +727,12 @@ victory generate(sapling start_sapling,
     print_if<MINIMAX_DEBUG>(" is the initial maximum feasible item is calculated to be %d.\n",
                             comp->maximum_feasible_with_next_item[0]);
 
-    // victory ret = comp->adversary(start_sapling.root, NULL);
-    victory ret = comp->minimax(start_sapling.root);
+    victory ret = victory::uncertain;
+    if (USING_RECURSION) {
+        ret = comp->adversary(start_sapling.root, NULL);
+    } else {
+        ret = comp->minimax(start_sapling.root);
+    }
 
     return ret;
 }

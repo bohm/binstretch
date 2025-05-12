@@ -1,13 +1,27 @@
 #pragma once
 
+#include "local_multiprocess.hpp"
+
+// Includes a debug block. Delete the block later.
 #define ADV_STACK_SET_AND_RETURN(v) \
     stack_state[calldepth] = 4; \
     stack_victory[calldepth] = v; \
+    if (stack_victory[calldepth] == victory::adv) { \
+        adv_wins_stack_printer.print_binconf(&bstate); \
+    } else if (stack_victory[calldepth] == victory::alg) { \
+        alg_wins_stack_printer.print_binconf(&bstate); \
+    } \
     calldepth--; \
-break;
+    break;
 
+// Includes a debug block. Delete the block later.
 #define ADV_STACK_RETURN \
 	stack_state[calldepth] = 4; \
+    if (stack_victory[calldepth] == victory::adv) { \
+        adv_wins_stack_printer.print_binconf(&bstate); \
+    } else if (stack_victory[calldepth] == victory::alg) { \
+        alg_wins_stack_printer.print_binconf(&bstate); \
+    } \
 	calldepth--; \
 	break;
 
@@ -770,6 +784,11 @@ victory computation<MODE, MINIBS_SCALE>::minimax(adversary_vertex *root_vertex) 
                 // This should never be actively computed.
                 fprintf(stderr, "Recursion stack machine actively called on state 13 -- algorithm level complete.\n");
                 assert(stack_state[calldepth] != 13);
+                break;
+            default:
+                fprintf(stderr, "The state machine only works on the prescribed cases. This state should"
+                                "never be reached.\n");
+                assert(stack_state[calldepth] >= 0 && stack_state[calldepth] <= 13);
                 break;
         }
     }

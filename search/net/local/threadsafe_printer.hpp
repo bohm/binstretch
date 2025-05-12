@@ -47,7 +47,7 @@ public:
         // Unlocking at the end of scope.
     }
 
-    int print_with_binconf(const binconf *d, const char *format...) {
+    int print_then_binconf(const binconf *d, const char *format...) {
         std::unique_lock<std::mutex> lk(printing_mutex);
         va_list argptr;
         va_start(argptr, format);
@@ -57,8 +57,22 @@ public:
         return ret;
         // Unlocking at the end of scope.
     }
+
+
+    int binconf_then_print(const binconf *d, const char *format...) {
+        std::unique_lock<std::mutex> lk(printing_mutex);
+        print_binconf_stream(fileptr, d, false);
+        va_list argptr;
+        va_start(argptr, format);
+        int ret = vfprintf(fileptr, format, argptr);
+        va_end(argptr);
+        return ret;
+        // Unlocking at the end of scope.
+    }
 };
 
 // Debug. Delete later.
-// threadsafe_file alg_win_state_file;
-// threadsafe_file adv_win_state_file;
+threadsafe_file alg_wins_stack_printer;
+threadsafe_file adv_wins_stack_printer;
+threadsafe_file alg_wins_recursion_printer;
+threadsafe_file adv_wins_recursion_printer;

@@ -162,8 +162,10 @@ endfunction()
 # build_search(3 6 4 -1 -1) # Not a lower bound.
 # build_search(3 19 14 -1 -1) # Lower bound.
 # build_search(3 56 41 -1 -1) # Not a lower bound.
-build_search(3 164 120 -1 -1) # Lower bound.
-build_search(8 19 14 -1 -1)
+# build_search(3 164 120 -1 -1) # Lower bound.
+# build_search(8 19 14 -1 -1)
+build_search(4 19 14 -1 -1)
+# build_search(3 149 109 -1 -1)
 #
 #
 #
