@@ -325,8 +325,10 @@ void assert_with_message(const char *expression, bool evaluation, const char *me
 #define GRAPH_DEBUG_ONLY(x) if (GRAPH_DEBUG) {x;}
 #if MINIMAX_DBG
 #define MINIMAX_DEBUG_ONLY(x) x;
+#define MINIMAX_DEBUG_TWO_ONLY(x, y) x, y;
 #else
 #define MINIMAX_DEBUG_ONLY(x)
+#define MINMAX_DEBUG_TWO_ONLY(x, y)
 #endif
 
 FILE* ADV_WIN_STATE_FILE = nullptr;

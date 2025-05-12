@@ -253,6 +253,7 @@ void evaluation_cleanup(dag *d, algorithm_vertex *alg_v) {
 }
 
 void cleanup_after_adv_win(dag *d, bool expansion) {
+    print_if<MINIMAX_DEBUG>("Running cleanup_after_adv_win();\n");
     // cleanup_winning_subtree(d, job.root);
     // fix_vertices_remove_tasks(d, job);
 

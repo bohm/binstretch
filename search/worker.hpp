@@ -10,6 +10,7 @@
 #include "minimax/computation.hpp"
 #include "tasks/tasks.hpp"
 #include "minimax/recursion.hpp"
+#include "minimax/stack_minimax.hpp"
 
 std::mutex worker_needed;
 std::condition_variable worker_needed_cv;

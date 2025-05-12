@@ -53,10 +53,11 @@ void computation<MODE, MINIBS_SCALE>::next_moves_genstrat_without_maxfeas(std::a
         if (!gen_strategy_skip(maxfeas, lower_bound, stepcounter, item_size)) {
             assert(cands_last_index >= 0 && cands_last_index < S);
             (*cands_array)[cands_last_index++] = item_size;
+            print_if<MINIMAX_DEBUG>("Inserting item size %d into cands_array.\n", item_size);
         }
     }
 
-    assert(cands_last_index < S);
+    assert(cands_last_index <= S);
     (*cands_array)[cands_last_index++] = 0;
 
     if (MINIMAX_DEBUG) {
@@ -94,7 +95,7 @@ void computation<MODE, MINIBS_SCALE>::next_moves_expstrat_without_maxfeas(std::a
             (*cands_array)[cands_last_index++] = item_size;
         }
     }
-    assert(cands_last_index < S);
+    assert(cands_last_index <= S);
     (*cands_array)[cands_last_index++] = 0;
 }
 

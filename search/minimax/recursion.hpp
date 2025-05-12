@@ -52,11 +52,7 @@
 
 
 
-// TODO: not complete (and I am not sure it is worth completing).
-template<minimax MODE, int MINIBS_SCALE>
-victory computation<MODE, MINIBS_SCALE>::minimax() {
-    return victory::uncertain;
-}
+
 
 template<minimax MODE, int MINIBS_SCALE>
 victory computation<MODE, MINIBS_SCALE>::adversary(
@@ -320,20 +316,20 @@ victory computation<MODE, MINIBS_SCALE>::adversary(
     }
 
     // print_if<MINIMAX_DEBUG>("Trying player zero choices, with maxload starting at %d\n", maximum_feasible);
-    for (int item_size: *candidate_moves) {
-        // The array candidate moves is always terminated with a zero.
-        if (item_size == 0) {
-            break;
-        }
-
+    current_adv_move_index[itemdepth] = 0;
+    // The array candidate moves is always terminated with a zero.
+    while ((*candidate_moves)[current_adv_move_index[itemdepth]] > 0) {
+        int item_size = (*candidate_moves)[current_adv_move_index[itemdepth]];
         if (GENERATING) {
             std::tie(upcoming_alg, new_edge) = attach_matching_vertex(qdag, adv_to_evaluate, item_size);
         }
 
+        calldepth++;
         adversary_descend<MODE, MINIBS_SCALE>(this, notes, item_size);
         below = algorithm(item_size, upcoming_alg, adv_to_evaluate);
         MINIMAX_DEBUG_ONLY(bstate.consistency_check());
         MINIMAX_DEBUG_ONLY(assert(binconf_equal(&bstate, &bstate_consistency_copy)));
+        calldepth--;
         adversary_ascend<MODE, MINIBS_SCALE>(this, notes);
         MINIMAX_DEBUG_ONLY(bstate.consistency_check());
         MINIMAX_DEBUG_ONLY(assert(binconf_equal(&bstate, &bstate_consistency_copy)));
@@ -370,6 +366,8 @@ victory computation<MODE, MINIBS_SCALE>::adversary(
                 win = victory::uncertain;
             }
         }
+
+        current_adv_move_index[itemdepth]++;
     }
 
 
@@ -484,8 +482,10 @@ victory computation<MODE, MINIBS_SCALE>::algorithm(int pres_item, algorithm_vert
                 int target_bin = (*it)->target_bin;
 
                 MINIMAX_DEBUG_ONLY(bstate.consistency_check();)
+                calldepth++;
                 algorithm_descend<MODE, MINIBS_SCALE>(this, notes, pres_item, target_bin);
                 below = adversary(upcoming_adv, alg_to_evaluate);
+                calldepth--;
                 algorithm_ascend<MODE, MINIBS_SCALE>(this, notes, pres_item);
                 MINIMAX_DEBUG_ONLY(bstate.consistency_check();)
                 MINIMAX_DEBUG_ONLY(assert(binconf_equal(&bstate, &bstate_consistency_copy));)
@@ -549,6 +549,7 @@ victory computation<MODE, MINIBS_SCALE>::algorithm(int pres_item, algorithm_vert
         // with zero-termination, should be implicitly true.
 
         // Editing binconf in place -- undoing changes later by calling ascend.
+        calldepth++;
         algorithm_descend(this, notes, pres_item, i);
 
         // Initialize the adversary's next vertex in the tree.
@@ -566,7 +567,7 @@ victory computation<MODE, MINIBS_SCALE>::algorithm(int pres_item, algorithm_vert
         print_if<MINIMAX_DEBUG>(" resulting in: ");
         MINIMAX_DEBUG_ONLY(print(stderr, below);)
         print_if<MINIMAX_DEBUG>(".\n");
-
+        calldepth--;
         algorithm_ascend(this, notes, pres_item);
         MINIMAX_DEBUG_ONLY(bstate.consistency_check();)
         MINIMAX_DEBUG_ONLY(assert(binconf_equal(&bstate, &bstate_consistency_copy));)
@@ -650,13 +651,24 @@ victory explore(binconf *b, computation<MODE, MINIBS_SCALE> *comp) {
     comp->maximum_feasible_with_next_item[0] = maximum_feasible<MODE, MINIBS_SCALE>(
             &(comp->bstate), 0, cannot_send_less, S, comp);
 
-    print_if<MINIMAX_DEBUG>("Exploration: For root binconf ");
+    print_if<MINIMAX_DEBUG>("EXP: For root binconf ");
     print_binconf_if<MINIMAX_DEBUG>(comp->bstate, false);
     print_if<MINIMAX_DEBUG>(" is the initial maximum feasible item is calculated to be %d.\n",
                             comp->maximum_feasible_with_next_item[0]);
 
-    victory ret = comp->adversary(NULL, NULL);
+    // victory ret = comp->adversary(NULL, NULL);
+    victory ret = comp->minimax(nullptr);
     assert(ret != victory::uncertain);
+    if (MINIMAX_DEBUG && ret == victory::adv) {
+        print_if<MINIMAX_DEBUG>("EXP: bin configuration leads to ADV victory: ");
+        print_binconf_if<MINIMAX_DEBUG>(comp->bstate, true);
+    } else if (MINIMAX_DEBUG && ret == victory::alg) {
+        print_if<MINIMAX_DEBUG>("EXP: bin configuration leads to ALG victory: ");
+        print_binconf_if<MINIMAX_DEBUG>(comp->bstate, true);
+    } else if (MINIMAX_DEBUG && ret == victory::irrelevant) {
+        print_if<MINIMAX_DEBUG>("EXP: bin configuration deemed irrelevant: ");
+        print_binconf_if<MINIMAX_DEBUG>(comp->bstate, true);
+    }
     return ret;
 }
 
@@ -688,6 +700,8 @@ victory generate(sapling start_sapling,
     print_if<MINIMAX_DEBUG>(" is the initial maximum feasible item is calculated to be %d.\n",
                             comp->maximum_feasible_with_next_item[0]);
 
-    victory ret = comp->adversary(start_sapling.root, NULL);
+    // victory ret = comp->adversary(start_sapling.root, NULL);
+    victory ret = comp->minimax(start_sapling.root);
+
     return ret;
 }

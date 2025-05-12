@@ -4,14 +4,14 @@
 
 // Two functions which perform revertable edits on the computation data. We call them
 // immediately before and after calling algorithm() and adversary().
-struct adversary_notes {
-    int old_largest = 0;
-};
 
 template<minimax MODE, int MINIBS_SCALE>
 void
 adversary_descend(computation<MODE, MINIBS_SCALE> *comp, adversary_notes &notes, int next_item) {
-    comp->calldepth++;
+    // Calldepth needs to be handled outside of the descend/ascend function, because
+    // the non-recursive minimax handles this variable on its own, and needs to increase it before the ascend function
+    // is called.
+    // comp->calldepth++;
     notes.old_largest = comp->largest_since_computation_root;
 
     comp->largest_since_computation_root = std::max(next_item, comp->largest_since_computation_root);
@@ -23,7 +23,7 @@ adversary_descend(computation<MODE, MINIBS_SCALE> *comp, adversary_notes &notes,
 
 template<minimax MODE, int MINIBS_SCALE>
 void adversary_ascend(computation<MODE, MINIBS_SCALE> *comp, const adversary_notes &notes) {
-    comp->calldepth--;
+    // comp->calldepth--;
     comp->largest_since_computation_root = notes.old_largest;
 
     if (comp->current_strategy != nullptr) {
@@ -31,17 +31,12 @@ void adversary_ascend(computation<MODE, MINIBS_SCALE> *comp, const adversary_not
     }
 }
 
-struct algorithm_notes {
-    int previously_last_item = 0;
-    int bc_new_load_position = 0;
-    int ol_new_load_position = 0;
-};
 
 
 template<minimax MODE, int MINIBS_SCALE>
 void algorithm_descend(computation<MODE, MINIBS_SCALE> *comp,
                        algorithm_notes &notes, int item, int target_bin) {
-    comp->calldepth++;
+    // comp->calldepth++;
     comp->itemdepth++;
     notes.previously_last_item = comp->bstate.last_item;
     notes.bc_new_load_position = comp->bstate.assign_and_rehash(item, target_bin);
@@ -58,7 +53,7 @@ void algorithm_descend(computation<MODE, MINIBS_SCALE> *comp,
 template<minimax MODE, int MINIBS_SCALE>
 void algorithm_ascend(computation<MODE, MINIBS_SCALE> *comp,
                       const algorithm_notes &notes, int item) {
-    comp->calldepth--;
+    // comp->calldepth--;
     comp->itemdepth--;
     comp->bstate.unassign_and_rehash(item, notes.bc_new_load_position, notes.previously_last_item);
     // b->last_item = notes.previously_last_item; -- not necessary, unassign and rehash takes

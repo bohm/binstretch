@@ -1,10 +1,22 @@
 #pragma once
 // dynprog global variables and other attributes separate for each thread.
+
 #include "assumptions.hpp"
 #include "../search/thread_attr.hpp"
 #include "../dag/dag.hpp"
 #include "../minibs/minibs.hpp"
 #include "cache/state.hpp"
+
+struct adversary_notes {
+    int old_largest = 0;
+};
+
+struct algorithm_notes {
+    int previously_last_item = 0;
+    int bc_new_load_position = 0;
+    int ol_new_load_position = 0;
+};
+
 
 template<minimax MODE, int MINIBS_SCALE>
 class computation {
@@ -38,14 +50,49 @@ public:
     // Data structures related to the non-recursive minimax version.
     // For every depth, we store the following states:
     // 0 -- Adversary initial step.
-    // 1 -- Algorithm initial step.
-    // 2 -- Algorithm terminal step. (Tail-recursion.)
+    // (1, i) -- Adversary descending step. (Generated list of plausible ADV moves, iterating over this list.)
+    // (2, i) -- Adversary ascending step.
     // 3 -- Adversary terminal step.
-    // 4 -- Level complete.
-    std::array<short, MAX_ITEMDEPTH> stack_state;
+    // 4 -- Adversary level complete.
+    // 5 -- Algorithm initial step.
+    // (6, j) -- Algorithm fixed mode start.
+    // (7, j) -- Algorithm fixed descending step.
+    // (8, j) -- Algorithm fixed ascending step.
+    // 9 -- Algorithm fixed terminal step.
+    // (10, j) -- Algorithm descending step. (Generated list of plausible ALG moves. Descend.)
+    // (11, j) -- Algorithm ascending step.
+    // 12  -- Algorithm terminal step. End of for loop, cleanup.
+    // 13 -- Algorithm level complete.
 
+    std::array<short, MAX_CALLDEPTH> stack_state;
+    std::array<short, MAX_ITEMDEPTH> current_adv_move_index = {}; // i in the above description
+    std::array<short, MAX_ITEMDEPTH> current_alg_move_index = {}; // j
+
+    // pres_item
+    std::array<int, MAX_ITEMDEPTH> pres_item_to_alg = {};
+    // iterator for fixed mode
+    std::array<std::list<alg_outedge *>::iterator, MAX_ITEMDEPTH> fixed_mode_iterator = {};
+    // stack memory for algorithm and adversary notes
+    std::array<adversary_notes, MAX_ITEMDEPTH> adversary_notes_stack = {};
+    std::array<algorithm_notes, MAX_ITEMDEPTH> algorithm_notes_stack = {};
+
+    // The victory value that the recursion would return once it is done computing. Since we are pausing and
+    // resuming computation, this value will not be "uncertain" most of the time, because we wish to start
+    // with it (on the adversary level) being victory::alg and then update it based on the edges.
+    // This is equivalent to starting with ret = victory::alg; and then updating ret during recursive calls.
+
+    std::array<victory, MAX_CALLDEPTH> stack_victory = {};
+
+    std::array<adversary_vertex*, MAX_ITEMDEPTH> stack_adv_to_evaluate = {};
+    std::array<algorithm_vertex*, MAX_ITEMDEPTH> stack_alg_to_evaluate = {};
+    std::array<alg_outedge *, MAX_ITEMDEPTH> stack_connecting_alg_outedge = {};
+    std::array<adv_outedge *, MAX_ITEMDEPTH> stack_connecting_adv_outedge = {};
+
+    std::array<bool, MAX_ITEMDEPTH> stack_switch_to_heuristic = {};
     // We use this array to be able to unroll the recursion.
     std::array<std::array<int, S+1>, MAX_ITEMDEPTH> candidate_moves_by_depth;
+
+    // MINIMAX_DEBUG_TWO_ONLY(std::array<binconf, MAX_CALLDEPTH> stack_binconf_consistency_copy = {});
 
     // Experimental: We try to compute the next maximum feasible item early, as soon as the next item to be sent
     // is decided. This means that the following information is only useful with both bstate and the next item.
@@ -98,7 +145,7 @@ public:
     // To save time allocating this array, we allocate it at construction time, essentially.
     // We only need to memset it inside algorithm().
 
-    std::array<std::array<int, BINS + 1>, MAX_ITEMS> alg_uncertain_moves = {0};
+    std::array<std::array<int, BINS + 1>, MAX_CALLDEPTH> alg_uncertain_moves = {0};
 
 
     // --- measure attributes ---
@@ -143,7 +190,7 @@ public:
     // std::array<adversary_vertex *, MAX_RECURSION_DEPTH> adv_to_evaluate;
     // std::array<adversary_vertex *, MAX_RECURSION_DEPTH> alg_to_evaluate;
 
-    victory minimax();
+    victory minimax(adversary_vertex *root_vertex);
 
     // The non-unrolled version.
     victory adversary(adversary_vertex *adv_to_evaluate, algorithm_vertex *parent_alg);

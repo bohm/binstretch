@@ -77,12 +77,14 @@ public:
 
     void update() {
 
+        print_if<MINIMAX_DEBUG>("Running update.\n");
         unfinished_tasks = 0;
         vertices_visited = 0;
         d->clear_visited();
         update_adv(job.root);
         root_result = d->root->win;
         updater_result = job.root->win;
+        print_if<GRAPH_DEBUG>("Updater result: %d.\n", (int) updater_result);
     }
 
     void update_root() {
@@ -180,6 +182,8 @@ victory updater_computation::update_adv(adversary_vertex *v) {
         if (result == victory::uncertain) {
             unfinished_tasks++;
         } else {
+            print_if<GRAPH_DEBUG>("Updater: Vertex %" PRIu64 " found in completed tasks, result: %d.\n",
+                v->id, result);
             v->win = result;
         }
     } else if (v->leaf != leaf_type::nonleaf) {

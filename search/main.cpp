@@ -168,6 +168,11 @@ void queen_main_thread(int argc, char **argv) {
 }
 
 int main(int argc, char **argv) {
+#ifdef NDEBUG
+    fprintf(stderr, "No asserts will be checked.\n");
+#else
+    fprintf(stderr, "All asserts will be tested.\n");
+#endif
     folder_checks();
 
     multiprocess::init();

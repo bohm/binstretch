@@ -172,9 +172,14 @@ void worker::start(worker_flags *assigned_flags) {
             assert(solution == victory::alg || solution == victory::adv || solution == victory::irrelevant);
 
             if (solution == victory::adv) {
+                // fprintf(stderr, "WORKER: Inserting ADV WIN for task");
+                // current_task.print();
+
                 ov->all_tasks_status[current_task_id].store(task_status::adv_win);
                 ov->finished_tasks[tid].push(current_task_id);
             } else if (solution == victory::alg) {
+                // fprintf(stderr, "WORKER: Inserting ALG WIN for task ");
+                // current_task.print();
                 ov->all_tasks_status[current_task_id].store(task_status::alg_win);
                 ov->finished_tasks[tid].push(current_task_id);
             }

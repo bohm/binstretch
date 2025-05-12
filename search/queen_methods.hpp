@@ -58,6 +58,8 @@ void queen_class::updater(sapling job) {
         // update main tree and task map
         // bool should_do_update = ((qmemory::collected_now >= TICK_TASKS) || (tcount - thead <= TICK_TASKS)) && (updater_result == POSTPONED);
         if (update_recommendation()) {
+            print_if<GRAPH_DEBUG>("Update recommendation triggered.\n");
+            GRAPH_DEBUG_ONLY(qdag->log_graph("./logs/before-update.log"));
             reset_collected_now();
             cycle_counter++;
             ucomp.update();
