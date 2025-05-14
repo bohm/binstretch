@@ -2,14 +2,9 @@
 #include <cstdio>
 #include <cstdlib>
 
-#define IBINS 10
-#define IR 19
-#define IS 14
-
+#include "presets/no_heuristics.hpp"
+#include "presets/stack_minimax.hpp"
 #include "common.hpp"
-
-#define PREDEFINED_FILENAME "/comp/bs/iterative/experiments/6bins-basicroot.txt"
-
 #include "binconf.hpp"
 #include "filetools.hpp"
 
@@ -17,17 +12,7 @@
 #include "minimax/recursion.hpp"
 #include "server_properties.hpp"
 
-
-
-
-
-
-
-
-
-
-
-int main(void)
+int main(int argc, char **argv)
 {
     // Init zobrist.
     zobrist_init();
@@ -45,17 +30,18 @@ int main(void)
     // A hack: we init tstatus manually.
     tstatus = new std::atomic<task_status>[1];
     tstatus[0] = task_status::available;
-    
-    
-    CUSTOM_ROOTFILE = true;
 
-    if (CUSTOM_ROOTFILE)
-    {
-	strcpy(ROOT_FILENAME, PREDEFINED_FILENAME);
-    }
-	
-    monotonicity = FIRST_PASS;
-    victory ret = victory::uncertain;
+
+	for (int i = 0; i <= argc - 2; i++) {
+		auto [rootfile_flag, root_file] = parse_parameter_rootfile(argc, argv, i);
+
+		if (rootfile_flag) {
+			CUSTOM_ROOTFILE = true;
+			print_if<VERBOSE>("Found the --root flag, parameter %s.\n", root_file.c_str());
+			strcpy(ROOT_FILENAME, root_file.c_str());
+		}
+	}
+	victory ret = victory::uncertain;
 
     computation<minimax::exploring> comp;
     //tat.last_item = t->last_item;
@@ -68,10 +54,10 @@ int main(void)
 
     if (CUSTOM_ROOTFILE)
     {
-	task_copy = loadbinconf_singlefile(ROOT_FILENAME);
+		task_copy = loadbinconf_singlefile(ROOT_FILENAME);
     } else
     {
-	task_copy.hashinit();
+		task_copy.hashinit();
     }
 	
     ret = explore(&task_copy, &comp);

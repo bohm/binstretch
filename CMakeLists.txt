@@ -7,7 +7,10 @@ endif()
 
 message("CMake build type: ${CMAKE_BUILD_TYPE}.")
 
+add_custom_target(search)
+add_custom_target(tests)
 include(recommend.cmake)
+include(build_tests.cmake)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
@@ -34,7 +37,6 @@ include_directories(search/strategies)
 include_directories(search/weights)
 include_directories(../parallel-hashmap)
 
-add_custom_target(search)
 
 function(build_search BINS R S MONOT SCALE)
     if (${MONOT} EQUAL -1)
@@ -165,6 +167,7 @@ endfunction()
 # build_search(3 164 120 -1 -1) # Lower bound.
 # build_search(8 19 14 -1 -1)
 build_search(4 19 14 -1 -1)
+build_tests(4 19 14 -1 -1)
 # build_search(3 149 109 -1 -1)
 #
 #

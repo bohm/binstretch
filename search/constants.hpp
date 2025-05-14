@@ -29,6 +29,7 @@
 #error "The macro constant ISCALE needs to be passed by the compiler!"
 #define ISCALE 3 // ditto
 #endif
+#include <array>
 
 // To have the code buildable on Ubuntu 18.04, we include this
 // compiler-dependent hack.
