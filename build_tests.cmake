@@ -18,7 +18,7 @@ function(build_tests BINS R S MONOT SCALE)
 
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "./${BINS}-${R}-${S}/")
 
-    add_executable(explore-${BINS}-${R}-${S}-${MONOT}-${SCALE} tests/explorationtest.cpp
+    add_executable(explore-rec-${BINS}-${R}-${S}-${MONOT}-${SCALE} tests/explore.cpp
             search/cache/guar64.hpp
             search/cache/guar_locks.hpp
             search/cache/guarantee.hpp
@@ -74,7 +74,6 @@ function(build_tests BINS R S MONOT SCALE)
             search/heur_classes.hpp
             search/layers.hpp
             search/loadfile.hpp
-            search/main.cpp
             search/maxfeas.hpp
             search/measure_structures.hpp
             search/optconf.hpp
@@ -106,16 +105,31 @@ function(build_tests BINS R S MONOT SCALE)
             search/minibs/knownsum_game.hpp
             search/minibs/flat_data.hpp)
 
-    add_dependencies(tests explore-${BINS}-${R}-${S}-${MONOT}-${SCALE})
-    set_target_properties(explore-${BINS}-${R}-${S}-${MONOT}-${SCALE}
+    add_dependencies(tests explore-rec-${BINS}-${R}-${S}-${MONOT}-${SCALE})
+    set_target_properties(explore-rec-${BINS}-${R}-${S}-${MONOT}-${SCALE}
             PROPERTIES
-            OUTPUT_NAME explore-${SCALE}
+            OUTPUT_NAME explore-rec-${SCALE}
     )
 
-    target_compile_definitions(explore-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IBINS=${BINS})
-    target_compile_definitions(explore-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IR=${R})
-    target_compile_definitions(explore-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IS=${S})
-    target_compile_definitions(explore-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC ISCALE=${SCALE})
-    target_compile_definitions(explore-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IMONOT=${MONOT})
+    target_compile_definitions(explore-rec-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IBINS=${BINS})
+    target_compile_definitions(explore-rec-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IR=${R})
+    target_compile_definitions(explore-rec-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IS=${S})
+    target_compile_definitions(explore-rec-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC ISCALE=${SCALE})
+    target_compile_definitions(explore-rec-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IMONOT=${MONOT})
+    target_compile_definitions(explore-rec-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IRECURSION=1) # Recursion.
+
+
+    add_executable(explore-stack-${BINS}-${R}-${S}-${MONOT}-${SCALE} tests/explore.cpp)
+    add_dependencies(tests explore-stack-${BINS}-${R}-${S}-${MONOT}-${SCALE})
+    set_target_properties(explore-stack-${BINS}-${R}-${S}-${MONOT}-${SCALE}
+            PROPERTIES
+            OUTPUT_NAME explore-stack-${SCALE}
+    )
+    target_compile_definitions(explore-stack-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IBINS=${BINS})
+    target_compile_definitions(explore-stack-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IR=${R})
+    target_compile_definitions(explore-stack-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IS=${S})
+    target_compile_definitions(explore-stack-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC ISCALE=${SCALE})
+    target_compile_definitions(explore-stack-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IMONOT=${MONOT})
+    target_compile_definitions(explore-stack-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IRECURSION=0) # Stack.
 
 endfunction()

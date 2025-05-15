@@ -3,24 +3,26 @@
 #include "local_multiprocess.hpp"
 
 // Includes a debug block. Delete the block later.
-// #define ADV_STACK_SET_AND_RETURN(v) \
-//     stack_state[calldepth] = 4; \
-//     stack_victory[calldepth] = v; \
-//     if (stack_victory[calldepth] == victory::adv) { \
-//         adv_wins_stack_printer.print_binconf(&bstate); \
-//     } else if (stack_victory[calldepth] == victory::alg) { \
-//         alg_wins_stack_printer.print_binconf(&bstate); \
-//     } \
-//     calldepth--; \
-//     break;
+/*
+#define ADV_STACK_SET_AND_RETURN(v) \
+    stack_state[calldepth] = 4; \
+    stack_victory[calldepth] = v; \
+    if (stack_victory[calldepth] == victory::adv) { \
+        adv_wins_stack_printer.print_binconf(&bstate); \
+    } else if (stack_victory[calldepth] == victory::alg) { \
+        alg_wins_stack_printer.print_binconf(&bstate); \
+    } \
+    calldepth--; \
+    break;
+*/
 
 // Includes a debug block. Delete the block later.
 #define ADV_STACK_SET_PRINT_RETURN(v, msg) \
     stack_state[calldepth] = 4; \
     stack_victory[calldepth] = v; \
-    if (stack_victory[calldepth] == victory::adv) { \
+    if (WINNING_POSITIONS_DEBUG && stack_victory[calldepth] == victory::adv) { \
         adv_wins_stack_printer.binconf_then_print(&bstate, msg); \
-    } else if (stack_victory[calldepth] == victory::alg) { \
+    } else if (WINNING_POSITIONS_DEBUG && stack_victory[calldepth] == victory::alg) { \
         alg_wins_stack_printer.print_binconf(&bstate, msg); \
     } \
     calldepth--; \
@@ -28,22 +30,25 @@
 
 
 // Includes a debug block. Delete the block later.
-// #define ADV_STACK_RETURN \
-// 	stack_state[calldepth] = 4; \
-//     if (stack_victory[calldepth] == victory::adv) { \
-//         adv_wins_stack_printer.print_binconf(&bstate); \
-//     } else if (stack_victory[calldepth] == victory::alg) { \
-//         alg_wins_stack_printer.print_binconf(&bstate); \
-//     } \
-// 	calldepth--; \
-// 	break;
+
+/*
+#define ADV_STACK_RETURN \
+	stack_state[calldepth] = 4; \
+    if (stack_victory[calldepth] == victory::adv) { \
+        adv_wins_stack_printer.print_binconf(&bstate); \
+    } else if (stack_victory[calldepth] == victory::alg) { \
+        alg_wins_stack_printer.print_binconf(&bstate); \
+    } \
+	calldepth--; \
+	break;
+*/
 
 // Includes a debug block. Delete the block later.
 #define ADV_STACK_PRINT_RETURN(msg) \
     stack_state[calldepth] = 4; \
-    if (stack_victory[calldepth] == victory::adv) { \
+    if (WINNING_POSITIONS_DEBUG && stack_victory[calldepth] == victory::adv) { \
         adv_wins_stack_printer.binconf_then_print(&bstate, msg); \
-    } else if (stack_victory[calldepth] == victory::alg) { \
+    } else if (WINNING_POSITIONS_DEBUG && stack_victory[calldepth] == victory::alg) { \
         alg_wins_stack_printer.binconf_then_print(&bstate, msg); \
     } \
     calldepth--; \
@@ -334,9 +339,11 @@ victory computation<MODE, MINIBS_SCALE>::minimax(adversary_vertex *root_vertex) 
 
                     if (found) {
                         if (value == 0) {
-                            return victory::adv;
+                            ADV_STACK_SET_PRINT_RETURN(victory::adv, "CACH");
+                            // return victory::adv;
                         } else if (value == 1) {
-                            return victory::alg;
+                            ADV_STACK_SET_PRINT_RETURN(victory::alg, "CACH");
+                            // return victory::alg;
                         }
                     }
                 }
@@ -538,7 +545,8 @@ victory computation<MODE, MINIBS_SCALE>::minimax(adversary_vertex *root_vertex) 
 
                     if (ALG_TO_EVALUATE->state == vert_state::finished || ALG_TO_EVALUATE->state == vert_state::fixed) {
                         assert(ALG_TO_EVALUATE->win == victory::adv);
-                        return ALG_TO_EVALUATE->win;
+                        ALG_STACK_SET_AND_RETURN(ALG_TO_EVALUATE->win);
+                        // return ALG_TO_EVALUATE->win;
                     }
                 }
 

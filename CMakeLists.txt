@@ -15,8 +15,10 @@ include(build_tests.cmake)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
 set(CMAKE_CXX_FLAGS_DEBUG "-g2 -march=native -O2")
-set(CMAKE_CXX_FLAGS_RELEASE "-march=native -O3 -Ofast -march=native -fwhole-program -fno-exceptions -fno-rtti \
--finline-functions")
+# (CMAKE_CXX_FLAGS_RELEASE "-march=native -O3 -Ofast -march=native -fwhole-program -fno-exceptions -fno-rtti \
+# -finline-functions")
+# Vtune recommendation
+set(CMAKE_CXX_FLAGS_RELEASE "-g -O2")
 # add_compile_definitions(NDEBUG)
 
 if (NOT CMAKE_BUILD_TYPE MATCHES Debug)
@@ -114,7 +116,6 @@ function(build_search BINS R S MONOT SCALE)
             search/heur_classes.hpp
             search/layers.hpp
             search/loadfile.hpp
-            search/main.cpp
             search/maxfeas.hpp
             search/measure_structures.hpp
             search/optconf.hpp
@@ -165,13 +166,14 @@ endfunction()
 # build_search(3 19 14 -1 -1) # Lower bound.
 # build_search(3 56 41 -1 -1) # Not a lower bound.
 # build_search(3 164 120 -1 -1) # Lower bound.
-# build_search(8 19 14 -1 -1)
-build_search(4 19 14 -1 -1)
-build_tests(4 19 14 -1 -1)
 # build_search(3 149 109 -1 -1)
-#
-#
-#
+# build_search(8 19 14 -1 -1)
+# build_search(4 19 14 -1 -1)
+build_tests(4 19 14 -1 -1)
+build_tests(7 19 14 -1 -1)
+# build_tests(3 19 14 -1 -1)
+
+
 #add_executable(minibs-stats minitools/minibs-stats.cpp)
 #
 #set_target_properties(minibs-stats

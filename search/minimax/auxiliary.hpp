@@ -3,6 +3,9 @@
 // Auxiliary functions that make the minimax code cleaner.
 
 #include "small_classes.hpp"
+#include "queen.hpp"
+#include "strategy.hpp"
+#include "tasks/tasks.hpp"
 
 template<minimax MODE, int MINIBS_SCALE>
 victory computation<MODE, MINIBS_SCALE>::check_messages() {
@@ -11,13 +14,14 @@ victory computation<MODE, MINIBS_SCALE>::check_messages() {
     if (this->flags != nullptr && this->flags->root_solved) {
         // 2025-05-09: Shifting away from exceptions to maximize performance.
         // throw computation_irrelevant();
+        fprintf(stderr, "Computation deemed irrelevant.\n");
         return victory::irrelevant;
     }
 
     // The following code also make sense for EXPLORING, but only once proper relevancy passing is implemented.
     // Since we are GENERATING, we can query the queen directly.
     if (GENERATING) {
-        if (queen->all_tasks_status[task_id].load() == task_status::pruned) {
+        if (queen->all_tasks_status != nullptr && queen->all_tasks_status[task_id].load() == task_status::pruned) {
             //print_if<true>("Worker %d works on an irrelevant thread.\n", world_rank);
             return victory::irrelevant;
             // throw computation_irrelevant();

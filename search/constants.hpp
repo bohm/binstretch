@@ -29,6 +29,23 @@
 #error "The macro constant ISCALE needs to be passed by the compiler!"
 #define ISCALE 3 // ditto
 #endif
+
+
+// Switch from recursion based minimax to stack-based minimax.
+// This is very handy for testing their identical properties.
+// Ultimately, if the stack-based minimax proves to be overall faster, this might go away.
+
+// Use the compile time IRECURSION to control this.
+#ifndef IRECURSION
+#warning "Setting default minimax mode to stack."
+inline constexpr bool USING_RECURSION = false;
+#else
+#if IRECURSION == 1
+inline constexpr bool USING_RECURSION = true;
+#else
+inline constexpr bool USING_RECURSION = false;
+#endif
+#endif
 #include <array>
 
 // To have the code buildable on Ubuntu 18.04, we include this

@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstdarg>
+#include <filetools.hpp>
 #include <thread>
 #include <mutex>
 #include "binconf.hpp"
@@ -78,3 +79,25 @@ threadsafe_file alg_wins_stack_printer;
 threadsafe_file adv_wins_stack_printer;
 threadsafe_file alg_wins_recursion_printer;
 threadsafe_file adv_wins_recursion_printer;
+
+void init_debug_threadsafe_printers() {
+    if (WINNING_POSITIONS_DEBUG) {
+        // Debug. Delete later if not needed.
+        std::string adv_wins = "./logs/" + filename_binstamp();
+        std::string adv_wins_stack = adv_wins + "adv-wins-stack.log";
+        std::string alg_wins = "./logs/" + filename_binstamp();
+        std::string alg_wins_stack = alg_wins + "alg-wins-stack.log";
+
+        std::string adv_wins_recursion = adv_wins + "adv-wins-recursion.log";
+        std::string alg_wins_recursion = alg_wins + "alg-wins-recursion.log";
+
+
+        if (USING_RECURSION) {
+            adv_wins_recursion_printer.fileptr = fopen(adv_wins_recursion.c_str(), "w");
+            alg_wins_recursion_printer.fileptr = fopen(alg_wins_recursion.c_str(), "w");
+        } else {
+            adv_wins_stack_printer.fileptr = fopen(adv_wins_stack.c_str(), "w");
+            alg_wins_stack_printer.fileptr = fopen(alg_wins_stack.c_str(), "w");
+        }
+    }
+}

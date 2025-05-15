@@ -4,7 +4,6 @@
 #include <inttypes.h>
 
 #include "presets/default_heuristics.hpp" // Presets needs to be first, so that only one set of presets is applied.
-#include "presets/stack_minimax.hpp"
 #include "net/local.hpp"
 #include "common.hpp"
 #include "functions.hpp"
@@ -14,9 +13,6 @@
 #include "queen.hpp"
 #include "overseer.hpp"
 #include "worker.hpp"
-#include "queen.hpp"
-#include "worker_methods.hpp"
-#include "overseer_methods.hpp"
 #include "queen_methods.hpp"
 
 // We employ a bit of indirection to account for both concurrent

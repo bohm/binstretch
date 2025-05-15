@@ -7,6 +7,7 @@
 #include "minibs/minibs-three.hpp"
 #include "tasks/task.hpp"
 #include "cache/state.hpp"
+#include "saplings.hpp"
 
 // Queen global variables and declarations.
 

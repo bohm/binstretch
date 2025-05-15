@@ -95,9 +95,7 @@ const unsigned int LOADLOG = 12;
 // Printing constants.
 const bool PRINT_HEURISTICS_IN_FULL = true;
 
-// Recursion setting moved to presets/recursive_minimax.hpp - presets/stack_minimax.hpp
-
-constexpr int MINIBS_SCALE = ISCALE;
+inline constexpr int MINIBS_SCALE = ISCALE;
 
 // batching constants
 const int BATCH_SIZE = 50;
@@ -128,7 +126,6 @@ const int PROGRESS_AFTER = 500;
 
 const int MAX_EXPANSION = 1;
 
-
 const std::string OUTPUT_DIR = "./results";
 const std::string LOG_DIR = "./logs";
 
@@ -144,6 +141,7 @@ inline constexpr bool GRAPH_DEBUG = false; // Debugging the DAG creation and add
 inline constexpr bool PARSING_DEBUG = false; // Debugging loading and saving a file.
 #define MINIMAX_DBG false // A quick hack to enable MINIMAX_DEBUG_ONLY without leaving the scope.
 inline constexpr bool MINIMAX_DEBUG = MINIMAX_DBG; // Debugging the minimax algorithm (recursion).
+inline constexpr bool WINNING_POSITIONS_DEBUG = false; // Storing all winning/losing positions into separate files.
 
 // completely disable dynamic programming or binconf cache
 // (useful to debug soundness of cache algs)
@@ -296,7 +294,7 @@ void assert_with_message(const char *expression, bool evaluation, const char *me
 #define MINIMAX_DEBUG_TWO_ONLY(x, y) x, y;
 #else
 #define MINIMAX_DEBUG_ONLY(x)
-#define MINMAX_DEBUG_TWO_ONLY(x, y)
+#define MINIMAX_DEBUG_TWO_ONLY(x, y)
 #endif
 
 FILE* ADV_WIN_STATE_FILE = nullptr;

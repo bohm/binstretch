@@ -92,7 +92,7 @@ public:
     // We use this array to be able to unroll the recursion.
     std::array<std::array<int, S+1>, MAX_ITEMDEPTH> candidate_moves_by_depth;
 
-    // MINIMAX_DEBUG_TWO_ONLY(std::array<binconf, MAX_CALLDEPTH> stack_binconf_consistency_copy = {});
+    MINIMAX_DEBUG_TWO_ONLY(std::array<binconf, MAX_CALLDEPTH> stack_binconf_consistency_copy = {});
 
     // Experimental: We try to compute the next maximum feasible item early, as soon as the next item to be sent
     // is decided. This means that the following information is only useful with both bstate and the next item.
