@@ -1,0 +1,121 @@
+function(build_tests BINS R S MONOT SCALE)
+    if (${MONOT} EQUAL -1)
+        recommend_monotonicity(${BINS} ${R} ${S})
+        message("Recommending monotonicity ${MONOT}.")
+    else ()
+        message("Pre-set monotonicity ${MONOT}.")
+    endif ()
+
+    if (${SCALE} EQUAL -1)
+        recommend_scaling(${BINS} ${R} ${S})
+        message("Recommending scaling factor ${SCALE}.")
+    else ()
+        message("Pre-set scaling factor ${SCALE}.")
+    endif ()
+
+    message("Building search tests for ${BINS} bins, ratio ${R}/${S}, monotonicity ${MONOT}, minibs scaling ${SCALE}.")
+
+
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "./${BINS}-${R}-${S}/")
+
+    add_executable(explore-${BINS}-${R}-${S}-${MONOT}-${SCALE} tests/explorationtest.cpp
+            search/cache/guar64.hpp
+            search/cache/guar_locks.hpp
+            search/cache/guarantee.hpp
+            search/cache/loadconf.hpp
+            search/cache/state.hpp
+            search/dag/basics.hpp
+            search/dag/class.hpp
+            search/dag/cloning.hpp
+            search/dag/consistency.hpp
+            search/dag/dag.hpp
+            search/dag/partial.hpp
+            search/dag/print.hpp
+            search/dynprog/algo.hpp
+            search/dynprog/wrappers.hpp
+            search/minibs/binary_storage.hpp
+            search/minibs/feasibility.hpp
+            search/itemconf.hpp
+            search/minibs/minibs.hpp
+            search/minibs/minidp.hpp
+            search/minimax/auxiliary.hpp
+            search/minimax/computation.hpp
+            search/minimax/recursion.hpp
+            search/minimax/stack_minimax.hpp
+            search/minimax/sequencing.hpp
+            search/net/local/broadcaster.hpp
+            search/net/local/comm_basics.hpp
+            search/net/local/local_communicator.hpp
+            search/net/local/message_arrays.hpp
+            search/net/local/synchronizer.hpp
+            search/net/local/threadsafe_printer.hpp
+            search/net/batches.hpp
+            search/poset/poset.hpp
+            search/strategies/abstract.hpp
+            search/strategies/basic.hpp
+            search/strategies/heuristical.hpp
+            search/strategies/insight.hpp
+            search/strategies/insight_methods.hpp
+            search/advisor.hpp
+            search/assumptions.hpp
+            search/binconf.hpp
+            search/cleanup.hpp
+            search/common.hpp
+            search/constants.hpp
+            search/dfs.hpp
+            search/exceptions.hpp
+            search/filetools.hpp
+            search/fits.hpp
+            search/functions.hpp
+            search/gs.hpp
+            search/hash.hpp
+            search/heur_adv.hpp
+            search/heur_alg_knownsum.hpp
+            search/heur_classes.hpp
+            search/layers.hpp
+            search/loadfile.hpp
+            search/main.cpp
+            search/maxfeas.hpp
+            search/measure_structures.hpp
+            search/optconf.hpp
+            search/overseer.hpp
+            search/overseer_methods.hpp
+            search/performance_timer.hpp
+            search/positional.hpp
+            search/queen.hpp
+            search/queen_methods.hpp
+            search/sapling_manager.hpp
+            search/saplings.hpp
+            search/savefile.hpp
+            search/server_properties.hpp
+            search/small_classes.hpp
+            search/strategy.hpp
+            search/tasks/tasks.hpp
+            search/thread_attr.hpp
+            search/updater.hpp
+            search/worker.hpp
+            search/worker_methods.hpp
+            search/minimax/heuristic_visits.hpp
+            search/minimax/descend_ascend.hpp
+            search/loadconf.hpp
+            search/minibs/minibs-three.hpp
+            search/minibs/midgame_feasibility.hpp
+            search/minibs/fingerprint_storage.hpp
+            search/minibs/fingerprints.hpp
+            search/binomial_index.hpp
+            search/minibs/knownsum_game.hpp
+            search/minibs/flat_data.hpp)
+
+    add_dependencies(tests explore-${BINS}-${R}-${S}-${MONOT}-${SCALE})
+    set_target_properties(explore-${BINS}-${R}-${S}-${MONOT}-${SCALE}
+            PROPERTIES
+            OUTPUT_NAME explore-${SCALE}
+    )
+
+    target_compile_definitions(explore-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IBINS=${BINS})
+    target_compile_definitions(explore-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IR=${R})
+    target_compile_definitions(explore-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IS=${S})
+    target_compile_definitions(explore-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC ISCALE=${SCALE})
+    target_compile_definitions(explore-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IMONOT=${MONOT})
+
+endfunction()

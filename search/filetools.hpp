@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstring>
 #include <ctime>
 #include <iostream>
 #include <sstream>
@@ -161,6 +162,58 @@ binconf loadbinconf_singlefile(const char *filename) {
 }
 
 
+std::pair<bool, std::string> parse_parameter_assumefile(int argc, char **argv, int pos) {
+    char filename_buf[256];
+
+    if (strcmp(argv[pos], "--assume") == 0) {
+        if (pos == argc - 1) {
+            fprintf(stderr, "Error: parameter --assume must be followed by a filename.\n");
+            exit(-1);
+        }
+
+        sscanf(argv[pos + 1], "%s", filename_buf);
+
+        return std::make_pair(true, std::string(filename_buf));
+    }
+    return std::make_pair(false, "");
+}
+
+
+std::pair<bool, std::string> parse_parameter_advfile(int argc, char **argv, int pos) {
+    char filename_buf[256];
+
+    if (strcmp(argv[pos], "--advice") == 0) {
+        if (pos == argc - 1) {
+            fprintf(stderr, "Error: parameter --advice must be followed by a filename.\n");
+            exit(-1);
+        }
+
+        sscanf(argv[pos + 1], "%s", filename_buf);
+
+        return std::make_pair(true, std::string(filename_buf));
+    }
+    return std::make_pair(false, "");
+}
+
+std::pair<bool, std::string> parse_parameter_rootfile(int argc, char **argv, int pos) {
+    char filename_buf[256];
+
+    if (strcmp(argv[pos], "--root") == 0) {
+        if (pos == argc - 1) {
+            fprintf(stderr, "Error: parameter --root must be followed by a filename.\n");
+            exit(-1);
+        }
+
+        sscanf(argv[pos + 1], "%s", filename_buf);
+
+        return std::make_pair(true, std::string(filename_buf));
+    }
+    return std::make_pair(false, "");
+}
+
+
+
+// Debug logger.
 class debug_logger {
 public:
     FILE *logfile;
