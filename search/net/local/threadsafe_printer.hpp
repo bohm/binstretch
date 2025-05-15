@@ -51,7 +51,7 @@ public:
         std::unique_lock<std::mutex> lk(printing_mutex);
         va_list argptr;
         va_start(argptr, format);
-        int ret = vfprintf(fileptr, format, argptr);
+        int ret = vfprintf(fileptr, format, argptr);    
         va_end(argptr);
         print_binconf_stream(fileptr,d);
         return ret;
@@ -62,10 +62,12 @@ public:
     int binconf_then_print(const binconf *d, const char *format...) {
         std::unique_lock<std::mutex> lk(printing_mutex);
         print_binconf_stream(fileptr, d, false);
+        fprintf(fileptr, " "); // Nicer printout with the space there.
         va_list argptr;
         va_start(argptr, format);
         int ret = vfprintf(fileptr, format, argptr);
         va_end(argptr);
+        fprintf(fileptr, "\n"); // More convenient to force the newline here.
         return ret;
         // Unlocking at the end of scope.
     }

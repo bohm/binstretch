@@ -3,27 +3,51 @@
 #include "local_multiprocess.hpp"
 
 // Includes a debug block. Delete the block later.
-#define ADV_STACK_SET_AND_RETURN(v) \
+// #define ADV_STACK_SET_AND_RETURN(v) \
+//     stack_state[calldepth] = 4; \
+//     stack_victory[calldepth] = v; \
+//     if (stack_victory[calldepth] == victory::adv) { \
+//         adv_wins_stack_printer.print_binconf(&bstate); \
+//     } else if (stack_victory[calldepth] == victory::alg) { \
+//         alg_wins_stack_printer.print_binconf(&bstate); \
+//     } \
+//     calldepth--; \
+//     break;
+
+// Includes a debug block. Delete the block later.
+#define ADV_STACK_SET_PRINT_RETURN(v, msg) \
     stack_state[calldepth] = 4; \
     stack_victory[calldepth] = v; \
     if (stack_victory[calldepth] == victory::adv) { \
-        adv_wins_stack_printer.print_binconf(&bstate); \
+        adv_wins_stack_printer.binconf_then_print(&bstate, msg); \
     } else if (stack_victory[calldepth] == victory::alg) { \
-        alg_wins_stack_printer.print_binconf(&bstate); \
+        alg_wins_stack_printer.print_binconf(&bstate, msg); \
     } \
     calldepth--; \
     break;
 
+
 // Includes a debug block. Delete the block later.
-#define ADV_STACK_RETURN \
-	stack_state[calldepth] = 4; \
+// #define ADV_STACK_RETURN \
+// 	stack_state[calldepth] = 4; \
+//     if (stack_victory[calldepth] == victory::adv) { \
+//         adv_wins_stack_printer.print_binconf(&bstate); \
+//     } else if (stack_victory[calldepth] == victory::alg) { \
+//         alg_wins_stack_printer.print_binconf(&bstate); \
+//     } \
+// 	calldepth--; \
+// 	break;
+
+// Includes a debug block. Delete the block later.
+#define ADV_STACK_PRINT_RETURN(msg) \
+    stack_state[calldepth] = 4; \
     if (stack_victory[calldepth] == victory::adv) { \
-        adv_wins_stack_printer.print_binconf(&bstate); \
+        adv_wins_stack_printer.binconf_then_print(&bstate, msg); \
     } else if (stack_victory[calldepth] == victory::alg) { \
-        alg_wins_stack_printer.print_binconf(&bstate); \
+        alg_wins_stack_printer.binconf_then_print(&bstate, msg); \
     } \
-	calldepth--; \
-	break;
+    calldepth--; \
+    break;
 
 #define ALG_STACK_SET_AND_RETURN(v) \
 	stack_state[calldepth] = 13; \
@@ -85,7 +109,7 @@ victory computation<MODE, MINIBS_SCALE>::minimax(adversary_vertex *root_vertex) 
                 if (GENERATING) {
                     if (ADV_TO_EVALUATE->visited) {
                         // return adv_to_evaluate->win;
-                        ADV_STACK_SET_AND_RETURN(ADV_TO_EVALUATE->win);
+                        ADV_STACK_SET_PRINT_RETURN(ADV_TO_EVALUATE->win, "GVIS");
                     }
                     ADV_TO_EVALUATE->visited = true;
                     MEASURE_ONLY(meas.adv_vertices_visited++);
@@ -94,7 +118,7 @@ victory computation<MODE, MINIBS_SCALE>::minimax(adversary_vertex *root_vertex) 
                     // again, but the single one being expanded will be relabeled as "expanding".
                     if (ADV_TO_EVALUATE->state == vert_state::finished) {
                         assert(ADV_TO_EVALUATE->win == victory::adv);
-                        ADV_STACK_SET_AND_RETURN(victory::adv);
+                        ADV_STACK_SET_PRINT_RETURN(victory::adv, "GFIN");
                     }
 
                     // Fixed vertices should not need to be traversed by generation -- anything below
@@ -103,7 +127,7 @@ victory computation<MODE, MINIBS_SCALE>::minimax(adversary_vertex *root_vertex) 
                     // but the "expanding" state.
                     if (ADV_TO_EVALUATE->state == vert_state::fixed) {
                         assert(ADV_TO_EVALUATE->win == victory::adv);
-                        ADV_STACK_SET_AND_RETURN(victory::adv);
+                        ADV_STACK_SET_PRINT_RETURN(victory::adv, "GFIX");
                         // stack_state[itemdepth] = 5;
                         // stack_victory[calldepth] = adv_to_evaluate->win;
                         // return adv_to_evaluate->win;
@@ -126,7 +150,7 @@ victory computation<MODE, MINIBS_SCALE>::minimax(adversary_vertex *root_vertex) 
                         if (check != victory::uncertain) {
                             ADV_TO_EVALUATE->win = check;
                             ADV_TO_EVALUATE->leaf = leaf_type::assumption;
-                            ADV_STACK_SET_AND_RETURN(check);
+                            ADV_STACK_SET_PRINT_RETURN(check, "ASSU");
                             // return check;
                         }
                     }
@@ -142,7 +166,7 @@ victory computation<MODE, MINIBS_SCALE>::minimax(adversary_vertex *root_vertex) 
                                 print_binconf_stream(stderr, &bstate, true);
                             }
                         }
-                        ADV_STACK_SET_AND_RETURN(victory::alg);
+                        ADV_STACK_SET_PRINT_RETURN(victory::alg, "MBIN");
                         // return victory::alg;
                     }
                 }
@@ -169,7 +193,7 @@ victory computation<MODE, MINIBS_SCALE>::minimax(adversary_vertex *root_vertex) 
 
                         if (EXPLORING) {
                             // return victory::adv;
-                            ADV_STACK_SET_AND_RETURN(victory::adv);
+                            ADV_STACK_SET_PRINT_RETURN(victory::adv, "ADVH");
                         } else {
                             stack_switch_to_heuristic[itemdepth] = true;
                             this->heuristic_regime = true;
@@ -197,7 +221,7 @@ victory computation<MODE, MINIBS_SCALE>::minimax(adversary_vertex *root_vertex) 
                             this->current_strategy = nullptr;
                         }
 
-                        ADV_STACK_SET_AND_RETURN(victory::adv);
+                        ADV_STACK_SET_PRINT_RETURN(victory::adv, "GLAF");
                         // return victory::adv;
                     }
                 }
@@ -286,7 +310,7 @@ victory computation<MODE, MINIBS_SCALE>::minimax(adversary_vertex *root_vertex) 
                             ADV_TO_EVALUATE->leaf = leaf_type::boundary;
                         }
 
-                        ADV_STACK_SET_AND_RETURN(ADV_TO_EVALUATE->win);
+                        ADV_STACK_SET_PRINT_RETURN(ADV_TO_EVALUATE->win, "GTSK");
                         // return ADV_TO_EVALUATE->win; // previously: return victory::uncertain
                     }
                 }
@@ -296,7 +320,7 @@ victory computation<MODE, MINIBS_SCALE>::minimax(adversary_vertex *root_vertex) 
                     this->iterations++;
                     if (this->iterations % 1000 == 0) {
                         if (check_messages() == victory::irrelevant) {
-                            ADV_STACK_SET_AND_RETURN(victory::irrelevant);
+                            ADV_STACK_SET_PRINT_RETURN(victory::irrelevant, "IRRE");
                         }
                     }
                 }
@@ -405,7 +429,7 @@ victory computation<MODE, MINIBS_SCALE>::minimax(adversary_vertex *root_vertex) 
 
                 // send signal that we should terminate immediately upwards
                 if (BELOW == victory::irrelevant) {
-                    ADV_STACK_SET_AND_RETURN(BELOW);
+                    ADV_STACK_SET_PRINT_RETURN(BELOW, "IRRB");
                 }
 
                 if (BELOW == victory::adv) {
@@ -460,7 +484,7 @@ victory computation<MODE, MINIBS_SCALE>::minimax(adversary_vertex *root_vertex) 
                 }
 
                 GEN_ONLY(ADV_TO_EVALUATE->win = stack_victory[calldepth]);
-                ADV_STACK_RETURN;
+                ADV_STACK_PRINT_RETURN("SOLV");
             // return win;
             case 4:
                 // 4 -- Adversary level complete.
