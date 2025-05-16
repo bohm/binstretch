@@ -15,6 +15,9 @@
 
 #include <string>
 
+#define likely(x)   __builtin_expect(bool(x),1)
+#define unlikely(x) __builtin_expect(bool(x),0)
+
 std::string gethost() {
 
     char buf[0x100];

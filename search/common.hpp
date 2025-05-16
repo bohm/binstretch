@@ -33,39 +33,26 @@ inline constexpr bool FURTHER_MEASURE = false; // Whether to collect more detail
 // When producing output, how many times should a tree be regrown.
 // Note that REGROW_LIMIT = 0 still means a full tree will be generated.
 // const int REGROW_LIMIT = 65535;
-const int REGROW_LIMIT = 4;
+constexpr int REGROW_LIMIT = 4;
 
-const int TASK_LOAD_INIT = 10; // A bound on total load of a configuration before we split it into a task.
-const int TASK_LOAD_STEP = 0; // The amount by which the load can increase when regrowing the tree.
-const int TASK_DEPTH_INIT = 6; //The maximum depth of a vertex in the tree before it is made into a task.
-const int TASK_DEPTH_STEP = 0; // The amount by which the depth is increased when regrowing.
+constexpr int TASK_LOAD_INIT = 10; // A bound on total load of a configuration before we split it into a task.
+constexpr int TASK_LOAD_STEP = 0; // The amount by which the load can increase when regrowing the tree.
+constexpr int TASK_DEPTH_INIT = 6; //The maximum depth of a vertex in the tree before it is made into a task.
+constexpr int TASK_DEPTH_STEP = 0; // The amount by which the depth is increased when regrowing.
 
 // const int TASK_LOAD_INIT = 0;
 // const int TASK_DEPTH_INIT = 1;
 
 // whether to print the output as a single tree or as multiple trees.
-const bool SINGLE_TREE = true;
+constexpr bool SINGLE_TREE = true;
 
 // log tasks which run at least some amount of time
-const bool TASKLOG = false;
-const long double TASKLOG_THRESHOLD = 60.0; // in seconds
+constexpr bool TASKLOG = false;
+constexpr long double TASKLOG_THRESHOLD = 60.0; // in seconds
 
 #define STRATEGY STRATEGY_BASIC // choices: STRATEGY_BASIC, STRATEGY_NINETEEN_FREQ, STRATEGY_BOUNDED
 
 #define DYNPROG_MAX dynprog_max_direct // choices: dynprog_max_direct, dynprog_max_with_lih
-
-// If you want to generate a specific lower bound, you can create an initial bin configuration here.
-// You can also insert an initial sequence here.
-//const std::vector<int> INITIAL_LOADS = {4,4,0};
-//const std::vector<int> INITIAL_LOADS = {8,0,0};
-//const std::vector<int> INITIAL_LOADS = {3,2,0};
-//const std::vector<int> INITIAL_ITEMS = {1,2,0,0};
-
-// const std::vector<int> INITIAL_LOADS = {2};
-// const std::vector<int> INITIAL_ITEMS = {2};
-
-const std::vector<int> INITIAL_LOADS = {};
-const std::vector<int> INITIAL_ITEMS = {};
 
 
 // Monotonicity limiting the adversarial instance.
@@ -105,7 +92,7 @@ const int BATCH_THRESHOLD = BATCH_SIZE / 2;
 constexpr uint64_t LOADSIZE = (1ULL << LOADLOG);
 
 // linear probing limit
-constexpr uint64_t LINPROBE_LIMIT = 8;
+inline constexpr uint64_t LINPROBE_LIMIT = 8;
 
 const int DEFAULT_DP_SIZE = 100000;
 const int BESTFIT_THRESHOLD = (1 * S) / 10;

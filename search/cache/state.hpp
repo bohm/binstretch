@@ -86,7 +86,9 @@ public:
                 logbytes, bytes / megabyte, sizeof(conf_el), descriptor.c_str(), htsize, logsize);
 
 
-        ht = new std::atomic<conf_el>[htsize];
+        // We allocate not 2^{k} sized cache (which makes sense because of the indexing) but we add LINPROBE_LIMIT
+        // extra elements for linear probing to work for the last LINPROBE_LIMIT elements of the cache itself.
+        ht = new std::atomic<conf_el>[htsize+LINPROBE_LIMIT];
         assert(ht != nullptr);
 
         uint64_t segment = htsize / threads;
@@ -104,6 +106,11 @@ public:
 
         for (int w = 0; w < threads; w++) {
             th[w].join();
+        }
+
+        // Deal with the tail.
+        for (uint64_t tail = htsize; tail < htsize+LINPROBE_LIMIT; tail++) {
+            atomic_init_point(tail);
         }
     }
 
@@ -159,10 +166,15 @@ public:
         for (int w = 0; w < threads; w++) {
             th[w].join();
         }
+
+        // Deal with the tail.
+        for (uint64_t tail = htsize; tail < htsize+LINPROBE_LIMIT; tail++) {
+            ht[tail].store(conf_el::ZERO);
+        }
     }
 
     void clear_ones_segment(uint64_t start, uint64_t end) {
-        for (uint64_t i = start; i < std::min(end, htsize); i++) {
+        for (uint64_t i = start; i < std::min(end, htsize+LINPROBE_LIMIT); i++) {
             conf_el field = ht[i];
             if (!field.empty()) {
                 int last_bit = field.value();
@@ -190,17 +202,18 @@ public:
         for (int w = 0; w < threads; w++) {
             th[w].join();
         }
+
+        clear_ones_segment(htsize, htsize+LINPROBE_LIMIT);
     }
 };
 
-std::pair<bool, bool> state_cache::lookup(uint64_t h) {
-    conf_el candidate;
+inline std::pair<bool, bool> state_cache::lookup(uint64_t h) {
     uint64_t pos = trim(h);
     // Use linear probing to check for the hashed value.
-    uint64_t limit = std::min(size()-pos, LINPROBE_LIMIT);
-    for (uint64_t i = 0; i < limit; i++) {
+    // uint64_t limit = std::min(size()-pos, LINPROBE_LIMIT);
+    for (uint64_t i = 0; i < LINPROBE_LIMIT; i++) {
         // assert(pos + i < size());
-        candidate = access(pos + i);
+        conf_el candidate = access(pos + i);
 
         if (candidate.empty()) {
             MEASURE_ONLY(meas.lookup_miss_reached_empty++);

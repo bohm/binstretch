@@ -19,9 +19,9 @@ int main(int argc, char **argv) {
 	init_debug_threadsafe_printers();
 
 	// Init caches. Numbers are hardcoded, which is unfortunate, but we cannot run "machine_name()".
-	conflog = 30;
+	conflog = 29;
 	ht_size = 1LLU << conflog;
-	dplog = 30;
+	dplog = 29;
 
 	// If we want to have a reserve CPU slot for the overseer itself, we should subtract 1.
 	constexpr int worker_count = 1;
