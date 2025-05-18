@@ -2,8 +2,8 @@
 #include <cstdio>
 #include <cstdlib>
 
-#include "presets/no_heuristics.hpp"
-// #include "presets/default_heuristics.hpp"
+// #include "presets/no_heuristics.hpp"
+#include "presets/default_heuristics.hpp"
 #include "common.hpp"
 #include "binconf.hpp"
 #include "filetools.hpp"
@@ -19,9 +19,9 @@ int main(int argc, char **argv) {
 	init_debug_threadsafe_printers();
 
 	// Init caches. Numbers are hardcoded, which is unfortunate, but we cannot run "machine_name()".
-	conflog = 29;
+	conflog = 30;
 	ht_size = 1LLU << conflog;
-	dplog = 29;
+	dplog = 30;
 
 	// If we want to have a reserve CPU slot for the overseer itself, we should subtract 1.
 	constexpr int worker_count = 1;

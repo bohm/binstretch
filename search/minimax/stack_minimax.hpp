@@ -345,7 +345,8 @@ CASE_ZERO:
         this->iterations++;
         if (this->iterations % 1000 == 0) {
             if (check_messages() == victory::irrelevant) {
-                ADV_STACK_SET_PRINT_RETURN(victory::irrelevant, "IRRE");
+                // Terminate the whole computation.
+                return victory::irrelevant;
             }
         }
     }
@@ -781,10 +782,10 @@ CASE_TEN:
     // below = adversary(upcoming_adv, alg_to_evaluate);
     // case 11:
 CASE_ELEVEN:
-    // 11 Algorithm universal ascend.
+    // 11 -- Algorithm universal ascend.
     // Currently the state transitions are hardcoded. So, ascend will always return here.
     // We switch to a fixed ascend if the state indicates we should go to it.
-    // This only happens in the generating mode, so this if should optimize it away for exploration
+    // This only happens in the generating mode, so this if condition should optimize it away for exploration.
     if (GENERATING) {
         if (stack_state[calldepth] == 8) {
             goto CASE_EIGHT;

@@ -7,6 +7,11 @@
 #include "positional.hpp"
 #include "binomial_index.hpp"
 
+#include <immintrin.h>
+#include <cstring>      // for std::memmove
+#include <cstdint>
+#include <array>
+
 // a cut version of binconf which only uses the loads.
 class loadconf {
 public:

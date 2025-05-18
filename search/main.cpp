@@ -12,7 +12,9 @@
 #include "hash.hpp"
 #include "queen.hpp"
 #include "overseer.hpp"
+#include "overseer_methods.hpp"
 #include "worker.hpp"
+#include "worker_methods.hpp"
 #include "queen_methods.hpp"
 
 // We employ a bit of indirection to account for both concurrent

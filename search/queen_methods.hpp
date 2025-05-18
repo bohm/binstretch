@@ -173,7 +173,7 @@ int queen_class::start() {
         sequencing(root, qdag->root, dpcache);
     } else { // Sequence the treetop.
         qdag = new dag;
-        binconf root = {INITIAL_LOADS, INITIAL_ITEMS};
+        binconf root = {};
         qdag->add_root(root);
         sequencing(root, qdag->root, dpcache);
     }
