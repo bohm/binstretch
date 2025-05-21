@@ -30,7 +30,7 @@ public:
         bc.ic.itemhash = ft.longs[1];
 
         for (int i = 0; i <= BINS; i++) {
-            bc.loads[i] = ft.shorts[4 + i];
+            bc.store(i, ft.shorts[4 + i]);
         }
 
         for (int i = 0; i <= S; i++) {

@@ -46,6 +46,15 @@ inline constexpr bool USING_RECURSION = true;
 inline constexpr bool USING_RECURSION = false;
 #endif
 #endif
+
+
+#ifndef IPACKED
+#warning "Turning off packed arrays by default."
+#define USE_PACKED_ARRAYS 0
+#else
+#define USE_PACKED_ARRAYS IPACKED
+#endif
+
 #include <array>
 
 // To have the code buildable on Ubuntu 18.04, we include this

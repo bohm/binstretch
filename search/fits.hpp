@@ -101,7 +101,7 @@ std::pair<int, int> bestfit_cut_interval(const binconf *orig) {
 
 // init the online loads (essentially BFD)
 void onlineloads_init(loadconf &ol, const binconf *bc) {
-    std::fill(ol.loads.begin(), ol.loads.end(), 0);
+    ol.clear_loads();
     for (int size = S; size > 0; size--) {
         int k = bc->ic.items[size];
         while (k > 0) {

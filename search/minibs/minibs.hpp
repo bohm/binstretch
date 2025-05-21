@@ -342,7 +342,7 @@ public:
         binary_storage<DENOMINATOR> bstore;
         bool knownsum_loaded = false;
         if (bstore.knownsum_file_exists()) {
-            bstore.restore_knownsum_set(knownsum.winning_indices, knownsum.first_losing_loadconf.loads);
+            bstore.restore_knownsum_set(knownsum.winning_indices, knownsum.first_losing_loadconf);
             print_if<PROGRESS>("Restored knownsum layer with %zu winning positions.\n",
                                knownsum.winning_indices.size());
 
@@ -519,7 +519,7 @@ public:
         binary_storage<DENOMINATOR> bstore;
         if (!bstore.knownsum_file_exists()) {
             print_if<PROGRESS>("Backing up knownsum calculations.\n", DENOMINATOR);
-            bstore.backup_knownsum_set(knownsum.winning_indices, knownsum.first_losing_loadconf.loads);
+            bstore.backup_knownsum_set(knownsum.winning_indices, knownsum.first_losing_loadconf.array_view());
         }
 
         if (!bstore.storage_exists()) {

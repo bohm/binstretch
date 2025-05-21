@@ -557,18 +557,23 @@ public:
     }
 
     void restore_knownsum_set(flat_hash_set<uint32_t> &out_knownsum_set,
-                              std::array<int, BINS+1> &out_first_loadconf) {
+                              loadconf &out_first_loadconf) {
         open_knownsum_for_reading();
         read_delimeter(knownsum_file);
         read_one_set(out_knownsum_set, knownsum_file);
         read_delimeter(knownsum_file);
-        read_load_array(out_first_loadconf, knownsum_file);
+        std::array<int, BINS+1> load_array{};
+        read_load_array(load_array, knownsum_file);
+        for (int i =1; i <= BINS; i++) {
+            out_first_loadconf.store(i, load_array[i]);
+            // out_first_loadconf.loads[i] = load_array[i];
+        }
         read_delimeter(knownsum_file);
         close_knowsum();
     }
 
     void backup_knownsum_set(flat_hash_set<uint32_t> &knownsum_set,
-                             std::array<int, BINS+1> &first_loadconf) {
+                             std::array<int, BINS+1> first_loadconf) {
         open_knownsum_for_writing();
         write_delimeter(knownsum_file);
         write_one_set(knownsum_set, knownsum_file);

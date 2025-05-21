@@ -117,6 +117,7 @@ function(build_tests BINS R S MONOT SCALE)
     target_compile_definitions(explore-rec-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC ISCALE=${SCALE})
     target_compile_definitions(explore-rec-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IMONOT=${MONOT})
     target_compile_definitions(explore-rec-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IRECURSION=1) # Recursion.
+    target_compile_definitions(explore-rec-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IPACKED=0) # Recursion.
 
 
     add_executable(explore-stack-${BINS}-${R}-${S}-${MONOT}-${SCALE} tests/explore.cpp)
@@ -131,5 +132,20 @@ function(build_tests BINS R S MONOT SCALE)
     target_compile_definitions(explore-stack-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC ISCALE=${SCALE})
     target_compile_definitions(explore-stack-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IMONOT=${MONOT})
     target_compile_definitions(explore-stack-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IRECURSION=0) # Stack.
+    target_compile_definitions(explore-stack-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IPACKED=0) # Stack.
+
+    add_executable(explore-packed-${BINS}-${R}-${S}-${MONOT}-${SCALE} tests/explore.cpp)
+    add_dependencies(tests explore-packed-${BINS}-${R}-${S}-${MONOT}-${SCALE})
+    set_target_properties(explore-packed-${BINS}-${R}-${S}-${MONOT}-${SCALE}
+            PROPERTIES
+            OUTPUT_NAME explore-packed-${SCALE}
+    )
+    target_compile_definitions(explore-packed-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IBINS=${BINS})
+    target_compile_definitions(explore-packed-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IR=${R})
+    target_compile_definitions(explore-packed-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IS=${S})
+    target_compile_definitions(explore-packed-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC ISCALE=${SCALE})
+    target_compile_definitions(explore-packed-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IMONOT=${MONOT})
+    target_compile_definitions(explore-packed-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IRECURSION=0) # Stack.
+    target_compile_definitions(explore-packed-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IPACKED=1) # Stack.
 
 endfunction()

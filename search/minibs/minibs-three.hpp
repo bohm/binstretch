@@ -127,7 +127,7 @@ public:
     // A helper (lambda) function.
     static int virtual_smallest_load(const loadconf &lc, int item, int bin) {
         if (bin == BINS) {
-            return std::min(lc.loads[BINS] + item, lc.loads[BINS - 1]);
+            return std::min(lc.loads[BINS] + item, static_cast<int>(lc.loads[BINS - 1]));
         } else {
             return lc.loads[BINS];
         }
@@ -570,7 +570,7 @@ public:
 
         bool knownsum_loaded = false;
         if (bstore.knownsum_file_exists()) {
-            bstore.restore_knownsum_set(knownsum.winning_indices, knownsum.first_losing_loadconf.loads);
+            bstore.restore_knownsum_set(knownsum.winning_indices, knownsum.first_losing_loadconf);
 
             print_if<PROGRESS>("Restored knownsum layer with %zu winning positions.\n",
                                knownsum.winning_indices.size());
@@ -673,7 +673,7 @@ public:
 
         if (!bstore.knownsum_file_exists()) {
             print_if<PROGRESS>("Backing up knownsum calculations.\n", DENOMINATOR);
-            bstore.backup_knownsum_set(knownsum.winning_indices, knownsum.first_losing_loadconf.loads);
+            bstore.backup_knownsum_set(knownsum.winning_indices, knownsum.first_losing_loadconf.array_view());
 
         }
 

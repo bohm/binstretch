@@ -26,36 +26,30 @@ public:
 
     binconf() {}
 
-    binconf(const std::vector<int> &initial_loads, const std::vector<int> &initial_items,
-            int initial_last_item = 1) {
-        assert(initial_loads.size() <= BINS);
-        assert(initial_items.size() <= S);
-        std::copy(initial_loads.begin(), initial_loads.end(), loads.begin() + 1);
-        std::copy(initial_items.begin(), initial_items.end(), ic.items.begin() + 1);
-
-        last_item = initial_last_item;
-        _totalload = totalload_explicit();
-        int totalload_items = 0;
-        for (int i = 1; i <= S; i++) {
-            totalload_items += i * ic.items[i];
-        }
-        assert(totalload_items == _totalload);
-
-        hashinit();
-
-
-    }
-
+    // Fairly slow initialization, because it copies loads one by one.
+    // This needs to be done because loads could be internally packed.
     binconf(const std::array<int, BINS + 1> initial_loads, const std::array<int, S + 1> initial_items,
             int initial_last_item = 1) {
-        loads = initial_loads;
+        for (int i = 1 ; i < BINS; i++) {
+            store(i, initial_loads[i]);
+            // loads[i] = initial_loads[i];
+        }
         ic.items = initial_items;
         last_item = initial_last_item;
 
         hash_loads_init();
     }
 
+#if USE_PACKED_ARRAYS && IBINS <= 15 && IR <= 255
+    binconf(const packed_loadconf initial_loads, const std::array<int, S + 1> initial_items,
+            int initial_last_item = 1) {
+        loads.word_ = initial_loads.word_;
+        ic.items = initial_items;
+        last_item = initial_last_item;
 
+        hash_loads_init();
+    }
+#endif
     int totalload() const {
         return _totalload;
     }
@@ -69,9 +63,7 @@ public:
     }
 
     void blank() {
-        for (int i = 0; i <= BINS; i++) {
-            loads[i] = 0;
-        }
+        clear_loads();
         for (int i = 0; i <= S; i++) {
             ic.items[i] = 0;
         }
@@ -183,8 +175,12 @@ public:
 };
 
 void duplicate(binconf *t, const binconf *s) {
-    for (int i = 1; i <= BINS; i++)
-        t->loads[i] = s->loads[i];
+#if USE_PACKED_ARRAYS && IBINS <= 15 && IR <= 255
+
+    t->loads.word_ = s->loads.word_;
+#else
+    t->loads = s->loads;
+#endif
     t->last_item = s->last_item;
     t->index = s->index;
     t->_totalload = s->_totalload;
@@ -299,11 +295,13 @@ void binconf::consistency_check() const {
 // Caution: assign_and_rehash forgets the last item, so you need
 // to take care of it manually, if you want to unassign later.
 int binconf::assign_and_rehash(int item, int bin) {
-    loads[bin] += item;
+    // add_to(bin, item);
+    // loads[bin] += item;
     _totalload += item;
     ic.items[item]++;
     ic._itemcount_explicit++;
-    int from = sortloads_one_increased(bin);
+    int from = increase_and_sort(bin, item);
+    // int from = sortloads_one_increased(bin);
     rehash_increased_range(item, from, bin);
 
     last_item = item;
@@ -312,11 +310,12 @@ int binconf::assign_and_rehash(int item, int bin) {
 }
 
 void binconf::unassign_and_rehash(int item, int bin, int item_before_last) {
-    loads[bin] -= item;
+    // loads[bin] -= item;
     _totalload -= item;
     ic.items[item]--;
     ic._itemcount_explicit--;
-    int from = sortloads_one_decreased(bin);
+    // remove_from(bin, item);
+    int from = decrease_and_sort(bin, item);
 
     last_item = item_before_last;
 

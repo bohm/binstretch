@@ -31,9 +31,10 @@ public:
             while (k > 0) {
                 if (initial_phase) {
                     loadconf first;
-                    for (int i = 1; i <= BINS; i++) {
-                        first.loads[i] = 0;
-                    }
+                    first.clear_loads();
+                    // for (int i = 1; i <= BINS; i++) {
+                    //     first.loads[i] = 0;
+                    // }
                     first.hashinit();
                     first.assign_and_rehash(itemsize, 1);
                     pnewq->push_back(first);

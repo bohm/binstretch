@@ -111,7 +111,7 @@ public:
         int load_if_packed = lc.loadsum() + item;
         int load_on_last = lc.loads[BINS];
         if (bin == BINS) {
-            load_on_last = std::min(lc.loads[BINS - 1], lc.loads[BINS] + item);
+            load_on_last = std::min(static_cast<int>(lc.loads[BINS - 1]), lc.loads[BINS] + item);
         }
 
         if (alg_immediately_winning(load_if_packed, load_on_last)) {

@@ -28,7 +28,8 @@ debug_logger *weight_dlog = nullptr;
 loadconf create_full_loadconf() {
     loadconf full_load;
     for (int i = 1; i <= BINS; i++) {
-        full_load.loads[i] = R - 1;
+        full_load.store(i, R-1);
+        // full_load.loads[i] = R - 1;
     }
     full_load.hashinit();
     return full_load;
@@ -70,9 +71,11 @@ bool decrease(loadconf *lc) {
     short pos = BINS; // First right-most non-zero position.
     while (pos >= 1) {
         if (lc->loads[pos] > 0) {
-            lc->loads[pos]--;
+            lc->minusminus(pos);
+            // lc->loads[pos]--;
             for (short j = pos+1; j <= BINS; j++) {
-                lc->loads[j] = lc->loads[j- 1];
+                lc->store(j, lc->loads[j-1]);
+                // lc->loads[j] = lc->loads[j- 1];
             }
             break;
         }

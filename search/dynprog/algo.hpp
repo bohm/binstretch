@@ -56,11 +56,13 @@ int dynprog_max_direct(const binconf &conf, dynprog_data *dpdata = nullptr, meas
 
         loadconf first;
         for (int i = 1; i <= conf.ic.items[S]; i++) {
-            first.loads[i] = S;
+            first.store(i, S);
+            // first.loads[i] = S;
         }
 
         for (int i = conf.ic.items[S] + 1; i <= BINS; i++) {
-            first.loads[i] = 0;
+            first.store(i, 0);
+            // first.loads[i] = 0;
         }
 
         first.hashinit();
@@ -76,9 +78,11 @@ int dynprog_max_direct(const binconf &conf, dynprog_data *dpdata = nullptr, meas
         while (k > 0) {
             if (initial_phase) {
                 loadconf first;
-                for (int i = 1; i <= BINS; i++) {
-                    first.loads[i] = 0;
-                }
+                first.clear_loads();
+                // for (int i = 1; i <= BINS; i++) {
+                //     first.store(i, 0);
+                //     first.loads[i] = 0;
+                // }
                 first.hashinit();
                 first.assign_and_rehash(size, 1);
                 pnewq->push_back(first);
@@ -180,9 +184,7 @@ std::vector<loadconf> dynprog(const binconf &conf, dynprog_data *dpdata) {
         while (k > 0) {
             if (initial_phase) {
                 loadconf first;
-                for (int i = 1; i <= BINS; i++) {
-                    first.loads[i] = 0;
-                }
+                first.clear_loads();
                 first.hashinit();
                 first.assign_and_rehash(size, 1);
                 pnewq->push_back(first);
