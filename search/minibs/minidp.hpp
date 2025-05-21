@@ -36,7 +36,7 @@ public:
                     //     first.loads[i] = 0;
                     // }
                     first.hashinit();
-                    first.assign_and_rehash(itemsize, 1);
+                    first.assign_and_reindex(itemsize, 1);
                     pnewq->push_back(first);
                     initial_phase = false;
                 } else {
@@ -52,7 +52,7 @@ public:
                             }
 
                             ASSERT_ONLY(index_t debug_index = tuple.index);
-                            int newpos = tuple.assign_and_rehash(itemsize, i);
+                            int newpos = tuple.assign_and_reindex(itemsize, i);
 
                             if (!dpd->loadhashset->contains(tuple.index)) {
                                 pnewq->push_back(tuple);

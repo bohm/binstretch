@@ -84,7 +84,7 @@ int dynprog_max_direct(const binconf &conf, dynprog_data *dpdata = nullptr, meas
                 //     first.loads[i] = 0;
                 // }
                 first.hashinit();
-                first.assign_and_rehash(size, 1);
+                first.assign_and_reindex(size, 1);
                 pnewq->push_back(first);
 
                 initial_phase = false;
@@ -105,21 +105,21 @@ int dynprog_max_direct(const binconf &conf, dynprog_data *dpdata = nullptr, meas
                             break;
                         }
 
-                        ASSERT_ONLY(index_t debug_index = tuple.index);
-                        int newpos = tuple.assign_and_rehash(size, i);
+                        // int newpos = tuple.assign_and_rehash(size, i);
+                        loadconf copy(tuple, size, i);
 
-                        if (!dpdata->loadhashset->contains(tuple.index)) {
+                        if (!dpdata->loadhashset->contains(copy.index)) {
                             if (size == smallest_item && k == 1) {
                                 // this can be improved by sorting
-                                max_overall = std::max((int) (S - tuple.loads[BINS]), max_overall);
+                                max_overall = std::max((int) (S - copy.loads[BINS]), max_overall);
                             }
 
-                            pnewq->push_back(tuple);
-                            dpdata->loadhashset->insert(tuple.index);
+                            pnewq->push_back(copy);
+                            dpdata->loadhashset->insert(copy.index);
                         }
 
-                        tuple.unassign_and_rehash(size, newpos);
-                        assert(tuple.index == debug_index);
+                        // tuple.unassign_and_reindex(size, newpos, old_index);
+                        // assert(tuple.index == debug_index);
                     }
                 }
                 if (pnewq->size() == 0) {
@@ -186,7 +186,7 @@ std::vector<loadconf> dynprog(const binconf &conf, dynprog_data *dpdata) {
                 loadconf first;
                 first.clear_loads();
                 first.hashinit();
-                first.assign_and_rehash(size, 1);
+                first.assign_and_reindex(size, 1);
                 pnewq->push_back(first);
                 initial_phase = false;
             } else {
@@ -202,7 +202,7 @@ std::vector<loadconf> dynprog(const binconf &conf, dynprog_data *dpdata) {
                         }
 
                         ASSERT_ONLY(index_t debug_loadhash = tuple.index);
-                        int newpos = tuple.assign_and_rehash(size, i);
+                        int newpos = tuple.assign_and_reindex(size, i);
 
                         if (!dpdata->loadhashset->contains(tuple.index)) {
                             pnewq->push_back(tuple);

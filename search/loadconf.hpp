@@ -429,12 +429,12 @@ public:
     }
     */
 
-    int assign_and_rehash(int item, int bin) {
+    int assign_and_reindex(int item, int bin) {
         // add_to(bin, item);
         // loads[bin] += item;
         // int from = sortloads_one_increased(bin);
         int from = increase_and_sort(bin, item);
-        rehash_loads_increased_range(item, from, bin);
+        reindex_loads_increased_range(item, from, bin);
 
         return from;
     }
@@ -461,6 +461,10 @@ public:
 
     }
 
+    void unassign_and_reindex(int item, int bin, index_t previous_index) {
+        decrease_and_sort(bin, item);
+        index = previous_index;
+    }
 
 
     loadconf() {
@@ -475,7 +479,7 @@ public:
         // loadhash = old.loadhash;
         index = old.index;
         loads = old.loads;
-        assign_and_rehash(new_item, bin);
+        assign_and_reindex(new_item, bin);
     }
 
     void print(FILE *stream) const {

@@ -226,7 +226,7 @@ public:
     bool query_itemconf_winning(const loadconf &lc, uint64_t next_layer_itemhash, int item, int bin) {
 
         // We have to check the hash table if the position is winning.
-        index_t load_index_if_packed = lc.virtual_loadhash(item, bin);
+        index_t load_index_if_packed = lc.virtual_index(item, bin);
 
         if (endgame_adjacent_maxfeas.contains(next_layer_itemhash)) {
             int largest_sendable = std::min(BINS * S - lc.loadsum() - item,
@@ -237,7 +237,7 @@ public:
                 return false;
             }
         } else if (midgame_feasible_map.contains(next_layer_itemhash)) {
-            if (knownsum.query_next_step(lc, item, bin)) {
+            if (knownsum.query_next_step(lc, item, bin, load_index_if_packed)) {
                 return true;
             }
 

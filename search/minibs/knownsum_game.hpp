@@ -106,8 +106,8 @@ public:
         return winning_indices.contains(lc.index);
     }
 
-    bool query_next_step(const loadconf &lc, int item, int bin) const {
-        uint32_t index_if_packed = lc.virtual_index(item, bin);
+    // Speeding up computation if the next index is already computed.
+    bool query_next_step(const loadconf &lc, int item, int bin, index_t index_if_packed) const {
         int load_if_packed = lc.loadsum() + item;
         int load_on_last = lc.loads[BINS];
         if (bin == BINS) {
@@ -124,6 +124,13 @@ public:
 
         return winning_indices.contains(index_if_packed);
     }
+
+    bool query_next_step(const loadconf &lc, int item, int bin) const {
+        index_t index_if_packed = lc.virtual_index(item, bin);
+        return query_next_step(lc, item, bin, index_if_packed);
+    }
+
+
 
 
     void build_winning_set() {

@@ -101,10 +101,10 @@ std::vector<loadconf> build_lih_choices(const binconf &b) {
             if (instance_possible<true>(b.totalload(), items_to_send, not_twice_into_last)) {
                 loadconf large;
                 for (int j = 1; j <= items_to_send - 1; j++) {
-                    large.assign_and_rehash(not_twice_into_last, j);
+                    large.assign_and_reindex(not_twice_into_last, j);
                 }
                 // The last item can be smaller in this case.
-                large.assign_and_rehash(not_twice_into_last - 1, items_to_send);
+                large.assign_and_reindex(not_twice_into_last - 1, items_to_send);
                 large_choices.push_back(large);
             }
         } else {
@@ -112,7 +112,7 @@ std::vector<loadconf> build_lih_choices(const binconf &b) {
             if (instance_possible<false>(b.totalload(), items_to_send, item)) {
                 loadconf large;
                 for (int j = 1; j <= items_to_send; j++) {
-                    large.assign_and_rehash(item, j);
+                    large.assign_and_reindex(item, j);
                 }
                 large_choices.push_back(large);
             }
