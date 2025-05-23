@@ -6,8 +6,12 @@
 // The meaning of uncertain = yet to be evaluated, not enough data, postponed (perhaps).
 // The maaning of irrelevant = no longer important, can be freely passed above, computation is over.
 
-enum class victory {
-    uncertain, alg, adv, irrelevant
+enum class victory: unsigned char {
+    adv = 0,
+    alg = 1,
+    uncertain = 2,
+    irrelevant = 3
+//    uncertain, alg, adv, irrelevant
 };
 
 void print(FILE *stream, const victory &win) {

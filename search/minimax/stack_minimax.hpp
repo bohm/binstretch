@@ -351,24 +351,14 @@ CASE_ZERO:
         }
     }
 
-    // Check cache here (after we have solved trivial cases).
-    // We only do this in exploration mode; while this could be also done
-    // when generating we want the whole lower bound tree to be generated.
+    // Before heuristic_visits_alg, we would check the state cache here (after we have solved trivial cases).
 
-    if (EXPLORING && !DISABLE_CACHE) {
-        auto [found, value] = stcache->lookup(bstate.statehash());
+    // In principle, this should be only detrimental, because we have asked
+    // the cache about this position already above in the recursion,
+    // when doing heuristic_visits_alg.
 
-        if (found) {
-            if (value == 0) {
-                ADV_STACK_SET_PRINT_RETURN(victory::adv, "CACH");
-                // return victory::adv;
-            } else if (value == 1) {
-                ADV_STACK_SET_PRINT_RETURN(victory::alg, "CACH");
-                // return victory::alg;
-            }
-        }
-    }
-
+    // This of course ignores the possibility that in parallel settings,
+    // this positions became solved in the meantime.
 
     // win = victory::alg;
     stack_victory[calldepth] = victory::alg;
@@ -499,10 +489,8 @@ CASE_THREE:
     print_binconf_if<MINIMAX_DEBUG>(bstate);
 
     if (EXPLORING && !DISABLE_CACHE) {
-        if (stack_victory[calldepth] == victory::adv) {
-            adv_cache_encache_adv_win(stcache, &bstate);
-        } else if (stack_victory[calldepth] == victory::alg) {
-            adv_cache_encache_alg_win(stcache, &bstate);
+        if (WIN == victory::adv || WIN == victory::alg) {
+            stcache->insert_binconf(&bstate, WIN);
         }
     }
 

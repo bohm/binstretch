@@ -26,7 +26,7 @@ int main(int argc, char **argv) {
 	// If we want to have a reserve CPU slot for the overseer itself, we should subtract 1.
 	constexpr int worker_count = 1;
 	auto *dpc = new guar_cache(dplog);
-	auto *stc = new state_cache(conflog, worker_count);
+	auto *stc = new CHOSEN_STATE_CACHE(conflog, worker_count);
 
 	for (int i = 0; i <= argc - 2; i++) {
 		auto [rootfile_flag, root_file] = parse_parameter_rootfile(argc, argv, i);
@@ -85,6 +85,6 @@ int main(int argc, char **argv) {
 		}
 	}
 
-
+	stc->report();
 	return 0;
 }

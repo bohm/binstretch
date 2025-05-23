@@ -6,7 +6,7 @@
 #include "../dag/dag.hpp"
 #include "../minibs/minibs.hpp"
 #include "cache/state.hpp"
-
+#include "cache/state_analysis_cache.hpp"
 struct adversary_notes {
     int old_largest = 0;
 };
@@ -159,12 +159,12 @@ public:
 
     // Caches for the current computation. These will differ whether this is the queen or the workers.
     guar_cache* dpcache = nullptr;
-    state_cache* stcache = nullptr;
+    CHOSEN_STATE_CACHE* stcache = nullptr;
 
     // --- debug ---
     int maxfeas_return_point = -1;
 
-    computation(guar_cache* d, state_cache* s)
+    computation(guar_cache* d, CHOSEN_STATE_CACHE* s)
     {
         dpcache = d;
         stcache = s;

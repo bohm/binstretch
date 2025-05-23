@@ -22,6 +22,10 @@ public:
         return get_last_bit(_data);
     }
 
+    inline victory win() const {
+        return static_cast<enum victory>(get_last_bit(_data));
+    }
+
     inline uint64_t hash() const {
         return zero_last_bit(_data);
     }
@@ -134,12 +138,18 @@ public:
         return logpart(ha, logsize);
     }
 
+    // Intentionally does nothing. Only relevant for state_analysis_cache.
+    void report() {
+
+    }
+
     void analysis();
 
-    std::pair<bool, bool> lookup(uint64_t h);
+    // victory lookup(uint64_t h);
+    victory lookup_virtual(binconf *bc, int item, unsigned char bin);
 
-    void insert(conf_el e, uint64_t h);
-
+    // void insert(conf_el e, uint64_t h);
+    void insert_binconf(binconf *bc, victory algorithm_victory);
 
     // Functions for clearing part of entirety of the cache.
 
@@ -207,10 +217,43 @@ public:
     }
 };
 
-inline std::pair<bool, bool> state_cache::lookup(uint64_t h) {
+// inline victory state_cache::lookup(uint64_t h) {
+//     uint64_t pos = trim(h);
+//     // Use linear probing to check for the hashed value.
+//     // uint64_t limit = std::min(size()-pos, LINPROBE_LIMIT);
+//     for (uint64_t i = 0; i < LINPROBE_LIMIT; i++) {
+//         // assert(pos + i < size());
+//         conf_el candidate = access(pos + i);
+//
+//         if (candidate.empty()) {
+//             MEASURE_ONLY(meas.lookup_miss_reached_empty++);
+//             break;
+//         }
+//
+//         if (candidate.match(h)) {
+//             MEASURE_ONLY(meas.lookup_hit++);
+//             return {true, candidate.value()};
+//         }
+//
+//         // bounds check (the second case is so that measurements are okay)
+//         // if (pos + i + 1 == size() || i == LINPROBE_LIMIT - 1) {
+//         //     MEASURE_ONLY(meas.lookup_miss_full++);
+//         //    break;
+//         // }
+//     }
+//
+//     return {false, false};
+// }
+
+// Some explanations here. The API is cleaner with just calling lookup() directly,
+// but in order to be able to swap out this good cache for a cache that can do
+// deep measurements, we need to be more general in what is being passed.
+
+inline victory state_cache::lookup_virtual(binconf *bc, int item, unsigned char bin) {
+    uint64_t h = bc->virtual_hash_with_low(item, bin);
     uint64_t pos = trim(h);
+
     // Use linear probing to check for the hashed value.
-    // uint64_t limit = std::min(size()-pos, LINPROBE_LIMIT);
     for (uint64_t i = 0; i < LINPROBE_LIMIT; i++) {
         // assert(pos + i < size());
         conf_el candidate = access(pos + i);
@@ -222,20 +265,20 @@ inline std::pair<bool, bool> state_cache::lookup(uint64_t h) {
 
         if (candidate.match(h)) {
             MEASURE_ONLY(meas.lookup_hit++);
-            return {true, candidate.value()};
+            return candidate.win();
         }
-
-        // bounds check (the second case is so that measurements are okay)
-        // if (pos + i + 1 == size() || i == LINPROBE_LIMIT - 1) {
-        //     MEASURE_ONLY(meas.lookup_miss_full++);
-        //    break;
-        // }
     }
 
-    return {false, false};
+    return victory::uncertain;
 }
 
-void state_cache::insert(conf_el e, uint64_t h) {
+
+// We only insert a binconf if either adversary or algorithm wins.
+void state_cache::insert_binconf(binconf *bc, victory win) {
+    conf_el e;
+    uint64_t h = bc->statehash();
+    e.set(h, static_cast<bool>(win));
+    // insert(e, h);
     conf_el candidate;
     uint64_t pos = trim(h);
 
@@ -259,7 +302,6 @@ void state_cache::insert(conf_el e, uint64_t h) {
 
     store(pos + (rand() % limit), e);
     MEASURE_ONLY(meas.insert_randomly++);
-    return;
 }
 
 void state_cache::analysis() {
@@ -274,7 +316,6 @@ void state_cache::analysis() {
 
 
 
-
 // Algorithmic positional cache is less useful in the following sense:
 // unlike the adversary position cache, every algorithmic vertex has
 // indegree 1 -- you can only reach it from a very specific position
@@ -284,21 +325,21 @@ void state_cache::analysis() {
 // adversarial vertices have larger indegrees and the cache makes thus
 // much more sense.
 
-void adv_cache_encache_adv_win(state_cache *cache, const binconf *d) {
-
-    uint64_t bchash = d->statehash();
-    conf_el new_item;
-    new_item.set(bchash, 0);
-    // Deep debug. Remove as soon as possible.
-    // adv_win_state_file.print_with_binconf(d,"Storing statehash (%" PRIu64 ") as adv-winning for binconf ", bchash);
-    cache->insert(new_item, bchash);
-}
-
-void adv_cache_encache_alg_win(state_cache *cache, const binconf *d) {
-    uint64_t bchash = d->statehash();
-    conf_el new_item;
-    new_item.set(bchash, 1);
-    // Deep debug. Remove as soon as possible.
-    // alg_win_state_file.print_with_binconf(d, "Storing statehash (%" PRIu64 ") as alg-winning for binconf ", bchash);
-    cache->insert(new_item, bchash);
-}
+// void adv_cache_encache_adv_win(state_cache *cache, const binconf *d) {
+//
+//     uint64_t bchash = d->statehash();
+//     conf_el new_item;
+//     new_item.set(bchash, 0);
+//     // Deep debug. Remove as soon as possible.
+//     // adv_win_state_file.print_with_binconf(d,"Storing statehash (%" PRIu64 ") as adv-winning for binconf ", bchash);
+//     cache->insert(new_item, bchash);
+// }
+//
+// void adv_cache_encache_alg_win(state_cache *cache, const binconf *d) {
+//     uint64_t bchash = d->statehash();
+//     conf_el new_item;
+//     new_item.set(bchash, 1);
+//     // Deep debug. Remove as soon as possible.
+//     // alg_win_state_file.print_with_binconf(d, "Storing statehash (%" PRIu64 ") as alg-winning for binconf ", bchash);
+//     cache->insert(new_item, bchash);
+// }

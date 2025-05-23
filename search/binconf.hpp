@@ -68,7 +68,7 @@ public:
             ic.items[i] = 0;
         }
         _totalload = 0;
-        ic._itemcount_explicit = 0;
+        ic._itemcount_implicit = 0;
         ic.hashinit();
         hashinit();
     }
@@ -81,7 +81,7 @@ public:
 
     void hash_loads_init() {
         _totalload = totalload_explicit();
-        ic._itemcount_explicit = ic.itemcount_explicit();
+        ic._itemcount_implicit = ic.itemcount_explicit();
         hashinit();
     }
 
@@ -299,7 +299,7 @@ int binconf::assign_and_rehash(int item, int bin) {
     // loads[bin] += item;
     _totalload += item;
     ic.items[item]++;
-    ic._itemcount_explicit++;
+    ic._itemcount_implicit++;
     int from = increase_and_sort(bin, item);
     // int from = sortloads_one_increased(bin);
     rehash_increased_range(item, from, bin);
@@ -313,7 +313,7 @@ void binconf::unassign_and_rehash(int item, int bin, int item_before_last) {
     // loads[bin] -= item;
     _totalload -= item;
     ic.items[item]--;
-    ic._itemcount_explicit--;
+    ic._itemcount_implicit--;
     // remove_from(bin, item);
     int from = decrease_and_sort(bin, item);
 

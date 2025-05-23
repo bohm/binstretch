@@ -51,7 +51,7 @@ victory computation<MODE, MINIBS_SCALE>::heuristic_visit_alg(int pres_item) {
     }
 
     // Assuming we did not return by now, we have not resolved the problem using MINIBINSTRETCHING.
-    if (HEURISTIC_VISITS_USING_CACHE) {
+    if (HEURISTIC_VISITS_USING_CACHE && itemdepth >= CACHE_THRESHOLD) {
         i = 1;
         while (i <= BINS) {
             // Skip a step where two bins have the same load.
@@ -61,7 +61,7 @@ victory computation<MODE, MINIBS_SCALE>::heuristic_visit_alg(int pres_item) {
             }
 
             if ((bstate.loads[i] + pres_item < R)) {
-                uint64_t statehash_if_descending = bstate.virtual_hash_with_low(pres_item, i);
+                // uint64_t statehash_if_descending = bstate.virtual_hash_with_low(pres_item, i);
                 bool result_known = false;
 
                 // Equivalent but hopefully faster to:
@@ -72,17 +72,17 @@ victory computation<MODE, MINIBS_SCALE>::heuristic_visit_alg(int pres_item) {
                 // In principle, other quick heuristics make sense here.
                 // We should avoid running them twice, ideally.
                 // For now, we only do state cache lookup.
-                auto [found, value] = stcache->lookup(statehash_if_descending);
+                victory found_in_cache = stcache->lookup_virtual(&bstate, pres_item, i);
 
-                if (found) {
-                    if (value == 1) {
+                if (found_in_cache == victory::adv || found_in_cache == victory::alg) {
+                    if (found_in_cache == victory::alg) {
                         // position_solved = true;
                         // result_known = true;
                         // ret = victory::alg;
                         return victory::alg;
-                    } else {
+                    } else { // else, it is victory::adv, and we continue.
                         result_known = true; // But position not yet solved.
-                    }// else, it is victory::adv, and we just continue.
+                    }
                 }
 
                 if (!result_known) {

@@ -116,6 +116,10 @@ const int MAX_EXPANSION = 1;
 const std::string OUTPUT_DIR = "./results";
 const std::string LOG_DIR = "./logs";
 
+#define CHOSEN_STATE_CACHE state_analysis_cache
+// #define CHOSEN_STATE_CACHE state_cache
+inline constexpr int CACHE_THRESHOLD = 0; // Cache only starts after this # of items.
+
 // ------------------------------------------------
 // debug constants
 

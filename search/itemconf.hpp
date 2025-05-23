@@ -5,7 +5,7 @@ class itemconf {
 public:
     std::array<int, DENOMINATOR> items = {};
     itemhash_t itemhash = 0;
-    int _itemcount_explicit = 0;
+    int _itemcount_implicit = 0;
 
     // We do not initialize the hash by default, but maybe we should. 
     itemconf() {
@@ -13,7 +13,7 @@ public:
 
     itemconf(const std::array<int, DENOMINATOR> &content) {
         items = content;
-        _itemcount_explicit = itemcount_explicit();
+        _itemcount_implicit = itemcount_explicit();
         hashinit();
     }
 
@@ -27,7 +27,7 @@ public:
     }
 
     int itemcount() const {
-        return _itemcount_explicit;
+        return _itemcount_implicit;
     }
 
 
@@ -100,14 +100,14 @@ public:
         itemhash ^= Zi[itemtype * (MAX_ITEMS + 1) + items[itemtype]];
         itemhash ^= Zi[itemtype * (MAX_ITEMS + 1) + items[itemtype] + amount];
         items[itemtype] += amount;
-        _itemcount_explicit += amount;
+        _itemcount_implicit += amount;
     }
 
     void decrease(int itemtype, int amount = 1) {
         itemhash ^= Zi[itemtype * (MAX_ITEMS + 1) + items[itemtype]];
         itemhash ^= Zi[itemtype * (MAX_ITEMS + 1) + items[itemtype] - amount];
         items[itemtype] -= amount;
-        _itemcount_explicit -= amount;
+        _itemcount_implicit -= amount;
     }
 
 
