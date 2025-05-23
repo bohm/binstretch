@@ -383,7 +383,7 @@ CASE_ZERO:
     stack_state[calldepth] = 1;
     goto CASE_ONE;
     // break;
-    // (1, i) -- Adversary descending step. (Generated list of plausible ADV moves, iterating over this list.)
+    // (1, i) -- Adversary descending step. (Generat/ed list of plausible ADV moves, iterating over this list.)
     // case 1:
 CASE_ONE:
     assert(stack_state[calldepth] == 1);
@@ -419,13 +419,13 @@ CASE_ONE:
 CASE_TWO:
     assert(stack_state[calldepth] == 2);
     MINIMAX_DEBUG_ONLY(bstate.consistency_check());
-    MINIMAX_DEBUG_ONLY(assert(binconf_equal(&bstate, &stack_binconf_consistency_copy[calldepth])));
+    MINIMAX_DEBUG_ONLY(assert(binconf_fully_equal(&bstate, &stack_binconf_consistency_copy[calldepth])));
     // calldepth--; // This needs to be handled by the state returning us to here.
     adversary_ascend<MODE, MINIBS_SCALE>(this, ADVERSARY_NOTES);
     MINIMAX_DEBUG_ONLY(assert(calldepth % 2 == 0));
 
     MINIMAX_DEBUG_ONLY(bstate.consistency_check());
-    MINIMAX_DEBUG_ONLY(assert(binconf_equal(&bstate, &stack_binconf_consistency_copy[calldepth])));
+    MINIMAX_DEBUG_ONLY(assert(binconf_fully_equal(&bstate, &stack_binconf_consistency_copy[calldepth])));
 
     MINIMAX_DEBUG_ONLY(assert(stack_state[calldepth+1] == 13));
 
@@ -695,7 +695,7 @@ CASE_EIGHT:
                                          pres_item_to_alg[itemdepth - 1]);
 
     MINIMAX_DEBUG_ONLY(bstate.consistency_check();)
-    MINIMAX_DEBUG_ONLY(assert(binconf_equal(&bstate, &stack_binconf_consistency_copy[calldepth])));
+    MINIMAX_DEBUG_ONLY(assert(binconf_fully_equal(&bstate, &stack_binconf_consistency_copy[calldepth])));
     print_if<MINIMAX_DEBUG>("Minimax depth (%d, %d): State 8 (ALG) entered for "
                             "item %d and binconf ", itemdepth, calldepth, pres_item_to_alg[itemdepth]);
 
@@ -798,7 +798,7 @@ CASE_ELEVEN:
     MINIMAX_DEBUG_ONLY(assert(stack_state[calldepth+1] == 4));
 
     MINIMAX_DEBUG_ONLY(bstate.consistency_check();)
-    MINIMAX_DEBUG_ONLY(assert(binconf_equal(&bstate, &stack_binconf_consistency_copy[calldepth])));
+    MINIMAX_DEBUG_ONLY(assert(binconf_fully_equal(&bstate, &stack_binconf_consistency_copy[calldepth])));
 
     print_if<MINIMAX_DEBUG>("Minimax depth (%d, %d): State 11 (ALG) entered for "
                             "item %d and binconf ", itemdepth, calldepth, pres_item_to_alg[itemdepth]);

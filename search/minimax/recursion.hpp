@@ -338,11 +338,11 @@ victory computation<MODE, MINIBS_SCALE>::adversary(
         adversary_descend<MODE, MINIBS_SCALE>(this, notes, item_size);
         below = algorithm(item_size, upcoming_alg, adv_to_evaluate);
         MINIMAX_DEBUG_ONLY(bstate.consistency_check());
-        MINIMAX_DEBUG_ONLY(assert(binconf_equal(&bstate, &bstate_consistency_copy)));
+        MINIMAX_DEBUG_ONLY(assert(binconf_fully_equal(&bstate, &bstate_consistency_copy)));
         calldepth--;
         adversary_ascend<MODE, MINIBS_SCALE>(this, notes);
         MINIMAX_DEBUG_ONLY(bstate.consistency_check());
-        MINIMAX_DEBUG_ONLY(assert(binconf_equal(&bstate, &bstate_consistency_copy)));
+        MINIMAX_DEBUG_ONLY(assert(binconf_fully_equal(&bstate, &bstate_consistency_copy)));
 
         if (MINIMAX_DEBUG) {
             fprintf(stderr, "Recursive call for ");
@@ -503,7 +503,7 @@ victory computation<MODE, MINIBS_SCALE>::algorithm(int pres_item, algorithm_vert
                 calldepth--;
                 algorithm_ascend<MODE, MINIBS_SCALE>(this, notes, pres_item);
                 MINIMAX_DEBUG_ONLY(bstate.consistency_check();)
-                MINIMAX_DEBUG_ONLY(assert(binconf_equal(&bstate, &bstate_consistency_copy));)
+                MINIMAX_DEBUG_ONLY(assert(binconf_fully_equal(&bstate, &bstate_consistency_copy));)
 
                 if (below == victory::alg) {
                     win = victory::alg;
@@ -585,7 +585,7 @@ victory computation<MODE, MINIBS_SCALE>::algorithm(int pres_item, algorithm_vert
         calldepth--;
         algorithm_ascend(this, notes, pres_item);
         MINIMAX_DEBUG_ONLY(bstate.consistency_check();)
-        MINIMAX_DEBUG_ONLY(assert(binconf_equal(&bstate, &bstate_consistency_copy));)
+        MINIMAX_DEBUG_ONLY(assert(binconf_fully_equal(&bstate, &bstate_consistency_copy));)
 
 
         // send signal that we should terminate immediately upwards

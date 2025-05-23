@@ -10,8 +10,9 @@ class packed_loadconf {
 public:
     unsigned __int128 word_{};               // storage (16 × 8 bits)
 
-    static constexpr std::size_t kSize = 16; // matches std::array::size
-
+    bool operator==(const packed_loadconf& rhs) const {
+        return rhs.word_ == word_;
+    }
     /* -------- array-style access -------- */
     // inline proxy operator[](std::size_t i)       noexcept { return proxy{word_, i * 8}; }
     // inline unsigned char operator[](std::size_t i) const noexcept {

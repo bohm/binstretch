@@ -188,7 +188,7 @@ void duplicate(binconf *t, const binconf *s) {
 }
 
 // returns true if two binconfs are item-wise and load-wise equal
-bool binconf_equal(const binconf *a, const binconf *b) {
+bool binconf_loadsize_equal(const binconf *a, const binconf *b) {
     for (int i = 1; i <= BINS; i++) {
         if (a->loads[i] != b->loads[i]) {
             return false;
@@ -204,9 +204,13 @@ bool binconf_equal(const binconf *a, const binconf *b) {
     assert(a->index == b->index);
     assert(a->ic.itemhash == b->ic.itemhash);
     assert(a->_totalload == b->_totalload);
-    assert(a->ic._itemcount_explicit == b->ic._itemcount_explicit);
+    assert(a->ic._itemcount_implicit == b->ic._itemcount_implicit);
 
     return true;
+}
+
+bool binconf_fully_equal(const binconf *a, const binconf *b) {
+    return (a->loads == b->loads) && (a->ic.items == b->ic.items) && (a->last_item == b->last_item);
 }
 
 // debug function for printing bin configurations (into stderr or log files)
@@ -277,7 +281,7 @@ void print_binconf_if(const binconf *b, bool newline = true) {
 }
 
 void binconf::consistency_check() const {
-    assert(ic._itemcount_explicit == ic.itemcount_explicit());
+    assert(ic._itemcount_implicit == ic.itemcount_explicit());
     assert(_totalload == totalload_explicit());
     assert(index == binomial_index_explicit());
 
