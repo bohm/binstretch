@@ -8,6 +8,7 @@
 #include "binconf.hpp"
 #include "filetools.hpp"
 
+#include "cache/state_layered.hpp"
 #include "server_properties.hpp"
 #include "minimax/explore_generate.hpp"
 

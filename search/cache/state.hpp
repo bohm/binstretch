@@ -13,6 +13,9 @@ class conf_el {
 public:
     uint64_t _data;
 
+    conf_el() {_data = 0;}
+    explicit conf_el(uint64_t val) : _data(val) {}
+
     inline void set(uint64_t hash, uint64_t val) {
         // assert(val == 0 || val == 1);
         _data = (zero_last_bit(hash) | val);
@@ -62,13 +65,13 @@ const conf_el conf_el::ZERO{0};
 class state_cache // : public cache<conf_el, uint64_t, int>
 {
 public:
-    std::atomic<conf_el> *ht;
+    std::atomic<uint64_t> *ht;
     uint64_t htsize;
     int logsize;
     cache_measurements meas;
 
     void atomic_init_point(uint64_t point) {
-        std::atomic_init(&ht[point], conf_el::ZERO);
+        std::atomic_init(&ht[point], 0);
     }
 
     void parallel_init_segment(uint64_t start, uint64_t end, uint64_t size) {
@@ -92,7 +95,7 @@ public:
 
         // We allocate not 2^{k} sized cache (which makes sense because of the indexing) but we add LINPROBE_LIMIT
         // extra elements for linear probing to work for the last LINPROBE_LIMIT elements of the cache itself.
-        ht = new std::atomic<conf_el>[htsize+LINPROBE_LIMIT];
+        ht = new std::atomic<uint64_t>[htsize+LINPROBE_LIMIT];
         assert(ht != nullptr);
 
         uint64_t segment = htsize / threads;
@@ -122,19 +125,19 @@ public:
         delete ht;
     }
 
-    conf_el access(uint64_t pos) {
-        return ht[pos].load(std::memory_order_relaxed);
+    inline conf_el access(uint64_t pos) const {
+        return conf_el(ht[pos].load(std::memory_order_relaxed));
     }
 
     void store(uint64_t pos, const conf_el &e) {
-        ht[pos].store(e, std::memory_order_relaxed);
+        ht[pos].store(e._data, std::memory_order_relaxed);
     }
 
-    uint64_t size() {
+    uint64_t size() const {
         return htsize;
     }
 
-    uint64_t trim(uint64_t ha) {
+    uint64_t trim(uint64_t ha) const {
         return logpart(ha, logsize);
     }
 
@@ -155,7 +158,7 @@ public:
 
     void clear_cache_segment(uint64_t start, uint64_t end) {
         for (uint64_t i = start; i < std::min(end, htsize); i++) {
-            ht[i].store(conf_el::ZERO);
+            ht[i].store(0);
         }
     }
 
@@ -179,17 +182,17 @@ public:
 
         // Deal with the tail.
         for (uint64_t tail = htsize; tail < htsize+LINPROBE_LIMIT; tail++) {
-            ht[tail].store(conf_el::ZERO);
+            ht[tail].store(0);
         }
     }
 
     void clear_ones_segment(uint64_t start, uint64_t end) {
         for (uint64_t i = start; i < std::min(end, htsize+LINPROBE_LIMIT); i++) {
-            conf_el field = ht[i];
+            conf_el field = access(i);
             if (!field.empty()) {
                 int last_bit = field.value();
                 if (last_bit != 0) {
-                    ht[i].store(conf_el::ZERO);
+                    ht[i].store(0);
                 }
             }
         }
@@ -202,7 +205,7 @@ public:
 
         std::vector<std::thread> th;
         for (int w = 0; w < threads; w++) {
-            th.push_back(std::thread(&state_cache::clear_ones_segment, this, start, end));
+            th.emplace_back(&state_cache::clear_ones_segment, this, start, end);
             start += segment;
             end += segment;
             start = std::min(start, htsize);
@@ -282,12 +285,8 @@ void state_cache::insert_binconf(binconf *bc, victory win) {
     conf_el candidate;
     uint64_t pos = trim(h);
 
-    int limit = LINPROBE_LIMIT;
-    if (pos + limit > size()) {
-        limit = std::max((uint64_t) 0, size() - pos);
-    }
 
-    for (int i = 0; i < limit; i++) {
+    for (int i = 0; i < static_cast<int>(LINPROBE_LIMIT); i++) {
         candidate = access(pos + i);
         if (candidate.empty()) {
             MEASURE_ONLY(meas.insert_into_empty++);
@@ -300,13 +299,13 @@ void state_cache::insert_binconf(binconf *bc, victory win) {
         }
     }
 
-    store(pos + (rand() % limit), e);
+    store(pos + (rand() % LINPROBE_LIMIT), e);
     MEASURE_ONLY(meas.insert_randomly++);
 }
 
 void state_cache::analysis() {
     for (uint64_t i = 0; i < htsize; i++) {
-        if (ht[i].load().empty()) {
+        if (ht[i].load() == 0) {
             meas.empty_positions++;
         } else {
             meas.filled_positions++;

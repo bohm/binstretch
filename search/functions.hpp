@@ -127,7 +127,7 @@ const auto loadlogpart = logpart<LOADLOG>;
 
 // with some memory allocated dynamically, we also need a dynamic logpart
 
-inline uint64_t logpart(uint64_t x, int log) {
+inline uint64_t logpart(uint64_t x, unsigned int log) {
     return x >> (64 - log);
 }
 

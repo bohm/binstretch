@@ -9,7 +9,7 @@ struct state_detail_el {
     victory win{};
 
     bool operator==(const state_detail_el& rhs) const {
-        return binconf_fully_equal(&bc, &rhs.bc) && win == rhs.win;
+        return binconf_fully_equal(&bc, &rhs.bc);
     }
 };
 
@@ -43,9 +43,16 @@ struct std::hash<state_adv_winning_el>
 };
 
 class state_analysis_cache {
+    static constexpr uint64_t PRECACHE_LOGSIZE = 22;
+    static constexpr uint64_t PRECACHE_SIZE = (1LLU << PRECACHE_LOGSIZE);
     flat_hash_map<state_detail_el, uint64_t> misses{};
     flat_hash_map<state_adv_winning_el, uint64_t> adv_hits{};
     flat_hash_map<state_detail_el, uint64_t> alg_hits{};
+
+    // cache-line-friendly pre-cache. Stores 1 in a bit if there is any chance of a hash being in there.
+    std::array<std::bitset<PRECACHE_SIZE>, BINS*S+1> precache{};
+
+
     unsigned int cross_hits = 0; // Hits in adv_hits{} with different last item.
     unsigned int insertion_calls = 0;
     unsigned int insertion_adv_wins = 0;
@@ -56,6 +63,8 @@ class state_analysis_cache {
     //
     unsigned int alg_overlaps = 0;
     unsigned int adv_overlaps = 0;
+
+    std::array<unsigned int,BINS*S+1> precache_reports_miss{};
 public:
 
     // Does nothing currently. We keep it to be 1:1 compatible with the state cache. We remove the warning.
@@ -86,6 +95,10 @@ public:
 //        return victory::uncertain;
 //    }
 
+    static size_t trim_precache(uint64_t ha) {
+        return logpart(ha, PRECACHE_LOGSIZE);
+    }
+
     inline victory lookup_virtual(binconf *bc, int item, unsigned char bin) {
         lookup_calls++;
         state_adv_winning_el candidate;
@@ -93,6 +106,14 @@ public:
         candidate.bc.assign_and_rehash(item, bin);
         MINIMAX_DEBUG_ONLY(fprintf(stderr, "Querying via heuristic visit: ");)
         MINIMAX_DEBUG_ONLY(print_binconf_stream(stderr, candidate.bc, false);)
+
+        int depth = candidate.bc.itemcount();
+        uint64_t h = candidate.bc.statehash();
+        // If precache has no info of this prefix ever entering, just return uncertain.
+        if (!precache[depth][trim_precache(h)]) {
+            precache_reports_miss[depth]++;
+        }
+
         auto iter = adv_hits.find(candidate);
         if (iter != adv_hits.end()) {
             iter->second++;
@@ -133,6 +154,11 @@ public:
 
     void insert_binconf(binconf *bc, victory win) {
         insertion_calls++;
+
+        int depth = bc->itemcount();
+        uint64_t h = bc->statehash();
+        precache[depth][trim_precache(h)] = true;
+
         if (win == victory::adv) {
             insertion_adv_wins++;
             state_adv_winning_el candidate;
@@ -148,13 +174,7 @@ public:
             candidate.bc = *bc;
             candidate.win = win;
             if (alg_hits.contains(candidate)) {
-                fprintf(stderr, "Inserting what was already winning for ALG: ");
-                print_binconf_stream(stderr, candidate.bc);
                 alg_overlaps++;
-            } else {
-                fprintf(stderr, "First time insert: ");
-                print_binconf_stream(stderr, candidate.bc);
-
             }
             alg_hits.insert({candidate, 0});
         }
@@ -210,32 +230,64 @@ public:
         int min_itemdepth = BINS*S;
         size_t highest_hit_hits = 0;
         binconf highest_hit;
+        int deepest_insert_layer = 0;
+        binconf deepest_insert;
+
 
         for (auto& [k, v] : alg_hits) {
-            if (v >= 2 && k.bc.itemcount() < min_itemdepth) {
+            if (v >= 1 && k.bc.itemcount() < min_itemdepth) {
                 highest_hit_hits = v;
                 highest_hit = k.bc;
                 min_itemdepth = k.bc.itemcount();
             }
+
+            if (k.bc.itemcount() > deepest_insert_layer) {
+                deepest_insert_layer = k.bc.itemcount();
+                deepest_insert = k.bc;
+            }
         }
+
+        for (auto& [k, v] : adv_hits) {
+            if (v >= 1 && k.bc.itemcount() < min_itemdepth) {
+                highest_hit_hits = v;
+                highest_hit = k.bc;
+                min_itemdepth = k.bc.itemcount();
+            }
+
+            if (k.bc.itemcount() > deepest_insert_layer) {
+                deepest_insert_layer = k.bc.itemcount();
+                deepest_insert = k.bc;
+            }
+        }
+
 
         fprintf(stderr, "Highest up hit configuration (%zu hits): ", highest_hit_hits);
         print_binconf_stream(stderr, &highest_hit);
+
+        fprintf(stderr, "Deepest inserted configuration (layer %d): ", deepest_insert_layer);
+        print_binconf_stream(stderr, &deepest_insert);
         // fprintf(stderr, "\n");
 
         fprintf(stderr, "Layer by layer:\n");
 
-        for (int ilayer = 0; ilayer < 20; ilayer++) {
-            size_t layer_actual_hits = 0;
-            size_t layer_insertions = 0;
+        for (int ilayer = 0; ilayer <= std::min(30,BINS*S); ilayer++) {
+            unsigned int layer_alg_hits = 0;
+            unsigned int layer_adv_hits = 0;
+            unsigned int layer_alg_insertions = 0;
+            unsigned int layer_adv_insertions = 0;
             size_t layer_misses = 0;
 
             for (auto& [k, v] : alg_hits) {
                 if (k.bc.itemcount() == ilayer) {
-                    layer_insertions++;
-                    if (v >= 2) {
-                        layer_actual_hits += v-1;
-                    }
+                    layer_alg_insertions++;
+                    layer_alg_hits += v;
+                }
+            }
+
+            for (auto& [k, v] : adv_hits) {
+                if (k.bc.itemcount() == ilayer) {
+                    layer_adv_insertions++;
+                    layer_adv_hits += v;
                 }
             }
 
@@ -245,9 +297,10 @@ public:
                 }
             }
 
-            if (layer_actual_hits > 0) {
-                fprintf(stderr, "Layer %d: %zu hits, %zu inserts, %zu misses.\n",
-                    ilayer, layer_actual_hits, layer_insertions, layer_misses);
+            if (layer_adv_insertions + layer_alg_insertions > 0) {
+                fprintf(stderr, "Layer %d: %u+%u hits, %u+%u inserts, %zu misses.\n",
+                    ilayer, layer_adv_hits, layer_alg_hits, layer_adv_insertions, layer_alg_insertions, layer_misses);
+                fprintf(stderr, "Misses caught by precache: %u.\n", precache_reports_miss[ilayer]);
             }
         }
     }
