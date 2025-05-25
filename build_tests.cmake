@@ -1,23 +1,5 @@
-function(build_tests BINS R S MONOT SCALE)
-    if (${MONOT} EQUAL -1)
-        recommend_monotonicity(${BINS} ${R} ${S})
-        message("Recommending monotonicity ${MONOT}.")
-    else ()
-        message("Pre-set monotonicity ${MONOT}.")
-    endif ()
 
-    if (${SCALE} EQUAL -1)
-        recommend_scaling(${BINS} ${R} ${S})
-        message("Recommending scaling factor ${SCALE}.")
-    else ()
-        message("Pre-set scaling factor ${SCALE}.")
-    endif ()
-
-    message("Building search tests for ${BINS} bins, ratio ${R}/${S}, monotonicity ${MONOT}, minibs scaling ${SCALE}.")
-
-
-    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "./${BINS}-${R}-${S}/")
-
+function(build_test_recursion BINS R S MONOT SCALE)
     add_executable(explore-rec-${BINS}-${R}-${S}-${MONOT}-${SCALE} tests/explore.cpp
             search/cache/guar64.hpp
             search/cache/guar_locks.hpp
@@ -111,6 +93,7 @@ function(build_tests BINS R S MONOT SCALE)
             OUTPUT_NAME explore-rec-${SCALE}
     )
 
+
     target_compile_definitions(explore-rec-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IBINS=${BINS})
     target_compile_definitions(explore-rec-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IR=${R})
     target_compile_definitions(explore-rec-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IS=${S})
@@ -120,6 +103,9 @@ function(build_tests BINS R S MONOT SCALE)
     target_compile_definitions(explore-rec-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IPACKED=0) # Recursion.
 
 
+endfunction()
+
+function(build_test_stack BINS R S MONOT SCALE)
     add_executable(explore-stack-${BINS}-${R}-${S}-${MONOT}-${SCALE} tests/explore.cpp)
     add_dependencies(tests explore-stack-${BINS}-${R}-${S}-${MONOT}-${SCALE})
     set_target_properties(explore-stack-${BINS}-${R}-${S}-${MONOT}-${SCALE}
@@ -133,7 +119,9 @@ function(build_tests BINS R S MONOT SCALE)
     target_compile_definitions(explore-stack-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IMONOT=${MONOT})
     target_compile_definitions(explore-stack-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IRECURSION=0) # Stack.
     target_compile_definitions(explore-stack-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IPACKED=0) # Stack.
+endfunction()
 
+function(build_test_packed BINS R S MONOT SCALE)
     add_executable(explore-packed-${BINS}-${R}-${S}-${MONOT}-${SCALE} tests/explore.cpp)
     add_dependencies(tests explore-packed-${BINS}-${R}-${S}-${MONOT}-${SCALE})
     set_target_properties(explore-packed-${BINS}-${R}-${S}-${MONOT}-${SCALE}
@@ -147,5 +135,30 @@ function(build_tests BINS R S MONOT SCALE)
     target_compile_definitions(explore-packed-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IMONOT=${MONOT})
     target_compile_definitions(explore-packed-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IRECURSION=0) # Stack.
     target_compile_definitions(explore-packed-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IPACKED=1) # Stack.
+endfunction()
+
+function(build_tests BINS R S MONOT SCALE)
+    if (${MONOT} EQUAL -1)
+        recommend_monotonicity(${BINS} ${R} ${S})
+        message("Recommending monotonicity ${MONOT}.")
+    else ()
+        message("Pre-set monotonicity ${MONOT}.")
+    endif ()
+
+    if (${SCALE} EQUAL -1)
+        recommend_scaling(${BINS} ${R} ${S})
+        message("Recommending scaling factor ${SCALE}.")
+    else ()
+        message("Pre-set scaling factor ${SCALE}.")
+    endif ()
+
+    message("Building search tests for ${BINS} bins, ratio ${R}/${S}, monotonicity ${MONOT}, minibs scaling ${SCALE}.")
+
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "./${BINS}-${R}-${S}/")
+
+    build_test_packed(${BINS} ${R} ${S} ${MONOT} ${SCALE})
+    # build_test_recursion(${BINS} ${R} ${S} ${MONOT} ${SCALE})
+    # build_test_stack(${BINS} ${R} ${S} ${MONOT} ${SCALE})
+
 
 endfunction()

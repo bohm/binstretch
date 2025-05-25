@@ -9,6 +9,7 @@
 #include "filetools.hpp"
 
 #include "cache/state_layered.hpp"
+#include "cache/state_layered_precache.hpp"
 #include "server_properties.hpp"
 #include "minimax/explore_generate.hpp"
 

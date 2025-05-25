@@ -449,10 +449,11 @@ CASE_TWO:
         fprintf(stderr, "\n");
     }
 
-    // send signal that we should terminate immediately upwards
-    if (BELOW == victory::irrelevant) {
-        ADV_STACK_SET_PRINT_RETURN(BELOW, "IRRB");
-    }
+    // In the stack mode, we do not need to check BELOW for irrelevancy, because irrelevancy immediately
+    // terminates the whole computation.
+    // if (BELOW == victory::irrelevant) {
+    //     ADV_STACK_SET_PRINT_RETURN(BELOW, "IRRB");
+    // }
 
     if (BELOW == victory::adv) {
         WIN = victory::adv;

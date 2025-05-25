@@ -64,7 +64,7 @@ class state_analysis_cache {
     unsigned int alg_overlaps = 0;
     unsigned int adv_overlaps = 0;
 
-    std::array<unsigned int,BINS*S+1> precache_reports_miss{};
+    std::array<unsigned int,BINS*S+1> miss_passes_precache{};
 public:
 
     // Does nothing currently. We keep it to be 1:1 compatible with the state cache. We remove the warning.
@@ -109,10 +109,7 @@ public:
 
         int depth = candidate.bc.itemcount();
         uint64_t h = candidate.bc.statehash();
-        // If precache has no info of this prefix ever entering, just return uncertain.
-        if (!precache[depth][trim_precache(h)]) {
-            precache_reports_miss[depth]++;
-        }
+
 
         auto iter = adv_hits.find(candidate);
         if (iter != adv_hits.end()) {
@@ -131,6 +128,12 @@ public:
             iter2->second++;
             MINIMAX_DEBUG_ONLY(fprintf(stderr, " answer: ALG\n");)
             return victory::alg;
+        }
+
+        // At this point, the query is a miss.
+        // Report if the miss would pass precache or if precache catches it.
+        if (precache[depth][trim_precache(h)]) {
+            miss_passes_precache[depth]++;
         }
 
         auto missed_iter = misses.find(candidate_alg);
@@ -300,7 +303,7 @@ public:
             if (layer_adv_insertions + layer_alg_insertions > 0) {
                 fprintf(stderr, "Layer %d: %u+%u hits, %u+%u inserts, %zu misses.\n",
                     ilayer, layer_adv_hits, layer_alg_hits, layer_adv_insertions, layer_alg_insertions, layer_misses);
-                fprintf(stderr, "Misses caught by precache: %u.\n", precache_reports_miss[ilayer]);
+                fprintf(stderr, "Checks that go past precache: %u.\n", miss_passes_precache[ilayer]);
             }
         }
     }
