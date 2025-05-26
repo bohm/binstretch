@@ -22,7 +22,7 @@ public:
     std::array<std::atomic<uint64_t> *, BINS*S+1> hi;
 
     // cache-line-friendly pre-cache. Stores 1 in a bit if there is any chance of a hash being in there.
-    static constexpr uint64_t PRECACHE_LOGSIZE = 22;
+    static constexpr uint64_t PRECACHE_LOGSIZE = 20;
     static constexpr uint64_t PRECACHE_SIZE = (1LLU << PRECACHE_LOGSIZE);
 
     std::array<std::bitset<PRECACHE_SIZE>, BINS*S+1> precache{};
@@ -44,7 +44,7 @@ public:
         }
     }
 
-    state_layered_precache(uint64_t logbytes, int threads, std::string descriptor = "") {
+    state_layered_precache(uint64_t logbytes, int threads, const std::string &descriptor = "") {
         assert(logbytes <= 64);
         // A hack to make the allocation comparable.
         logbytes -= 1;
@@ -53,7 +53,8 @@ public:
         logsize_big = quicklog(htsize_big);
         if (S*BINS >= 8 && 4*BINS - 8 >= 0) {
             print_if<PROGRESS>(
-                    "Creating %d large caches of capacity %" PRIu64 ".\n", S*BINS-16, htsize_big);
+                    "State cache %s: creating %d large caches of capacity %" PRIu64 ".\n",
+                        descriptor.c_str(), S*BINS-16, htsize_big);
         }
 
 
@@ -109,16 +110,17 @@ public:
         hi[depth][pos].store(e._data, std::memory_order_relaxed);
     }
 
-    uint64_t trim_large(uint64_t ha) {
-        return logpart(ha, logsize_big);
+    uint64_t trim_large(uint64_t ha) const {
+        return last_k_bits(ha, logsize_big);
     }
 
-    uint64_t trim_small(uint64_t ha) {
-        return logpart(ha, logsize_small);
+    uint64_t trim_small(uint64_t ha) const {
+        return last_k_bits(ha, logsize_small);
     }
 
-    size_t trim_precache(uint64_t ha) {
-        return logpart(ha, PRECACHE_LOGSIZE);
+    static size_t trim_precache(uint64_t ha) {
+        //return last_k_bits(ha, PRECACHE_LOGSIZE);
+        return last_k_bits<PRECACHE_LOGSIZE>(ha);
     }
 
     // Intentionally does nothing. Only relevant for state_analysis_cache.
@@ -132,6 +134,13 @@ public:
     // void insert(conf_el e, uint64_t h);
     void insert_binconf(binconf *bc, victory algorithm_victory);
 
+
+    uint64_t size() {
+        return S*BINS*htsize_big;
+    }
+    void analysis() {
+
+    }
     // Functions for clearing part of entirety of the cache.
 
 };

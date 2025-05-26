@@ -10,13 +10,13 @@ public:
     static constexpr bool SMALL_CACHE(int i) {
         // For small inputs, always return false and set all caches big.
         if (S*BINS < 8 || 4*BINS - 8 < 0) {
-             return false;
+            return false;
         }
         return i <= 8 || i >= 4*BINS - 8;
     }
 
     // hi -- hashtable by itemdepth.
-    std::array<std::atomic<uint64_t> *, BINS*S+1> hi;
+    std::array<std::atomic<uint64_t> *, BINS*S+1> hi{};
 
     // std::atomic <conf_el> *ht;
     uint64_t htsize_big;
@@ -35,7 +35,7 @@ public:
         }
     }
 
-    state_layered(uint64_t logbytes, int threads, std::string descriptor = "") {
+    state_layered(uint64_t logbytes, int threads, const std::string &descriptor = "") {
         assert(logbytes <= 64);
         // A hack to make the allocation comparable.
         logbytes -= 1;
@@ -44,7 +44,8 @@ public:
         logsize_big = quicklog(htsize_big);
         if (S*BINS >= 8 && 4*BINS - 8 >= 0) {
             print_if<PROGRESS>(
-                    "Creating %d large caches of capacity %" PRIu64 ".\n", S*BINS-16, htsize_big);
+                    "State cache %s: Creating %d large caches of capacity %" PRIu64 ".\n",
+                    descriptor.c_str(), S*BINS-16, htsize_big);
         }
 
 
@@ -101,11 +102,11 @@ public:
     }
 
     uint64_t trim_large(uint64_t ha) {
-        return logpart(ha, logsize_big);
+        return last_k_bits(ha, logsize_big);
     }
 
     uint64_t trim_small(uint64_t ha) {
-        return logpart(ha, logsize_small);
+        return last_k_bits(ha, logsize_small);
     }
 
     // Intentionally does nothing. Only relevant for state_analysis_cache.

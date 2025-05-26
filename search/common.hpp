@@ -117,10 +117,10 @@ const std::string OUTPUT_DIR = "./results";
 const std::string LOG_DIR = "./logs";
 
 // #define CHOSEN_STATE_CACHE state_analysis_cache
-// #define CHOSEN_STATE_CACHE state_cache
-#define CHOSEN_STATE_CACHE state_layered
+#define CHOSEN_STATE_CACHE state_cache
+// #define CHOSEN_STATE_CACHE state_layered
 // #define CHOSEN_STATE_CACHE state_layered_precache
-inline constexpr int CACHE_THRESHOLD = 0; // Cache only starts after this # of items.
+// inline constexpr int CACHE_THRESHOLD = 0; // Cache only starts after this # of items.
 
 // ------------------------------------------------
 // debug constants

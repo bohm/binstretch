@@ -122,7 +122,7 @@ void overseer::start() {
     dpcache = new guar_cache(dplog);
 
     // Initialize the adversary position (state) cache.
-    stcache = new state_cache(conflog, worker_count, "adversarial");
+    stcache = new CHOSEN_STATE_CACHE(conflog, worker_count, "adversarial");
 
     // Initialize the known sum of processing times heuristic, if using it.
     if (USING_HEURISTIC_KNOWNSUM) {

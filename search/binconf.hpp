@@ -28,7 +28,7 @@ public:
 
     // Fairly slow initialization, because it copies loads one by one.
     // This needs to be done because loads could be internally packed.
-    binconf(const std::array<int, BINS + 1> initial_loads, const std::array<int, S + 1> initial_items,
+    binconf(const std::array<int, BINS + 1> initial_loads, const std::array<ITEM_TYPE, S + 1> initial_items,
             int initial_last_item = 1) {
         for (int i = 1 ; i < BINS; i++) {
             store(i, initial_loads[i]);
@@ -41,7 +41,7 @@ public:
     }
 
 #if USE_PACKED_ARRAYS && IBINS <= 15 && IR <= 255
-    binconf(const packed_loadconf initial_loads, const std::array<int, S + 1> initial_items,
+    binconf(const PACKED_ARRAY_TYPE initial_loads, const std::array<ITEM_TYPE, S + 1> initial_items,
             int initial_last_item = 1) {
         loads.word_ = initial_loads.word_;
         ic.items = initial_items;
@@ -65,10 +65,9 @@ public:
     void blank() {
         clear_loads();
         for (int i = 0; i <= S; i++) {
-            ic.items[i] = 0;
+            ic.items[i] = 0; // Also zeroes out the implicit count.
         }
         _totalload = 0;
-        ic._itemcount_implicit = 0;
         ic.hashinit();
         hashinit();
     }
@@ -81,7 +80,7 @@ public:
 
     void hash_loads_init() {
         _totalload = totalload_explicit();
-        ic._itemcount_implicit = ic.itemcount_explicit();
+        ic.reset_itemcount();
         hashinit();
     }
 
@@ -282,7 +281,14 @@ void print_binconf_if(const binconf *b, bool newline = true) {
 
 void binconf::consistency_check() const {
     assert(ic._itemcount_implicit == ic.itemcount_explicit());
-    assert(_totalload == totalload_explicit());
+#ifndef NDEBUG
+    if (_totalload != totalload_explicit()) {
+        fprintf(stderr, "For the following binconf, the totalload is %u and the explicit one is %u.\n",
+            _totalload, totalload_explicit());
+        print_binconf_stream(stderr, *this, false);
+        assert(_totalload == totalload_explicit());
+    }
+#endif
     assert(index == binomial_index_explicit());
 
     int totalload_items = 0;
@@ -303,7 +309,8 @@ int binconf::assign_and_rehash(int item, int bin) {
     // loads[bin] += item;
     _totalload += item;
     ic.items[item]++;
-    ic._itemcount_implicit++;
+    ic.one_more_item();
+    // ic._itemcount_implicit++;
     int from = increase_and_sort(bin, item);
     // int from = sortloads_one_increased(bin);
     rehash_increased_range(item, from, bin);
@@ -317,7 +324,8 @@ void binconf::unassign_and_rehash(int item, int bin, int item_before_last) {
     // loads[bin] -= item;
     _totalload -= item;
     ic.items[item]--;
-    ic._itemcount_implicit--;
+    ic.one_fewer_item();
+    // ic._itemcount_implicit--;
     // remove_from(bin, item);
     int from = decrease_and_sort(bin, item);
 

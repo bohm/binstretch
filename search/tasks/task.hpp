@@ -24,7 +24,8 @@ public:
         bc.last_item = ft.shorts[0];
         expansion_depth = ft.shorts[1];
         bc._totalload = ft.shorts[2];
-        bc.ic._itemcount_implicit = ft.shorts[3];
+        bc.ic.set_itemcount(ft.shorts[3]);
+        // bc.ic._itemcount_implicit = ft.shorts[3];
 
         bc.index = ft.longs[0];
         bc.ic.itemhash = ft.longs[1];
@@ -43,7 +44,7 @@ public:
         ret.shorts[0] = bc.last_item;
         ret.shorts[1] = expansion_depth;
         ret.shorts[2] = bc._totalload;
-        ret.shorts[3] = bc.ic._itemcount_implicit;
+        ret.shorts[3] = bc.ic.itemcount_implicit();
         ret.longs[0] = bc.index;
         ret.longs[1] = bc.ic.itemhash;
 

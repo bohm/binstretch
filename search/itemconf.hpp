@@ -1,58 +1,77 @@
 #pragma once
 
+// Itemcount now parametrized based on if we can allow unsigned char to be the content of the array or not.
+// General rule should be that if S*BINS >= 255, we should not run char.
+
+
 template<int DENOMINATOR>
 class itemconf {
 public:
-    std::array<int, DENOMINATOR> items = {};
+    // Position 0 stores the implicit itemcount.
+    std::array<ITEM_TYPE, DENOMINATOR> items = {};
     itemhash_t itemhash = 0;
-    int _itemcount_implicit = 0;
+    // T _itemcount_implicit = 0;
 
     // We do not initialize the hash by default, but maybe we should. 
     itemconf() {
     }
 
-    itemconf(const std::array<int, DENOMINATOR> &content) {
+    inline ITEM_TYPE itemcount_implicit() const {
+        return items[0];
+    }
+
+    inline void reset_itemcount() {
+        items[0] = itemcount_explicit();
+    }
+
+    inline void one_more_item() {
+        ++items[0];
+    }
+
+    inline void one_fewer_item() {
+        --items[0];
+    }
+
+    inline void set_itemcount(ITEM_TYPE count) {
+        items[0] = count;
+    }
+
+    itemconf(const std::array<ITEM_TYPE, DENOMINATOR> &content) {
         items = content;
-        _itemcount_implicit = itemcount_explicit();
+        items[0] = itemcount_explicit();
+        hashinit();
+    }
+
+    // Use only in corner cases.
+    itemconf(const std::array<int, DENOMINATOR> &content) {
+        for (int i = 1; i < DENOMINATOR; ++i) {
+            items[i] = static_cast<ITEM_TYPE>(content[i]);
+        }
+        items[0] = itemcount_implicit();
         hashinit();
     }
 
 
-    int itemcount_explicit() const {
-        int total = 0;
+    ITEM_TYPE itemcount_explicit() const {
+        ITEM_TYPE total = 0;
         for (int i = 1; i < DENOMINATOR; i++) {
             total += items[i];
         }
         return total;
     }
 
-    int itemcount() const {
-        return _itemcount_implicit;
+    inline ITEM_TYPE itemcount() const {
+        return items[0];
     }
 
 
-    inline static int shrink_item(int larger_item) {
+    inline static ITEM_TYPE shrink_item(ITEM_TYPE larger_item) {
         if ((larger_item * DENOMINATOR) % S == 0) {
             return ((larger_item * DENOMINATOR) / S) - 1;
         } else {
             return (larger_item * DENOMINATOR) / S;
         }
     }
-
-    // We might wish to use itemconf for the full spectrum of item sizes.
-    // If we do, we hit the problem of alignment -- itemconf only has DENOMINATOR
-    // positions, and uses the [0] position too.
-
-    // Align stores items of size 1 in [0].
-    inline static int align(int itemsize) {
-        return itemsize - 1;
-    }
-
-    // Truesize prints the right size of item at index [0] (it is 1).
-    inline static int truesize(int index) {
-        return index + 1;
-    }
-
 
     void initialize(itemconf<S+1> &larger_bc) {
         for (int i = 1; i <= S; i++) {
@@ -100,14 +119,14 @@ public:
         itemhash ^= Zi[itemtype * (MAX_ITEMS + 1) + items[itemtype]];
         itemhash ^= Zi[itemtype * (MAX_ITEMS + 1) + items[itemtype] + amount];
         items[itemtype] += amount;
-        _itemcount_implicit += amount;
+        items[0] += amount;
     }
 
     void decrease(int itemtype, int amount = 1) {
         itemhash ^= Zi[itemtype * (MAX_ITEMS + 1) + items[itemtype]];
         itemhash ^= Zi[itemtype * (MAX_ITEMS + 1) + items[itemtype] - amount];
         items[itemtype] -= amount;
-        _itemcount_implicit -= amount;
+        items[0] -= amount;
     }
 
 

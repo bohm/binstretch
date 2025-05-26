@@ -11,7 +11,7 @@ public:
     int suggestion;
 
     bool match(const binconf *other) const {
-        return binconf_equal(&bc, other);
+        return binconf_fully_equal(&bc, other);
     }
 };
 
@@ -68,7 +68,7 @@ public:
 
             // Using filetools functions to load the bin configuration part.
             std::array<int, BINS + 1> loads = load_segment_with_loads(str_s);
-            std::array<int, S + 1> items = load_segment_with_items<S>(str_s);
+            std::array<ITEM_TYPE, S + 1> items = load_segment_with_items<S>(str_s);
             int last_item = load_last_item_segment(str_s);
             binconf curbc(loads, items, last_item);
 

@@ -85,7 +85,7 @@ private:
     }
 
     uint64_t trim(uint64_t ha) {
-        return logpart(ha, logsize);
+        return first_k_bits(ha, logsize);
     }
 
 public:

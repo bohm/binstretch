@@ -1,5 +1,7 @@
 #pragma once
 
+#include <bitset>
+
 // The state cache implemented very differently, with the focus on measuring
 // hit rates. Only use for analysis.
 
@@ -96,7 +98,7 @@ public:
 //    }
 
     static size_t trim_precache(uint64_t ha) {
-        return logpart(ha, PRECACHE_LOGSIZE);
+        return last_k_bits(ha, PRECACHE_LOGSIZE);
     }
 
     inline victory lookup_virtual(binconf *bc, int item, unsigned char bin) {

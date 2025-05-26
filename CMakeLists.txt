@@ -155,7 +155,9 @@ function(build_search BINS R S MONOT SCALE)
     target_compile_definitions(search-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IS=${S})
     target_compile_definitions(search-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC ISCALE=${SCALE})
     target_compile_definitions(search-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IMONOT=${MONOT})
-    target_compile_definitions(search-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IRECURSION=1)
+    target_compile_definitions(search-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IRECURSION=0)
+    target_compile_definitions(search-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IPACKED=1)
+
 endfunction()
 
 # build_search(3 4 3 -1 -1) # Lower bound.
@@ -166,15 +168,17 @@ endfunction()
 # build_search(3 149 109 -1 -1)
 # build_search(8 19 14 -1 -1)
 # build_search(4 19 14 -1 -1)
+# build_search(10 19 14 -1 -1)
+build_search(12 19 14 -1 -1)
 # build_tests(3 56 41 -1 -1)
 # build_tests(3 19 14 -1 -1)
 # build_tests(4 19 14 -1 -1)
-build_tests(7 19 14 -1 -1)
+# build_tests(7 19 14 -1 -1)
 # build_tests(8 19 14 -1 -1)
-# build_tests(12 19 14 -1 -1)
-# build_search(8 19 14 -1 -1)
-# build_tests(3 19 14 -1 -1)
+# build_tests(10 19 14 -1 -1)
 
+# build_tests(12 19 14 -1 -1)
+# build_tests(3 19 14 -1 -1)
 
 #add_executable(minibs-stats minitools/minibs-stats.cpp)
 #

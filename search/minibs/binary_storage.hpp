@@ -748,7 +748,7 @@ public:
     }
 
     void write_one_feasible_hashset(int layer_index, flat_hash_set<index_t> *single_hashset) {
-        char memsave_file_path[256] {};
+        char memsave_file_path[1024] {};
         sprintf(memsave_file_path, "%s/%d.bin", memory_saving_folder, layer_index);
         FILE *memsave_file = fopen(memsave_file_path, "wb");
         write_one_set<index_t>(single_hashset, memsave_file);
@@ -756,7 +756,7 @@ public:
     }
 
     void read_one_feasible_hashset(int layer_index, flat_hash_set<index_t> *hashset_to_fill) {
-        char memsave_file_path[256] {};
+        char memsave_file_path[1024] {};
         sprintf(memsave_file_path, "%s/%d.bin", memory_saving_folder, layer_index);
         FILE *memsave_file = fopen(memsave_file_path, "rb");
         read_one_set<index_t>(hashset_to_fill, memsave_file);
@@ -764,7 +764,7 @@ public:
     }
 
     void delete_memory_saving_file(int layer_index) {
-        char memsave_file_path[256] {};
+        char memsave_file_path[1024] {};
         sprintf(memsave_file_path, "%s/%d.bin", memory_saving_folder, layer_index);
         bool file_removed = fs::remove(memsave_file_path);
         if (!file_removed) {

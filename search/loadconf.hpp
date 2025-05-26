@@ -16,7 +16,7 @@
 class loadconf {
 #if USE_PACKED_ARRAYS && IBINS <= 15 && IR <= 255
 public:
-    packed_loadconf loads;
+    PACKED_ARRAY_TYPE loads;
     inline void store(size_t pos, unsigned char val) {
         // Hack. position is decreased by 1 to match that we insert into bin number BINS == 3, not BINS-1.
         // fprintf(stderr, "Storing value %" PRIu8 " in position %zd.\n", val, pos-1);
@@ -193,7 +193,13 @@ public:
 #if USE_PACKED_ARRAYS && IBINS <= 15 && IR <= 255
     size_t increase_and_sort(size_t i, unsigned char val) {
         size_t packed_pos = loads.one_increased(i, val);
-        assert(packed_pos >= 1 && packed_pos <= BINS);
+#ifndef NDEBUG
+        if (!(packed_pos >= 1 && packed_pos <= BINS)) {
+            fprintf(stderr, "After packing %u into bin %lu, we got a new position %lu.\n", val, i, packed_pos);
+            print(stderr);
+            assert(packed_pos >= 1 && packed_pos <= BINS);
+        }
+#endif
         return packed_pos;
     }
 
@@ -221,11 +227,20 @@ public:
     // Note that the array of binoms_gl uses bin indices from 0 to BINS-1, so we subtract
     // one in every array access.
     void reindex_loads_increased_range(int item, int from, int to) {
-        assert(item >= 1);
-        assert(from <= to);
-        assert(from >= 1);
-        assert(to <= BINS);
-        assert(loads[from] >= item);
+#ifndef NDEBUG
+        if (!(item >= 1 && from <= to && from >= 1 && to <= BINS)) {
+            fprintf(stderr, "Called reindex_loads_increased_range(%d,%d,%d) on ", item, from, to);
+            print(stderr);
+            fprintf(stderr, ".\n");
+            assert(item >= 1 && from <= to && from >= 1 && to <= BINS);
+        }
+
+        if (loads[from] < item) {
+            fprintf(stderr, "Called reindex_loads_increased_range(%d,%d,%d) on ", item, from, to);
+            fprintf(stderr, "Load on position %d is less than %d, it is actually %u.\n", from, item, loads[from]);
+            assert(loads[from] >= item);
+        }
+#endif
 
         if (from == to) {
             // The bin only increased in load, but kept its position.

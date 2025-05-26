@@ -55,6 +55,13 @@ inline constexpr bool USING_RECURSION = false;
 #define USE_PACKED_ARRAYS IPACKED
 #endif
 
+
+#if USE_PACKED_ARRAYS && IBINS <= 8
+#define PACKED_ARRAY_TYPE packed_array_eight
+#elif IBINS <= 16
+#define PACKED_ARRAY_TYPE packed_loadconf
+#endif
+
 #include <array>
 
 // To have the code buildable on Ubuntu 18.04, we include this
@@ -73,6 +80,7 @@ constexpr int S = IS;
 constexpr int R = IR;
 constexpr int BINS = IBINS;
 
+#define ITEM_TYPE unsigned char
 
 // Output types are no longer used.
 // enum class output_type {tree, dag, coq};

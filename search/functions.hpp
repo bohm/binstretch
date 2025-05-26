@@ -79,8 +79,9 @@ int get_last_two_bits(const uint64_t &n) {
 }
 
 inline bool get_last_bit(uint64_t n) {
-    return ((n & 1) == 1);
+    return (n % 2);
 }
+
 
 uint64_t quicklog(uint64_t x) {
     uint64_t ret = 0;
@@ -119,18 +120,26 @@ void printBits64(uint64_t num) {
 // template logpart
 
 template<unsigned int LOG>
-inline uint64_t logpart(uint64_t x) {
+inline uint64_t first_k_bits(uint64_t x) {
     return x >> (64 - LOG);
 }
 
-const auto loadlogpart = logpart<LOADLOG>;
+const auto loadlogpart = first_k_bits<LOADLOG>;
 
 // with some memory allocated dynamically, we also need a dynamic logpart
 
-inline uint64_t logpart(uint64_t x, unsigned int log) {
+inline uint64_t first_k_bits(uint64_t x, unsigned int log) {
     return x >> (64 - log);
 }
 
+template<unsigned int LOG>
+inline uint64_t last_k_bits(uint64_t x) {
+    return (x & ((1ULL << LOG) - 1));
+}
+
+inline uint64_t last_k_bits(uint64_t x, uint64_t k) {
+    return (x & ((1ULL << k) - 1));
+}
 
 // printing an array of constant size in a reasonable way
 

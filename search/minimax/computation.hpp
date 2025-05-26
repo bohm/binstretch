@@ -6,6 +6,8 @@
 #include "../dag/dag.hpp"
 #include "../minibs/minibs.hpp"
 #include "cache/state.hpp"
+#include "cache/state_layered.hpp"
+#include "cache/state_layered_precache.hpp"
 #include "cache/state_analysis_cache.hpp"
 struct adversary_notes {
     int old_largest = 0;

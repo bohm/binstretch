@@ -51,7 +51,7 @@ victory computation<MODE, MINIBS_SCALE>::heuristic_visit_alg(int pres_item) {
     }
 
     // Assuming we did not return by now, we have not resolved the problem using MINIBINSTRETCHING.
-    if (HEURISTIC_VISITS_USING_CACHE && itemdepth >= CACHE_THRESHOLD) {
+    if (HEURISTIC_VISITS_USING_CACHE) {
         i = 1;
         while (i <= BINS) {
             // Skip a step where two bins have the same load.

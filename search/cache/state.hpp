@@ -8,7 +8,11 @@
 #include "net/local/threadsafe_printer.hpp"
 // Implementations of specific caches, using the interface defined in cache_generic.hpp.
 
+// Note: With the recent shift from the index being the first k bits to the last k bits,
+// it is true that a single position does not contain its full hash in the _data field;
+// this is because the last bit is used for the boolean victory value.
 
+// This should not be an issue, because match(right hash) == true.
 class conf_el {
 public:
     uint64_t _data;
@@ -27,10 +31,6 @@ public:
 
     inline victory win() const {
         return static_cast<enum victory>(get_last_bit(_data));
-    }
-
-    inline uint64_t hash() const {
-        return zero_last_bit(_data);
     }
 
     inline bool match(const uint64_t hash) const {
@@ -138,7 +138,7 @@ public:
     }
 
     uint64_t trim(uint64_t ha) const {
-        return logpart(ha, logsize);
+        return last_k_bits(ha, logsize);
     }
 
     // Intentionally does nothing. Only relevant for state_analysis_cache.
