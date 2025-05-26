@@ -147,7 +147,7 @@ function(build_search BINS R S MONOT SCALE)
     add_dependencies(search search-${BINS}-${R}-${S}-${MONOT}-${SCALE})
     set_target_properties(search-${BINS}-${R}-${S}-${MONOT}-${SCALE}
             PROPERTIES
-            OUTPUT_NAME search-${SCALE}
+            OUTPUT_NAME search-${SCALE}-mon-${MONOT}
     )
 
     target_compile_definitions(search-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IBINS=${BINS})
@@ -169,7 +169,11 @@ endfunction()
 # build_search(8 19 14 -1 -1)
 # build_search(4 19 14 -1 -1)
 # build_search(10 19 14 -1 -1)
-build_search(12 19 14 -1 -1)
+build_search(12 19 14 3 0)
+build_search(12 19 14 3 1)
+build_search(12 19 14 6 0)
+build_search(12 19 14 6 1)
+
 # build_tests(3 56 41 -1 -1)
 # build_tests(3 19 14 -1 -1)
 # build_tests(4 19 14 -1 -1)
