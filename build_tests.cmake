@@ -90,7 +90,7 @@ function(build_test_recursion BINS R S MONOT SCALE)
     add_dependencies(tests explore-rec-${BINS}-${R}-${S}-${MONOT}-${SCALE})
     set_target_properties(explore-rec-${BINS}-${R}-${S}-${MONOT}-${SCALE}
             PROPERTIES
-            OUTPUT_NAME explore-rec-${SCALE}
+            OUTPUT_NAME explore-rec-${SCALE}-mon-${MONOT}
     )
 
 
@@ -110,7 +110,7 @@ function(build_test_stack BINS R S MONOT SCALE)
     add_dependencies(tests explore-stack-${BINS}-${R}-${S}-${MONOT}-${SCALE})
     set_target_properties(explore-stack-${BINS}-${R}-${S}-${MONOT}-${SCALE}
             PROPERTIES
-            OUTPUT_NAME explore-stack-${SCALE}
+            OUTPUT_NAME explore-stack-${SCALE}-mon-${MONOT}
     )
     target_compile_definitions(explore-stack-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IBINS=${BINS})
     target_compile_definitions(explore-stack-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IR=${R})
@@ -126,7 +126,7 @@ function(build_test_packed BINS R S MONOT SCALE)
     add_dependencies(tests explore-packed-${BINS}-${R}-${S}-${MONOT}-${SCALE})
     set_target_properties(explore-packed-${BINS}-${R}-${S}-${MONOT}-${SCALE}
             PROPERTIES
-            OUTPUT_NAME explore-packed-${SCALE}
+            OUTPUT_NAME explore-packed-${SCALE}-mon-${MONOT}
     )
     target_compile_definitions(explore-packed-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IBINS=${BINS})
     target_compile_definitions(explore-packed-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IR=${R})
@@ -135,6 +135,18 @@ function(build_test_packed BINS R S MONOT SCALE)
     target_compile_definitions(explore-packed-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IMONOT=${MONOT})
     target_compile_definitions(explore-packed-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IRECURSION=0) # Stack.
     target_compile_definitions(explore-packed-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IPACKED=1) # Stack.
+endfunction()
+
+function(build_knownsum_tests)
+    add_executable(knownsum-game-tests tests/knownsum-game-tests.cpp)
+    add_dependencies(tests knownsum-game-tests)
+    target_compile_definitions(knownsum-game-tests PUBLIC IBINS=12)
+    target_compile_definitions(knownsum-game-tests PUBLIC IR=19)
+    target_compile_definitions(knownsum-game-tests PUBLIC IS=14)
+    target_compile_definitions(knownsum-game-tests PUBLIC ISCALE=3)
+    target_compile_definitions(knownsum-game-tests PUBLIC IMONOT=1)
+    target_compile_definitions(knownsum-game-tests PUBLIC IRECURSION=0) # Stack.
+    target_compile_definitions(knownsum-game-tests PUBLIC IPACKED=1) # Stack.
 endfunction()
 
 function(build_tests BINS R S MONOT SCALE)
@@ -159,6 +171,5 @@ function(build_tests BINS R S MONOT SCALE)
     build_test_packed(${BINS} ${R} ${S} ${MONOT} ${SCALE})
     # build_test_recursion(${BINS} ${R} ${S} ${MONOT} ${SCALE})
     # build_test_stack(${BINS} ${R} ${S} ${MONOT} ${SCALE})
-
 
 endfunction()

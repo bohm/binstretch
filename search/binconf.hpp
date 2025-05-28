@@ -203,7 +203,7 @@ bool binconf_loadsize_equal(const binconf *a, const binconf *b) {
     assert(a->index == b->index);
     assert(a->ic.itemhash == b->ic.itemhash);
     assert(a->_totalload == b->_totalload);
-    assert(a->ic._itemcount_implicit == b->ic._itemcount_implicit);
+    assert(a->ic.itemcount_implicit() == b->ic.itemcount_explicit());
 
     return true;
 }
@@ -280,7 +280,7 @@ void print_binconf_if(const binconf *b, bool newline = true) {
 }
 
 void binconf::consistency_check() const {
-    assert(ic._itemcount_implicit == ic.itemcount_explicit());
+    assert(ic.itemcount_implicit() == ic.itemcount_explicit());
 #ifndef NDEBUG
     if (_totalload != totalload_explicit()) {
         fprintf(stderr, "For the following binconf, the totalload is %u and the explicit one is %u.\n",

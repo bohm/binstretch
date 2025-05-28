@@ -28,13 +28,27 @@ std::string filename_timestamp(const std::tm *time) {
     return ret;
 }
 
-std::string filename_binstamp() {
+inline std::string filename_binstamp() {
     std::stringstream ss;
     ss << BINS;
     ss << "bins-";
     ss << R;
     ss << "-";
     ss << S;
+    return ss.str();
+}
+
+inline std::string filename_binstamp_numbers() {
+    std::stringstream ss;
+    ss << BINS;
+    ss << "-";
+    ss << R;
+    ss << "-";
+    ss << S;
+    ss << "-";
+    ss << MINIBS_SCALE;
+    ss << "-mon-";
+    ss << monotonicity;
     return ss.str();
 }
 

@@ -169,10 +169,10 @@ endfunction()
 # build_search(8 19 14 -1 -1)
 # build_search(4 19 14 -1 -1)
 # build_search(10 19 14 -1 -1)
-build_search(12 19 14 3 0)
-build_search(12 19 14 3 1)
-build_search(12 19 14 6 0)
-build_search(12 19 14 6 1)
+build_search(12 19 14 0 3)
+build_search(12 19 14 1 3)
+build_search(12 19 14 0 6)
+build_search(12 19 14 1 6)
 
 # build_tests(3 56 41 -1 -1)
 # build_tests(3 19 14 -1 -1)
@@ -182,6 +182,13 @@ build_search(12 19 14 6 1)
 # build_tests(10 19 14 -1 -1)
 
 # build_tests(12 19 14 -1 -1)
+build_tests(12 19 14 0 6)
+build_tests(12 19 14 0 3)
+build_tests(12 19 14 1 6)
+build_tests(12 19 14 1 3)
+
+build_knownsum_tests()
+
 # build_tests(3 19 14 -1 -1)
 
 #add_executable(minibs-stats minitools/minibs-stats.cpp)

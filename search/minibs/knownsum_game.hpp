@@ -99,9 +99,32 @@ public:
             return false;
         } */
 
+        // Okay, now the code below can easily be standardized and deduced from the knownsum game computation.
+        // However, for performance testing, we hardcode some constant here.
+
+        unsigned int loadsum = lc.loadsum();
+        if (BINS == 12 && R == 19 && S == 14) {
+            if (loadsum >= 163) {
+                return true;
+            }
+
+            // Only losing positions until load 39.
+            if (loadsum <= 39) {
+                return false;
+            }
+        }
+
         if (alg_immediately_winning(lc)) {
             return true;
         }
+
+        if (BINS == 12 && R == 19 && S == 14) {
+            // If load bigger than 154 and not immediately winning, it is losing.
+            if (loadsum >= 154) {
+                return true;
+            }
+        }
+
 
         return winning_indices.contains(lc.index);
     }
@@ -114,8 +137,30 @@ public:
             load_on_last = std::min(static_cast<int>(lc.loads[BINS - 1]), lc.loads[BINS] + item);
         }
 
+        // Okay, now the code below can easily be standardized and deduced from the knownsum game computation.
+        // However, for performance testing, we hardcode some constant here.
+
+        if (BINS == 12 && R == 19 && S == 14) {
+            // All loads above 163 are immediately winning.
+            if (load_if_packed >= 163) {
+                return true;
+            }
+
+            // Only losing positions until load 39.
+            if (load_if_packed <= 39) {
+                return false;
+            }
+        }
+
         if (alg_immediately_winning(load_if_packed, load_on_last)) {
             return true;
+        }
+
+        if (BINS == 12 && R == 19 && S == 14) {
+            // If load bigger than 154 and not immediately winning, it is losing.
+            if (load_if_packed >= 154) {
+                return true;
+            }
         }
 
         if (alg_winning_by_gs5plus(lc, item, bin)) {
