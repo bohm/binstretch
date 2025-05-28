@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.26)
-project(clion)
+project(binstretch)
 
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
@@ -171,8 +171,8 @@ endfunction()
 # build_search(10 19 14 -1 -1)
 build_search(12 19 14 0 3)
 build_search(12 19 14 1 3)
-build_search(12 19 14 0 6)
-build_search(12 19 14 1 6)
+#build_search(12 19 14 0 6)
+#build_search(12 19 14 1 6)
 
 # build_tests(3 56 41 -1 -1)
 # build_tests(3 19 14 -1 -1)

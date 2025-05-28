@@ -164,6 +164,20 @@ int dynprog_max_direct(const binconf &conf, dynprog_data *dpdata = nullptr, meas
     return max_overall;
 }
 
+struct layer_data {
+    std::array<size_t, MAX_ITEMS> layer_capacity{};
+    std::array<loadconf*, MAX_ITEMS> layers{};
+};
+
+// Compute all feasible configurations and return them in a layer form.
+// A potential downside is that we no longer deal with items of size S or 1 separately,
+// we deal with them as part of a sequence.
+// A potential upside is that we can store some history information and reuse it.
+
+ITEM_TYPE dynprog_max_layers(layer_data *layers, std::array<ITEM_TYPE, MAX_ITEMS> *item_seqeunce,
+                             int last_valid_layer, int target_layer) {
+
+}
 
 // Compute all feasible configurations and return them.
 // This algorithm is currently used in heuristics only.
