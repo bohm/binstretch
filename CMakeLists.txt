@@ -1,11 +1,24 @@
 cmake_minimum_required(VERSION 3.26)
 project(binstretch)
 
+
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
-
 message("CMake build type: ${CMAKE_BUILD_TYPE}.")
+
+# Notice: https://github.com/greg7mdp/parallel-hashmap is now required for the program to build.
+# This is a header-only hashmap/set that seems quicker and lower-memory than the stock unordered_set.
+
+include(FetchContent)
+FetchContent_Declare(
+        parallel_hashmap
+        GIT_REPOSITORY https://github.com/greg7mdp/parallel-hashmap
+        GIT_TAG        master
+)
+FetchContent_MakeAvailable(parallel_hashmap)
+include_directories(${parallel_hashmap_SOURCE_DIR})
+
 
 add_custom_target(search)
 add_custom_target(tests)
@@ -35,7 +48,6 @@ include_directories(search/poset)
 include_directories(search/strategies)
 include_directories(search/weights)
 include_directories(../parallel-hashmap)
-
 
 function(build_search BINS R S MONOT SCALE)
     if (${MONOT} EQUAL -1)
@@ -157,20 +169,19 @@ function(build_search BINS R S MONOT SCALE)
     target_compile_definitions(search-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IMONOT=${MONOT})
     target_compile_definitions(search-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IRECURSION=0)
     target_compile_definitions(search-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IPACKED=1)
-
 endfunction()
 
 # build_search(3 4 3 -1 -1) # Lower bound.
 # build_search(3 6 4 -1 -1) # Not a lower bound.
 # build_search(3 19 14 -1 -1) # Lower bound.
 # build_search(3 56 41 -1 -1) # Not a lower bound.
-# build_search(3 164 120 -1 -1) # Lower bound.
+build_search(3 164 120 -1 -1) # Lower bound.
 # build_search(3 149 109 -1 -1)
 # build_search(8 19 14 -1 -1)
 # build_search(4 19 14 -1 -1)
 # build_search(10 19 14 -1 -1)
-build_search(12 19 14 0 3)
-build_search(12 19 14 1 3)
+# build_search(12 19 14 0 3)
+# build_search(12 19 14 1 3)
 #build_search(12 19 14 0 6)
 #build_search(12 19 14 1 6)
 
@@ -182,12 +193,12 @@ build_search(12 19 14 1 3)
 # build_tests(10 19 14 -1 -1)
 
 # build_tests(12 19 14 -1 -1)
-build_tests(12 19 14 0 6)
-build_tests(12 19 14 0 3)
-build_tests(12 19 14 1 6)
-build_tests(12 19 14 1 3)
+# build_tests(12 19 14 0 6)
+# build_tests(12 19 14 0 3)
+# build_tests(12 19 14 1 6)
+# build_tests(12 19 14 1 3)
 
-build_knownsum_tests()
+# build_knownsum_tests()
 
 # build_tests(3 19 14 -1 -1)
 

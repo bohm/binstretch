@@ -164,20 +164,45 @@ int dynprog_max_direct(const binconf &conf, dynprog_data *dpdata = nullptr, meas
     return max_overall;
 }
 
-struct layer_data {
-    std::array<size_t, MAX_ITEMS> layer_capacity{};
-    std::array<loadconf*, MAX_ITEMS> layers{};
-};
+// Invariants:
+// layers[i] -- all possible partitions of OPT just before item i arrived.
+// This means that layers[0] should always be a valid layer (no items have arrived)
+// and that layer[0] should be computed during function initialization.
 
-// Compute all feasible configurations and return them in a layer form.
-// A potential downside is that we no longer deal with items of size S or 1 separately,
-// we deal with them as part of a sequence.
-// A potential upside is that we can store some history information and reuse it.
-
-ITEM_TYPE dynprog_max_layers(layer_data *layers, std::array<ITEM_TYPE, MAX_ITEMS> *item_seqeunce,
-                             int last_valid_layer, int target_layer) {
-
-}
+// Be mindful of the indexing difference -- item_sequence[0] is the first item.
+// struct layer_data {
+//     std::array<size_t, MAX_ITEMS + 1 > layer_capacity{};
+//     std::array<loadconf*, MAX_ITEMS + 1> layers{};
+//
+//     void finalize_layer(const std::vector<loadconf>& freshly_computed_layer, int index) {
+//         assert(layer_capacity[index] == 0 && layers[index] == nullptr);
+//         auto *l = new loadconf[freshly_computed_layer.size()];
+//         layer_capacity[index] = freshly_computed_layer.size();
+//         std::copy(freshly_computed_layer.begin(), freshly_computed_layer.end(), l);
+//     }
+//
+//     void free_layer(int index) {
+//         delete[] layers[index];
+//         layers[index] = nullptr;
+//         layer_capacity[index] = 0;
+//     }
+// };
+//
+// // Compute all feasible configurations and return them in a layer form.
+// // A potential downside is that we no longer deal with items of size S or 1 separately,
+// // we deal with them as part of a sequence.
+// // A potential upside is that we can store some history information and reuse it.
+//
+// ITEM_TYPE dynprog_max_layers(layer_data *layers, std::array<ITEM_TYPE, MAX_ITEMS> *item_seqeunce,
+//                              int last_valid_layer, int target_layer) {
+//
+//     std::vector<loadconf> upcoming_layer;
+//     flat_hash_set<index_t> upcoming_layer_indices;
+//
+//     for (int i = last_valid_layer; i < target_layer; i++) {
+//         ITEM_TYPE item = (*item_seqeunce)[i];
+//     }
+// }
 
 // Compute all feasible configurations and return them.
 // This algorithm is currently used in heuristics only.

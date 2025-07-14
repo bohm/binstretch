@@ -4,8 +4,6 @@
 #include "binconf.hpp"
 #include "optconf.hpp"
 #include <parallel_hashmap/phmap.h>
-// Notice: https://github.com/greg7mdp/parallel-hashmap is now required for the program to build.
-// This is a header-only hashmap/set that seems quicker and lower-memory than the unordered_set.
 
 using phmap::flat_hash_set;
 
