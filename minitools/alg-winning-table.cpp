@@ -5,6 +5,8 @@
 #include <cstdint>
 
 #include "minitool_scale.hpp"
+#include "presets/default_heuristics.hpp"
+#include "common.hpp"
 #include "minibs/minibs.hpp"
 #include "minibs/minibs-three.hpp"
 
@@ -533,7 +535,7 @@ void adv_winning_description(std::pair<loadconf, itemconf<SCALE>> *pos, minibs<S
 
                 if (item + pos->first.loads[bin] <= R - 1) {
                     loadconf nextlc(pos->first);
-                    nextlc.assign_and_rehash(item, bin);
+                    nextlc.assign_and_reindex(item, bin);
                     itemconf<SCALE> nextic(pos->second);
                     if (shrunk_itemtype != 0) {
                         nextic.increase(shrunk_itemtype);
@@ -550,7 +552,7 @@ void adv_winning_description(std::pair<loadconf, itemconf<SCALE>> *pos, minibs<S
 template<int SCALE>
 std::pair<loadconf, itemconf<SCALE>> loadshrunken(std::stringstream &str_s, bool only_load = false) {
     std::array<int, BINS + 1> loads = load_segment_with_loads(str_s);
-    std::array<int, SCALE> items = {0};
+    std::array<ITEM_TYPE, SCALE> items = {0};
 
     if (!only_load) {
         items = load_segment_with_items<SCALE - 1>(str_s);
@@ -558,7 +560,16 @@ std::pair<loadconf, itemconf<SCALE>> loadshrunken(std::stringstream &str_s, bool
 
     // int _ = load_last_item_segment(str_s);
 
-    loadconf r1(loads);
+    // Currently, we do not initialize a loadconf with an array directly, as this can be very costly,
+    // especially if converting often between packed arrays and std::array. So, we just initialize slowly here.
+    // Hard requirement: loads are already sorted.
+    // loadconf r1(loads);
+    loadconf r1;
+    for (int p = 1; p <= BINS; p++) {
+        r1.store(p, loads[p]);
+    }
+    r1.index_init();
+
     itemconf<SCALE> r2(items);
     return std::pair(r1, r2);
 }
@@ -608,7 +619,7 @@ void sand_winning_table(std::pair<loadconf, itemconf<SCALE>> *minibs_position, m
             minibs->maximum_feasible_via_feasible_positions(minibs_position->second));
     int start_item = std::min(S * BINS - minibs_position->first.loadsum(), maximum_feasible_via_minibs);
     flat_hash_map<int, std::string> good_move_map;
-    int first_sand_losing = -1;
+    int first_sand_losing = 1 + std::min(S, S*BINS - minibs_position->first.loadsum());
 
     for (int item_as_sand = 1; item_as_sand <= start_item; item_as_sand++) {
 
@@ -802,9 +813,9 @@ int main(int argc, char **argv) {
     minibs<MINITOOL_MINIBS_SCALE, 3> mb;
     mb.backup_calculations();
 
-    fprintf(stderr, "Evaluating the pair:");
+    fprintf(stderr, "Evaluating the pair: ");
     print_minibs<MINITOOL_MINIBS_SCALE>(&p);
-    fprintf(stderr, "With index %" PRIu32 " and itemhash %" PRIu64 ".\n", p.first.index, p.second.itemhash);
+    fprintf(stderr, " with index %" PRIu32 " and itemhash %" PRIu64 ".\n", p.first.index, p.second.itemhash);
 
     alg_winning_table(&p, &mb);
 

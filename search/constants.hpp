@@ -80,7 +80,13 @@ constexpr int S = IS;
 constexpr int R = IR;
 constexpr int BINS = IBINS;
 
+#if (IS*IBINS) <= 255
 #define ITEM_TYPE unsigned char
+#pragma message "Item type is unsigned char."
+#else
+#define ITEM_TYPE unsigned short
+#pragma message "Item type is unsigned short."
+#endif
 
 // Output types are no longer used.
 // enum class output_type {tree, dag, coq};

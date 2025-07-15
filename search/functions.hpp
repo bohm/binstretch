@@ -143,18 +143,20 @@ inline uint64_t last_k_bits(uint64_t x, uint64_t k) {
 
 // printing an array of constant size in a reasonable way
 
-template<int NUM>
-void print_int_array(FILE *stream,
-                     const std::array<int, NUM> &arr,
-                     bool trailing_newline = false, bool square_brackets = true) {
+template<class T, int NUM>
+void print_array(FILE *stream,
+                     const std::array<T, NUM> &arr,
+                     bool trailing_newline = false, bool square_brackets = true, int first_element = 0,
+                     int last_element = NUM-1) {
     if (square_brackets) {
         fprintf(stream, "[");
     } else {
         fprintf(stream, "(");
     }
 
-    for (int i = 0; i < NUM; i++) {
-        fprintf(stream, "%d", arr[i]);
+    for (int i = first_element; i <= last_element; i++) {
+        std::string element = std::format("{}", arr[i]);
+        fprintf(stream, "%s", element.c_str());
         if (i < NUM - 1) {
             fprintf(stream, " ");
         }
@@ -169,10 +171,4 @@ void print_int_array(FILE *stream,
     if (trailing_newline) {
         fprintf(stream, "\n");
     }
-}
-
-template<int NUM>
-void print_int_array(const std::array<int, NUM> &arr,
-                     bool trailing_newline = false) {
-    print_int_array<NUM>(stderr, arr, trailing_newline);
 }

@@ -174,7 +174,8 @@ public:
     }
 
     void print(FILE *stream = stderr, bool newline = true) const {
-        print_int_array<DENOMINATOR>(stream, items, false, false);
+        print_array<ITEM_TYPE, DENOMINATOR>(stream, items, false, false,
+            1, DENOMINATOR-1);
         // fprintf(stream, " with itemhash %" PRIu64, itemhash);
         if (newline) {
             fprintf(stream, "\n");
