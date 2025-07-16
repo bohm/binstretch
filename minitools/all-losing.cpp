@@ -166,6 +166,8 @@ int main(int argc, char **argv) {
     minibs<MINIBS_SCALE, BINS> mb;
     mb.backup_calculations();
 
+    // mb.knownsum.print_losing_set();
+    // fprintf(stderr, "---\n");
 
     alg_losing_table<MINIBS_SCALE, BINS>(&p, &mb);
     // binary_storage<TEST_SCALE> bstore;

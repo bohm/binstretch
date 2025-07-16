@@ -139,29 +139,29 @@ public:
 
         // Okay, now the code below can easily be standardized and deduced from the knownsum game computation.
         // However, for performance testing, we hardcode some constant here.
-
-        if (BINS == 12 && R == 19 && S == 14) {
-            // All loads above 163 are immediately winning.
-            if (load_if_packed >= 163) {
-                return true;
-            }
-
-            // Only losing positions until load 39.
-            if (load_if_packed <= 39) {
-                return false;
-            }
-        }
+        //
+        // if (BINS == 12 && R == 19 && S == 14) {
+        //     // All loads above 163 are immediately winning.
+        //     if (load_if_packed >= 163) {
+        //         return true;
+        //     }
+        //
+        //     // Only losing positions until load 39.
+        //     if (load_if_packed <= 39) {
+        //         return false;
+        //     }
+        // }
 
         if (alg_immediately_winning(load_if_packed, load_on_last)) {
             return true;
         }
 
-        if (BINS == 12 && R == 19 && S == 14) {
-            // If load bigger than 154 and not immediately winning, it is losing.
-            if (load_if_packed >= 154) {
-                return true;
-            }
-        }
+        // if (BINS == 12 && R == 19 && S == 14) {
+        //     // If load bigger than 154 and not immediately winning, it is losing.
+        //     if (load_if_packed >= 154) {
+        //         return true;
+        //     }
+        // }
 
         if (alg_winning_by_gs5plus(lc, item, bin)) {
             return true;
@@ -247,5 +247,22 @@ public:
                 "Knownsum layer: %" PRIu64 " winning and %" PRIu64 " losing load configurations, elements in cache %zu\n",
                 winning_loadconfs, losing_loadconfs, winning_indices.size());
 
+    }
+
+    // Two informational functions.
+
+    void print_winning_set() const {
+
+    }
+
+    void print_losing_set() const {
+        loadconf iterated_lc = first_losing_loadconf;
+        do {
+            bool winning = query(iterated_lc);
+            if (!winning) {
+                iterated_lc.print(stderr);
+                fprintf(stderr, "\n");
+            }
+        } while (decrease(&iterated_lc));
     }
 };

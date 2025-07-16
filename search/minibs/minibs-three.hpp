@@ -2,19 +2,12 @@
 
 #include <cstring>
 #include <parallel_hashmap/phmap.h>
-
-// Notice: https://github.com/greg7mdp/parallel-hashmap is now required for the program to build.
-// This is a header-only hashmap/set that seems quicker and lower-memory than the unordered_set.
-
 #include "../common.hpp"
 #include "../binconf.hpp"
 #include "../functions.hpp"
 #include "../hash.hpp"
-#include "../thread_attr.hpp"
-#include "../cache/loadconf.hpp"
 #include "../heur_alg_knownsum.hpp"
 #include "binary_storage.hpp"
-#include "fingerprints.hpp"
 #include "fingerprint_storage.hpp"
 #include "minidp.hpp"
 #include "feasibility.hpp"
@@ -678,7 +671,7 @@ public:
         }
 
         if (!bstore.storage_exists()) {
-            print_if<PROGRESS>("Queen: Backing up Minibs<%d> calculations.\n", DENOMINATOR);
+            print_if<PROGRESS>("Backing up Minibs<%d> calculations.\n", DENOMINATOR);
             bstore.backup_three(midgame_feasible_partitions, endgame_adjacent_partitions, endgame_adjacent_maxfeas,
                                 fingerprint_map, fingerprints, unique_fps);
         }

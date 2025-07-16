@@ -205,10 +205,11 @@ endfunction()
 
 # build_tests(3 19 14 -1 -1)
 
-build_ub_tools(3 821 600 599 6)
-build_ub_tools(3 823 600 599 6)
-build_ub_tools(3 823 600 599 7)
-build_ub_tools(3 823 600 599 12)
+build_ub_tools(3 83 60 59 6)
+# build_ub_tools(3 821 600 599 6)
+# build_ub_tools(3 823 600 599 6)
+# build_ub_tools(3 823 600 599 7)
+# build_ub_tools(3 823 600 599 12)
 # build_awt(3 83 60 59 6)
 #add_executable(minibs-stats minitools/minibs-stats.cpp)
 #
