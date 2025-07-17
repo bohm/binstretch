@@ -29,8 +29,8 @@ int gs1(const binconf *b, measure_attr *meas) {
 
 }
 
-// Good situations (for 3 bins) rewritten for loadconf, where appropriate.
-bool gs1(loadconf *lc) {
+// Good situations (for 3 bins) rewritten for loadconf<BINS>, where appropriate.
+bool gs1(loadconf<BINS> *lc) {
     return (lc->loadsum() - lc->loads[BINS] >= GS1BOUND);
 }
 
@@ -46,7 +46,7 @@ int gs2(const binconf *b, measure_attr *meas) {
     return -1;
 }
 
-bool gs2(loadconf *lc) {
+bool gs2(loadconf<BINS> *lc) {
     for (int i = 1; i <= BINS; i++) {
         if ((lc->loads[i] >= (1 * S - 2 * ALPHA)) && (lc->loads[i] <= ALPHA)) {
             return true;
@@ -68,7 +68,7 @@ int gs3(const binconf *b, measure_attr *meas) {
 
 constexpr int GS3BOUND = (3 * S - 3 * ALPHA) / 2 + ((3 * S - 3 * ALPHA) % 2);
 
-bool gs3(loadconf *lc) {
+bool gs3(loadconf<BINS> *lc) {
     if ((lc->loads[1] >= GS3BOUND) && ((lc->loads[BINS] <= ALPHA) || (lc->loads[2] + lc->loads[3] >= 1 * S + ALPHA))) {
         return true;
     }
@@ -89,7 +89,7 @@ int gs4(const binconf *b, measure_attr *meas) {
     return -1;
 }
 
-bool gs4(loadconf *lc) {
+bool gs4(loadconf<BINS> *lc) {
     int gs3bound_plus_chalf = (3 * S - 3 * ALPHA + lc->loads[3]) / 2 + (3 * S - 3 * ALPHA + lc->loads[3]) % 2;
 
     if ((lc->loads[1] + lc->loads[2] >= gs3bound_plus_chalf) && (lc->loads[2] <= ALPHA)) {
@@ -468,7 +468,7 @@ int testgs(const binconf *b, measure_attr *meas) {
 
 // Update: Actually just GS6 rephrased. Not sure why I did not realize this.
 
-bool gs6(loadconf *lc) {
+bool gs6(loadconf<BINS> *lc) {
     // test for A and B separately (C must be below alpha either way.)
     if (lc->loads[3] > ALPHA) {
         return false;

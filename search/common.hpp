@@ -164,6 +164,7 @@ uint64_t **Zlbig;
 // defined in binconf.hpp
 class binconf;
 
+template <int BINCAP>
 class loadconf;
 
 // This abstract class describes what ADV should do when a heuristic succeeds.

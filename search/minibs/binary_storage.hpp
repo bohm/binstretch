@@ -557,7 +557,7 @@ public:
     }
 
     void restore_knownsum_set(flat_hash_set<uint32_t> &out_knownsum_set,
-                              loadconf &out_first_loadconf) {
+                              loadconf<BINS> &out_first_loadconf) {
         open_knownsum_for_reading();
         read_delimeter(knownsum_file);
         read_one_set(out_knownsum_set, knownsum_file);

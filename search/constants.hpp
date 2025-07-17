@@ -57,9 +57,9 @@ inline constexpr bool USING_RECURSION = false;
 
 
 #if USE_PACKED_ARRAYS && IBINS <= 8
-#define PACKED_ARRAY_TYPE packed_array_eight
+#define PACKED_ARRAY_TYPE packed_chars_eight<BINS, R>
 #elif IBINS <= 16
-#define PACKED_ARRAY_TYPE packed_loadconf
+#define PACKED_ARRAY_TYPE packed_chars_sixteen<BINS, R>
 #endif
 
 #include <array>

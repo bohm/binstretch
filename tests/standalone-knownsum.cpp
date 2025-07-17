@@ -10,7 +10,7 @@ void single_items_winning()
 {
     for (int item = 1; item <= S; item++)
     {
-	loadconf empty;
+	loadconf<BINS> empty;
 	empty.hashinit();
 	empty.assign_and_rehash(item, 1);
         int response = query_knownsum_heur(empty.loadhash);

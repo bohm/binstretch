@@ -112,7 +112,7 @@ public:
     itemconf<MINIBS_SCALE> *scaled_items = nullptr;
 
     optconf oc;
-    loadconf ol;
+    loadconf<BINS> ol;
     int task_id;
     // largest item since computation root (excluding sequencing and such)
     int largest_since_computation_root = 0;
@@ -157,7 +157,7 @@ public:
     // A slightly hacky addition: we underhandedly pass large item heuristic
     // when computing dynprog_max_via_vector.
     bool lih_hit = false;
-    loadconf lih_match;
+    loadconf<BINS> lih_match;
 
     // Caches for the current computation. These will differ whether this is the queen or the workers.
     guar_cache* dpcache = nullptr;

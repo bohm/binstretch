@@ -6,7 +6,7 @@
 // Print all nontrivially winning positions. This can be written faster, but should be okay for now.
 void print_nontrivially_winning(knownsum_game<MINIBS_SCALE, BINS> &ksgame, const std::string& filename) {
     FILE *fout =  fopen(filename.c_str(), "w");
-    loadconf iterated_lc = create_full_loadconf();
+    loadconf<BINS> iterated_lc = create_full_loadconf();
 
     do {
         // Skip anything immediately winning.
@@ -24,7 +24,7 @@ void print_nontrivially_winning(knownsum_game<MINIBS_SCALE, BINS> &ksgame, const
 }
 
 void print_losing_in_layer(knownsum_game<MINIBS_SCALE, BINS> &ksgame, unsigned int loadsum_layer) {
-    loadconf iterated_lc = create_full_loadconf();
+    loadconf<BINS> iterated_lc = create_full_loadconf();
 
     do {
         unsigned int loadsum = iterated_lc.loadsum();
@@ -48,7 +48,7 @@ void winning_losing_histogram(knownsum_game<MINIBS_SCALE, BINS> &ksgame) {
     std::array<uint64_t, R*BINS> nontrivially_winning{};
     std::array<uint64_t, R*BINS> knownsum_losing{};
 
-    loadconf iterated_lc = create_full_loadconf();
+    loadconf<BINS> iterated_lc = create_full_loadconf();
 
     do {
         unsigned int loadsum = iterated_lc.loadsum();
@@ -70,7 +70,7 @@ void winning_losing_histogram(knownsum_game<MINIBS_SCALE, BINS> &ksgame) {
 
 size_t compute_winning_threshold(knownsum_game<MINIBS_SCALE, BINS> &ksgame) {
     flat_hash_set<uint32_t> threshold_indices{};
-    loadconf iterated_lc = create_full_loadconf();
+    loadconf<BINS> iterated_lc = create_full_loadconf();
 
     do {
         // Skip anything immediately winning.

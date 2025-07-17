@@ -56,14 +56,14 @@ unsigned int midgame_feasible_partition_number() {
 
 
 template<int SCALE>
-void print_minibs(const loadconf &lc, const itemconf<SCALE> &ic) {
+void print_minibs(const loadconf<BINS> &lc, const itemconf<SCALE> &ic) {
     lc.print(stderr);
     fprintf(stderr, " ");
     ic.print(stderr, false);
 }
 
 template<int SCALE, int SPECIALIZATION>
-void adv_winning_description(const loadconf &lc, const itemconf<SCALE> &ic, minibs<SCALE, SPECIALIZATION> &mbs) {
+void adv_winning_description(const loadconf<BINS> &lc, const itemconf<SCALE> &ic, minibs<SCALE, SPECIALIZATION> &mbs) {
     bool pos_winning = mbs.query_itemconf_winning(lc, ic);
     if (pos_winning) {
         return;
@@ -116,7 +116,7 @@ void consistency_tests(minibs<DENOMINATOR, 1> &mb_gen, minibs<DENOMINATOR, 3> &m
 
     for (int i = 0; i < mb_gen.feasible_itemconfs.size(); i++) {
         itemconf ic = mb_gen.feasible_itemconfs[i];
-        loadconf iterated_lc = create_full_loadconf();
+        loadconf<BINS> iterated_lc = create_full_loadconf();
 
         if (!mb_spec.interesting(ic)) {
             continue;
@@ -139,7 +139,7 @@ void consistency_tests(minibs<DENOMINATOR, 1> &mb_gen, minibs<DENOMINATOR, 3> &m
             if (alg_winning_gen != alg_winning_spec) {
                 fprintf(stderr, "For the pair itemconf ");
                 ic.print(stderr, false);
-                fprintf(stderr, ", loadconf: ");
+                fprintf(stderr, ", loadconf<BINS>: ");
                 print_loadconf_stream(stderr, &iterated_lc, false);
                 fprintf(stderr, " the results differ (mbs generic = %d), (mbs specialized = %d).\n",
                         alg_winning_gen, alg_winning_spec);

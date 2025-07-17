@@ -20,14 +20,14 @@ uint64_t irrel_transmitted_count = 0;
 
 class dynprog_data {
 public:
-    std::vector<loadconf> *oldloadqueue = nullptr;
-    std::vector<loadconf> *newloadqueue = nullptr;
+    std::vector<loadconf<BINS>> *oldloadqueue = nullptr;
+    std::vector<loadconf<BINS>> *newloadqueue = nullptr;
     flat_hash_set<uint32_t> *loadhashset = nullptr;
 
     dynprog_data() {
-        oldloadqueue = new std::vector<loadconf>();
+        oldloadqueue = new std::vector<loadconf<BINS>>();
         oldloadqueue->reserve(LOADSIZE);
-        newloadqueue = new std::vector<loadconf>();
+        newloadqueue = new std::vector<loadconf<BINS>>();
         newloadqueue->reserve(LOADSIZE);
         loadhashset = new flat_hash_set<uint32_t>;
     }

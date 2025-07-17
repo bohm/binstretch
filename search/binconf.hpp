@@ -13,7 +13,7 @@
 #include <sstream>
 #include <immintrin.h>
 
-class binconf : public loadconf {
+class binconf : public loadconf<BINS> {
 public:
 
     itemconf<S+1> ic;
@@ -73,7 +73,7 @@ public:
     }
 
     void hashinit() {
-        loadconf::hashinit();
+        loadconf<BINS>::hashinit();
         ic.hashinit();
     }
 
@@ -247,7 +247,7 @@ void print_binconf_stream(FILE *stream, const binconf *b, bool newline = true) {
     print_binconf_stream(stream, *b, newline);
 }
 
-void print_loadconf_stream(FILE *stream, const loadconf *b, bool newline = true) {
+void print_loadconf_stream(FILE *stream, const loadconf<BINS> *b, bool newline = true) {
     bool first = true;
     for (int i = 1; i <= BINS; i++) {
         if (first) {
@@ -335,7 +335,7 @@ void binconf::unassign_and_rehash(int item, int bin, int item_before_last) {
 }
 
 
-// A special variant of loadconf that is only used for the following
+// A special variant of loadconf<BINS> that is only used for the following
 // Coq proof.
 // For every bin, it holds the set of items currently packed in the bin.
 class fullconf {

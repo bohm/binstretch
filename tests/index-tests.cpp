@@ -18,8 +18,8 @@ int main(void) {
     std::uniform_int_distribution<> distr_bins(1, BINS);
 
     for (int r = 0; r < RUNS; r++) {
-        // Generate a random loadconf.
-        loadconf tested_loadconf;
+        // Generate a random loadconf<BINS>.
+        loadconf<BINS> tested_loadconf;
         for(int b = 1; b <= BINS; b++) {
             int load = distr_loads(gen);
             if (load > 0) {
@@ -40,14 +40,14 @@ int main(void) {
             actual_index = tested_loadconf.index;
             uint32_t explicit_index = tested_loadconf.binomial_index_explicit();
 
-            loadconf tested_loadconf2(tested_loadconf);
+            loadconf<BINS> tested_loadconf2(tested_loadconf);
             tested_loadconf2.unassign_and_rehash(next_item, new_pos);
             uint32_t index_after_revert = tested_loadconf2.index;
 
 
             if (virtual_index != actual_index || actual_index != explicit_index
                   || original_index != index_after_revert) {
-                fprintf(stderr, "For loadconf %s we have a mismatch:", tested_loadconf.print().c_str());
+                fprintf(stderr, "For loadconf<BINS> %s we have a mismatch:", tested_loadconf.print().c_str());
                 fprintf(stderr, "virt: %u, act: %u, expl: %u,  ", virtual_index, actual_index, explicit_index);
                 fprintf(stderr, "original: %u, after revert: %u.\n", original_index, index_after_revert);
                 return -1;

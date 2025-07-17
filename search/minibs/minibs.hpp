@@ -119,7 +119,7 @@ public:
     }
 
 
-    bool query_itemconf_winning(const loadconf &lc, const itemconf<DENOMINATOR> &ic) {
+    bool query_itemconf_winning(const loadconf<BINS> &lc, const itemconf<DENOMINATOR> &ic) {
         // Also checks basic tests.
         if (knownsum.query(lc)) {
             return true;
@@ -136,7 +136,7 @@ public:
         return fp->contains(layer_index);
     }
 
-    bool query_itemconf_winning(const loadconf &lc, uint64_t next_layer_itemhash, int item, int bin) {
+    bool query_itemconf_winning(const loadconf<BINS> &lc, uint64_t next_layer_itemhash, int item, int bin) {
         // We have to check the hash table if the position is winning.
         index_t index_if_packed = lc.virtual_index(item, bin);
 
@@ -155,7 +155,7 @@ public:
 
 
     // A query function to be used during (parallel) initialization but not during execution.
-    bool query_different_layer(const loadconf &lc, uint64_t next_layer_itemhash, int item, int bin) {
+    bool query_different_layer(const loadconf<BINS> &lc, uint64_t next_layer_itemhash, int item, int bin) {
 
         // We have to check the hash table if the position is winning.
         index_t index_if_packed = lc.virtual_index(item, bin);
@@ -175,7 +175,7 @@ public:
             return result;
     }
 
-    bool query_same_layer(const loadconf &lc, int item, int bin,
+    bool query_same_layer(const loadconf<BINS> &lc, int item, int bin,
                           const flat_hash_set<index_t> *alg_winning_in_layer) const {
         bool knownsum_winning = knownsum.query_next_step(lc, item, bin);
 
@@ -199,8 +199,8 @@ public:
 
         bool last_layer = (layer_index == (all_feasible_partitions.size() - 1));
 
-        // loadconf iterated_lc = create_full_loadconf();
-        loadconf iterated_lc = knownsum.first_losing_loadconf;
+        // loadconf<BINS> iterated_lc = create_full_loadconf();
+        loadconf<BINS> iterated_lc = knownsum.first_losing_loadconf;
 
         int scaled_ub_from_hashes = DENOMINATOR - 1;
 
@@ -347,7 +347,7 @@ public:
                                knownsum.winning_indices.size());
 
             if (PROGRESS) {
-                fprintf(stderr, "Restored first losing loadconf: ");
+                fprintf(stderr, "Restored first losing loadconf<BINS>: ");
                 knownsum.first_losing_loadconf.print(stderr);
                 fprintf(stderr, ".\n");
             }
@@ -494,7 +494,7 @@ public:
         if (!knownsum_loaded) {
             knownsum.build_winning_set();
             if (PROGRESS) {
-                fprintf(stderr, "Computed first losing loadconf: ");
+                fprintf(stderr, "Computed first losing loadconf<BINS>: ");
                 knownsum.first_losing_loadconf.print(stderr);
                 fprintf(stderr, ".\n");
             }

@@ -9,9 +9,9 @@ const int BUDGET_LIMIT = BINS*S/2;
 
 int dynprog_max_safe(const binconf &conf)
 {
-    std::vector<loadconf> a, b;
-    std::vector<loadconf> *poldq = &a;
-    std::vector<loadconf> *pnewq = &b;
+    std::vector<loadconf<BINS>> a, b;
+    std::vector<loadconf<BINS>> *poldq = &a;
+    std::vector<loadconf<BINS>> *pnewq = &b;
     uint64_t *loadht = new uint64_t[LOADSIZE];
 
     memset(loadht, 0, LOADSIZE*8);
@@ -37,7 +37,7 @@ int dynprog_max_safe(const binconf &conf)
 	    phase++;
 	    if (phase == 1) {
 
-		loadconf first;
+		loadconf<BINS> first;
 		for (int i = 1; i <= BINS; i++)
 		{
 		    first.loads[i] = 0;
@@ -51,7 +51,7 @@ int dynprog_max_safe(const binconf &conf)
 		    return S;
 		}
 	    } else {
-		for (loadconf& tuple: *poldq)
+		for (loadconf<BINS>& tuple: *poldq)
 		{
 		    for (int i=BINS; i >= 1; i--)
 		    {

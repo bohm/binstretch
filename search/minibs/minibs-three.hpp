@@ -51,7 +51,7 @@ public:
     // Optimization:  instead of going through all knownsum loads in the itemconf layers, we only go through
     // those which are not winning by knownsum and are actually valid.
     // This can be cleared after construction (and is not used at all when restoring).
-    // std::vector<loadconf> loads_not_winning_by_knownsum;
+    // std::vector<loadconf<BINS>> loads_not_winning_by_knownsum;
 
     // Fingerprints on their own is just a transposition of the original minibs
     // approach. Instead of storing loadhashes for each item layer, we store
@@ -118,7 +118,7 @@ public:
     }
 
     // A helper (lambda) function.
-    static int virtual_smallest_load(const loadconf &lc, int item, int bin) {
+    static int virtual_smallest_load(const loadconf<BINS> &lc, int item, int bin) {
         if (bin == BINS) {
             return std::min(lc.loads[BINS] + item, static_cast<int>(lc.loads[BINS - 1]));
         } else {
@@ -126,11 +126,11 @@ public:
         }
     }
 
-    static inline bool adv_immediately_winning(const loadconf &lc) {
+    static inline bool adv_immediately_winning(const loadconf<BINS> &lc) {
         return (lc.loads[1] >= R);
     }
 
-    static inline bool alg_immediately_winning(const loadconf &lc) {
+    static inline bool alg_immediately_winning(const loadconf<BINS> &lc) {
         // Check GS1 here, so we do not have to store GS1-winning positions in memory.
         int loadsum = lc.loadsum();
         int last_bin_cap = (R - 1) - lc.loads[BINS];
@@ -186,7 +186,7 @@ public:
         }
     }
 
-    bool query_itemconf_winning(const loadconf &lc, const itemconf<DENOMINATOR> &ic) {
+    bool query_itemconf_winning(const loadconf<BINS> &lc, const itemconf<DENOMINATOR> &ic) {
 
         if (endgame_adjacent_maxfeas.contains(ic.itemhash)) {
             int largest_sendable = std::min(BINS * S - lc.loadsum(),
@@ -216,7 +216,7 @@ public:
         }
     }
 
-    bool query_itemconf_winning(const loadconf &lc, uint64_t next_layer_itemhash, int item, int bin) {
+    bool query_itemconf_winning(const loadconf<BINS> &lc, uint64_t next_layer_itemhash, int item, int bin) {
 
         // We have to check the hash table if the position is winning.
         index_t load_index_if_packed = lc.virtual_index(item, bin);
@@ -247,7 +247,7 @@ public:
     }
 
     // A query function to be used during (parallel) initialization but not during execution.
-    bool query_different_layer(const loadconf &lc, uint64_t next_layer_itemhash, int item, int bin) {
+    bool query_different_layer(const loadconf<BINS> &lc, uint64_t next_layer_itemhash, int item, int bin) {
 
         // We have to check the hash table if the position is winning.
         uint64_t loadhash_if_packed = lc.virtual_loadhash(item, bin);
@@ -276,7 +276,7 @@ public:
         }
     }
 
-    bool query_same_layer(const loadconf &lc, int item, int bin,
+    bool query_same_layer(const loadconf<BINS> &lc, int item, int bin,
                                  const flat_hash_set<index_t> *alg_winning_in_layer) const {
         bool knownsum_winning = knownsum.query_next_step(lc, item, bin);
 
@@ -300,8 +300,8 @@ public:
 
         bool last_layer = (layer_index == (midgame_feasible_partitions.size() - 1));
 
-        // loadconf iterated_lc = create_full_loadconf();
-        loadconf iterated_lc = knownsum.first_losing_loadconf;
+        // loadconf<BINS> iterated_lc = create_full_loadconf();
+        loadconf<BINS> iterated_lc = knownsum.first_losing_loadconf;
 
         int scaled_ub_from_hashes = DENOMINATOR - 1;
 
@@ -569,7 +569,7 @@ public:
                                knownsum.winning_indices.size());
 
             if (PROGRESS) {
-                fprintf(stderr, "Restored first losing loadconf: ");
+                fprintf(stderr, "Restored first losing loadconf<BINS>: ");
                 knownsum.first_losing_loadconf.print(stderr);
                 fprintf(stderr, ".\n");
             }
@@ -634,7 +634,7 @@ public:
         if (!knownsum_loaded) {
             knownsum.build_winning_set();
             if (PROGRESS) {
-                fprintf(stderr, "Computed first losing loadconf: ");
+                fprintf(stderr, "Computed first losing loadconf<BINS>: ");
                 knownsum.first_losing_loadconf.print(stderr);
                 fprintf(stderr, ".\n");
             }

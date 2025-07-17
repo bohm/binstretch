@@ -25,8 +25,8 @@ debug_logger *weight_dlog = nullptr;
 // Create a full load configuration, which means the largest
 // possible we can represent in memory. This is slightly
 // wrong, as a configuration like [18 18 18 18] can never occur if sum(OPT) = 4*14.
-loadconf create_full_loadconf() {
-    loadconf full_load;
+loadconf<BINS> create_full_loadconf() {
+    loadconf<BINS> full_load;
     for (int i = 1; i <= BINS; i++) {
         full_load.store(i, R-1);
         // full_load.loads[i] = R - 1;
@@ -38,13 +38,13 @@ loadconf create_full_loadconf() {
 // Old version of decrease.
 
 //
-// void reset_load(loadconf *lc, int pos) {
+// void reset_load(loadconf<BINS> *lc, int pos) {
 //     assert(pos >= 2);
 //     lc->loads[pos] = lc->loads[pos - 1];
 // }
 //
 //
-// void decrease_recursive(loadconf *lc, int pos) {
+// void decrease_recursive(loadconf<BINS> *lc, int pos) {
 //     if (lc->loads[pos] > 0) {
 //     lc->loads[pos]--;
 //     } else {
@@ -53,7 +53,7 @@ loadconf create_full_loadconf() {
 //     }
 // }
 
-// bool decrease(loadconf *lc) {
+// bool decrease(loadconf<BINS> *lc) {
 //     if (lc->loads[1] == 0) {
 //         return false;
 //     } else {
@@ -64,7 +64,7 @@ loadconf create_full_loadconf() {
 // }
 
 // Returns false if the load configuration cannot be decreased -- it is the last one.
-bool decrease(loadconf *lc) {
+bool decrease(loadconf<BINS> *lc) {
     if (lc->loads[1] == 0) {
         return false;
     }
@@ -86,7 +86,7 @@ bool decrease(loadconf *lc) {
 }
 
 void initialize_knownsum() {
-    loadconf iterated_lc = create_full_loadconf();
+    loadconf<BINS> iterated_lc = create_full_loadconf();
     uint64_t winning_loadconfs = 0;
     uint64_t partial_loadconfs = 0;
     uint64_t losing_loadconfs = 0;
@@ -207,7 +207,7 @@ int query_knownsum_heur(uint64_t loadhash) {
 std::array<std::unordered_map<uint64_t, int>, LOWEST_SENDABLE_LIMIT + 1> knownsum_with_sendable;
 
 void init_lowest_sendable_layer() {
-    loadconf iterated_lc = create_full_loadconf();
+    loadconf<BINS> iterated_lc = create_full_loadconf();
 
     do {
         // The last layer of the DP has to happen here, because the DP queries can be to both higher and lower

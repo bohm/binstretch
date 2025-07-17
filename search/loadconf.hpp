@@ -1,6 +1,6 @@
 #pragma once
 
-
+#include "load_containers.hpp"
 #include "constants.hpp"
 #include "measure_structures.hpp"
 #include "functions.hpp"
@@ -13,12 +13,13 @@
 #include <array>
 
 // a cut version of binconf which only uses the loads.
+template <int BINCAP>
 class loadconf {
 #if USE_PACKED_ARRAYS && IBINS <= 15 && IR <= 255
 public:
     PACKED_ARRAY_TYPE loads;
     inline void store(size_t pos, unsigned char val) {
-        // Hack. position is decreased by 1 to match that we insert into bin number BINS == 3, not BINS-1.
+        // Hack. position is decreased by 1 to match that we insert into bin number BINCAP == 3, not BINCAP-1.
         // fprintf(stderr, "Storing value %" PRIu8 " in position %zd.\n", val, pos-1);
         loads.store(pos-1, val);
         // loads.store(pos, val);
@@ -59,7 +60,7 @@ public:
     // std::accumulate might not work for the packed array.
     int loadsum() const {
         int sum = loads[1];
-        for (int i = 2; i <= BINS; i++) {
+        for (int i = 2; i <= BINCAP; i++) {
             sum += loads[i];
         }
         return sum;
@@ -69,9 +70,9 @@ public:
         loads.clear();
     }
 
-    std::array<int, BINS+1> array_view() const {
-        std::array<int, BINS+1> ret{};
-        for (int i = 1; i <= BINS; i++) {
+    std::array<int, BINCAP+1> array_view() const {
+        std::array<int, BINCAP+1> ret{};
+        for (int i = 1; i <= BINCAP; i++) {
             ret[i] = loads[i];
         }
         return ret;
@@ -80,7 +81,7 @@ public:
 
 #else
 public:
-    std::array<int, BINS + 1> loads = {};
+    std::array<int, BINCAP + 1> loads = {};
     inline void swap(int a, int b) {
         std::swap(loads[a], loads[b]);
     }
@@ -93,7 +94,7 @@ public:
         std::fill(loads.begin(), loads.end(), 0);
     }
 
-    std::array<int, BINS+1> array_view() const {
+    std::array<int, BINCAP+1> array_view() const {
         return loads;
     }
 
@@ -133,7 +134,7 @@ public:
         MEASURE_ONLY(ov_meas.loadconf_hashinit_calls++);
         loadhash = 0;
 
-        for (int i = 1; i <= BINS; i++) {
+        for (int i = 1; i <= BINCAP; i++) {
             loadhash ^= Zl[i * (R + 1) + loads[i]];
         }
     }*/
@@ -141,7 +142,7 @@ public:
 
     index_t binomial_index_explicit() const {
         index_t index_expl = 0;
-        for (int i = 1; i <= BINS; i++) {
+        for (int i = 1; i <= BINCAP; i++) {
             index_expl += binoms_gl[(i - 1) * R + loads[i]];
         }
         return index_expl;
@@ -181,7 +182,7 @@ public:
     size_t decrease_and_sort_default(size_t i, int val) {
         remove_from(i, val);
         //int i = newly_decreased;
-        while (!((i == BINS) || (loads[i + 1] <= loads[i]))) {
+        while (!((i == BINCAP) || (loads[i + 1] <= loads[i]))) {
             // We call the function of loadconf directly, because std::swap might not exist for a packed array.
             swap(i, i+1);
             i++;
@@ -194,10 +195,10 @@ public:
     size_t increase_and_sort(size_t i, unsigned char val) {
         size_t packed_pos = loads.one_increased(i, val);
 #ifndef NDEBUG
-        if (!(packed_pos >= 1 && packed_pos <= BINS)) {
+        if (!(packed_pos >= 1 && packed_pos <= BINCAP)) {
             fprintf(stderr, "After packing %u into bin %lu, we got a new position %lu.\n", val, i, packed_pos);
             print(stderr);
-            assert(packed_pos >= 1 && packed_pos <= BINS);
+            assert(packed_pos >= 1 && packed_pos <= BINCAP);
         }
 #endif
         return packed_pos;
@@ -208,7 +209,7 @@ public:
         // print(stderr);
         // fprintf(stderr, "\n");
         size_t packed_last = loads.one_decreased(i, val);
-        return std::min(packed_last, static_cast<size_t>(BINS));
+        return std::min(packed_last, static_cast<size_t>(BINCAP));
     }
 
 #else
@@ -224,15 +225,15 @@ public:
 
     // Reindexing right after the load shifts from (loads[from] - item) to loads[from].
     // In other words, all indices have changed in [from, to].
-    // Note that the array of binoms_gl uses bin indices from 0 to BINS-1, so we subtract
+    // Note that the array of binoms_gl uses bin indices from 0 to BINCAP-1, so we subtract
     // one in every array access.
     void reindex_loads_increased_range(int item, int from, int to) {
 #ifndef NDEBUG
-        if (!(item >= 1 && from <= to && from >= 1 && to <= BINS)) {
+        if (!(item >= 1 && from <= to && from >= 1 && to <= BINCAP)) {
             fprintf(stderr, "Called reindex_loads_increased_range(%d,%d,%d) on ", item, from, to);
             print(stderr);
             fprintf(stderr, ".\n");
-            assert(item >= 1 && from <= to && from >= 1 && to <= BINS);
+            assert(item >= 1 && from <= to && from >= 1 && to <= BINCAP);
         }
 
         if (loads[from] < item) {
@@ -271,7 +272,7 @@ public:
         assert(item >= 1);
         assert(from <= to);
         assert(from >= 1);
-        assert(to <= BINS);
+        assert(to <= BINCAP);
         assert(loads[from] >= item);
 
         if (from == to) {
@@ -297,11 +298,11 @@ public:
     
     void reindex_loads_decreased_range(int item, int from, int to) {
 #ifndef NDEBUG
-        if (!(item >= 1 && from <= to && from >= 1 && to <= BINS)) {
+        if (!(item >= 1 && from <= to && from >= 1 && to <= BINCAP)) {
             fprintf(stderr, "Called reindex_loads_decreased_rang(%d,%d,%d) on ", item, from, to);
             print(stderr);
             fprintf(stderr, ".\n");
-            assert(item >= 1 && from <= to && from >= 1 && to <= BINS);
+            assert(item >= 1 && from <= to && from >= 1 && to <= BINCAP);
         }
 #endif
 
@@ -335,7 +336,7 @@ public:
         assert(item >= 1);
         assert(from <= to);
         assert(from >= 1);
-        assert(to <= BINS);
+        assert(to <= BINCAP);
         if (from == to) {
             loadhash ^= Zl[from * (R + 1) + loads[from] + item]; // old load
             loadhash ^= Zl[from * (R + 1) + loads[from]]; // new load
@@ -485,12 +486,12 @@ public:
     loadconf() {
     }
 
-    // loadconf(std::array<int, BINS + 1> &loadarray) {
+    // loadconf(std::array<int, BINCAP + 1> &loadarray) {
     //     loads = loadarray;
     //     hashinit();
     // }
 
-    loadconf(const loadconf &old, int new_item, int bin) {
+    loadconf(const loadconf<BINCAP> &old, int new_item, int bin) {
         // loadhash = old.loadhash;
         index = old.index;
         loads = old.loads;
@@ -499,9 +500,9 @@ public:
 
     void print(FILE *stream) const {
         fprintf(stream, "[");
-        for (int i = 1; i <= BINS; i++) {
+        for (int i = 1; i <= BINCAP; i++) {
             fprintf(stream, "%d", loads[i]);
-            if (i != BINS) {
+            if (i != BINCAP) {
                 fprintf(stream, " ");
             }
         }
@@ -512,7 +513,7 @@ public:
     std::string print() const {
         std::ostringstream os;
         bool first = true;
-        for (int i = 1; i <= BINS; i++) {
+        for (int i = 1; i <= BINCAP; i++) {
             if (loads[i] == 0) {
                 break;
             }

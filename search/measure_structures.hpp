@@ -178,7 +178,7 @@ struct measure_attr {
     }
 
     void print(const char* prefix) {
-        fprintf(stderr, "%s: Total hashinit() calls for loadconf objects: %" PRIu64 ".\n",
+        fprintf(stderr, "%s: Total hashinit() calls for loadconf<BINS> objects: %" PRIu64 ".\n",
                 prefix, loadconf_hashinit_calls);
         fprintf(stderr, " --- maximum_feasible() --- \n");
         fprintf(stderr, "%s: maximum_feasible() calls: %" PRIu64 ", infeasible returns: %" PRIu64 ".\n",

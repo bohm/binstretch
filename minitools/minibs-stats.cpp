@@ -13,7 +13,7 @@ constexpr int GS2BOUND = S - 2 * ALPHA;
 
 // Compute the 32-bit loadhash of a load configuration.
 // Used for collision testing.
-uint32_t loadhash_32(const loadconf *lc) {
+uint32_t loadhash_32(const loadconf<BINS> *lc) {
     uint32_t loadhash = 0;
 
     for (int i = 1; i <= BINS; i++) {
@@ -27,7 +27,7 @@ uint32_t loadhash_32(const loadconf *lc) {
 // initialization, we keep them here to be able to use them before minibs is constructed.
 
 template<int DENOM, int SPEC>
-bool query_knownsum_layer_standalone(loadconf &lc, flat_hash_set<uint64_t>
+bool query_knownsum_layer_standalone(loadconf<BINS> &lc, flat_hash_set<uint64_t>
 &alg_knownsum_winning) {
 
     if (knownsum_game<DENOM, SPEC>::alg_immediately_winning(lc)) {
@@ -38,7 +38,7 @@ bool query_knownsum_layer_standalone(loadconf &lc, flat_hash_set<uint64_t>
 }
 
 template<int DENOM, int SPEC>
-bool query_knownsum_layer_standalone(loadconf &lc, int item, int bin,
+bool query_knownsum_layer_standalone(loadconf<BINS> &lc, int item, int bin,
                                      flat_hash_set<uint64_t> &alg_knownsum_winning) {
     uint64_t hash_if_packed = lc.virtual_loadhash(item, bin);
     int load_if_packed = lc.loadsum() + item;
@@ -59,15 +59,15 @@ bool query_knownsum_layer_standalone(loadconf &lc, int item, int bin,
 }
 
 template<int DENOM, int SPEC>
-std::pair<flat_hash_set<uint64_t>, loadconf> init_knownsum_layer_standalone() {
+std::pair<flat_hash_set<uint64_t>, loadconf<BINS>> init_knownsum_layer_standalone() {
 
     flat_hash_set<uint64_t> alg_knownsum_winning;
-    loadconf knownsum_first_losing;
+    loadconf<BINS> knownsum_first_losing;
 
     print_if<PROGRESS>("Processing the knownsum layer.\n");
 
     bool all_winning_so_far = true;
-    loadconf iterated_lc = create_full_loadconf();
+    loadconf<BINS> iterated_lc = create_full_loadconf();
     uint64_t winning_loadconfs = 0;
     uint64_t losing_loadconfs = 0;
 
@@ -140,14 +140,14 @@ std::pair<flat_hash_set<uint64_t>, loadconf> init_knownsum_layer_standalone() {
 
 template<int DENOM, int SPEC>
 void test_hashing_collisions(flat_hash_set<uint64_t> &alg_knownsum_winning,
-                             loadconf &knownsum_first_losing) {
+                             loadconf<BINS> &knownsum_first_losing) {
 
     flat_hash_set<uint32_t> losing_hashes_loadhash32;
     flat_hash_set<uint32_t> losing_hashes_binomial_index;
 
     uint64_t collisions_32 = 0;
     uint64_t collisions_binomial = 0;
-    loadconf iterated_lc = knownsum_first_losing;
+    loadconf<BINS> iterated_lc = knownsum_first_losing;
 
     do {
         // We skip all positions in the known sum cache or those clearly losing.
@@ -189,7 +189,7 @@ sand_winning(minibs<DENOMINATOR, SPECIALIZATION> &mb, std::unordered_set<int> &s
     ic.hashinit();
 
     for (int sand = 1; sand < GS2BOUND; sand++) {
-        loadconf lc;
+        loadconf<BINS> lc;
         lc.hashinit();
         lc.assign_and_rehash(sand, 1);
         if (fixed_sand_on_one >= 1) {
@@ -229,7 +229,7 @@ void one_measurable_item_winning(minibs<DENOMINATOR, SPECIALIZATION> &mb, std::u
             continue;
         }
 
-        loadconf lc;
+        loadconf<BINS> lc;
         lc.hashinit();
         lc.assign_and_rehash(sand, 1);
         bool alg_winning = mb.query_itemconf_winning(lc, ic);
@@ -250,7 +250,7 @@ void single_items_winning(minibs<DENOMINATOR, SPECIALIZATION> &mb, std::unordere
             continue;
         }
 
-        loadconf empty;
+        loadconf<BINS> empty;
         empty.hashinit();
         empty.assign_and_rehash(item, 1);
         itemconf<DENOMINATOR> ic;
@@ -322,13 +322,13 @@ template <int DENOM> void loadhashes_across_caches(minibs <DENOM> &mb)
 {
     flat_hash_set<uint64_t> loadhash_present_somewhere;
     
-    // For every feasible item configuration and every loadconf, check that the answers match.
+    // For every feasible item configuration and every loadconf<BINS>, check that the answers match.
     for (unsigned int i = 0; i < mb.feasible_itemconfs.size(); ++i)
     {
 
 	itemconfig<TEST_SCALE> layer = mb.feasible_itemconfs[i];
 
-	loadconf iterated_lc = create_full_loadconf();
+	loadconf<BINS> iterated_lc = create_full_loadconf();
 	int lb_on_vol = mb.lb_on_volume(layer);
 
 	do {
@@ -410,13 +410,13 @@ template <int DENOM> void loadhash_fingerprinting(minibs<DENOM> &mb)
 
     // On its own, this is just a different way of storing the data, but it has
     // some potential improvements.
-     // For every feasible item configuration and every loadconf, check that the answers match.
+     // For every feasible item configuration and every loadconf<BINS>, check that the answers match.
     for (unsigned int i = 0; i < mb.feasible_itemconfs.size(); ++i)
     {
 
 	itemconfig<TEST_SCALE> layer = mb.feasible_itemconfs[i];
 
-	loadconf iterated_lc = create_full_loadconf();
+	loadconf<BINS> iterated_lc = create_full_loadconf();
 	int lb_on_vol = mb.lb_on_volume(layer);
 
 	do {
@@ -519,7 +519,7 @@ template <int DENOMINATOR> void knownsum_tests(const minibs<DENOMINATOR>& mb)
 
     initialize_knownsum();
 
-    loadconf iterated_lc = create_full_loadconf();
+    loadconf<BINS> iterated_lc = create_full_loadconf();
     do {
 	uint64_t lh = iterated_lc.loadhash;
 	int knownsum_result = query_knownsum_heur(lh);
@@ -527,7 +527,7 @@ template <int DENOMINATOR> void knownsum_tests(const minibs<DENOMINATOR>& mb)
 
 	if ((knownsum_result == 0 && mbs_knownsum_result == false))
 	{
-	    fprintf(stderr, "For loadconf: ");
+	    fprintf(stderr, "For loadconf<BINS>: ");
 	    print_loadconf_stream(stderr, &iterated_lc, false);
 	    fprintf(stderr, " the results differ (knownsum = %d), (mbs knownsum = %d).\n",
 		    knownsum_result, mbs_knownsum_result);
@@ -543,14 +543,14 @@ template <int DENOMINATOR> void consistency_tests(minibs<DENOMINATOR>& mb)
     itemconfig<DENOMINATOR> empty_ic;
     empty_ic.hashinit();
     
-    loadconf iterated_lc = create_full_loadconf();
+    loadconf<BINS> iterated_lc = create_full_loadconf();
     do {
 	bool mbs_knownsum_result = mb.query_knownsum_layer(iterated_lc);
         bool alg_winning = mb.query_itemconf_winning(iterated_lc, empty_ic);
 
 	if (alg_winning == false && mbs_knownsum_result == true)
 	{
-	    fprintf(stderr, "For loadconf: ");
+	    fprintf(stderr, "For loadconf<BINS>: ");
 	    print_loadconf_stream(stderr, &iterated_lc, false);
 	    fprintf(stderr, " the results differ (mbs itemlayer = %d), (mbs knownsum = %d).\n",
 		    alg_winning, mbs_knownsum_result);
@@ -563,14 +563,14 @@ template <int DENOMINATOR> void consistency_tests(minibs<DENOMINATOR>& mb)
 }
 
 template <int DENOMINATOR> void itemconfig_backtrack(minibs<DENOMINATOR> &mb,
-						   loadconf lc,
+						   loadconf<BINS> lc,
 						   itemconfig<DENOMINATOR> ic,
 						   int depth)
 {
     bool alg_winning = mb.query_itemconf_winning(lc, ic);
     if (alg_winning)
     {
-	fprintf(stderr, "Depth %d loadconf: ", depth);
+	fprintf(stderr, "Depth %d loadconf<BINS>: ", depth);
 	print_loadconf_stream(stderr, &lc, false);
 	fprintf(stderr, "with (scaled) itemconfig profile ");
 	ic.print(stderr, false);
@@ -578,7 +578,7 @@ template <int DENOMINATOR> void itemconfig_backtrack(minibs<DENOMINATOR> &mb,
     }
     else
     {
-	fprintf(stderr, "Depth %d loadconf: ", depth);
+	fprintf(stderr, "Depth %d loadconf<BINS>: ", depth);
 	print_loadconf_stream(stderr, &lc, false);
 	fprintf(stderr, "with (scaled) itemconfig profile ");
 	ic.print(stderr, false);
@@ -674,7 +674,7 @@ template <int DENOMINATOR> void itemconfig_backtrack(minibs<DENOMINATOR> &mb,
 		if (losing_item + lc.loads[bin] <= R-1)
 		{
 		    recursed = true;
-		    loadconf next_lc(lc, losing_item, bin);
+		    loadconf<BINS> next_lc(lc, losing_item, bin);
 		    itemconfig_backtrack<DENOMINATOR>(mb, next_lc, next_step_ic, depth+1);
 		}
 	    }

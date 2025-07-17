@@ -16,7 +16,7 @@ int main(void) {
 
     zobrist_init();
 
-    loadconf l{};
+    loadconf<BINS> l{};
     l.store(1,5);
     l.store(2,4);
     l.store(3,2);
@@ -27,7 +27,7 @@ int main(void) {
 
     fprintf(stderr, "The above should read [5 4 2 1].\n");
 
-    loadconf l2;
+    loadconf<BINS> l2;
     l2.loads = l.loads;
     l2.hashinit();
     l2.print(stderr);
@@ -61,21 +61,21 @@ int main(void) {
 
     fprintf(stderr, "The above should read [5 4 2 1].\n");
 
-    loadconf l3;
+    loadconf<BINS> l3;
     l3.hashinit();
     l3.increase_and_sort(4,11);
     l3.print(stderr);
     fprintf(stderr, "\n");
     fprintf(stderr, "The above should read [11 0 0 0].\n");
 
-    loadconf l4;
+    loadconf<BINS> l4;
     l4.hashinit();
     l4.assign_and_reindex(11,4);
     l4.print(stderr);
     fprintf(stderr, "\n");
     fprintf(stderr, "The above should read [11 0 0 0].\n");
 
-    loadconf l5;
+    loadconf<BINS> l5;
     l5.hashinit();
     l5.assign_and_reindex(15, 1);
     l5.assign_and_reindex(4, 2);
@@ -90,7 +90,7 @@ int main(void) {
     fprintf(stderr, "Virtual index test:\n");
     l.virtual_index(5,3);
 
-    loadconf l6;
+    loadconf<BINS> l6;
     l6.hashinit();
     l6.assign_and_reindex(15, 1);
     l6.assign_and_reindex(12, 2);

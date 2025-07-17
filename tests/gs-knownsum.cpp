@@ -13,7 +13,7 @@
 #include "server_properties.hpp"
 #include "hash.hpp"
 
-void print_loadconf_stream(FILE* stream, const loadconf& b, bool newline = true)
+void print_loadconf_stream(FILE* stream, const loadconf<BINS>& b, bool newline = true)
 {
     bool first = true;
     for (int i=1; i<=BINS; i++)
@@ -37,9 +37,9 @@ void print_loadconf_stream(FILE* stream, const loadconf& b, bool newline = true)
 // Create a full load configuration, which means the largest
 // possible we can represent in memory. This is slightly
 // wrong, as a configuration like [18 18 18 18] can never occur if sum(OPT) = 4*14.
-loadconf create_full_loadconf()
+loadconf<BINS> create_full_loadconf()
 {
-    loadconf full_load;
+    loadconf<BINS> full_load;
     for (int i =1; i <= BINS; i++)
     {
 	full_load.loads[i] = R-1;
@@ -49,14 +49,14 @@ loadconf create_full_loadconf()
 }
 
 
-void reset_load(loadconf *lc, int pos)
+void reset_load(loadconf<BINS> *lc, int pos)
 {
     assert(pos >= 2);
     lc->loads[pos] = lc->loads[pos-1];
 }
 
 
-void decrease_recursive(loadconf *lc, int pos)
+void decrease_recursive(loadconf<BINS> *lc, int pos)
 {
     if ( lc->loads[pos] > 0)
     {
@@ -71,7 +71,7 @@ void decrease_recursive(loadconf *lc, int pos)
 // as an iteration function
 
 // Returns false if the load configuration cannot be decreased -- it is the last one.
-bool decrease(loadconf* lc)
+bool decrease(loadconf<BINS>* lc)
 {
     if (lc->loads[1] == 0)
     {
@@ -90,7 +90,7 @@ int main(void)
     // Init zobrist.
     zobrist_init();
 
-    loadconf iterated_lc = create_full_loadconf();
+    loadconf<BINS> iterated_lc = create_full_loadconf();
     uint64_t full_loadconfs = 0;
     uint64_t normal_loadconfs = 0;
 

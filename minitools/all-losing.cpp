@@ -15,7 +15,7 @@
 constexpr int TWO_MINUS_FIVE_ALPHA = 2 * S - 5 * ALPHA;
 
 template<int SCALE, int SPEC>
-std::set<int> alg_losing_items(std::pair<loadconf, itemconf<SCALE>> *pos, minibs<SCALE, SPEC> *mbs) {
+std::set<int> alg_losing_items(std::pair<loadconf<BINS>, itemconf<SCALE>> *pos, minibs<SCALE, SPEC> *mbs) {
     std::set<int> losing_items{};
     bool pos_winning = mbs->query_itemconf_winning(pos->first, pos->second);
     if (pos_winning) {
@@ -69,7 +69,7 @@ std::set<int> alg_losing_items(std::pair<loadconf, itemconf<SCALE>> *pos, minibs
 }
 
 template<int SCALE>
-std::pair<loadconf, itemconf<SCALE>> loadshrunken(std::stringstream &str_s, bool only_load = false) {
+std::pair<loadconf<BINS>, itemconf<SCALE>> loadshrunken(std::stringstream &str_s, bool only_load = false) {
     std::array<int, BINS + 1> loads = load_segment_with_loads(str_s);
     std::array<ITEM_TYPE, SCALE> items = {0};
 
@@ -79,7 +79,7 @@ std::pair<loadconf, itemconf<SCALE>> loadshrunken(std::stringstream &str_s, bool
 
     // int _ = load_last_item_segment(str_s);
 
-    loadconf r1;
+    loadconf<BINS> r1;
     for (int p = 1; p <= BINS; p++) {
         r1.store(p, loads[p]);
     }
@@ -90,14 +90,14 @@ std::pair<loadconf, itemconf<SCALE>> loadshrunken(std::stringstream &str_s, bool
 }
 
 template<int SCALE>
-void print_minibs(std::pair<loadconf, itemconf<SCALE>> *pos) {
+void print_minibs(std::pair<loadconf<BINS>, itemconf<SCALE>> *pos) {
     pos->first.print(stderr);
     fprintf(stderr, " ");
     pos->second.print(stderr, false);
 }
 
 template<int SCALE, int SPEC>
-void alg_losing_table(std::pair<loadconf, itemconf<SCALE>> *minibs_position, minibs<SCALE, SPEC> *mbs) {
+void alg_losing_table(std::pair<loadconf<BINS>, itemconf<SCALE>> *minibs_position, minibs<SCALE, SPEC> *mbs) {
     // If the position is already winning by our established mathematical rules (good situations),
     // print it. It is slightly strange that we do it before the winning test below; this is for
     // slight debugging purposes.
@@ -155,7 +155,7 @@ int main(int argc, char **argv) {
     }
 
     //fprintf(stderr, "argstream: %s\n", argstream.str().c_str());
-    std::pair<loadconf, itemconf<MINIBS_SCALE>> p = loadshrunken<MINIBS_SCALE>(argstream, only_load);
+    std::pair<loadconf<BINS>, itemconf<MINIBS_SCALE>> p = loadshrunken<MINIBS_SCALE>(argstream, only_load);
 
     // p.first.print(stderr);
     // fprintf(stderr, " ");

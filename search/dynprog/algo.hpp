@@ -21,8 +21,8 @@ int dynprog_max_direct(const binconf &conf, dynprog_data *dpdata = nullptr, meas
     if (STANDALONE) {
         dpdata = new dynprog_data;
     }
-    std::vector<loadconf> *poldq = dpdata->oldloadqueue;
-    std::vector<loadconf> *pnewq = dpdata->newloadqueue;
+    std::vector<loadconf<BINS>> *poldq = dpdata->oldloadqueue;
+    std::vector<loadconf<BINS>> *pnewq = dpdata->newloadqueue;
     dpdata->newloadqueue->clear();
     dpdata->oldloadqueue->clear();
     dpdata->loadhashset->clear();
@@ -54,7 +54,7 @@ int dynprog_max_direct(const binconf &conf, dynprog_data *dpdata = nullptr, meas
             }
         }
 
-        loadconf first;
+        loadconf<BINS> first;
         for (int i = 1; i <= conf.ic.items[S]; i++) {
             first.store(i, S);
             // first.loads[i] = S;
@@ -77,7 +77,7 @@ int dynprog_max_direct(const binconf &conf, dynprog_data *dpdata = nullptr, meas
         int k = conf.ic.items[size];
         while (k > 0) {
             if (initial_phase) {
-                loadconf first;
+                loadconf<BINS> first;
                 first.clear_loads();
                 // for (int i = 1; i <= BINS; i++) {
                 //     first.store(i, 0);
@@ -94,7 +94,7 @@ int dynprog_max_direct(const binconf &conf, dynprog_data *dpdata = nullptr, meas
                     return S;
                 }
             } else {
-                for (loadconf &tuple: *poldq) {
+                for (loadconf<BINS> &tuple: *poldq) {
                     for (int i = BINS; i >= 1; i--) {
                         // same as with Algorithm, we can skip when sequential bins have the same load
                         if (i < BINS && tuple.loads[i] == tuple.loads[i + 1]) {
@@ -106,7 +106,7 @@ int dynprog_max_direct(const binconf &conf, dynprog_data *dpdata = nullptr, meas
                         }
 
                         // int newpos = tuple.assign_and_rehash(size, i);
-                        loadconf copy(tuple, size, i);
+                        loadconf<BINS> copy(tuple, size, i);
 
                         if (!dpdata->loadhashset->contains(copy.index)) {
                             if (size == smallest_item && k == 1) {
@@ -154,7 +154,7 @@ int dynprog_max_direct(const binconf &conf, dynprog_data *dpdata = nullptr, meas
             return 0;
         }
 
-        for (loadconf &tuple: *poldq) {
+        for (loadconf<BINS> &tuple: *poldq) {
             int empty_space_on_last = std::min((int) (S - tuple.loads[BINS]), free_volume);
             max_overall = std::max(empty_space_on_last, max_overall);
         }
@@ -172,11 +172,11 @@ int dynprog_max_direct(const binconf &conf, dynprog_data *dpdata = nullptr, meas
 // Be mindful of the indexing difference -- item_sequence[0] is the first item.
 // struct layer_data {
 //     std::array<size_t, MAX_ITEMS + 1 > layer_capacity{};
-//     std::array<loadconf*, MAX_ITEMS + 1> layers{};
+//     std::array<loadconf<BINS>*, MAX_ITEMS + 1> layers{};
 //
-//     void finalize_layer(const std::vector<loadconf>& freshly_computed_layer, int index) {
+//     void finalize_layer(const std::vector<loadconf<BINS>>& freshly_computed_layer, int index) {
 //         assert(layer_capacity[index] == 0 && layers[index] == nullptr);
-//         auto *l = new loadconf[freshly_computed_layer.size()];
+//         auto *l = new loadconf<BINS>[freshly_computed_layer.size()];
 //         layer_capacity[index] = freshly_computed_layer.size();
 //         std::copy(freshly_computed_layer.begin(), freshly_computed_layer.end(), l);
 //     }
@@ -196,7 +196,7 @@ int dynprog_max_direct(const binconf &conf, dynprog_data *dpdata = nullptr, meas
 // ITEM_TYPE dynprog_max_layers(layer_data *layers, std::array<ITEM_TYPE, MAX_ITEMS> *item_seqeunce,
 //                              int last_valid_layer, int target_layer) {
 //
-//     std::vector<loadconf> upcoming_layer;
+//     std::vector<loadconf<BINS>> upcoming_layer;
 //     flat_hash_set<index_t> upcoming_layer_indices;
 //
 //     for (int i = last_valid_layer; i < target_layer; i++) {
@@ -206,12 +206,12 @@ int dynprog_max_direct(const binconf &conf, dynprog_data *dpdata = nullptr, meas
 
 // Compute all feasible configurations and return them.
 // This algorithm is currently used in heuristics only.
-std::vector<loadconf> dynprog(const binconf &conf, dynprog_data *dpdata) {
+std::vector<loadconf<BINS>> dynprog(const binconf &conf, dynprog_data *dpdata) {
     dpdata->newloadqueue->clear();
     dpdata->oldloadqueue->clear();
-    std::vector<loadconf> *poldq = dpdata->oldloadqueue;
-    std::vector<loadconf> *pnewq = dpdata->newloadqueue;
-    std::vector<loadconf> ret;
+    std::vector<loadconf<BINS>> *poldq = dpdata->oldloadqueue;
+    std::vector<loadconf<BINS>> *pnewq = dpdata->newloadqueue;
+    std::vector<loadconf<BINS>> ret;
     bool initial_phase = true;
     // There is possibly some slowdown to the line below:
     dpdata->loadhashset->clear();
@@ -222,14 +222,14 @@ std::vector<loadconf> dynprog(const binconf &conf, dynprog_data *dpdata) {
         int k = conf.ic.items[size];
         while (k > 0) {
             if (initial_phase) {
-                loadconf first;
+                loadconf<BINS> first;
                 first.clear_loads();
                 first.hashinit();
                 first.assign_and_reindex(size, 1);
                 pnewq->push_back(first);
                 initial_phase = false;
             } else {
-                for (loadconf &tuple: *poldq) {
+                for (loadconf<BINS> &tuple: *poldq) {
                     for (int i = BINS; i >= 1; i--) {
                         // same as with Algorithm, we can skip when sequential bins have the same load
                         if (i < BINS && tuple.loads[i] == tuple.loads[i + 1]) {

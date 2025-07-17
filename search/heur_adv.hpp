@@ -20,8 +20,8 @@
 
 
 
-// Check if a loadconf a is compatible with the large item loadconf b. (Requirement: no two things from lb fit together.)
-bool compatible(const loadconf &a, const loadconf &lb) {
+// Check if a loadconf<BINS> a is compatible with the large item loadconf<BINS> b. (Requirement: no two things from lb fit together.)
+bool compatible(const loadconf<BINS> &a, const loadconf<BINS> &lb) {
     for (int i = 1; i <= BINS; i++) {
         if (lb.loads[i] == 0) // No more items to pack.
         {
@@ -38,7 +38,7 @@ bool compatible(const loadconf &a, const loadconf &lb) {
 
 // Check whether any load configuration is compatible with any of the large configurations in the other parameter.
 // Return index of the large configuration (and -1 if none.)
-int check_loadconf_vectors(const std::vector<loadconf> &va, const std::vector<loadconf> &vb) {
+int check_loadconf_vectors(const std::vector<loadconf<BINS>> &va, const std::vector<loadconf<BINS>> &vb) {
     for (unsigned int i = 0; i < vb.size(); i++) {
         for (unsigned int j = 0; j < va.size(); j++) {
             if (compatible(va[j], vb[i])) {
@@ -50,15 +50,15 @@ int check_loadconf_vectors(const std::vector<loadconf> &va, const std::vector<lo
     return -1;
 }
 
-int dynprog_and_check_vectors(const binconf &b, const std::vector<loadconf> &v, dynprog_data *dpdata) {
+int dynprog_and_check_vectors(const binconf &b, const std::vector<loadconf<BINS>> &v, dynprog_data *dpdata) {
     return check_loadconf_vectors(dynprog(b, dpdata), v);
 }
 
-void print_lih_choices(const binconf &b, std::vector<loadconf> choices) {
+void print_lih_choices(const binconf &b, std::vector<loadconf<BINS>> choices) {
     fprintf(stderr, "For binconf ");
     print_binconf_stream(stderr, b, false);
     fprintf(stderr, " we suggest the following LIH choices:\n");
-    for (loadconf choice: choices) {
+    for (loadconf<BINS> choice: choices) {
         fprintf(stderr, " %s\n", choice.print().c_str());
     }
 }
@@ -73,10 +73,10 @@ template <bool oddness> bool instance_possible(int loadsum, int items_to_send, i
 }
 
 // Build load configurations (essentially sequences of items) which work for the LI heuristic.
-std::vector<loadconf> build_lih_choices(const binconf &b) {
-    std::vector<loadconf> large_choices;
+std::vector<loadconf<BINS>> build_lih_choices(const binconf &b) {
+    std::vector<loadconf<BINS>> large_choices;
     bool oddness = false;
-    loadconf ret;
+    loadconf<BINS> ret;
 
     // lb2: size of an item that cannot fit twice into the last bin
     int not_twice_into_last = (R - b.loads[BINS] + 1) / 2;
@@ -99,7 +99,7 @@ std::vector<loadconf> build_lih_choices(const binconf &b) {
 
         if (oddness && not_once_into_current <= not_twice_into_last - 1) {
             if (instance_possible<true>(b.totalload(), items_to_send, not_twice_into_last)) {
-                loadconf large;
+                loadconf<BINS> large;
                 for (int j = 1; j <= items_to_send - 1; j++) {
                     large.assign_and_reindex(not_twice_into_last, j);
                 }
@@ -110,7 +110,7 @@ std::vector<loadconf> build_lih_choices(const binconf &b) {
         } else {
             int item = std::max(not_twice_into_last, not_once_into_current);
             if (instance_possible<false>(b.totalload(), items_to_send, item)) {
-                loadconf large;
+                loadconf<BINS> large;
                 for (int j = 1; j <= items_to_send; j++) {
                     large.assign_and_reindex(item, j);
                 }
@@ -121,9 +121,9 @@ std::vector<loadconf> build_lih_choices(const binconf &b) {
     return large_choices;
 }
 
-std::pair<bool, loadconf> large_item_heuristic(const binconf &b, dynprog_data *dpdata) {
-    loadconf ret;
-    std::vector<loadconf> large_choices = build_lih_choices(b);
+std::pair<bool, loadconf<BINS>> large_item_heuristic(const binconf &b, dynprog_data *dpdata) {
+    loadconf<BINS> ret;
+    std::vector<loadconf<BINS>> large_choices = build_lih_choices(b);
     int success = dynprog_and_check_vectors(b, large_choices, dpdata);
 
     if (success == -1) {
@@ -135,9 +135,9 @@ std::pair<bool, loadconf> large_item_heuristic(const binconf &b, dynprog_data *d
 
 
 // Large item heuristic with configurations already computed (does not call dynprog).
-std::pair<bool, loadconf> large_item_heuristic(const binconf &b, const std::vector<loadconf> &confs) {
-    loadconf ret;
-    std::vector<loadconf> large_choices = build_lih_choices(b);
+std::pair<bool, loadconf<BINS>> large_item_heuristic(const binconf &b, const std::vector<loadconf<BINS>> &confs) {
+    loadconf<BINS> ret;
+    std::vector<loadconf<BINS>> large_choices = build_lih_choices(b);
     int success = check_loadconf_vectors(large_choices, confs);
 
     if (success == -1) {

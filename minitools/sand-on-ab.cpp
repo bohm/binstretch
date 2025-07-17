@@ -22,7 +22,7 @@ bool sand_winning(minibs<SCALE, SPEC> &mb, const std::array<int, BINS>& sand_loa
     itemconf<SCALE> ic;
     ic.hashinit();
 
-    loadconf lc;
+    loadconf<BINS> lc;
     lc.hashinit();
     for (int i = 0; i < BINS; i++) {
         if (sand_loads[i] > 0) {
@@ -55,7 +55,7 @@ template <int SCALE, int SPEC> bool winnable_by_greedy_below_alpha(
 
     itemconf<SCALE> ic;
     ic.hashinit();
-    loadconf lc;
+    loadconf<BINS> lc;
     lc.hashinit();
     for (int i = 0; i < BINS; i++) {
         if (sand_loads[i] > 0) {

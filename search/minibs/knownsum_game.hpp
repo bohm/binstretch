@@ -26,15 +26,15 @@ public:
     // The first load configuration that is non-trivial for the knownsum heuristic.
     // When we do the iterations for the individual itemconf layers, we can start with this one as the initial one.
     // This can save a bit of time while keeping the loop simple.
-    loadconf first_losing_loadconf;
+    loadconf<BINS> first_losing_loadconf;
 
     /*
-    static inline bool adv_immediately_winning(const loadconf &lc) {
+    static inline bool adv_immediately_winning(const loadconf<BINS> &lc) {
         return (lc.loads[1] >= R);
     }
      */
 
-    static inline bool alg_immediately_winning(const loadconf &lc) {
+    static inline bool alg_immediately_winning(const loadconf<BINS> &lc) {
         // Check GS1 here, so we do not have to store GS1-winning positions in memory.
         int loadsum = lc.loadsum();
         int last_bin_cap = (R - 1) - lc.loads[BINS];
@@ -54,7 +54,7 @@ public:
         return false;
     }
 
-    static bool alg_winning_by_gs5plus(const loadconf &lc, int item, int bin) {
+    static bool alg_winning_by_gs5plus(const loadconf<BINS> &lc, int item, int bin) {
         // Compile time checks.
         // There must be three bins, or GS5+ does not apply. And the extension must
         // be turned on.
@@ -94,7 +94,7 @@ public:
         return false;
     }
 
-    bool query(const loadconf &lc) const {
+    bool query(const loadconf<BINS> &lc) const {
         /* if (adv_immediately_winning(lc)) {
             return false;
         } */
@@ -130,7 +130,7 @@ public:
     }
 
     // Speeding up computation if the next index is already computed.
-    bool query_next_step(const loadconf &lc, int item, int bin, index_t index_if_packed) const {
+    bool query_next_step(const loadconf<BINS> &lc, int item, int bin, index_t index_if_packed) const {
         int load_if_packed = lc.loadsum() + item;
         int load_on_last = lc.loads[BINS];
         if (bin == BINS) {
@@ -170,7 +170,7 @@ public:
         return winning_indices.contains(index_if_packed);
     }
 
-    bool query_next_step(const loadconf &lc, int item, int bin) const {
+    bool query_next_step(const loadconf<BINS> &lc, int item, int bin) const {
         index_t index_if_packed = lc.virtual_index(item, bin);
         return query_next_step(lc, item, bin, index_if_packed);
     }
@@ -183,7 +183,7 @@ public:
         print_if<PROGRESS>("Knownsum layer: Building the winning set.\n");
 
         bool all_winning_so_far = true;
-        loadconf iterated_lc = create_full_loadconf();
+        loadconf<BINS> iterated_lc = create_full_loadconf();
         uint64_t winning_loadconfs = 0;
         uint64_t losing_loadconfs = 0;
 
@@ -256,7 +256,7 @@ public:
     }
 
     void print_losing_set() const {
-        loadconf iterated_lc = first_losing_loadconf;
+        loadconf<BINS> iterated_lc = first_losing_loadconf;
         do {
             bool winning = query(iterated_lc);
             if (!winning) {

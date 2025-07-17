@@ -22,7 +22,7 @@ template <int DENOMINATOR> std::vector<std::pair<int, int>> loads_winning(minibs
     std::vector<std::pair<int, int>> ret;
     for (int sand = 1; sand < GS2BOUND; sand++)
     {
-	loadconf lc;
+	loadconf<BINS> lc;
 	lc.hashinit();
 	lc.assign_and_rehash(sand, 1);
 	if (b > 0)

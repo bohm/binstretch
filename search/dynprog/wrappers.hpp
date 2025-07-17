@@ -4,10 +4,10 @@
 
 // A wrapper function that just checks all feasible packings and reports the maximum feasible item that can be sent.
 int dynprog_max_via_vector(const binconf &conf, dynprog_data *dpdata) {
-    std::vector<loadconf> feasible_packings = dynprog(conf, dpdata);
+    std::vector<loadconf<BINS>> feasible_packings = dynprog(conf, dpdata);
 
     int max_overall = MAX_INFEASIBLE;
-    for (const loadconf &tuple: feasible_packings) {
+    for (const loadconf<BINS> &tuple: feasible_packings) {
         max_overall = std::max((int) (S - tuple.loads[BINS]), max_overall);
     }
 

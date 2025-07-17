@@ -11,7 +11,7 @@
 // best fit decreasing.
 
 int bestfitalg(const binconf *orig) {
-    loadconf b;
+    loadconf<BINS> b;
     // a quick trick: keep track of totalload and terminate when it is 0
     int tl = orig->totalload();
     for (int size = S; size > 0; size--) {
@@ -44,7 +44,7 @@ int bestfitalg(const binconf *orig) {
 }
 
 std::pair<int, int> bestfit_cut_interval(const binconf *orig) {
-    loadconf b;
+    loadconf<BINS> b;
     // a quick trick: keep track of totalload and terminate when it is 0
     int tl = orig->totalload() - S * orig->ic.items[S] - orig->ic.items[1];
     for (int size = S - 1; size > 1; size--) {
@@ -100,7 +100,7 @@ std::pair<int, int> bestfit_cut_interval(const binconf *orig) {
 
 
 // init the online loads (essentially BFD)
-void onlineloads_init(loadconf &ol, const binconf *bc) {
+void onlineloads_init(loadconf<BINS> &ol, const binconf *bc) {
     ol.clear_loads();
     for (int size = S; size > 0; size--) {
         int k = bc->ic.items[size];
@@ -128,7 +128,7 @@ void onlineloads_init(loadconf &ol, const binconf *bc) {
 }
 
 // assigns an item, returns the position of the (online) bin where it is packed
-int onlineloads_assign(loadconf &ol, int item) {
+int onlineloads_assign(loadconf<BINS> &ol, int item) {
     for (int i = 1; i <= BINS; i++) {
         if (ol.loads[i] + item <= S) {
             return ol.assign_without_hash(item, i);
@@ -140,11 +140,11 @@ int onlineloads_assign(loadconf &ol, int item) {
 }
 
 // unassign an item if you know he
-void onlineloads_unassign(loadconf &ol, int item, int bin) {
+void onlineloads_unassign(loadconf<BINS> &ol, int item, int bin) {
     ol.unassign_without_hash(item, bin);
 }
 
-int onlineloads_bestfit(const loadconf &ol) {
+int onlineloads_bestfit(const loadconf<BINS> &ol) {
     // if best fit was not able to legally pack it, return 0
     if (ol.loads[1] > S) {
         return 0;

@@ -17,7 +17,7 @@ constexpr int TWO_MINUS_FIVE_ALPHA = 2 * S - 5 * ALPHA;
 
 std::string binary_name{};
 /*
-bool gs4_6_weaker(loadconf *lc)
+bool gs4_6_weaker(loadconf<BINS> *lc)
 {
     int A = lc->loads[1];
     int B = lc->loads[2];
@@ -39,7 +39,7 @@ bool gs4_6_weaker(loadconf *lc)
 */
 
 template<int SCALE>
-bool gs5_plus(loadconf *lc, int full_size_next_item, int target_bin, minibs<SCALE,3>*mb) {
+bool gs5_plus(loadconf<BINS> *lc, int full_size_next_item, int target_bin) {
     // Next item must fit and must have weight at least ALPHA.
     if (lc->loads[target_bin] + full_size_next_item > R - 1) {
         return false;
@@ -50,7 +50,7 @@ bool gs5_plus(loadconf *lc, int full_size_next_item, int target_bin, minibs<SCAL
     }
 
     // For simplicity of description, we pack the item inside the good situation.
-    loadconf nextconf(*lc, full_size_next_item, target_bin);
+    loadconf<BINS> nextconf(*lc, full_size_next_item, target_bin);
 
 
     int A = nextconf.loads[1];
@@ -70,7 +70,7 @@ bool gs5_plus(loadconf *lc, int full_size_next_item, int target_bin, minibs<SCAL
     }
 }
 
-bool gs8s(loadconf *lc) {
+bool gs8s(loadconf<BINS> *lc) {
     int A = lc->loads[1];
     int B = lc->loads[2];
     int C = lc->loads[3];
@@ -93,7 +93,7 @@ bool gs8s(loadconf *lc) {
     return false;
 }
 
-bool gs8_step1s_rev2(loadconf *lc) {
+bool gs8_step1s_rev2(loadconf<BINS> *lc) {
     int A = lc->loads[1];
     int B = lc->loads[2];
     int C = lc->loads[3];
@@ -125,7 +125,7 @@ bool gs8_step1s_rev2(loadconf *lc) {
 }
 
 // A step to GS4-6, discovered 2023-05-19.
-bool gs8_step1s(loadconf *lc) {
+bool gs8_step1s(loadconf<BINS> *lc) {
     int A = lc->loads[1];
     int B = lc->loads[2];
     int C = lc->loads[3];
@@ -165,7 +165,7 @@ bool gs8_step1s(loadconf *lc) {
 // then this item should trigger GS2 on B (or be too large, which we need to think about.)
 
 /*
-bool gs8_step1as(loadconf *lc) {
+bool gs8_step1as(loadconf<BINS> *lc) {
 
 }
 */
@@ -175,7 +175,7 @@ bool gs8_step1as(loadconf *lc) {
 // We have to put a stricter limit on A, because the next item in the range [3ALPHA-1, 1-2ALPHA-C]
 // must avoid hitting the q limit when packed on A.
 
-bool gs8_step1t(loadconf *lc) {
+bool gs8_step1t(loadconf<BINS> *lc) {
     int A = lc->loads[1];
     int B = lc->loads[2];
     int C = lc->loads[3];
@@ -198,7 +198,7 @@ bool gs8_step1t(loadconf *lc) {
 }
 
 // Discovered 2023-07-18, sent in an email to Lukasz.
-bool gs8_step2s_ac(loadconf *lc) {
+bool gs8_step2s_ac(loadconf<BINS> *lc) {
     int A = lc->loads[1];
     int B = lc->loads[2];
     int C = lc->loads[3];
@@ -230,7 +230,7 @@ bool gs8_step2s_ac(loadconf *lc) {
 
 // Fairly involved variant of GS4-6 step 2. Does not require the strong
 // condition. Explained in my notebook.
-/*bool gs4_6_step2_variant(loadconf *lc)
+/*bool gs4_6_step2_variant(loadconf<BINS> *lc)
 {
     int A = lc->loads[1];
     int B = lc->loads[2];
@@ -274,7 +274,7 @@ bool gs8_step2s_ac(loadconf *lc) {
 }
 
 // A second step to GS4-6. We still use the same assumptions, i.e., the stronger ones.
-bool gs4_6_step3_stronger(loadconf *lc)
+bool gs4_6_step3_stronger(loadconf<BINS> *lc)
 {
     int A = lc->loads[1];
     int B = lc->loads[2];
@@ -306,7 +306,7 @@ bool gs4_6_step3_stronger(loadconf *lc)
 
 // GS9 assumes B hits GS3 (which does not depend on A or load of C, as long as C is below alpha)
 // if A is loaded to alpha.
-bool gs9(loadconf *lc) {
+bool gs9(loadconf<BINS> *lc) {
     int A = lc->loads[1];
     int B = lc->loads[2];
     int C = lc->loads[3];
@@ -324,7 +324,7 @@ bool gs9(loadconf *lc) {
 
 
 // One step before GS9; it also reaches GS8s.
-bool gs9_step1(loadconf *lc) {
+bool gs9_step1(loadconf<BINS> *lc) {
     int A = lc->loads[1];
     int B = lc->loads[2];
     int C = lc->loads[3];
@@ -346,15 +346,15 @@ bool gs9_step1(loadconf *lc) {
 }
 
 template<int SCALE>
-std::string gs_pre_placement(loadconf *lc, int item, int target_bin, minibs<SCALE,3>*mb) {
-    if (gs5_plus(lc, item, target_bin, mb)) {
+std::string gs_pre_placement(loadconf<BINS> *lc, int item, int target_bin) {
+    if (gs5_plus<SCALE>(lc, item, target_bin)) {
         return "(GS5+)";
     } else {
         return "";
     }
 }
 
-std::string gs_loadconf_tester(loadconf *lc) {
+std::string gs_loadconf_tester(loadconf<BINS> *lc) {
     if (gs1(lc)) {
         return "(GS1)";
     } else if (gs2(lc)) {
@@ -387,7 +387,7 @@ std::string gs_loadconf_tester(loadconf *lc) {
 
 
 // Returns [-1,-1] if GS5+ is not applicable, and [ALPHA, max_on_A] if yes.
-std::pair<int, int> gs5plus_range(loadconf *lc) {
+std::pair<int, int> gs5plus_range(loadconf<BINS> *lc) {
     if (BINS != 3) {
         return {-1, -1};
     }
@@ -415,7 +415,7 @@ std::pair<int, int> gs5plus_range(loadconf *lc) {
     }
 }
 
-std::pair<int, int> gs2_range(loadconf *lc, int bin) {
+std::pair<int, int> gs2_range(loadconf<BINS> *lc, int bin) {
     int load = lc->loads[bin];
     if (load > ALPHA) {
         return {-1, -1};
@@ -424,7 +424,7 @@ std::pair<int, int> gs2_range(loadconf *lc, int bin) {
     }
 }
 
-std::pair<int, int> gs7_range(loadconf *lc) {
+std::pair<int, int> gs7_range(loadconf<BINS> *lc) {
     int A = lc->loads[1];
     int B = lc->loads[2];
     int C = lc->loads[3];
@@ -440,7 +440,7 @@ std::pair<int, int> gs7_range(loadconf *lc) {
 
 }
 
-void print_ranges(loadconf *lc) {
+void print_ranges(loadconf<BINS> *lc) {
     char a_minus_one = 'A' - 1;
 
     for (int i = 1; i <= 3; i++) {
@@ -463,7 +463,7 @@ void print_ranges(loadconf *lc) {
 
 }
 
-template<int DENOMINATOR> void print_input_form(const loadconf &lc, const itemconf<DENOMINATOR>& ic,
+template<int DENOMINATOR> void print_input_form(const loadconf<BINS> &lc, const itemconf<DENOMINATOR>& ic,
         std::string executable_name = std::string())
 {
     if (!executable_name.empty()) {
@@ -482,7 +482,7 @@ template<int DENOMINATOR> void print_input_form(const loadconf &lc, const itemco
 }
 
 template<int SCALE>
-void adv_winning_description(std::pair<loadconf, itemconf<SCALE>> *pos, minibs<SCALE,3>*minibs) {
+void adv_winning_description(std::pair<loadconf<BINS>, itemconf<SCALE>> *pos, minibs<SCALE,3>*minibs) {
     bool pos_winning = minibs->query_itemconf_winning(pos->first, pos->second);
     if (pos_winning) {
         return;
@@ -534,7 +534,7 @@ void adv_winning_description(std::pair<loadconf, itemconf<SCALE>> *pos, minibs<S
                 }
 
                 if (item + pos->first.loads[bin] <= R - 1) {
-                    loadconf nextlc(pos->first);
+                    loadconf<BINS> nextlc(pos->first);
                     nextlc.assign_and_reindex(item, bin);
                     itemconf<SCALE> nextic(pos->second);
                     if (shrunk_itemtype != 0) {
@@ -550,7 +550,7 @@ void adv_winning_description(std::pair<loadconf, itemconf<SCALE>> *pos, minibs<S
 }
 
 template<int SCALE>
-std::pair<loadconf, itemconf<SCALE>> loadshrunken(std::stringstream &str_s, bool only_load = false) {
+std::pair<loadconf<BINS>, itemconf<SCALE>> loadshrunken(std::stringstream &str_s, bool only_load = false) {
     std::array<int, BINS + 1> loads = load_segment_with_loads(str_s);
     std::array<ITEM_TYPE, SCALE> items = {0};
 
@@ -560,11 +560,11 @@ std::pair<loadconf, itemconf<SCALE>> loadshrunken(std::stringstream &str_s, bool
 
     // int _ = load_last_item_segment(str_s);
 
-    // Currently, we do not initialize a loadconf with an array directly, as this can be very costly,
+    // Currently, we do not initialize a loadconf<BINS> with an array directly, as this can be very costly,
     // especially if converting often between packed arrays and std::array. So, we just initialize slowly here.
     // Hard requirement: loads are already sorted.
-    // loadconf r1(loads);
-    loadconf r1;
+    // loadconf<BINS> r1(loads);
+    loadconf<BINS> r1;
     for (int p = 1; p <= BINS; p++) {
         r1.store(p, loads[p]);
     }
@@ -575,7 +575,7 @@ std::pair<loadconf, itemconf<SCALE>> loadshrunken(std::stringstream &str_s, bool
 }
 
 template<int SCALE>
-void print_minibs(std::pair<loadconf, itemconf<SCALE>> *pos) {
+void print_minibs(std::pair<loadconf<BINS>, itemconf<SCALE>> *pos) {
     pos->first.print(stderr);
     fprintf(stderr, " ");
     pos->second.print(stderr, false);
@@ -612,7 +612,7 @@ void print_as_intervals(int item_ub, flat_hash_map<int, std::string>& good_move_
 // Very similar to alg_winning_table, but lists only partial results, and pretends all items on input are sand
 // (so no combinatorial weight).
 template<int SCALE>
-void sand_winning_table(std::pair<loadconf, itemconf<SCALE>> *minibs_position, minibs<SCALE,3> *minibs) {
+void sand_winning_table(std::pair<loadconf<BINS>, itemconf<SCALE>> *minibs_position, minibs<SCALE,3> *minibs) {
 
     char a_minus_one = 'A' - 1;
     int maximum_feasible_via_minibs = minibs->grow_to_upper_bound(
@@ -661,7 +661,7 @@ void sand_winning_table(std::pair<loadconf, itemconf<SCALE>> *minibs_position, m
 }
 
 template<int SCALE>
-void alg_winning_table(std::pair<loadconf, itemconf<SCALE>> *minibs_position, minibs<SCALE,3>*minibs) {
+void alg_winning_table(std::pair<loadconf<BINS>, itemconf<SCALE>> *minibs_position, minibs<SCALE,3>*minibs) {
     // If the position is already winning by our established mathematical rules (good situations),
     // print it. It is slightly strange that we do it before the winning test below; this is for
     // slight debugging purposes.
@@ -755,13 +755,13 @@ void alg_winning_table(std::pair<loadconf, itemconf<SCALE>> *minibs_position, mi
 
                     // First, we run the tests which do not need to place the item.
                     std::string tester_before_placing = gs_pre_placement<SCALE>(
-                            &(minibs_position->first), item, bin, minibs);
+                            &(minibs_position->first), item, bin);
                     if (!tester_before_placing.empty()) {
                         good_moves += tester_before_placing;
                         good_moves += ' ';
                     } else {
                         // Then, we run the tests which assume the item is packed.
-                        loadconf gm(minibs_position->first, item, bin);
+                        loadconf<BINS> gm(minibs_position->first, item, bin);
                         std::string tester_reply = gs_loadconf_tester(&gm);
                         if (!tester_reply.empty()) {
                             good_moves += tester_reply;
@@ -802,7 +802,7 @@ int main(int argc, char **argv) {
     }
 
     // fprintf(stderr, "argstream: %s\n", argstream.str().c_str());
-    std::pair<loadconf, itemconf<MINITOOL_MINIBS_SCALE>> p = loadshrunken<MINITOOL_MINIBS_SCALE>(argstream, only_load);
+    std::pair<loadconf<BINS>, itemconf<MINITOOL_MINIBS_SCALE>> p = loadshrunken<MINITOOL_MINIBS_SCALE>(argstream, only_load);
 
     // p.first.print(stderr);
     // fprintf(stderr, " ");

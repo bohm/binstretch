@@ -254,11 +254,11 @@ public:
     }
 
 
-    void log_loadconf(const loadconf *b) {
+    void log_loadconf(const loadconf<BINS> *b) {
         print_loadconf_stream(logfile, b, true);
     }
 
-    void log_loadconf(const loadconf *b, std::string s) {
+    void log_loadconf(const loadconf<BINS> *b, std::string s) {
         print_loadconf_stream(logfile, b, false);
         fprintf(logfile, " %s\n", s.c_str());
     }
@@ -270,7 +270,7 @@ public:
     }
 
     void log_loadconf_with_move(binconf *b, int pres_item, int target_bin) {
-        loadconf copy(*b, pres_item, target_bin);
+        loadconf<BINS> copy(*b, pres_item, target_bin);
         print_loadconf_stream(logfile, &copy, true);
     }
 

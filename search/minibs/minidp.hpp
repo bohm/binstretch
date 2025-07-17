@@ -15,13 +15,13 @@ public:
         delete dpd;
     }
 
-    std::vector<loadconf> dynprog(const std::array<int, DENOMINATOR> itemconf) {
+    std::vector<loadconf<BINS>> dynprog(const std::array<int, DENOMINATOR> itemconf) {
         constexpr int BIN_CAPACITY = DENOMINATOR - 1;
         dpd->newloadqueue->clear();
         dpd->oldloadqueue->clear();
-        std::vector<loadconf> *poldq = dpd->oldloadqueue;
-        std::vector<loadconf> *pnewq = dpd->newloadqueue;
-        std::vector<loadconf> ret;
+        std::vector<loadconf<BINS>> *poldq = dpd->oldloadqueue;
+        std::vector<loadconf<BINS>> *pnewq = dpd->newloadqueue;
+        std::vector<loadconf<BINS>> ret;
         bool initial_phase = true;
         dpd->loadhashset->clear();
 
@@ -30,7 +30,7 @@ public:
             int k = itemconf[itemsize];
             while (k > 0) {
                 if (initial_phase) {
-                    loadconf first;
+                    loadconf<BINS> first;
                     first.clear_loads();
                     // for (int i = 1; i <= BINS; i++) {
                     //     first.loads[i] = 0;
@@ -40,7 +40,7 @@ public:
                     pnewq->push_back(first);
                     initial_phase = false;
                 } else {
-                    for (loadconf &tuple: *poldq) {
+                    for (loadconf<BINS> &tuple: *poldq) {
                         for (int i = BINS; i >= 1; i--) {
                             // same as with Algorithm, we can skip when sequential bins have the same load
                             if (i < BINS && tuple.loads[i] == tuple.loads[i + 1]) {
@@ -85,9 +85,9 @@ public:
 
     // Can be optimized (indeed, we do so in the main program).
     int maximum_feasible(const std::array<int, DENOMINATOR> &itemconf) {
-        std::vector<loadconf> all_configurations = dynprog(itemconf);
+        std::vector<loadconf<BINS>> all_configurations = dynprog(itemconf);
         int currently_largest_sendable = 0;
-        for (loadconf &lc: all_configurations) {
+        for (loadconf<BINS> &lc: all_configurations) {
             currently_largest_sendable = std::max(currently_largest_sendable,
                                                   (DENOMINATOR - 1) - lc.loads[BINS]);
         }
