@@ -84,6 +84,7 @@ private:
     std::atomic<int> position_in_bucket = 0;
     std::vector<std::vector<unsigned int>> superbuckets;
     std::vector<flat_hash_set<index_t>> parallel_computed_layers;
+    const unsigned int thread_count;
 
 public:
     static inline int shrink_item(int larger_item) {
@@ -498,8 +499,6 @@ public:
 
         superbuckets.clear();
         superbuckets.resize(max_items_per_partition+1);
-        unsigned int thread_count = std::get<2>(server_properties(gethost().c_str()));
-
 
         // We create superbuckets which hold buckets (groups of at most thread_count elements of the same itemcount)
         // which can be processed in parallel.
@@ -524,11 +523,16 @@ public:
             parallel_computed_layers.clear();
             parallel_computed_layers.resize(superbuckets[sb].size());
 
-            for (unsigned int t = 0; t < thread_count; t++) {
-                threads[t] = std::thread(&minibs<DENOMINATOR, 3>::worker_process_task, this);
-            }
-            for (unsigned int t = 0; t < thread_count; t++) {
-                threads[t].join();
+            // A single threaded execution will not spawn child processes, so that it can be profiled more easily.
+            if (thread_count == 1) {
+                worker_process_task();
+            } else {
+                for (unsigned int t = 0; t < thread_count; t++) {
+                    threads[t] = std::thread(&minibs<DENOMINATOR, 3>::worker_process_task, this);
+                }
+                for (unsigned int t = 0; t < thread_count; t++) {
+                    threads[t].join();
+                }
             }
 
             for (unsigned int b = 0; b < superbuckets[sb].size(); b++) {
@@ -554,7 +558,8 @@ public:
     }
 
     // The init is now able to recover data from previous computations.
-    minibs() {
+    minibs(const unsigned int t_c = std::thread::hardware_concurrency(),
+           const bool forced_recomputation = false) : thread_count(t_c) {
         print_if<PROGRESS>("Minibs<%d> used, specialized for three bins.\n", DENOM);
         fprintf(stderr, "Minibs<%d>: There will be %d item sizes tracked.\n", DENOM, DENOM - 1);
 
@@ -562,7 +567,7 @@ public:
 //        if (false) {
 
         bool knownsum_loaded = false;
-        if (bstore.knownsum_file_exists()) {
+        if (bstore.knownsum_file_exists() && !forced_recomputation) {
             bstore.restore_knownsum_set(knownsum.winning_indices, knownsum.first_losing_loadconf);
 
             print_if<PROGRESS>("Restored knownsum layer with %zu winning positions.\n",
@@ -576,7 +581,7 @@ public:
             knownsum_loaded = true;
         }
 
-        if (bstore.storage_exists()) {
+        if (bstore.storage_exists() && !forced_recomputation) {
             bstore.restore_three(midgame_feasible_partitions, endgame_adjacent_partitions, endgame_adjacent_maxfeas,
                                  fingerprint_map, fingerprints, unique_fps);
             populate_midgame_feasible_map();

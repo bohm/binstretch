@@ -149,6 +149,22 @@ function(build_knownsum_tests)
     target_compile_definitions(knownsum-game-tests PUBLIC IPACKED=1) # Stack.
 endfunction()
 
+function(build_minibs_performance BINS R S MONOT SCALE)
+    add_executable(minibs-performance-${BINS}-${R}-${S}-${MONOT}-${SCALE} tests/minibs-performance.cpp)
+    add_dependencies(tests minibs-performance-${BINS}-${R}-${S}-${MONOT}-${SCALE})
+    set_target_properties(minibs-performance-${BINS}-${R}-${S}-${MONOT}-${SCALE}
+            PROPERTIES
+            OUTPUT_NAME minibs-performance-${SCALE}-mon-${MONOT}
+    )
+    target_compile_definitions(minibs-performance-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IBINS=${BINS})
+    target_compile_definitions(minibs-performance-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IR=${R})
+    target_compile_definitions(minibs-performance-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IS=${S})
+    target_compile_definitions(minibs-performance-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC ISCALE=${SCALE})
+    target_compile_definitions(minibs-performance-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IMONOT=${MONOT})
+    target_compile_definitions(minibs-performance-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IRECURSION=0) # Stack.
+    target_compile_definitions(minibs-performance-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IPACKED=0) # Stack.
+endfunction()
+
 function(build_tests BINS R S MONOT SCALE)
     if (${MONOT} EQUAL -1)
         recommend_monotonicity(${BINS} ${R} ${S})
@@ -168,8 +184,9 @@ function(build_tests BINS R S MONOT SCALE)
 
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "./${BINS}-${R}-${S}/")
 
-    build_test_packed(${BINS} ${R} ${S} ${MONOT} ${SCALE})
+    # build_test_packed(${BINS} ${R} ${S} ${MONOT} ${SCALE})
     # build_test_recursion(${BINS} ${R} ${S} ${MONOT} ${SCALE})
     # build_test_stack(${BINS} ${R} ${S} ${MONOT} ${SCALE})
+    build_minibs_performance(${BINS} ${R} ${S} ${MONOT} ${SCALE})
 
 endfunction()

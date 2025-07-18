@@ -6,7 +6,6 @@
 #include "functions.hpp"
 #include "positional.hpp"
 #include "binomial_index.hpp"
-#include "packed_array.hpp"
 #include <immintrin.h>
 #include <cstring>      // for std::memmove
 #include <cstdint>
