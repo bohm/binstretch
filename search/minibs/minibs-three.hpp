@@ -618,6 +618,22 @@ public:
                 fprintf(stderr, ".\n");
             }
             knownsum_loaded = true;
+
+            // We currently do not support recovering the sorted arrays from the cache files. This can be
+            // implemented later.
+
+            if (USING_KNOWNSUM_VECTOR && !USING_KNOWNSUM_VECTOR_PRUNING) {
+                knownsum.build_winning_set(&losing_loadconfs);
+            }
+
+            if (USING_KNOWNSUM_VECTOR_PRUNING) {
+                bfs_losing_loadconfs<DENOMINATOR, 3>(knownsum, &losing_loadconfs);
+            }
+
+            if (USING_KNOWNSUM_VECTOR) {
+                losing_loadconfs.finalize();
+                // losing_loadconfs.print();
+            }
         }
 
         if (bstore.storage_exists() && !forced_recomputation) {
