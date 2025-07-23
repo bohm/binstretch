@@ -160,6 +160,18 @@ function(build_minibs_performance BINS R S MONOT SCALE)
             PUBLIC IBINS=${BINS} IR=${R} IS=${S} ISCALE=${SCALE} IMONOT=${MONOT} IRECURSION=0 IPACKED=0)
 endfunction()
 
+function(build_minibs_stats BINS R S MONOT SCALE)
+    add_executable(minibs-stats-${BINS}-${R}-${S}-${MONOT}-${SCALE} tests/minibs-stats.cpp)
+    add_dependencies(tests minibs-stats-${BINS}-${R}-${S}-${MONOT}-${SCALE})
+    set_target_properties(minibs-stats-${BINS}-${R}-${S}-${MONOT}-${SCALE}
+            PROPERTIES
+            OUTPUT_NAME minibs-stats-${SCALE}-mon-${MONOT}
+    )
+    target_compile_definitions(minibs-stats-${BINS}-${R}-${S}-${MONOT}-${SCALE}
+            PUBLIC IBINS=${BINS} IR=${R} IS=${S} ISCALE=${SCALE} IMONOT=${MONOT} IRECURSION=0 IPACKED=0)
+endfunction()
+
+
 function(build_tests BINS R S MONOT SCALE)
     if (${MONOT} EQUAL -1)
         recommend_monotonicity(${BINS} ${R} ${S})
@@ -183,5 +195,5 @@ function(build_tests BINS R S MONOT SCALE)
     # build_test_recursion(${BINS} ${R} ${S} ${MONOT} ${SCALE})
     # build_test_stack(${BINS} ${R} ${S} ${MONOT} ${SCALE})
     build_minibs_performance(${BINS} ${R} ${S} ${MONOT} ${SCALE})
-
+    build_minibs_stats(${BINS} ${R} ${S} ${MONOT} ${SCALE})
 endfunction()

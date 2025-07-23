@@ -597,7 +597,7 @@ public:
     }
 
     // The init is now able to recover data from previous computations.
-    minibs(const unsigned int t_c = std::thread::hardware_concurrency(),
+    explicit minibs(const unsigned int t_c = std::thread::hardware_concurrency(),
            const bool forced_recomputation = false) : thread_count(t_c) {
         print_if<PROGRESS>("Minibs<%d> used, specialized for three bins.\n", DENOM);
         fprintf(stderr, "Minibs<%d>: There will be %d item sizes tracked.\n", DENOM, DENOM - 1);
