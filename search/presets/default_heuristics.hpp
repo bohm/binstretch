@@ -27,7 +27,7 @@ inline constexpr bool USING_HEURISTIC_KNOWNSUM = false; // Recommend turning off
 
 // Currently, it applies only for the setting of BINS == 3, so that the winning tables produced by our tools
 // such as all-losing or alg-winning-table provide more meaningful results this way.
-
+    
 // Setting KNOWNSUM_EXTENSION_GS5 to false makes the computation structurally cleaner,
 // as there are no special cases, but the understanding of winning and losing
 // positions does not match the human understanding exactly.
@@ -40,4 +40,3 @@ constexpr bool KNOWNSUM_EXTENSION_GS5 = true && (BINS == 3);
 constexpr bool USING_HEURISTIC_GS = false;
 constexpr bool USING_KNOWNSUM_LOWSEND = false;
 constexpr bool USING_MINIBINSTRETCHING = true;
-

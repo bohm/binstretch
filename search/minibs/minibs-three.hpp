@@ -21,7 +21,6 @@ using phmap::flat_hash_map;
 template<unsigned int ARRLEN>
 using partition_container = std::vector<std::array<int, ARRLEN>>;
 
-
 template<int DENOMINATOR>
 class minibs<DENOMINATOR, 3> {
 public:
@@ -49,9 +48,9 @@ public:
     std::vector<flat_hash_set<uint64_t> > alg_winning_positions;
 
     // Optimization:  instead of going through all knownsum loads in the itemconf layers, we only go through
-    // those which are not winning by knownsum and are actually valid.
+    // those which are not winning by knownsum and are actually relevant (reachable from [0 0 0]).
     // This can be cleared after construction (and is not used at all when restoring).
-    // std::vector<loadconf<BINS>> loads_not_winning_by_knownsum;
+    loadconf_vector_plus<DENOMINATOR, 3> losing_loadconfs;
 
     // Fingerprints on their own is just a transposition of the original minibs
     // approach. Instead of storing loadhashes for each item layer, we store
@@ -293,6 +292,22 @@ public:
         fpstorage->add_partition_to_load_index(load_index, item_layer);
     }
 
+    // Iterates the do/while loop. Normally just calls decrease, but goes through the array of losing loadconfs
+    // if it is built.
+    inline bool itemconf_layer_iterate(loadconf<BINS> **loadconf_position_pointer, unsigned int pos) {
+        if (USING_KNOWNSUM_VECTOR) {
+            if (pos == losing_loadconfs.loadconfs.size()) {
+                *loadconf_position_pointer = nullptr;
+                return false;
+            } else {
+                *loadconf_position_pointer = &(losing_loadconfs.loadconfs[pos]);
+                return true;
+            }
+        } else {
+            return decrease(*loadconf_position_pointer);
+        }
+    }
+
     void init_itemconf_layer(unsigned int layer_index, flat_hash_set<index_t> *alg_winning_in_layer) {
 
         std::array<int, DENOMINATOR> feasible_layer = midgame_feasible_partitions[layer_index];
@@ -301,8 +316,6 @@ public:
 
         bool last_layer = (layer_index == (midgame_feasible_partitions.size() - 1));
 
-        // loadconf<BINS> iterated_lc = create_full_loadconf();
-        loadconf<BINS> iterated_lc = knownsum.first_losing_loadconf;
 
         int scaled_ub_from_hashes = DENOMINATOR - 1;
 
@@ -326,34 +339,49 @@ public:
         // (it will never be queried).
 
         int lb_on_vol = lb_on_volume(layer);
+        loadconf<BINS> iterated_lc_inplace = knownsum.first_losing_loadconf;
+        loadconf<BINS> *iterated_lc_ptr = nullptr;
+
+        // For the normal do/while loop, this is just an iteration count. For the vector implementation, this is
+        // an index into the vector array.
+        unsigned int loadconf_iterator = 0;
+        if (USING_KNOWNSUM_VECTOR) {
+            iterated_lc_ptr = &(losing_loadconfs.loadconfs[loadconf_iterator]);
+        } else {
+            iterated_lc_ptr = &(iterated_lc_inplace);
+        }
 
         do {
 
-            int loadsum = iterated_lc.loadsum();
+            int loadsum = iterated_lc_ptr->loadsum();
+
+            // Always true for USING_KNOWNSUM_VECTOR.
             if (loadsum < lb_on_vol) {
-                /* fprintf(stderr, "Loadsum %d outside the volume bound of %d: ", loadsum,
-                    lb_on_vol);
-                print_loadconf_stream(stderr, &iterated_lc, false);
-                fprintf(stderr, " (");
-                layer.print(stderr, false);
-                fprintf(stderr, ")\n");
-                */
-                continue;
+                // Since the vector of all losing positions is sorted by decreasing load, we can just stop the process.
+                if (USING_KNOWNSUM_VECTOR) {
+                    break;
+                } else {
+                    // The iterative process is not currently guaranteeing that, so we just skip over.
+                    continue;
+                }
             }
 
             // No insertions are necessary if the positions are trivially winning or losing.
-            if (adv_immediately_winning(iterated_lc) || alg_immediately_winning(iterated_lc)) {
-                continue;
+            if (!USING_KNOWNSUM_VECTOR) {
+                if (adv_immediately_winning(*iterated_lc_ptr) || alg_immediately_winning(*iterated_lc_ptr)) {
+                    continue;
+                }
             }
 
             // Ignore all positions which are already winning in the knownsum layer.
-            if (knownsum.query(iterated_lc)) {
+            // Always false for USING_KNOWNSUM_VECTOR.
+            if (!USING_KNOWNSUM_VECTOR && knownsum.query(*iterated_lc_ptr)) {
                 continue;
             }
 
             if (loadsum < S * BINS) {
 
-                int start_item = std::min(ub_from_dp, S * BINS - iterated_lc.loadsum());
+                int start_item = std::min(ub_from_dp, S * BINS - loadsum);
                 bool losing_item_exists = false;
 
                 for (int item = start_item; item >= 1; item--) {
@@ -375,19 +403,19 @@ public:
                     }
 
                     for (int bin = 1; bin <= BINS; bin++) {
-                        if (bin > 1 && iterated_lc.loads[bin] == iterated_lc.loads[bin - 1]) {
+                        if (bin > 1 && iterated_lc_ptr->loads[bin] == iterated_lc_ptr->loads[bin - 1]) {
                             continue;
                         }
 
-                        if (item + iterated_lc.loads[bin] <= R - 1) // A plausible move.
+                        if (item + iterated_lc_ptr->loads[bin] <= R - 1) // A plausible move.
                         {
                             // We have to check the hash table if the position is winning.
                             bool alg_wins_next_position;
                             if (shrunk_itemtype == 0) {
-                                alg_wins_next_position = query_same_layer(iterated_lc, item, bin,
+                                alg_wins_next_position = query_same_layer(*iterated_lc_ptr, item, bin,
                                                                           alg_winning_in_layer);
                             } else {
-                                alg_wins_next_position = query_different_layer(iterated_lc, next_layer_hash,
+                                alg_wins_next_position = query_different_layer(*iterated_lc_ptr, next_layer_hash,
                                                                                 item, bin);
                             }
                             if (alg_wins_next_position) {
@@ -407,12 +435,19 @@ public:
                     // The measure only code below does not work in the parallel setting.
                     // MEASURE_ONLY(winning_loadconfs++);
                     // We delay encaching the win until the parallel phase is over.
-                    alg_winning_in_layer->insert(iterated_lc.index);
+                    alg_winning_in_layer->insert(iterated_lc_ptr->index);
+                    // Debug.
+                    // fprintf(stderr, "Winning for ALG: ");
+                    // iterated_lc_ptr->print(stderr);
+                    // fprintf(stderr, " ");
+                    // layer.print(stderr);
+                    // fprintf(stderr, "\n");
                 } else {
                     // MEASURE_ONLY(losing_loadconfs++);
                 }
             }
-        } while (decrease(&iterated_lc));
+        } while (itemconf_layer_iterate(&iterated_lc_ptr, ++loadconf_iterator));
+        // while (decrease(&iterated_lc));
 
         // fprintf(stderr, "Layer %d: Winning positions: %" PRIu64 " and %" PRIu64 " losing.\n",
 //			      layer_index, winning_loadconfs, losing_loadconfs);
@@ -512,12 +547,16 @@ public:
         assert(max_items_per_partition + 1 == (int) superbuckets.size());
 
 
-        auto *threads = new std::thread[thread_count];
+        std::thread *threads = nullptr;
+
+        if (thread_count > 1) {
+            threads = new std::thread[thread_count];
+        }
 
         unsigned int buckets_processed = 0;
         unsigned int buckets_last_reported = 0;
 
-        for (int sb = max_items_per_partition; sb >= 0; sb--) {
+        for (int sb = max_items_per_partition; sb >= 0; --sb) {
             current_superbucket = sb;
             position_in_bucket = 0;
             parallel_computed_layers.clear();
@@ -637,12 +676,28 @@ public:
 
         // We initialize the knownsum layer here.
         if (!knownsum_loaded) {
-            knownsum.build_winning_set();
+            if (USING_KNOWNSUM_VECTOR && !USING_KNOWNSUM_VECTOR_PRUNING) {
+                knownsum.build_winning_set(&losing_loadconfs);
+            } else {
+                knownsum.build_winning_set();
+            }
+
             if (PROGRESS) {
                 fprintf(stderr, "Computed first losing loadconf<BINS>: ");
                 knownsum.first_losing_loadconf.print(stderr);
                 fprintf(stderr, ".\n");
             }
+
+
+            if (USING_KNOWNSUM_VECTOR_PRUNING) {
+                bfs_losing_loadconfs<DENOMINATOR, 3>(knownsum, &losing_loadconfs);
+            }
+
+            if (USING_KNOWNSUM_VECTOR) {
+                losing_loadconfs.finalize();
+                // losing_loadconfs.print();
+            }
+
         }
 
         std::vector<uint64_t> *random_numbers = create_random_hashes(midgame_feasible_partitions.size());

@@ -18,6 +18,33 @@
 using phmap::flat_hash_set;
 using phmap::flat_hash_map;
 
+template<int DENOMINATOR, int SPECIALIZATION> class
+loadconf_vector_plus {
+public:
+    std::vector<loadconf<BINS>> loadconfs;
+    // Originally we had more data fields here, but it seems only the sort is actually useful at the moment.
+    // For continuity and future-proofing, we keep it as a separate class.
+
+    // Sorts the losing loads by load, but we need largest load first (the logic of the iterative process requires it).
+    void finalize() {
+        fprintf(stderr, "Finalization begins, loads in vector: %zu.\n", loadconfs.size());
+        std::sort(loadconfs.begin(), loadconfs.end(),
+            [](const loadconf<BINS>& lhs, const loadconf<BINS>& rhs) -> bool {
+                return lhs.loadsum() > rhs.loadsum();
+            });
+    }
+
+    void print() const {
+        fprintf(stderr, "Losing reachable load configurations:\n");
+        for (int i = 0; i < static_cast<int>(loadconfs.size()); i++) {
+            fprintf(stderr, "%5d: ", i);
+            loadconfs[i].print(stderr);
+            fprintf(stderr, "\n");
+        }
+        fprintf(stderr, "---\n");
+    }
+};
+
 template<int DENOMINATOR, int SPECIALIZATION>
 class knownsum_game {
 public:
@@ -178,7 +205,9 @@ public:
 
 
 
-    void build_winning_set() {
+    // Note: Currently we are not using the out_losing_for_alg at all, but we keep it as an option
+    // for future performance comparisons. Control with KNOWNSUM_UNPRUNED_VECTOR.
+    void build_winning_set(loadconf_vector_plus<DENOMINATOR, SPECIALIZATION> * out_losing_for_alg = nullptr) {
 
         print_if<PROGRESS>("Knownsum layer: Building the winning set.\n");
 
@@ -239,6 +268,10 @@ public:
                     first_losing_loadconf = iterated_lc;
                 }
 
+                if (USING_KNOWNSUM_VECTOR && out_losing_for_alg != nullptr) {
+                    out_losing_for_alg->loadconfs.push_back(iterated_lc);
+                }
+
                 losing_loadconfs++;
             }
         } while (decrease(&iterated_lc));
@@ -266,3 +299,68 @@ public:
         } while (decrease(&iterated_lc));
     }
 };
+
+template<int DENOMINATOR, int SPECIALIZATION>
+void bfs_losing_loadconfs(knownsum_game<DENOMINATOR, SPECIALIZATION> &ksgame,
+                          loadconf_vector_plus<DENOMINATOR, SPECIALIZATION> *out_pruned_loadconfs) {
+    using lc_t = loadconf<BINS>;
+
+    flat_hash_set<index_t> out_pruned_indices{};
+
+    std::queue<lc_t> q;
+    lc_t start;
+    start.clear_loads();
+    start.hashinit();
+
+    if (!ksgame.query(start)) {
+        out_pruned_indices.insert(start.index);
+        out_pruned_loadconfs->loadconfs.push_back(start);
+        q.push(start);
+    }
+
+    while (!q.empty()) {
+        lc_t cur = q.front();
+        q.pop();
+
+        int loadsum = cur.loadsum();
+        if (loadsum >= S * BINS) {
+            continue;
+        }
+
+        int start_item = std::min(S, S * BINS - loadsum);
+
+        for (int item = start_item; item >= 1; --item) {
+            bool all_losing = true;
+            bool valid = false;
+            std::array<lc_t, BINS> next_confs{};
+            int next_count = 0;
+
+            for (int bin = 1; bin <= BINS; ++bin) {
+                if (bin > 1 && cur.loads[bin] == cur.loads[bin - 1]) {
+                    continue;
+                }
+
+                if (cur.loads[bin] + item <= R - 1) {
+                    valid = true;
+
+                    if (ksgame.query_next_step(cur, item, bin)) {
+                        all_losing = false;
+                        break;
+                    }
+
+                    next_confs[next_count++] = lc_t(cur, item, bin);
+                }
+            }
+
+            if (valid && all_losing) {
+                for (int i = 0; i < next_count; ++i) {
+                    lc_t &next = next_confs[i];
+                    if (out_pruned_indices.insert(next.index).second) {
+                        out_pruned_loadconfs->loadconfs.push_back(next);
+                        q.push(next);
+                    }
+                }
+            }
+        }
+    }
+}

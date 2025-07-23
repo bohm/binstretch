@@ -1,8 +1,8 @@
 #define IBINS 3
-#define IR 821
-#define IS 600
+#define IR 41
+#define IS 30
 #define ISCALE 9
-#define IMONOT 599
+#define IMONOT 29
 
 #include <cstdio>
 #include <array>
@@ -12,6 +12,7 @@
 #include <cstdint>
 
 #include "presets/default_heuristics.hpp"
+#include "presets/knownsum_pruned.hpp"
 #include "common.hpp"
 #include "minibs/minibs.hpp"
 #include "minibs/minibs-three.hpp"
@@ -27,6 +28,12 @@ int main(void)
     // Knownsum game report.
     knownsum_game<MINIBS_SCALE, BINS> ksgame;
     ksgame.build_winning_set();
+
+    loadconf_vector_plus<MINIBS_SCALE, BINS> truly_losing;
+    bfs_losing_loadconfs<MINIBS_SCALE, BINS>(ksgame, &truly_losing);
+    fprintf(stdout, "Truly losing loadconfs: %zu.\n", truly_losing.loadconfs.size());
+    truly_losing.finalize();
+    // truly_losing.print();
 
     // Midgame feasible report.
     partition_container<MINIBS_SCALE> midgame_feasible_partitions;
@@ -46,5 +53,9 @@ int main(void)
                                                                      midgame_feasible_partitions,
                                                                      midgame_feasible_hashes);
     fprintf(stdout, "Midgame feasible partitions: %zu\n", midgame_feasible_partitions.size());
+
+	// Test minibs:
+    minibs<MINIBS_SCALE, BINS> mb(1, true);
+
     return 0;
 }

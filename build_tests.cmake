@@ -156,13 +156,8 @@ function(build_minibs_performance BINS R S MONOT SCALE)
             PROPERTIES
             OUTPUT_NAME minibs-performance-${SCALE}-mon-${MONOT}
     )
-    target_compile_definitions(minibs-performance-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IBINS=${BINS})
-    target_compile_definitions(minibs-performance-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IR=${R})
-    target_compile_definitions(minibs-performance-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IS=${S})
-    target_compile_definitions(minibs-performance-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC ISCALE=${SCALE})
-    target_compile_definitions(minibs-performance-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IMONOT=${MONOT})
-    target_compile_definitions(minibs-performance-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IRECURSION=0) # Stack.
-    target_compile_definitions(minibs-performance-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IPACKED=0) # Stack.
+    target_compile_definitions(minibs-performance-${BINS}-${R}-${S}-${MONOT}-${SCALE}
+            PUBLIC IBINS=${BINS} IR=${R} IS=${S} ISCALE=${SCALE} IMONOT=${MONOT} IRECURSION=0 IPACKED=0)
 endfunction()
 
 function(build_tests BINS R S MONOT SCALE)

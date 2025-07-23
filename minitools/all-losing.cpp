@@ -6,6 +6,7 @@
 #include <cstdint>
 
 #include "presets/default_heuristics.hpp"
+#include "presets/knownsum_pruned.hpp"
 #include "common.hpp"
 #include "minibs/minibs.hpp"
 #include "minibs/minibs-three.hpp"

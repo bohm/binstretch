@@ -161,26 +161,20 @@ function(build_search BINS R S MONOT SCALE)
 
     add_dependencies(search search-${BINS}-${R}-${S}-${MONOT}-${SCALE})
     set_target_properties(search-${BINS}-${R}-${S}-${MONOT}-${SCALE}
-            PROPERTIES
-            OUTPUT_NAME search-${SCALE}-mon-${MONOT}
+            PROPERTIES OUTPUT_NAME search-${SCALE}-mon-${MONOT}
     )
 
-    target_compile_definitions(search-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IBINS=${BINS})
-    target_compile_definitions(search-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IR=${R})
-    target_compile_definitions(search-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IS=${S})
-    target_compile_definitions(search-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC ISCALE=${SCALE})
-    target_compile_definitions(search-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IMONOT=${MONOT})
-    target_compile_definitions(search-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IRECURSION=0)
-    target_compile_definitions(search-${BINS}-${R}-${S}-${MONOT}-${SCALE} PUBLIC IPACKED=1)
+    target_compile_definitions(search-${BINS}-${R}-${S}-${MONOT}-${SCALE}
+            PUBLIC IBINS=${BINS} IR=${R} IS=${S} ISCALE=${SCALE} IMONOT=${MONOT} IRECURSION=0 IPACKED=1)
 endfunction()
 
-build_search(3 4 3 -1 -1) # Lower bound.
+# build_search(3 4 3 -1 -1) # Lower bound.
 # build_search(3 6 4 -1 -1) # Not a lower bound.
 # build_search(3 19 14 -1 -1) # Lower bound.
 # build_search(3 56 41 -1 -1) # Not a lower bound.
 # build_search(3 164 120 -1 -1) # Lower bound.
 # build_search(3 149 109 -1 -1)
-build_search(8 19 14 -1 -1)
+# build_search(8 19 14 -1 -1)
 # build_search(4 19 14 -1 -1)
 # build_search(10 19 14 -1 -1)
 # build_search(12 19 14 0 3)
@@ -204,14 +198,17 @@ build_search(8 19 14 -1 -1)
 # build_knownsum_tests()
 
 # build_tests(3 19 14 -1 -1)
-build_tests(3 247 180 59 9)
+# build_tests(3 247 180 59 9)
+build_tests(3 411 300 299 6)
 
+# build_ub_tools(3 41 30 29 9)
 # build_ub_tools(3 83 60 59 6)
+# build_ub_tools(3 411 300 299 9)
 # build_ub_tools(3 821 600 599 6)
-build_ub_tools(3 821 600 599 7)
+# build_ub_tools(3 821 600 599 7)
 # build_ub_tools(3 821 600 599 9)
-build_ub_tools(3 821 600 599 10)
-build_ub_tools(3 821 600 599 12)
+# build_ub_tools(3 821 600 599 10)
+# build_ub_tools(3 821 600 599 12)
 
 # build_ub_tools(3 823 600 599 6)
 # build_ub_tools(3 823 600 599 7)
