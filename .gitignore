@@ -8,6 +8,7 @@ experiments/*
 results/*
 cmake-build-debug/*
 cmake-build-release/*
+cmake_build/*
 /x64
 /bs-dagtest.vcxproj.user
 /bs-dagtest.vcxproj.filters
