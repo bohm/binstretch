@@ -92,6 +92,7 @@ private:
     std::condition_variable cv_new_superbucket;
     std::mutex mtx_superbucket;
     bool all_superbuckets_done = false;
+    std::atomic<int> tasks_completed = 0;
 
 public:
     static inline int shrink_item(int larger_item) {
@@ -530,17 +531,27 @@ public:
                 return;
             }
             
-            auto [superbucket_id, position_id] = get_bucket_task();
+            // Get task while holding the lock
+            int superbucket_id = current_superbucket;
+            int position_id = position_in_bucket++;
             lock.unlock();
             
             // Check bounds after getting task
-            if (position_id >= superbuckets[superbucket_id].size()) {
-                // Current superbucket is exhausted, wait for next one
+            if (position_id >= static_cast<int>(superbuckets[superbucket_id].size())) {
+                // No more work in this superbucket, continue waiting
                 continue;
             }
             
             init_itemconf_layer(superbuckets[superbucket_id][position_id],
                                 &parallel_computed_layers[position_id]);
+            
+            // Mark task as completed
+            tasks_completed++;
+            
+            // For single-threaded execution, return when superbucket is done
+            if (thread_count == 1 && position_id + 1 >= static_cast<int>(superbuckets[superbucket_id].size())) {
+                return;
+            }
         }
     }
 
@@ -584,6 +595,7 @@ public:
                 std::lock_guard<std::mutex> lock(mtx_superbucket);
                 current_superbucket = sb;
                 position_in_bucket = 0;
+                tasks_completed = 0;
                 parallel_computed_layers.clear();
                 parallel_computed_layers.resize(superbuckets[sb].size());
             }
@@ -596,7 +608,7 @@ public:
                 worker_process_task();
             } else {
                 // Wait for all tasks in this superbucket to complete
-                while (position_in_bucket < static_cast<int>(superbuckets[sb].size())) {
+                while (tasks_completed < static_cast<int>(superbuckets[sb].size())) {
                     std::this_thread::sleep_for(std::chrono::milliseconds(1));
                 }
             }
