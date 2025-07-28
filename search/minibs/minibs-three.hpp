@@ -1,6 +1,8 @@
 #pragma once
 
 #include <cstring>
+#include <thread>
+#include <condition_variable>
 #include <parallel_hashmap/phmap.h>
 #include "../common.hpp"
 #include "../binconf.hpp"
@@ -84,6 +86,12 @@ private:
     std::vector<std::vector<unsigned int>> superbuckets;
     std::vector<flat_hash_set<index_t>> parallel_computed_layers;
     const unsigned int thread_count;
+    
+    // Threading synchronization for persistent workers
+    std::vector<std::thread> worker_threads;
+    std::condition_variable cv_new_superbucket;
+    std::mutex mtx_superbucket;
+    bool all_superbuckets_done = false;
 
 public:
     static inline int shrink_item(int larger_item) {
@@ -511,15 +519,28 @@ public:
 
     void worker_process_task() {
         while (true) {
-            auto [superbucket_id, position_id] = get_bucket_task();
-            // print_if<PROGRESS>("Pair {%u, %u}.\n", superbucket_id, position_id);
-            // auto [superbucket_id, position_id] = get_bucket_task();
-            if (position_id >= superbuckets[superbucket_id].size()) {
+            std::unique_lock<std::mutex> lock(mtx_superbucket);
+            
+            // Wait until there's work available or all superbuckets are done
+            cv_new_superbucket.wait(lock, [this] {
+                return all_superbuckets_done || position_in_bucket < static_cast<int>(superbuckets[current_superbucket].size());
+            });
+            
+            if (all_superbuckets_done) {
                 return;
-            } else {
-                init_itemconf_layer(superbuckets[superbucket_id][position_id],
-                                    &parallel_computed_layers[position_id]);
             }
+            
+            auto [superbucket_id, position_id] = get_bucket_task();
+            lock.unlock();
+            
+            // Check bounds after getting task
+            if (position_id >= superbuckets[superbucket_id].size()) {
+                // Current superbucket is exhausted, wait for next one
+                continue;
+            }
+            
+            init_itemconf_layer(superbuckets[superbucket_id][position_id],
+                                &parallel_computed_layers[position_id]);
         }
     }
 
@@ -546,31 +567,37 @@ public:
 
         assert(max_items_per_partition + 1 == (int) superbuckets.size());
 
-
-        std::thread *threads = nullptr;
-
+        // Create persistent worker threads once
         if (thread_count > 1) {
-            threads = new std::thread[thread_count];
+            worker_threads.clear();
+            worker_threads.reserve(thread_count);
+            for (unsigned int t = 0; t < thread_count; t++) {
+                worker_threads.emplace_back(&minibs<DENOMINATOR, 3>::worker_process_task, this);
+            }
         }
 
         unsigned int buckets_processed = 0;
         unsigned int buckets_last_reported = 0;
 
         for (int sb = max_items_per_partition; sb >= 0; --sb) {
-            current_superbucket = sb;
-            position_in_bucket = 0;
-            parallel_computed_layers.clear();
-            parallel_computed_layers.resize(superbuckets[sb].size());
+            {
+                std::lock_guard<std::mutex> lock(mtx_superbucket);
+                current_superbucket = sb;
+                position_in_bucket = 0;
+                parallel_computed_layers.clear();
+                parallel_computed_layers.resize(superbuckets[sb].size());
+            }
+            
+            // Notify all threads that a new superbucket is ready
+            cv_new_superbucket.notify_all();
 
             // A single threaded execution will not spawn child processes, so that it can be profiled more easily.
             if (thread_count == 1) {
                 worker_process_task();
             } else {
-                for (unsigned int t = 0; t < thread_count; t++) {
-                    threads[t] = std::thread(&minibs<DENOMINATOR, 3>::worker_process_task, this);
-                }
-                for (unsigned int t = 0; t < thread_count; t++) {
-                    threads[t].join();
+                // Wait for all tasks in this superbucket to complete
+                while (position_in_bucket < static_cast<int>(superbuckets[sb].size())) {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(1));
                 }
             }
 
@@ -593,7 +620,19 @@ public:
             }
         }
 
-        delete[] threads;
+        // Signal threads to terminate and wait for them
+        if (thread_count > 1) {
+            {
+                std::lock_guard<std::mutex> lock(mtx_superbucket);
+                all_superbuckets_done = true;
+            }
+            cv_new_superbucket.notify_all();
+            
+            for (auto& t : worker_threads) {
+                t.join();
+            }
+            worker_threads.clear();
+        }
     }
 
     // The init is now able to recover data from previous computations.
