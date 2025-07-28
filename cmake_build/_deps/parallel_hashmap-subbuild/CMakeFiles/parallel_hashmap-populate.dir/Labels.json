@@ -1,0 +1,46 @@
+{
+	"sources" : 
+	[
+		{
+			"file" : "/home/runner/work/binstretch/binstretch/cmake_build/_deps/parallel_hashmap-subbuild/CMakeFiles/parallel_hashmap-populate"
+		},
+		{
+			"file" : "/home/runner/work/binstretch/binstretch/cmake_build/_deps/parallel_hashmap-subbuild/CMakeFiles/parallel_hashmap-populate.rule"
+		},
+		{
+			"file" : "/home/runner/work/binstretch/binstretch/cmake_build/_deps/parallel_hashmap-subbuild/CMakeFiles/parallel_hashmap-populate-complete.rule"
+		},
+		{
+			"file" : "/home/runner/work/binstretch/binstretch/cmake_build/_deps/parallel_hashmap-subbuild/parallel_hashmap-populate-prefix/src/parallel_hashmap-populate-stamp/parallel_hashmap-populate-build.rule"
+		},
+		{
+			"file" : "/home/runner/work/binstretch/binstretch/cmake_build/_deps/parallel_hashmap-subbuild/parallel_hashmap-populate-prefix/src/parallel_hashmap-populate-stamp/parallel_hashmap-populate-configure.rule"
+		},
+		{
+			"file" : "/home/runner/work/binstretch/binstretch/cmake_build/_deps/parallel_hashmap-subbuild/parallel_hashmap-populate-prefix/src/parallel_hashmap-populate-stamp/parallel_hashmap-populate-download.rule"
+		},
+		{
+			"file" : "/home/runner/work/binstretch/binstretch/cmake_build/_deps/parallel_hashmap-subbuild/parallel_hashmap-populate-prefix/src/parallel_hashmap-populate-stamp/parallel_hashmap-populate-install.rule"
+		},
+		{
+			"file" : "/home/runner/work/binstretch/binstretch/cmake_build/_deps/parallel_hashmap-subbuild/parallel_hashmap-populate-prefix/src/parallel_hashmap-populate-stamp/parallel_hashmap-populate-mkdir.rule"
+		},
+		{
+			"file" : "/home/runner/work/binstretch/binstretch/cmake_build/_deps/parallel_hashmap-subbuild/parallel_hashmap-populate-prefix/src/parallel_hashmap-populate-stamp/parallel_hashmap-populate-patch.rule"
+		},
+		{
+			"file" : "/home/runner/work/binstretch/binstretch/cmake_build/_deps/parallel_hashmap-subbuild/parallel_hashmap-populate-prefix/src/parallel_hashmap-populate-stamp/parallel_hashmap-populate-test.rule"
+		},
+		{
+			"file" : "/home/runner/work/binstretch/binstretch/cmake_build/_deps/parallel_hashmap-subbuild/parallel_hashmap-populate-prefix/src/parallel_hashmap-populate-stamp/parallel_hashmap-populate-update.rule"
+		}
+	],
+	"target" : 
+	{
+		"labels" : 
+		[
+			"parallel_hashmap-populate"
+		],
+		"name" : "parallel_hashmap-populate"
+	}
+}

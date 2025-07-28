@@ -90,6 +90,7 @@ private:
     // Threading synchronization for persistent workers
     std::vector<std::thread> worker_threads;
     std::condition_variable cv_new_superbucket;
+    std::condition_variable cv_superbucket_complete;
     std::mutex mtx_superbucket;
     bool all_superbuckets_done = false;
     std::atomic<int> tasks_completed = 0;
@@ -545,8 +546,12 @@ public:
             init_itemconf_layer(superbuckets[superbucket_id][position_id],
                                 &parallel_computed_layers[position_id]);
             
-            // Mark task as completed
-            tasks_completed++;
+            // Mark task as completed and check if superbucket is done
+            int completed = ++tasks_completed;
+            if (completed == static_cast<int>(superbuckets[superbucket_id].size())) {
+                // This was the last task for this superbucket, notify main thread
+                cv_superbucket_complete.notify_one();
+            }
             
             // For single-threaded execution, return when superbucket is done
             if (thread_count == 1 && position_id + 1 >= static_cast<int>(superbuckets[superbucket_id].size())) {
@@ -608,9 +613,10 @@ public:
                 worker_process_task();
             } else {
                 // Wait for all tasks in this superbucket to complete
-                while (tasks_completed < static_cast<int>(superbuckets[sb].size())) {
-                    std::this_thread::sleep_for(std::chrono::milliseconds(1));
-                }
+                std::unique_lock<std::mutex> lock(mtx_superbucket);
+                cv_superbucket_complete.wait(lock, [this, sb] {
+                    return tasks_completed >= static_cast<int>(superbuckets[sb].size());
+                });
             }
 
             for (unsigned int b = 0; b < superbuckets[sb].size(); b++) {

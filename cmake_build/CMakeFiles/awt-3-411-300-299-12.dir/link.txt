@@ -1,0 +1,1 @@
+/usr/bin/c++  -Wall -Wextra -Ofast -march=native -fwhole-program -fno-exceptions -fno-rtti -finline-functions -Wl,--dependency-file=CMakeFiles/awt-3-411-300-299-12.dir/link.d "CMakeFiles/awt-3-411-300-299-12.dir/minitools/alg-winning-table.cpp.o" -o 3-411-300/awt-12-mon-299
