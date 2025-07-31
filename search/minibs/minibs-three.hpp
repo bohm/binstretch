@@ -188,15 +188,34 @@ public:
 
     bool query_itemconf_winning(const loadconf<BINS> &lc, const itemconf<DENOMINATOR> &ic) {
 
+        int ls = lc.loadsum();
+
+        // Endgame positions. First, endgame by combinatorics -- only one item of size 3alpha/2 can arrive.
         if (endgame_adjacent_maxfeas.contains(ic.itemhash)) {
-            int largest_sendable = std::min(BINS * S - lc.loadsum(),
+            int largest_sendable = std::min(BINS * S - ls,
                                             grow_to_upper_bound(endgame_adjacent_maxfeas[ic.itemhash]));
             if (lc.loads[BINS] + largest_sendable <= R - 1) {
                 return true;
             } else {
                 return false;
             }
-        } else if (midgame_feasible_map.contains(ic.itemhash)) {
+        }
+
+        // Next, endgame by load. This means combinatorially we could see an item of 3alpha/2, but volume forbids it.
+        // It is important to do this as a second check because combinatoric limits can set a stronger bound on lowest
+        // sendable than 3alpha/2.
+
+        // if (midgame_feasibility<DENOMINATOR, BINS>::endgame_by_load(ls)) {
+        //     int largest_sendable = std::min(S, BINS*S-ls);
+        //     if (lc.loads[BINS] + largest_sendable <= R - 1) {
+        //         return true;
+        //     } else {
+        //         return false;
+        //     }
+        // }
+
+        // Finally, a position is neither. Combinatorially, it should be marked as midgame feasible.
+        if (midgame_feasible_map.contains(ic.itemhash)) {
             // Check basic tests.
             if (knownsum.query(lc)) {
                 return true;
@@ -220,16 +239,31 @@ public:
 
         // We have to check the hash table if the position is winning.
         index_t load_index_if_packed = lc.virtual_index(item, bin);
+        int ls = lc.loadsum() + item;
 
+        // Endgame positions. First, endgame by combinatorics.
         if (endgame_adjacent_maxfeas.contains(next_layer_itemhash)) {
-            int largest_sendable = std::min(BINS * S - lc.loadsum() - item,
+            int largest_sendable = std::min(BINS * S - ls,
                                             grow_to_upper_bound(endgame_adjacent_maxfeas[next_layer_itemhash]));
             if (virtual_smallest_load(lc, item, bin) + largest_sendable <= R - 1) {
                 return true;
             } else {
                 return false;
             }
-        } else if (midgame_feasible_map.contains(next_layer_itemhash)) {
+        }
+
+        // Next, endgame by load.
+        // if (midgame_feasibility<DENOMINATOR, BINS>::endgame_by_load(ls)) {
+        //     int largest_sendable = std::min(S, BINS*S-ls);
+        //     if (lc.loads[BINS] + largest_sendable <= R - 1) {
+        //         return true;
+        //     } else {
+        //         return false;
+        //     }
+        // }
+
+        // Finally, midgame feasibility.
+        if (midgame_feasible_map.contains(next_layer_itemhash)) {
             if (knownsum.query_next_step(lc, item, bin, load_index_if_packed)) {
                 return true;
             }
@@ -251,16 +285,29 @@ public:
 
         // We have to check the hash table if the position is winning.
         uint64_t loadhash_if_packed = lc.virtual_loadhash(item, bin);
+        int ls = lc.loadsum() + item;
 
         if (endgame_adjacent_maxfeas.contains(next_layer_itemhash)) {
-            int largest_sendable = std::min(BINS * S - lc.loadsum() - item,
+            int largest_sendable = std::min(BINS * S - ls,
                                             grow_to_upper_bound(endgame_adjacent_maxfeas[next_layer_itemhash]));
             if (virtual_smallest_load(lc, item, bin) + largest_sendable <= R - 1) {
                 return true;
             } else {
                 return false;
             }
-        } else if (midgame_feasible_map.contains(next_layer_itemhash)) {
+        }
+
+        // Next, endgame by load.
+        // if (midgame_feasibility<DENOMINATOR, BINS>::endgame_by_load(ls)) {
+        //     int largest_sendable = std::min(S, BINS*S-ls);
+        //     if (lc.loads[BINS] + largest_sendable <= R - 1) {
+        //         return true;
+        //     } else {
+        //         return false;
+        //     }
+        // }
+
+        if (midgame_feasible_map.contains(next_layer_itemhash)) {
             if (knownsum.query_next_step(lc, item, bin)) {
                 return true;
             }
@@ -278,6 +325,17 @@ public:
 
     bool query_same_layer(const loadconf<BINS> &lc, int item, int bin,
                                  const flat_hash_set<index_t> *alg_winning_in_layer) const {
+
+        int ls = lc.loadsum() + item;
+        // if (midgame_feasibility<DENOMINATOR, BINS>::endgame_by_load(ls)) {
+        //     int largest_sendable = std::min(S, BINS*S-ls);
+        //     if (lc.loads[BINS] + largest_sendable <= R - 1) {
+        //         return true;
+        //     } else {
+        //         return false;
+        //     }
+        // }
+
         bool knownsum_winning = knownsum.query_next_step(lc, item, bin);
 
         if (knownsum_winning) {
@@ -324,7 +382,8 @@ public:
         }
 
         // The upper bound on maximum sendable from the DP is scaled by 1/DENOMINATOR.
-        // So, a value of 5 means that any item from [0, 6*S/DENOMINATOR] can be sent.
+        // So, a value of 5, which corresponds to the interval (5,6], means that any item from
+        // [0, 6*S/DENOMINATOR] can be sent.
         int ub_from_dp = grow_to_upper_bound(scaled_ub_from_hashes);
 
         if (MEASURE) {
@@ -662,6 +721,17 @@ public:
             delete fingerprint;
         }
     }
+
+    // A quick filter removing positions which are in the endgame by load.
+    void filter_endgame_by_load(loadconf_vector_plus<DENOMINATOR, 3> *out,
+        const loadconf_vector_plus<DENOMINATOR, 3> *in) {
+        for (auto& el: in->loadconfs) {
+            if (!midgame_feasibility<DENOMINATOR, 3>::endgame_by_load(el.loadsum())) {
+                out->loadconfs.push_back(el);
+            }
+        }
+    }
+
     void init_from_scratch(bool knownsum_loaded) {
 
         std::array<unsigned int, BINS> limits = {0};
@@ -706,7 +776,14 @@ public:
 
 
             if (USING_KNOWNSUM_VECTOR_PRUNING) {
-                bfs_losing_loadconfs<DENOMINATOR, 3>(knownsum, &losing_loadconfs);
+                loadconf_vector_plus<DENOMINATOR, 3> intermediate{};
+                bfs_losing_loadconfs<DENOMINATOR, 3>(knownsum, &intermediate);
+                print_if<PROGRESS>("Filtering using a BFS search yields %zu losing positions.\n",
+                    intermediate.loadconfs.size());
+                filter_endgame_by_load(&losing_loadconfs, &intermediate);
+                print_if<PROGRESS>("Filtering endgame positions by load yields %zu losing positions.\n",
+                    losing_loadconfs.loadconfs.size());
+
             }
 
             if (USING_KNOWNSUM_VECTOR) {

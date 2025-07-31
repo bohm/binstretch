@@ -3,13 +3,15 @@
 #include <array>
 #include <parallel_hashmap/phmap.h>
 #include "itemconf.hpp"
-
+#include "loadconf.hpp"
 using phmap::flat_hash_set;
 using phmap::flat_hash_map;
 
 template<unsigned int ARRLEN, unsigned int STACKSIZE> class midgame_feasibility {
 // Merges all arrays on stack and returns them on output.
 public:
+
+
 
     static void endgame_adjacent(const partition_container <ARRLEN> &midgame_feasible,
                           const flat_hash_set <uint64_t> &midgame_set,
@@ -61,5 +63,11 @@ public:
             auto maxfeas = (unsigned int) mdp.maximum_feasible(end_part);
             out_hints[endgame_hash] = maxfeas;
         }
+    }
+
+    static bool endgame_by_load(const int load) {
+        // Load when two items of size 3*alpha/2 are no longer possible.
+        constexpr int threshold = 3 * ALPHA;
+        return load > BINS*S - threshold;
     }
 };
